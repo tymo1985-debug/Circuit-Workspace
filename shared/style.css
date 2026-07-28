@@ -3,22 +3,27 @@
    Подключать после собственных стилей модуля, если нужно точечно переопределить. */
 
 :root {
-  /* --- Палитра: тёмная плата с медными/бирюзовыми дорожками --- */
-  --cw-bg:        #0f1620;
-  --cw-bg-raised: #141d29;
-  --cw-surface:   #1a2431;
-  --cw-surface-2: #212d3c;
-  --cw-line:      #2a3849;
-  --cw-line-soft: #202b38;
+  /* --- Палитра: тёмная плата в тонах логотипа (icon-source.svg) ---
+     Взято напрямую из градиента и акцентов иконки: bgGrad (#3d2470→#6a45c9→#2a3f8f),
+     glow1 (#c9a3ff), боковые пятна (#a24bd6 фиолетовое, #4be0d0 бирюзовое). */
+  --cw-bg:        #140d28;
+  --cw-bg-raised: #1c1338;
+  --cw-surface:   #221947;
+  --cw-surface-2: #2b2058;
+  --cw-line:      #3a2d73;
+  --cw-line-soft: #291f52;
 
-  --cw-text:      #eaf0f6;
-  --cw-text-dim:  #b7c3d1;
-  --cw-muted:     #7c8ba0;
+  --cw-text:      #f1eefb;
+  --cw-text-dim:  #c6bce3;
+  --cw-muted:     #8c7fb5;
 
-  --cw-teal:      #2fd7c4;
-  --cw-teal-dim:  #1c9e91;
-  --cw-copper:    #d99a5b;
-  --cw-copper-dim:#a86f38;
+  --cw-violet:     #8a5cf6;
+  --cw-violet-dim: #6a45c9;
+  --cw-lavender:   #c9a3ff;
+  --cw-indigo:     #2a3f8f;
+  --cw-magenta:    #a24bd6;
+  --cw-teal:      #4be0d0;
+  --cw-teal-dim:  #2fb3a5;
   --cw-amber:     #e8b34a;
   --cw-red:       #e2634f;
 
@@ -69,7 +74,7 @@ body.cw-root {
 
 .cw-card:hover {
   transform: translateY(-3px);
-  border-color: var(--cw-teal-dim);
+  border-color: var(--cw-violet-dim);
   box-shadow: var(--cw-shadow);
 }
 
@@ -90,13 +95,13 @@ body.cw-root {
   text-decoration: none;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.cw-btn:hover { background: var(--cw-line); border-color: var(--cw-teal-dim); }
+.cw-btn:hover { background: var(--cw-line); border-color: var(--cw-violet-dim); }
 .cw-btn--accent {
-  background: var(--cw-teal);
-  border-color: var(--cw-teal);
-  color: #06231f;
+  background: var(--cw-violet);
+  border-color: var(--cw-violet);
+  color: #ffffff;
 }
-.cw-btn--accent:hover { background: var(--cw-teal-dim); border-color: var(--cw-teal-dim); color: #eaf0f6; }
+.cw-btn--accent:hover { background: var(--cw-violet-dim); border-color: var(--cw-violet-dim); color: #ffffff; }
 
 /* --- Компонент: значок статуса (badge) --- */
 .cw-badge {
@@ -112,8 +117,8 @@ body.cw-root {
   background: var(--cw-surface-2);
   color: var(--cw-muted);
 }
-.cw-badge--live { color: #0c231f; background: var(--cw-teal); border-color: var(--cw-teal); }
-.cw-badge--soon { color: var(--cw-amber); background: transparent; border-color: var(--cw-copper-dim); }
+.cw-badge--live { color: #ffffff; background: var(--cw-violet); border-color: var(--cw-violet); }
+.cw-badge--soon { color: var(--cw-amber); background: transparent; border-color: var(--cw-magenta); }
 
 /* --- Утилиты --- */
 .cw-muted { color: var(--cw-muted); }

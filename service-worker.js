@@ -3,7 +3,7 @@
 // circuit-planner) имеет собственный service worker внутри своей папки и
 // управляет своим офлайн-кэшем самостоятельно — здесь это не дублируется.
 
-const CACHE_NAME = 'circuit-workspace-shell-v1';
+const CACHE_NAME = 'circuit-workspace-shell-v2';
 
 const SHELL_FILES = [
   './',
@@ -11,8 +11,11 @@ const SHELL_FILES = [
   './manifest.json',
   './shared/style.css',
   './shared/db.js',
+  './icon-16.png',
+  './icon-32.png',
   './icon-192.png',
   './icon-512.png',
+  './apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
