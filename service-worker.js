@@ -3,7 +3,11 @@
 // circuit-planner) имеет собственный service worker внутри своей папки и
 // управляет своим офлайн-кэшем самостоятельно — здесь это не дублируется.
 
-const CACHE_NAME = 'circuit-workspace-shell-v2';
+// Версия берётся из единого источника (shared/version.js), поэтому имя кэша
+// меняется автоматически при каждом обновлении CW_VERSION — не нужно отдельно
+// вручную поднимать "v1"/"v2"/"v3" здесь при каждой правке хаба.
+importScripts('./shared/version.js');
+const CACHE_NAME = 'circuit-workspace-shell-v' + self.CW_VERSION;
 
 const SHELL_FILES = [
   './',
@@ -11,6 +15,7 @@ const SHELL_FILES = [
   './manifest.json',
   './shared/style.css',
   './shared/db.js',
+  './shared/version.js',
   './icon-16.png',
   './icon-32.png',
   './icon-192.png',

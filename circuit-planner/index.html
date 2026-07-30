@@ -228,8 +228,9 @@ body::before{display:none !important}
 @supports not (background: color-mix(in srgb, red 20%, white)){.sy-period-bar{background:#dff1d7}}
 @media (max-width:680px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
 </style>
+<link rel="stylesheet" href="../shared/style.css">
 </head>
-<body>
+<body class="cw-has-bottom-nav">
   <div class="app" id="appRoot">
     <div class="mobile-overlay" id="mobileOverlay" hidden></div>
     <aside class="sidebar">
@@ -617,5 +618,6 @@ body::before{display:none !important}
   <script src="fonts/fonts-aptos-bolditalic.js"></script>
   <script src="visit-pdf.js"></script>
   <script src="app.js" defer></script>
+  <script src="../shared/nav.js" defer></script>
 </body>
 </html>

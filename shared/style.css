@@ -120,6 +120,42 @@ body.cw-root {
 .cw-badge--live { color: #ffffff; background: var(--cw-violet); border-color: var(--cw-violet); }
 .cw-badge--soon { color: var(--cw-amber); background: transparent; border-color: var(--cw-magenta); }
 
+/* --- Плавающая кнопка "На главную" (shared/nav.js) — общая для всех модулей --- */
+.cw-home-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2000;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cw-violet, #6a45c9);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.cw-home-fab:hover {
+  background: var(--cw-violet-dim, #6a45c9);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+.cw-home-fab:active { transform: translateY(0); }
+.cw-home-fab svg { display: block; }
+
+/* Модули со своей нижней мобильной навигацией (класс на <body>) —
+   поднимаем кнопку выше неё, чтобы не перекрывать. */
+@media (max-width: 767px) {
+  body.cw-has-bottom-nav .cw-home-fab { bottom: 84px; }
+}
+
+@media print {
+  .cw-home-fab { display: none !important; }
+}
+
 /* --- Утилиты --- */
 .cw-muted { color: var(--cw-muted); }
 .cw-mono { font-family: var(--cw-font-mono); }
