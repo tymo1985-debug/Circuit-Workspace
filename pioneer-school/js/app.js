@@ -1,0 +1,1021 @@
+// app.js — роутинг и рендеринг экранов
+const APP_VERSION = '1.3.0';
+
+let LESSONS_SEED = null;
+
+function $(sel, root = document) { return root.querySelector(sel); }
+function $all(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+
+function showRoute(route) {
+  $all('.route').forEach((el) => el.classList.add('hidden'));
+  const target = document.getElementById('route-' + route);
+  if (target) target.classList.remove('hidden');
+  $all('.nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.route === route));
+  window.location.hash = route;
+  renderRoute(route);
+}
+
+async function renderRoute(route) {
+  switch (route) {
+    case 'dashboard': return renderDashboard();
+    case 'anketa': return renderAnketa();
+    case 'assignment': return renderAssignment();
+    case 'registration': return renderRegistration();
+    case 'substitutes': return renderSubstitutes();
+    case 'students': return renderStudents();
+    case 'textbooks': return renderTextbooks();
+    case 'schedule': return renderSchedule();
+    case 'practical': return renderPractical();
+    case 'review': return renderReview();
+    case 'afterschool': return renderAfterSchool();
+    case 'signlanguage': return renderSignLanguage();
+    case 'backup': return; // static
+  }
+}
+
+// ---------- DASHBOARD ----------
+async function renderDashboard() {
+  const [assignment, students, order, substitutes, registrations] = await Promise.all([
+    Assignment.get(), Students.list(), Textbooks.getOrder(), Substitutes.list(), Registration.list()
+  ]);
+  const cards = [
+    { title: 'Назначение', value: assignment.startDate ? DateUtils.formatRu(assignment.startDate) : 'не заполнено', sub: assignment.location || '—' },
+    { title: 'Регистрации', value: registrations.length, sub: 'получено формуляров' },
+    { title: 'Учащиеся', value: students.length, sub: 'всего в базе' },
+    { title: 'Заместители', value: substitutes.length, sub: 'рекомендовано' },
+    { title: 'Учебники к заказу', value: Textbooks.calcOrderQuantity(order), sub: 'штук' }
+  ];
+  const el = $('#dashboard-cards');
+  el.innerHTML = cards.map((c) => `
+    <div class="stat-card">
+      <div class="stat-title">${c.title}</div>
+      <div class="stat-value">${c.value}</div>
+      <div class="stat-sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+// ---------- ANKETA ----------
+async function renderAnketa() {
+  const data = await Anketa.get();
+  $('#location-requirements').innerHTML = Anketa.LOCATION_REQUIREMENTS.map((r) => `<li>${r}</li>`).join('');
+  $('#substitute-requirements').innerHTML = Anketa.SUBSTITUTE_REQUIREMENTS.map((r) => `<li>${r}</li>`).join('');
+  $('#unavailable-dates').value = data.unavailableDates || '';
+  renderLocationsList(data.proposedLocations || []);
+
+  $('#add-location-btn').onclick = async () => {
+    const name = prompt('Название Зала Царства:');
+    if (!name) return;
+    const number = prompt('Номер собрания (одно собрание на место, гл.1 п.2):') || '';
+    const d = await Anketa.get();
+    d.proposedLocations = d.proposedLocations || [];
+    d.proposedLocations.push({ hallName: name, hallNumber: number, notes: '' });
+    await Anketa.save(d);
+    renderLocationsList(d.proposedLocations);
+  };
+
+  $('#save-anketa-btn').onclick = async () => {
+    const d = await Anketa.get();
+    d.unavailableDates = $('#unavailable-dates').value;
+    await Anketa.save(d);
+    alert('Анкета сохранена');
+  };
+}
+
+function renderLocationsList(locations) {
+  const el = $('#locations-list');
+  if (!locations.length) { el.innerHTML = '<p class="hint">Мест пока не добавлено.</p>'; return; }
+  el.innerHTML = locations.map((l, i) => `
+    <div class="list-row">
+      <span>${l.hallName} ${l.hallNumber ? '(' + l.hallNumber + ')' : ''}</span>
+      <button class="btn-text remove-location" data-index="${i}">Удалить</button>
+    </div>`).join('');
+  $all('.remove-location', el).forEach((btn) => {
+    btn.onclick = async () => {
+      const d = await Anketa.get();
+      d.proposedLocations.splice(Number(btn.dataset.index), 1);
+      await Anketa.save(d);
+      renderLocationsList(d.proposedLocations);
+    };
+  });
+}
+
+// ---------- ASSIGNMENT ----------
+async function renderAssignment() {
+  const data = await Assignment.get();
+  $('#a-start').value = data.startDate || '';
+  $('#a-end').value = data.endDate || '';
+  $('#a-location').value = data.location || '';
+  $('#a-teacherA').value = data.teacherA || '';
+  $('#a-teacherB').value = data.teacherB || '';
+  $('#a-teacherB-branch').checked = !!data.teacherBAssignedByBranch;
+  $('#second-teacher-note').textContent = data.secondTeacherNote || '';
+
+  $('#save-assignment-btn').onclick = async () => {
+    const payload = {
+      startDate: $('#a-start').value,
+      endDate: $('#a-end').value,
+      location: $('#a-location').value,
+      teacherA: $('#a-teacherA').value,
+      teacherB: $('#a-teacherB').value,
+      teacherBAssignedByBranch: $('#a-teacherB-branch').checked,
+      secondTeacherNote: data.secondTeacherNote
+    };
+    const errors = Assignment.validate(payload);
+    if (errors.length) return Validators.showErrors(errors);
+    await Assignment.save(payload);
+    alert('Назначение сохранено');
+    renderDashboard();
+  };
+}
+
+// ---------- REGISTRATION ----------
+async function renderRegistration() {
+  const cfg = await Registration.getConfig();
+  $('#reg-cfg-deadline').value = cfg.deadline || '';
+  $('#reg-cfg-email').value = cfg.email || '';
+  $('#reg-cfg-whatsapp').value = cfg.whatsapp || '';
+  $('#reg-cfg-title').value = cfg.title || '';
+
+  $('#save-reg-config-btn').onclick = async () => {
+    await Registration.saveConfig({
+      deadline: $('#reg-cfg-deadline').value,
+      email: $('#reg-cfg-email').value,
+      whatsapp: $('#reg-cfg-whatsapp').value,
+      title: $('#reg-cfg-title').value
+    });
+    alert('Настройки формуляра сохранены. Формуляр register.html подхватит их автоматически.');
+  };
+
+  $('#add-registration-btn').onclick = async () => {
+    const reg = {
+      id: DB.uid(),
+      lastName: $('#reg-lastname').value,
+      firstName: $('#reg-firstname').value,
+      email: $('#reg-email').value,
+      phone: $('#reg-phone').value,
+      address: $('#reg-address').value,
+      attending: $('#reg-attending').value,
+      transport: $('#reg-transport').value,
+      lodging: $('#reg-lodging').value,
+      language: $('#reg-language').value,
+      notes: $('#reg-notes').value,
+      format: []
+    };
+    try {
+      await Registration.save(reg);
+      ['#reg-lastname', '#reg-firstname', '#reg-email', '#reg-phone', '#reg-address', '#reg-notes'].forEach((s) => $(s).value = '');
+      renderRegistrationsTable(await Registration.list());
+      renderDashboard();
+    } catch (e) { alert(e.message); }
+  };
+
+  $('#export-reg-pdf').onclick = async () => PdfExport.downloadRegistrations(await Registration.list());
+  $('#export-reg-csv').onclick = async () => ExcelExport.downloadRegistrations(await Registration.list());
+
+  renderRegistrationsTable(await Registration.list());
+}
+
+function renderRegistrationsTable(list) {
+  const tbody = $('#registrations-table tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="hint">Регистраций пока нет.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((r) => `
+    <tr>
+      <td>${r.lastName} ${r.firstName}${r.convertedToStudentId ? ' <span class="badge-warn" style="background:#3E6B4F;">учащийся</span>' : ''}</td>
+      <td>${r.email || ''}<br>${r.phone || ''}</td>
+      <td>${Registration.YES_NO_LABELS[r.attending] || '—'}${r.attending === 'no' && r.attendReason ? ' — ' + r.attendReason : ''}</td>
+      <td>Авто: ${Registration.YES_NO_LABELS[r.transport] || '—'} · Ночлег: ${Registration.YES_NO_LABELS[r.lodging] || '—'}</td>
+      <td>${Registration.LANGUAGE_LABELS[r.language] || r.language || '—'}${(r.format || []).length ? ' · ' + r.format.map((f) => Registration.FORMAT_LABELS[f] || f).join(', ') : ''}</td>
+      <td>
+        ${r.convertedToStudentId ? '' : `<button class="btn-text convert-reg" data-id="${r.id}" style="color:var(--accent);">В учащиеся</button>`}
+        <button class="btn-text remove-reg" data-id="${r.id}">Удалить</button>
+      </td>
+    </tr>`).join('');
+
+  $all('.remove-reg', tbody).forEach((btn) => {
+    btn.onclick = async () => {
+      await Registration.remove(btn.dataset.id);
+      renderRegistrationsTable(await Registration.list());
+      renderDashboard();
+    };
+  });
+  $all('.convert-reg', tbody).forEach((btn) => {
+    btn.onclick = async () => {
+      const list = await Registration.list();
+      const reg = list.find((r) => r.id === btn.dataset.id);
+      if (!reg) return;
+      if (!reg.congregation) {
+        const congregation = prompt('В формуляре нет поля «Собрание» — укажите его для карточки учащегося:');
+        if (congregation === null) return;
+        reg.congregation = congregation;
+      }
+      await Registration.convertToStudent(reg);
+      renderRegistrationsTable(await Registration.list());
+      renderDashboard();
+      alert('Учащийся добавлен в раздел «Учащиеся».');
+    };
+  });
+}
+
+// ---------- SUBSTITUTES ----------
+async function renderSubstitutes() {
+  const list = await Substitutes.list();
+  $('#substitute-checklist').innerHTML = Substitutes.NOTIFICATION_CHECKLIST.map((r) => `<li>${r}</li>`).join('');
+  renderSubstitutesList(list);
+
+  $('#add-substitute-btn').onclick = async () => {
+    const sub = {
+      id: DB.uid(),
+      fullName: $('#s-name').value,
+      age: $('#s-age').value ? Number($('#s-age').value) : null,
+      rank: $('#s-rank').value ? Number($('#s-rank').value) : null,
+      approvedByBranch: $('#s-approved').value === 'true'
+    };
+    try {
+      await Substitutes.save(sub);
+      $('#s-name').value = ''; $('#s-age').value = ''; $('#s-rank').value = ''; $('#s-approved').value = 'false';
+      renderSubstitutesList(await Substitutes.list());
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+}
+
+function renderSubstitutesList(list) {
+  const el = $('#substitutes-list');
+  if (!list.length) { el.innerHTML = '<p class="hint">Заместители пока не добавлены.</p>'; return; }
+  el.innerHTML = `<div class="panel"><table class="data-table"><thead><tr><th>#</th><th>Имя</th><th>Возраст</th><th>Утверждён</th><th></th></tr></thead><tbody>
+    ${list.map((s) => `<tr>
+      <td>${s.rank ?? '—'}</td>
+      <td>${s.fullName}${s.age >= 80 ? ' <span class="badge-warn">80+</span>' : ''}</td>
+      <td>${s.age ?? '—'}</td>
+      <td>${s.approvedByBranch ? 'Да' : 'Нет'}</td>
+      <td><button class="btn-text remove-sub" data-id="${s.id}">Удалить</button></td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+  $all('.remove-sub', el).forEach((btn) => {
+    btn.onclick = async () => { await Substitutes.remove(btn.dataset.id); renderSubstitutesList(await Substitutes.list()); };
+  });
+}
+
+// ---------- MODAL HELPERS ----------
+function openModal(innerHtml) {
+  $('#modal-root').innerHTML = `<div class="modal-overlay" id="active-modal"><div class="modal-box">${innerHtml}</div></div>`;
+  $('#active-modal').addEventListener('click', (e) => { if (e.target.id === 'active-modal') closeModal(); });
+}
+function closeModal() { $('#modal-root').innerHTML = ''; }
+
+// ---------- STUDENTS ----------
+async function renderStudents() {
+  const [students, classes, columns] = await Promise.all([Students.list(), DB.list('classes'), Students.getColumns()]);
+
+  renderStudentFormFields(columns);
+  renderClassSelect(classes);
+  renderClassesList(classes);
+  renderColumnsManager(columns);
+  renderStudentsTableHead(columns);
+  renderStudentsTable(students, classes, columns);
+
+  $('#new-col-type').onchange = () => {
+    $('#new-col-options-wrap').classList.toggle('hidden', $('#new-col-type').value !== 'select');
+  };
+
+  $('#add-class-btn').onclick = async () => {
+    const name = $('#class-name').value.trim();
+    if (!name) return;
+    await DB.put('classes', { name });
+    $('#class-name').value = '';
+    const updated = await DB.list('classes');
+    renderClassSelect(updated);
+    renderClassesList(updated);
+  };
+
+  $('#add-student-btn').onclick = async () => {
+    const cols = await Students.getColumns();
+    const values = collectStudentFormValues(cols);
+    const student = { id: DB.uid(), classId: $('#student-class-select')?.value || null, values };
+    try {
+      await Students.save(student);
+      renderStudentFormFields(cols); // очищаем форму
+      const updatedStudents = await Students.list();
+      renderStudentsTable(updatedStudents, await DB.list('classes'), cols);
+      renderDashboard();
+    } catch (e) { alert(e.message); }
+  };
+
+  $('#auto-distribute-btn').onclick = async () => {
+    const cls = await DB.list('classes');
+    if (!cls.length) return alert('Сначала добавьте хотя бы один класс.');
+    const st = await Students.list();
+    const distributed = Students.autoDistribute(st, cls);
+    for (const s of distributed) await DB.put('students', s);
+    renderStudentsTable(await Students.list(), cls, await Students.getColumns());
+  };
+
+  $('#add-column-btn').onclick = async () => {
+    const label = $('#new-col-label').value.trim();
+    if (!label) return alert('Укажите название столбца');
+    const type = $('#new-col-type').value;
+    const options = type === 'select'
+      ? $('#new-col-options').value.split(',').map((s) => s.trim()).filter(Boolean).map((s) => ({ value: s, label: s }))
+      : [];
+    try {
+      await Students.addColumn({ label, type, options });
+      $('#new-col-label').value = ''; $('#new-col-options').value = '';
+      const newCols = await Students.getColumns();
+      renderColumnsManager(newCols);
+      renderStudentFormFields(newCols);
+      renderStudentsTableHead(newCols);
+      renderStudentsTable(await Students.list(), await DB.list('classes'), newCols);
+    } catch (e) { alert(e.message); }
+  };
+
+  $('#pdf-import-parse-btn').onclick = () => handlePdfImportParse();
+  $('#open-export-picker-btn').onclick = () => openExportPicker();
+  $('#export-all-formulaires-btn').onclick = async () => {
+    const st = await Students.list();
+    if (!st.length) return alert('Список учащихся пуст.');
+    const cols = await Students.getColumns();
+    const cls = await DB.list('classes');
+    const byId = Object.fromEntries(cls.map((c) => [c.id, c]));
+    await PdfExport.downloadAllStudentFormulaires(st, cols, byId);
+  };
+}
+
+function renderStudentFormFields(columns) {
+  const el = $('#student-form-fields');
+  el.innerHTML = columns.map((c) => renderFieldInput(c, '', 'sf')).join('') +
+    `<label>Класс <select id="student-class-select"></select></label>`;
+  // класс select наполняется отдельно через renderClassSelect на общий #student-class-select
+}
+
+function renderFieldInput(column, value, prefix) {
+  const id = `${prefix}-${column.key}`;
+  if (column.type === 'select') {
+    const opts = (column.options || []).map((o) => `<option value="${o.value}" ${o.value === value ? 'selected' : ''}>${o.label}</option>`).join('');
+    return `<label>${column.label}<select id="${id}" data-key="${column.key}">${opts}</select></label>`;
+  }
+  if (column.type === 'textarea') {
+    return `<label>${column.label}<textarea id="${id}" data-key="${column.key}" rows="2">${value || ''}</textarea></label>`;
+  }
+  return `<label>${column.label}<input type="text" id="${id}" data-key="${column.key}" value="${(value || '').toString().replace(/"/g, '&quot;')}"></label>`;
+}
+
+function collectStudentFormValues(columns) {
+  const values = {};
+  columns.forEach((c) => {
+    const el = document.getElementById(`sf-${c.key}`);
+    if (el) values[c.key] = el.value;
+  });
+  return values;
+}
+
+function renderClassSelect(classes) {
+  const sel = document.getElementById('student-class-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— без класса —</option>' + classes.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function renderClassesList(classes) {
+  const el = $('#classes-list');
+  if (!classes.length) { el.innerHTML = '<p class="hint">Классов пока нет — школа считается одним классом.</p>'; return; }
+  el.innerHTML = classes.map((c) => `<div class="list-row"><span>${c.name}</span></div>`).join('');
+}
+
+function renderColumnsManager(columns) {
+  const el = $('#columns-manager');
+  el.innerHTML = columns.map((c) => `
+    <div class="column-row">
+      <input type="text" class="col-rename" data-key="${c.key}" value="${c.label}">
+      <span class="column-type-badge">${{ text: 'текст', textarea: 'длинный текст', select: 'список' }[c.type] || c.type}</span>
+      ${c.protected ? '<span class="column-protected-badge">системный</span>' : `<button class="btn-text col-remove" data-key="${c.key}">Удалить</button>`}
+    </div>`).join('');
+
+  $all('.col-rename', el).forEach((input) => {
+    input.onblur = async () => {
+      await Students.renameColumn(input.dataset.key, input.value);
+      const cols = await Students.getColumns();
+      renderStudentFormFields(cols);
+      const classes = await DB.list('classes');
+      renderClassSelect(classes);
+      renderStudentsTableHead(cols);
+      renderStudentsTable(await Students.list(), classes, cols);
+    };
+  });
+  $all('.col-remove', el).forEach((btn) => {
+    btn.onclick = async () => {
+      if (!confirm('Удалить этот столбец? Значения в нём у существующих учащихся перестанут отображаться и редактироваться.')) return;
+      try {
+        await Students.removeColumn(btn.dataset.key);
+        const cols = await Students.getColumns();
+        renderColumnsManager(cols);
+        renderStudentFormFields(cols);
+        const classes = await DB.list('classes');
+        renderClassSelect(classes);
+        renderStudentsTableHead(cols);
+        renderStudentsTable(await Students.list(), classes, cols);
+      } catch (e) { alert(e.message); }
+    };
+  });
+}
+
+function renderStudentsTableHead(columns) {
+  const head = $('#students-table-head');
+  head.innerHTML = columns.map((c) => `<th>${c.label}</th>`).join('') + '<th>Класс</th><th></th>';
+}
+
+function renderStudentsTable(students, classes, columns) {
+  const classById = Object.fromEntries(classes.map((c) => [c.id, c]));
+  const tbody = $('#students-table tbody');
+  if (!students.length) {
+    tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" class="hint">Учащихся пока нет.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = students.map((s) => {
+    const cells = columns.map((c) => `<td>${renderFieldInput(c, (s.values || {})[c.key], 'row-' + s.id)}</td>`).join('');
+    const classOptions = '<option value="">—</option>' + classes.map((cl) => `<option value="${cl.id}" ${cl.id === s.classId ? 'selected' : ''}>${cl.name}</option>`).join('');
+    return `<tr data-student-id="${s.id}">
+      ${cells}
+      <td><select class="row-class-select" data-id="${s.id}">${classOptions}</select></td>
+      <td>
+        <button class="btn-text row-formulaire" data-id="${s.id}" style="color:var(--accent);">Формуляр</button>
+        <button class="btn-text remove-student" data-id="${s.id}">Удалить</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // убираем обёртку <label> вокруг инпутов внутри ячеек таблицы — там label не нужен
+  $all('#students-table tbody label').forEach((label) => {
+    const control = label.querySelector('input, select, textarea');
+    if (control) label.replaceWith(control);
+  });
+
+  columns.forEach((c) => {
+    $all(`[id^="row-"][data-key="${c.key}"]`, tbody).forEach((input) => {
+      const tr = input.closest('tr');
+      const studentId = tr.dataset.studentId;
+      const handler = async () => {
+        const student = await DB.get('students', studentId);
+        if (!student) return;
+        student.values = student.values || {};
+        student.values[c.key] = input.value;
+        await Students.save(student);
+        if (c.key === 'textbookFormat' || c.key === 'status') renderDashboard();
+      };
+      input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'blur', handler);
+    });
+  });
+
+  $all('.row-class-select', tbody).forEach((sel) => {
+    sel.onchange = async () => {
+      const student = await DB.get('students', sel.dataset.id);
+      if (!student) return;
+      student.classId = sel.value || null;
+      await Students.save(student);
+    };
+  });
+
+  $all('.remove-student', tbody).forEach((btn) => {
+    btn.onclick = async () => {
+      await Students.remove(btn.dataset.id);
+      renderStudentsTable(await Students.list(), classes, columns);
+      renderDashboard();
+    };
+  });
+
+  $all('.row-formulaire', tbody).forEach((btn) => {
+    btn.onclick = async () => {
+      const list = await Students.list();
+      const student = list.find((s) => s.id === btn.dataset.id);
+      if (!student) return;
+      const cls = classById[student.classId];
+      await PdfExport.downloadStudentFormulaire(student, columns, cls ? cls.name : '');
+    };
+  });
+}
+
+// ---------- PDF IMPORT WIZARD ----------
+let importState = null;
+
+async function handlePdfImportParse() {
+  const input = $('#pdf-import-input');
+  const status = $('#pdf-import-status');
+  const file = input.files[0];
+  if (!file) { alert('Выберите PDF-файл'); return; }
+  status.textContent = 'Разбираю PDF…';
+  try {
+    const { headers, rows, anomalies, usedLineDetection } = await PdfImport.extractTable(file);
+    if (!headers.length) { status.textContent = 'Не удалось найти таблицу в этом PDF.'; return; }
+    const existingColumns = await Students.getColumns();
+    const norm = (s) => String(s || '').replace(/[\u00A0\u2007\u202F]/g, ' ').normalize('NFC').trim().toLowerCase();
+    importState = {
+      headers,
+      rows,
+      anomalies,
+      mappings: headers.map((h) => {
+        const match = existingColumns.find((c) => norm(c.label) === norm(h));
+        return match ? match.key : '__new__';
+      })
+    };
+    status.textContent = usedLineDetection
+      ? `Найдены линии таблицы — столбцы определены по ним (надёжнее). Строк: ${rows.length}.`
+      : `Линии таблицы не найдены — столбцы определены приблизительно по тексту заголовка. Строк: ${rows.length}. Проверьте результат особенно внимательно.`;
+    await openImportPreviewModal(existingColumns);
+  } catch (e) {
+    status.textContent = 'Ошибка чтения PDF: ' + e.message;
+  }
+}
+
+async function openImportPreviewModal(existingColumns) {
+  renderImportModal(existingColumns);
+}
+
+function currentMappingHasNameFields() {
+  const keys = importState.mappings.map((m, i) => (m === '__new__' ? null : m));
+  return keys.includes('lastName') && keys.includes('firstName');
+}
+
+function renderImportModal(existingColumns, resultPanelHtml) {
+  const { headers, rows, mappings, anomalies } = importState;
+  const mappingOptions = (currentKey) => {
+    const opts = existingColumns.map((c) => `<option value="${c.key}" ${c.key === currentKey ? 'selected' : ''}>${c.label}</option>`).join('');
+    return `<option value="__new__" ${currentKey === '__new__' ? 'selected' : ''}>— новый столбец —</option>${opts}`;
+  };
+
+  const headerRow = headers.map((h, i) => `
+    <th>
+      <div contenteditable="true" class="import-header-edit" data-idx="${i}">${h}</div>
+      <select class="import-mapping-select" data-idx="${i}" style="width:100%;font-size:11px;border:none;border-top:1px solid var(--line);">
+        ${mappingOptions(mappings[i])}
+      </select>
+      <button class="btn-text import-remove-col" data-idx="${i}" style="font-size:10px;">удалить столбец</button>
+    </th>`).join('') + '<th class="col-remove-cell"></th>';
+
+  const bodyRows = rows.map((row, rIdx) => `
+    <tr data-row="${rIdx}">
+      ${headers.map((_, cIdx) => {
+        const isAnomaly = anomalies && anomalies[rIdx] && anomalies[rIdx][cIdx];
+        return `<td class="${isAnomaly ? 'import-anomaly-cell' : ''}" ${isAnomaly ? 'title="Похоже на склейку двух ячеек PDF в одну — проверьте и поправьте вручную"' : ''}><div contenteditable="true" class="import-cell" data-row="${rIdx}" data-col="${cIdx}">${row[cIdx] || ''}</div></td>`;
+      }).join('')}
+      <td class="row-remove-cell"><button class="btn-text import-remove-row" data-idx="${rIdx}">✕</button></td>
+    </tr>`).join('');
+
+  const hasNameMapping = currentMappingHasNameFields();
+  const anyAnomalies = anomalies && anomalies.some((rowFlags) => rowFlags.some(Boolean));
+
+  openModal(`
+    <h2>Проверьте распознанную таблицу</h2>
+    <p class="hint">Автоматическое распознавание может ошибаться — поправьте заголовки, сопоставление со столбцами приложения и значения перед импортом.</p>
+    ${anyAnomalies ? '<p class="hint" style="color:var(--warn);">⚠ Ячейки с оранжевым фоном — там текстовый элемент PDF физически пересекает границу столбца. Скорее всего, в исходном файле содержимое двух ячеек «склеилось» без пробела (например, слишком длинное имя). Автоматически это не восстановить — проверьте и при необходимости вручную разделите значение.</p>' : ''}
+    ${!hasNameMapping ? '<p class="hint" style="color:var(--warn);">⚠ Сопоставьте один из столбцов с «Фамилия» и один со «Имя» — без этого импорт недоступен, так как эти поля обязательны для каждого учащегося.</p>' : ''}
+    <div class="editable-table-wrap">
+      <table class="editable-table">
+        <thead><tr>${headerRow}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="import-add-row">+ Строка</button>
+      <button class="btn-secondary" id="import-add-col">+ Столбец</button>
+    </div>
+    ${resultPanelHtml || ''}
+    <div class="modal-close-row">
+      <button class="btn-secondary" id="import-cancel-btn">${resultPanelHtml ? 'Закрыть' : 'Отмена'}</button>
+      ${resultPanelHtml ? '' : `<button class="btn-primary" id="import-confirm-btn" ${hasNameMapping ? '' : 'disabled'}>Импортировать (${rows.length})</button>`}
+    </div>
+  `);
+
+  $all('.import-header-edit').forEach((el) => {
+    el.onblur = () => { importState.headers[Number(el.dataset.idx)] = el.textContent.trim(); };
+  });
+  $all('.import-mapping-select').forEach((sel) => {
+    sel.onchange = () => {
+      importState.mappings[Number(sel.dataset.idx)] = sel.value;
+      renderImportModal(existingColumns); // перерисовать, чтобы обновить блокировку кнопки импорта
+    };
+  });
+  $all('.import-cell').forEach((el) => {
+    el.onblur = () => { importState.rows[Number(el.dataset.row)][Number(el.dataset.col)] = el.textContent; };
+  });
+  $all('.import-remove-row').forEach((btn) => {
+    btn.onclick = () => {
+      importState.rows.splice(Number(btn.dataset.idx), 1);
+      importState.anomalies.splice(Number(btn.dataset.idx), 1);
+      renderImportModal(existingColumns);
+    };
+  });
+  $all('.import-remove-col').forEach((btn) => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.idx);
+      importState.headers.splice(idx, 1);
+      importState.mappings.splice(idx, 1);
+      importState.rows.forEach((r) => r.splice(idx, 1));
+      importState.anomalies.forEach((r) => r.splice(idx, 1));
+      renderImportModal(existingColumns);
+    };
+  });
+  $('#import-add-row').onclick = () => {
+    importState.rows.push(new Array(importState.headers.length).fill(''));
+    importState.anomalies.push(new Array(importState.headers.length).fill(false));
+    renderImportModal(existingColumns);
+  };
+  $('#import-add-col').onclick = () => {
+    importState.headers.push('Новый столбец');
+    importState.mappings.push('__new__');
+    importState.rows.forEach((r) => r.push(''));
+    importState.anomalies.forEach((r) => r.push(false));
+    renderImportModal(existingColumns);
+  };
+  $('#import-cancel-btn').onclick = () => { importState = null; closeModal(); };
+  if (!resultPanelHtml) {
+    const confirmBtn = $('#import-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = () => confirmPdfImport(existingColumns);
+  }
+}
+
+async function confirmPdfImport(existingColumns) {
+  try {
+    const { headers, rows, mappings } = importState;
+    const keys = [];
+    for (let i = 0; i < headers.length; i++) {
+      if (mappings[i] === '__new__') {
+        keys.push(await Students.resolveColumnByLabel(headers[i] || `Столбец ${i + 1}`));
+      } else {
+        keys.push(mappings[i]);
+      }
+    }
+    let imported = 0;
+    const errors = [];
+    for (const row of rows) {
+      if (row.every((cell) => !cell || !cell.trim())) continue;
+      const values = {};
+      keys.forEach((key, idx) => { values[key] = row[idx] || ''; });
+      try {
+        await Students.save({ id: DB.uid(), classId: null, values });
+        imported++;
+      } catch (e) {
+        errors.push(`«${values.lastName || row[0] || '?'} ${values.firstName || ''}»: ${e.message}`);
+      }
+    }
+
+    const cols = await Students.getColumns();
+    renderStudentFormFields(cols);
+    renderColumnsManager(cols);
+    renderStudentsTableHead(cols);
+    renderStudentsTable(await Students.list(), await DB.list('classes'), cols);
+    renderDashboard();
+
+    const resultHtml = `
+      <div class="panel" style="margin-top:14px;background:${errors.length ? '#FBEFE9' : '#EAF3EC'};">
+        <h3 style="margin-top:0;">Импорт завершён</h3>
+        <p>Успешно импортировано: <strong>${imported}</strong> из ${rows.length}.</p>
+        ${errors.length ? `<p>Не импортировано (${errors.length}) — исправьте эти строки в таблице выше и повторите, либо пропустите:</p><ul class="simple-list">${errors.map((e) => `<li>${e}</li>`).join('')}</ul>` : ''}
+      </div>`;
+    $('#pdf-import-status').textContent = `Импортировано: ${imported}${errors.length ? `, ошибок: ${errors.length}` : ''}.`;
+    renderImportModal(existingColumns, resultHtml);
+  } catch (e) {
+    // Любая непредвиденная ошибка теперь видна пользователю внутри окна,
+    // а не приводит к «зависшему» модальному окну без обратной связи.
+    renderImportModal(existingColumns, `
+      <div class="panel" style="margin-top:14px;background:#FBEFE9;">
+        <h3 style="margin-top:0;">Не удалось завершить импорт</h3>
+        <p>${e.message}</p>
+      </div>`);
+  }
+}
+
+// ---------- EXPORT PICKER ----------
+async function openExportPicker() {
+  const columns = await Students.getColumns();
+  const saved = await DB.getMeta('studentExportColumns', columns.map((c) => c.key));
+  openModal(`
+    <h2>Экспорт списка учащихся</h2>
+    <p class="hint">Выберите, какие столбцы включить в файл.</p>
+    <div class="export-columns-grid">
+      ${columns.map((c) => `
+        <label class="export-col-check">
+          <input type="checkbox" class="export-col-cb" value="${c.key}" ${saved.includes(c.key) ? 'checked' : ''}>
+          ${c.label}
+        </label>`).join('')}
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="export-do-pdf">Скачать PDF (список)</button>
+      <button class="btn-primary" id="export-do-xlsx">Скачать Excel (.xlsx)</button>
+      <button class="btn-secondary" id="export-do-csv">Скачать CSV</button>
+    </div>
+    <p class="hint">Файл .xlsx открывается в Excel, Google Таблицах и Apple Numbers — отдельного формата для Numbers не требуется.</p>
+    <div class="modal-close-row"><button class="btn-secondary" id="export-close-btn">Закрыть</button></div>
+  `);
+
+  const getSelectedColumns = async () => {
+    const keys = $all('.export-col-cb').filter((cb) => cb.checked).map((cb) => cb.value);
+    await DB.setMeta('studentExportColumns', keys);
+    return columns.filter((c) => keys.includes(c.key));
+  };
+
+  const getClassesById = async () => {
+    const cls = await DB.list('classes');
+    return Object.fromEntries(cls.map((c) => [c.id, c]));
+  };
+
+  $('#export-do-pdf').onclick = async () => {
+    const cols = await getSelectedColumns();
+    const students = await Students.list();
+    await PdfExport.downloadStudentList(students, cols, await getClassesById());
+  };
+  $('#export-do-xlsx').onclick = async () => {
+    const cols = await getSelectedColumns();
+    const students = await Students.list();
+    ExcelExport.downloadStudentsXlsx(students, cols, await getClassesById());
+  };
+  $('#export-do-csv').onclick = async () => {
+    const cols = await getSelectedColumns();
+    const students = await Students.list();
+    ExcelExport.downloadStudentsCsv(students, cols, await getClassesById());
+  };
+  $('#export-close-btn').onclick = closeModal;
+}
+
+// ---------- TEXTBOOKS ----------
+async function renderTextbooks() {
+  const order = await Textbooks.getOrder();
+  $('#tb-requested').value = order.requestedByStudents || 0;
+  $('#tb-stock').value = order.alreadyInStock || 0;
+  $('#tb-received').checked = !!order.received;
+  $('#tb-recounted').checked = !!order.recountedOnReceipt;
+  $('#textbook-reminders').innerHTML = Textbooks.REMINDERS.map((r) => `<li>${r}</li>`).join('');
+  updateTextbookQty();
+
+  ['#tb-requested', '#tb-stock'].forEach((sel) => $(sel).oninput = updateTextbookQty);
+
+  $('#save-textbooks-btn').onclick = async () => {
+    const payload = {
+      ...order,
+      requestedByStudents: Number($('#tb-requested').value || 0),
+      alreadyInStock: Number($('#tb-stock').value || 0),
+      received: $('#tb-received').checked,
+      recountedOnReceipt: $('#tb-recounted').checked
+    };
+    await Textbooks.save(payload);
+    alert('Данные по учебникам сохранены');
+    renderDashboard();
+  };
+
+  $('#export-textbooks-pdf').onclick = async () => {
+    await PdfExport.downloadTextbookOrder(await Textbooks.getOrder());
+  };
+  $('#export-textbooks-csv').onclick = async () => {
+    ExcelExport.downloadTextbookOrder(await Textbooks.getOrder());
+  };
+}
+
+function updateTextbookQty() {
+  const requested = Number($('#tb-requested').value || 0);
+  const stock = Number($('#tb-stock').value || 0);
+  $('#tb-order-qty').textContent = Textbooks.calcOrderQuantity({ requestedByStudents: requested, alreadyInStock: stock });
+}
+
+// ---------- SCHEDULE / LESSONS ----------
+async function loadLessonsSeed() {
+  if (LESSONS_SEED) return LESSONS_SEED;
+  const res = await fetch('data/seed-lessons.json');
+  LESSONS_SEED = await res.json();
+  return LESSONS_SEED;
+}
+
+async function renderSchedule() {
+  const seed = await loadLessonsSeed();
+  const stored = await DB.list('lessons');
+  const doneMap = Object.fromEntries(stored.map((l) => [l.key, l.done]));
+
+  const el = $('#lessons-list');
+  el.innerHTML = seed.lessons.map((lesson) => {
+    const key = `${lesson.number}${lesson.letter || ''}`;
+    const teacherLabel = lesson.teacher === 'A' ? 'Преподаватель А' : lesson.teacher === 'Б' ? 'Преподаватель Б' : lesson.teacher;
+    let mediaHtml = '';
+    if (lesson.videoBefore) mediaHtml += mediaBlock('Видео (до урока)', lesson.videoBefore);
+    if (lesson.videoAfterIntro) mediaHtml += mediaBlock('Видео (после вступления)', lesson.videoAfterIntro);
+    if (lesson.videoBeforeSection) mediaHtml += mediaBlock('Видео (перед разделом)', lesson.videoBeforeSection);
+    if (lesson.videoAfterSection) mediaHtml += mediaBlock('Видео (после раздела)', lesson.videoAfterSection);
+    if (lesson.videoAfter) mediaHtml += mediaBlock('Видео (в конце урока)', lesson.videoAfter);
+    if (lesson.bibleReadings) {
+      mediaHtml += lesson.bibleReadings.map((r) => mediaBlock('Худож. чтение Библии', { title: r.passage, duration: r.duration, cue: r.cue })).join('');
+    }
+    return `
+      <div class="panel lesson-card">
+        <div class="lesson-head">
+          <div class="lesson-number">Урок ${lesson.number}${lesson.letter ? lesson.letter : ''}</div>
+          <div class="lesson-teacher">${teacherLabel} · День ${lesson.day}</div>
+          <label class="checkbox-label lesson-done">
+            <input type="checkbox" class="lesson-done-cb" data-key="${key}" ${doneMap[key] ? 'checked' : ''}> Проведено
+          </label>
+        </div>
+        ${lesson.note ? `<p class="hint">${lesson.note}</p>` : ''}
+        ${lesson.signLanguageNote ? `<p class="hint">${lesson.signLanguageNote}</p>` : ''}
+        ${mediaHtml || '<p class="hint">Наглядные материалы для этого урока в S-255-U не указаны.</p>'}
+      </div>`;
+  }).join('') + `
+    <div class="panel">
+      <h3>Правило по наглядным пособиям</h3>
+      <ul class="fact-list">
+        <li>Максимум ${seed.visualAidsRule.maxImagesPerLesson} статичных изображения на урок</li>
+        <li>Видео/PowerPoint/Keynote — запрещены, кроме случаев прямого указания в программе (искл. жестовый язык)</li>
+        <li>Маркерные доски разрешены</li>
+      </ul>
+    </div>`;
+
+  $all('.lesson-done-cb', el).forEach((cb) => {
+    cb.onchange = async () => {
+      await DB.put('lessons', { id: cb.dataset.key, key: cb.dataset.key, done: cb.checked });
+    };
+  });
+}
+
+function mediaBlock(label, media) {
+  return `<div class="media-block">
+    <div class="media-label">${label}: ${media.title}${media.duration ? ' (' + media.duration + ')' : ''}</div>
+    ${media.cue ? `<div class="media-cue">${media.cue}</div>` : ''}
+    ${media.note ? `<div class="media-cue">${media.note}</div>` : ''}
+  </div>`;
+}
+
+// ---------- PRACTICAL ----------
+async function renderPractical() {
+  $('#practical-rules').innerHTML = Practical.RULES.map((r) => `<li>${r}</li>`).join('');
+  const sessions = await Practical.list();
+  const el = $('#practical-list');
+  el.innerHTML = sessions.map((s) => `
+    <div class="panel">
+      <h3>Практическое занятие ${s.sessionNumber}</h3>
+      <label class="checkbox-label"><input type="checkbox" class="pr-rehearsed" data-id="${s.id}" ${s.rehearsed ? 'checked' : ''}> Отрепетировано заранее</label>
+      <label class="checkbox-label"><input type="checkbox" class="pr-general" data-id="${s.id}" ${s.generalRehearsalDone ? 'checked' : ''}> Генеральная репетиция в день выступления проведена</label>
+      <label>Чему научились (итог занятия)
+        <textarea class="pr-takeaway" data-id="${s.id}" rows="2">${s.keyTakeaway || ''}</textarea>
+      </label>
+    </div>`).join('');
+
+  $all('.pr-rehearsed', el).forEach((cb) => cb.onchange = () => savePracticalField(cb.dataset.id, 'rehearsed', cb.checked));
+  $all('.pr-general', el).forEach((cb) => cb.onchange = () => savePracticalField(cb.dataset.id, 'generalRehearsalDone', cb.checked));
+  $all('.pr-takeaway', el).forEach((ta) => ta.onblur = () => savePracticalField(ta.dataset.id, 'keyTakeaway', ta.value));
+}
+
+async function savePracticalField(id, field, value) {
+  const session = await DB.get('practicalSessions', id);
+  if (!session) return;
+  session[field] = value;
+  await Practical.save(session);
+}
+
+// ---------- REVIEW ----------
+async function renderReview() {
+  const reviews = await Review.list();
+  const el = $('#review-list');
+  el.innerHTML = `<div class="panel"><p class="hint">${Review.NOTE}</p></div>` + reviews.map((r) => `
+    <div class="panel">
+      <h3>День ${r.day}</h3>
+      <div class="form-grid">
+        <label>Минут у преподавателя А <input type="number" class="rv-a" data-id="${r.id}" value="${r.teacherAMinutesUsed ?? ''}" max="15"></label>
+        <label>Минут у преподавателя Б <input type="number" class="rv-b" data-id="${r.id}" value="${r.teacherBMinutesUsed ?? ''}" max="15"></label>
+        <label class="checkbox-label"><input type="checkbox" class="rv-done" data-id="${r.id}" ${r.done ? 'checked' : ''}> Проведено</label>
+      </div>
+      <label>Дополнительные местные вопросы
+        <textarea class="rv-notes" data-id="${r.id}" rows="2">${r.additionalLocalQuestions || ''}</textarea>
+      </label>
+    </div>`).join('');
+
+  $all('.rv-a', el).forEach((i) => i.onblur = () => saveReviewField(i.dataset.id, 'teacherAMinutesUsed', Number(i.value) || null));
+  $all('.rv-b', el).forEach((i) => i.onblur = () => saveReviewField(i.dataset.id, 'teacherBMinutesUsed', Number(i.value) || null));
+  $all('.rv-done', el).forEach((cb) => cb.onchange = () => saveReviewField(cb.dataset.id, 'done', cb.checked));
+  $all('.rv-notes', el).forEach((ta) => ta.onblur = () => saveReviewField(ta.dataset.id, 'additionalLocalQuestions', ta.value));
+}
+
+async function saveReviewField(id, field, value) {
+  const r = await DB.get('dailyReviews', id);
+  if (!r) return;
+  r[field] = value;
+  await Review.save(r);
+}
+
+// ---------- AFTER SCHOOL ----------
+async function renderAfterSchool() {
+  const data = await AfterSchool.get();
+  $('#expenses-note').textContent = AfterSchool.EXPENSES_NOTE;
+  renderNaList(data.notAttendedFromList || []);
+  renderAoList(data.attendedNotOnList || []);
+
+  $('#add-na-btn').onclick = async () => {
+    const name = $('#na-name').value.trim();
+    if (!name) return;
+    const d = await AfterSchool.get();
+    d.notAttendedFromList = d.notAttendedFromList || [];
+    d.notAttendedFromList.push({ name, reason: $('#na-reason').value.trim() });
+    await AfterSchool.save(d);
+    $('#na-name').value = ''; $('#na-reason').value = '';
+    renderNaList(d.notAttendedFromList);
+  };
+
+  $('#add-ao-btn').onclick = async () => {
+    const name = $('#ao-name').value.trim();
+    if (!name) return;
+    const d = await AfterSchool.get();
+    d.attendedNotOnList = d.attendedNotOnList || [];
+    d.attendedNotOnList.push({ name, congregation: $('#ao-congregation').value.trim() });
+    await AfterSchool.save(d);
+    $('#ao-name').value = ''; $('#ao-congregation').value = '';
+    renderAoList(d.attendedNotOnList);
+  };
+
+  $('#save-s253-btn').onclick = async () => {
+    const d = await AfterSchool.get();
+    d.submitted = true;
+    d.submittedDate = DateUtils.todayIso();
+    await AfterSchool.save(d);
+    alert('S-253 сохранён');
+  };
+
+  $('#export-s253-pdf').onclick = async () => {
+    await PdfExport.downloadS253(await AfterSchool.get());
+  };
+}
+
+function renderNaList(items) {
+  $('#na-list').innerHTML = items.map((i) => `<li>${i.name}${i.reason ? ' — ' + i.reason : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
+}
+function renderAoList(items) {
+  $('#ao-list').innerHTML = items.map((i) => `<li>${i.name}${i.congregation ? ' — ' + i.congregation : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
+}
+
+// ---------- SIGN LANGUAGE ----------
+async function renderSignLanguage() {
+  const data = await SignLanguage.get();
+  $('#sl-enabled').checked = !!data.enabled;
+  $('#sl-notes').innerHTML = SignLanguage.NOTES.map((n) => `<li>${n}</li>`).join('');
+
+  const checklistItems = [
+    ['substituteTextbookAccess', 'Доступ заместителя к учебнику на жестовом языке'],
+    ['adaptedPracticalPlans', 'Адаптированные планы практических занятий'],
+    ['s255Access', 'Доступ к S-255'],
+    ['studentJwpubTextbook', 'Учебник JWPUB на жестовом языке — учащимся'],
+    ['studentNotesPdf', 'Заметки к учебнику PDF (pt14slsh) — учащимся'],
+    ['studentAssignmentsWordJwpub', 'Задания Word/JWPUB — учащимся']
+  ];
+  $('#sl-checklist').innerHTML = checklistItems.map(([key, label]) => `
+    <label class="checkbox-label"><input type="checkbox" class="sl-check" data-key="${key}" ${data.materialsChecklist?.[key] ? 'checked' : ''}> ${label}</label>
+  `).join('');
+
+  $('#save-sl-btn').onclick = async () => {
+    const d = await SignLanguage.get();
+    d.enabled = $('#sl-enabled').checked;
+    d.materialsChecklist = d.materialsChecklist || {};
+    $all('.sl-check').forEach((cb) => { d.materialsChecklist[cb.dataset.key] = cb.checked; });
+    await SignLanguage.save(d);
+    alert('Сохранено');
+  };
+}
+
+// ---------- BACKUP ----------
+function initBackup() {
+  $('#export-backup-btn').onclick = async () => {
+    const dump = await DB.exportAll();
+    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pioneer-school-backup-${DateUtils.todayIso()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  $('#import-backup-input').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('Импорт заменит текущие данные. Продолжить?')) return;
+    const text = await file.text();
+    try {
+      const dump = JSON.parse(text);
+      await DB.importAll(dump);
+      alert('Данные восстановлены');
+      showRoute('dashboard');
+    } catch (err) {
+      alert('Не удалось прочитать файл резервной копии: ' + err.message);
+    }
+  };
+}
+
+// ---------- INIT ----------
+window.addEventListener('DOMContentLoaded', () => {
+  $('#version-sub').textContent = `v${APP_VERSION} · S-255-U`;
+  $all('.nav-item').forEach((btn) => btn.addEventListener('click', () => showRoute(btn.dataset.route)));
+  initBackup();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW registration failed', e));
+  }
+
+  const initialRoute = (window.location.hash || '#dashboard').slice(1);
+  showRoute(initialRoute || 'dashboard');
+});
