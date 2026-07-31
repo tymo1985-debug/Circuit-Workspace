@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -10,9 +10,9 @@
   <link rel="icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
-  :root{--bg:#f4f7f5;--surface:#fff;--surface2:#f0f5f2;--text:#163024;--muted:#5f776a;--line:#d8e2db;--accent:#6a45c9;--accent2:#3d2470;--accent-rgb:106,69,201;--danger:#b91c1c;--shadow:0 10px 28px rgba(22,48,36,.08);--cal-header-bg:rgba(106,69,201,.05);--cal-weeknum-bg:rgba(106,69,201,.04);--cal-weekend-bg:rgba(106,69,201,.06);--cal-inactive-bg:transparent;--cal-grid-line:rgba(216,226,219,.85)}
-  [data-theme="dark"]{--bg:#0f1712;--surface:#152019;--surface2:#1b2a21;--text:#e8f0eb;--muted:#a7baaf;--line:#2b3b31;--accent:#8a5cf6;--danger:#f87171;--shadow:0 10px 28px rgba(0,0,0,.28);--cal-header-bg:rgba(138,92,246,.10);--cal-weeknum-bg:rgba(138,92,246,.10);--cal-weekend-bg:rgba(138,92,246,.12);--cal-inactive-bg:rgba(27,42,33,.30);--cal-grid-line:rgba(216,226,219,.85)}
-  *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;overflow-x:hidden} body{display:flex}
+  :root{--bg:var(--md-background);--surface:var(--md-surface-container-lowest);--surface2:var(--md-surface-container);--text:var(--md-on-surface);--muted:var(--md-on-surface-variant);--line:var(--md-outline-variant);--accent:#6a45c9;--accent2:#3d2470;--accent-rgb:106,69,201;--danger:var(--md-error);--danger-rgb:186,26,26;--shadow:var(--md-elevation-2);--cal-header-bg:rgba(var(--accent-rgb),.05);--cal-weeknum-bg:rgba(var(--accent-rgb),.04);--cal-weekend-bg:rgba(var(--accent-rgb),.06);--cal-inactive-bg:transparent;--cal-grid-line:var(--md-outline-variant)}
+  [data-theme="dark"]{--bg:var(--md-background);--surface:var(--md-surface-container-low);--surface2:var(--md-surface-container);--text:var(--md-on-surface);--muted:var(--md-on-surface-variant);--line:var(--md-outline-variant);--accent:#8a5cf6;--accent-rgb:138,92,246;--danger:var(--md-error);--danger-rgb:255,180,171;--shadow:var(--md-elevation-2);--cal-header-bg:rgba(138,92,246,.10);--cal-weeknum-bg:rgba(138,92,246,.10);--cal-weekend-bg:rgba(138,92,246,.12);--cal-inactive-bg:rgba(42,42,45,.30);--cal-grid-line:var(--md-outline-variant)}
+  *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--md-font-family);overflow-x:hidden} body{display:flex}
   body::before{content:'';position:fixed;left:0;top:0;bottom:0;width:280px;background:linear-gradient(180deg,var(--accent),var(--accent2));z-index:0}
   h1,h2,h3,h4,p{margin:0} .brand h1{font-size:20px;margin-bottom:6px}
   .app{display:grid;grid-template-columns:280px 1fr;width:100%;min-height:100vh;min-height:100dvh;position:relative;z-index:1}
@@ -23,19 +23,19 @@
   .main{padding:28px;min-width:0}.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.topbar h2{margin:0;font-size:28px}.topbar p{margin:6px 0 0;color:var(--muted)}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .topbar-title-row{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 auto}
   .topbar-title-block{min-width:0;flex:1 1 auto}
-  .btn,.chip,select,input,textarea{font:inherit}.btn,.chip{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:12px 14px;border-radius:14px;cursor:pointer;box-shadow:var(--shadow)}
-  button,.btn,.chip,.icon-btn,.nav-btn,.bottom-nav-btn,.week-item,.side-item,.event-bar,.pdf-option,a.btn,label.btn,input,select,textarea{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}.btn.danger{background:var(--danger);color:#fff;border-color:transparent}.btn.full{width:100%}
-  .screen{display:none}.screen.active{display:block}.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:18px}.grid{display:grid;gap:18px}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  select,input,textarea{font:inherit}
+  button,.md-btn,.md-chip,.icon-btn,.nav-btn,.bottom-nav-btn,.week-item,.side-item,.event-bar,.pdf-option,a.md-btn,label.md-btn,input,select,textarea{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  
+  .screen{display:none}.screen.active{display:block}.grid{display:grid;gap:18px}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
   input[type="text"],input[type="date"],input[type="color"],input[type="number"],input[type="tel"],input[type="email"],textarea,select{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:14px;padding:12px 14px;font-size:16px}
   textarea{min-height:120px;resize:vertical}
-  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}.small{font-size:12px;color:var(--muted)}.empty{padding:24px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);text-align:center}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}.small{font-size:12px;color:var(--muted)}
   .weeks-toolbar{display:grid;grid-template-columns:1fr 220px 220px;gap:10px}
   @media (max-width:767px){.weeks-toolbar{grid-template-columns:1fr !important}.icon-btn{width:44px !important;height:44px !important;font-size:16px}}
-  .event-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(170px,230px) auto;gap:10px;align-items:center;margin-bottom:14px}.event-tools .small{justify-self:start}.event-tools .btn.danger{white-space:nowrap}@media (max-width:760px){.event-tools{grid-template-columns:1fr}.event-tools .small{justify-self:start}}
+  .event-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(170px,230px) auto;gap:10px;align-items:center;margin-bottom:14px}.event-tools .small{justify-self:start}.event-tools .md-btn-danger{white-space:nowrap}@media (max-width:760px){.event-tools{grid-template-columns:1fr}.event-tools .small{justify-self:start}}
   .week-item,.event-row,.note-row{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--accent);outline:2px solid rgba(20,83,45,.20)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
   .calendar-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}.calendar-layout.team-hidden{grid-template-columns:minmax(0,1fr)}.calendar-layout.team-hidden .calendar-side{display:none}
-  .calendar-shell{background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);overflow:visible;position:relative}
+  .calendar-shell{background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-lg);box-shadow:var(--shadow);overflow:visible;position:relative}
   .calendar-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding:22px 24px 16px;border-bottom:1px solid rgba(216,226,219,.85)}
   .calendar-toolbar-title{min-width:220px;flex:1 1 240px}
   .calendar-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.calendar-nav{display:flex;align-items:center;gap:8px;padding:4px;background:var(--surface2);border:1px solid var(--line);border-radius:999px}.icon-btn{appearance:none;border:1px solid var(--line);background:var(--surface2);color:var(--text);width:32px;height:32px;border-radius:999px;cursor:pointer}
@@ -48,21 +48,21 @@
   .dow-row{background:var(--cal-header-bg);border-bottom:1px solid var(--cal-grid-line)}.dow-corner,.week-num{border-right:1px solid var(--cal-grid-line)}.dow-corner{min-height:34px}.dow-days,.week-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:relative;}.dow{min-height:34px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px 0 6px;color:var(--muted);font-size:12px}.week-row{min-height:112px;border-bottom:1px solid var(--cal-grid-line)}.week-row:last-child{border-bottom:0}.week-num{display:flex;align-items:flex-start;justify-content:center;padding-top:10px;color:var(--muted);font-size:12px;background:var(--cal-weeknum-bg);min-height:112px}
   .day-cell{position:relative;min-height:112px;padding:8px 8px 8px 10px;border-right:1px solid var(--cal-grid-line)}.day-cell:last-child{border-right:0}.day-cell.inactive{background:var(--cal-inactive-bg)}.day-cell.weekend{background:var(--cal-weekend-bg)}.day-cell.inactive.weekend{background:rgba(20,83,45,.04)}.day-cell.today .day-num{background:var(--accent);color:#fff}.day-num{display:inline-flex;min-width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;font-size:13px}.day-month{color:var(--muted);font-size:11px;margin-left:2px}
   .event-bar{position:absolute;min-height:18px;border-radius:999px;color:#fff;padding:2px 10px;display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 5px rgba(0,0,0,.08);cursor:pointer;border:0}.event-bar::before{content:'';width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.92);flex:0 0 auto}
-  .calendar-side{display:grid;gap:18px}.side-card{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:18px}.side-card h4{margin:0 0 10px;font-size:18px}.side-list{display:grid;gap:8px}.side-item{padding:10px 12px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);text-align:left;cursor:pointer}.side-item strong{display:block;margin-bottom:4px}.side-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(216,226,219,.72)}.side-row:last-child{border-bottom:0}.side-label{color:var(--muted);font-size:12px}.side-value{font-weight:600}
+  .calendar-side{display:grid;gap:18px}.side-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-lg);box-shadow:var(--shadow);padding:18px}.side-card h4{margin:0 0 10px;font-size:18px}.side-list{display:grid;gap:8px}.side-item{padding:10px 12px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);text-align:left;cursor:pointer}.side-item strong{display:block;margin-bottom:4px}.side-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(216,226,219,.72)}.side-row:last-child{border-bottom:0}.side-label{color:var(--muted);font-size:12px}.side-value{font-weight:600}
   #nextVisitPill{background:var(--accent);color:#fff;border-color:var(--accent)}
   .toolbar-more{position:relative}
   .toolbar-more summary{list-style:none;cursor:pointer}
   .toolbar-more summary::-webkit-details-marker{display:none}
   .toolbar-more-panel{position:absolute;top:calc(100% + 6px);right:0;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:10px;display:grid;gap:8px;min-width:220px;max-width:calc(100vw - 32px)}
-  .toolbar-more-panel .chip.full{width:100%;text-align:left}
+  .toolbar-more-panel .md-chip-full{width:100%;text-align:left}
   #calendarSideTitle{scroll-margin-top:46px}
   .more-actions{margin-top:2px}.more-actions summary{cursor:pointer;list-style:none;padding:10px 14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-size:14px;text-align:center}.more-actions summary::-webkit-details-marker{display:none}.more-actions[open] summary{margin-bottom:2px}
   .editor-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.editor-title{margin:0;font-size:16px}.editor-sub{color:var(--muted);font-size:12px;margin-top:4px}.editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.editor-grid label{display:grid;gap:6px;font-size:12px;color:var(--muted)}.editor-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.editor-meta{margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;font-size:12px;color:var(--muted)}
-  .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--muted);font-size:13px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--line);border-radius:18px;padding:14px;background:var(--surface2);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(20,83,45,.50)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--line);color:var(--muted);font-size:13px}
-  .toast-wrap{position:fixed;top:18px;right:18px;display:grid;gap:10px;z-index:1600}.toast{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}.version-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-xl);box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--muted);font-size:13px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--line);border-radius:18px;padding:14px;background:var(--surface2);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(20,83,45,.50)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--line);color:var(--muted);font-size:13px}
+  .toast-wrap{position:fixed;top:18px;right:18px;display:grid;gap:10px;z-index:1600}.version-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
   .layout-help{margin-top:8px;font-size:12px;color:var(--muted)} .calendar-layout-select{min-width:170px}
   .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1550;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 20px rgba(0,0,0,.08);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));transform:translateZ(0);will-change:transform}
-  .offline-banner{display:none;position:sticky;top:0;z-index:1300;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(185,28,28,.10);color:var(--text);margin-bottom:12px}
+  .offline-banner{display:none;position:sticky;top:0;z-index:1300;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(var(--danger-rgb),.10);color:var(--text);margin-bottom:12px}
   .offline-banner.show{display:block}
   .app.menu-open .bottom-nav{display:none !important}
   .app.menu-open .sidebar{z-index:1501 !important}
@@ -70,15 +70,15 @@
   .mobile-overlay{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:none;z-index:1500;display:none;pointer-events:none}.mobile-overlay.show{display:block;pointer-events:auto}.mobile-overlay[hidden]{display:none !important;pointer-events:none !important}.mobile-menu-btn{display:none !important}
   
   @media (max-width:1280px){.calendar-layout{grid-template-columns:1fr}}
-  .day-cell.holiday .day-num{color:#b91c1c;font-weight:800}
+  .day-cell.holiday .day-num{color:var(--danger);font-weight:800}
   .settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-  .settings-tab{opacity:.65}
+  .md-chip.settings-tab{opacity:.65}
   .settings-tab.active{opacity:1;background:var(--accent);color:#fff;border-color:var(--accent)}
-  .letter-type-tab{opacity:.65}
+  .md-chip.letter-type-tab{opacity:.65}
   .letter-type-tab.active{opacity:1;background:var(--accent);color:#fff;border-color:var(--accent)}
   .settings-panel{display:grid;gap:16px}
   .rte-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-  .rte-btn{min-width:40px;padding:8px 12px}
+  .md-btn.rte-btn{min-width:40px;padding:8px 12px;height:auto}
   .rte-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .rte-font-note{color:var(--muted)}
   .rte-editor{min-height:220px;max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface)}
@@ -88,13 +88,13 @@
   .session-toggle-btn{font-size:11px;padding:3px 7px;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);cursor:pointer}
   .session-toggle-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   [hidden]{display:none !important}
-  .sy-day.holiday:not(.today) span{color:#b91c1c;font-weight:800}
+  .sy-day.holiday:not(.today) span{color:var(--danger);font-weight:800}
   .holiday-mark{font-size:10px;margin-left:3px}
   .day-cell.drag-over{outline:2px dashed var(--accent);outline-offset:-3px;background:rgba(20,83,45,.08)}
   .sy-day.drag-over{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(20,83,45,.12)}
   @media (min-width:1201px){.app{grid-template-columns:280px 1fr !important}.sidebar{display:flex !important;position:relative !important;left:auto !important;top:auto !important;width:auto !important;z-index:1 !important}.bottom-nav{display:none !important}.mobile-menu-btn{display:none !important}.mobile-overlay{display:none !important}}
   @media (min-width:768px) and (max-width:1200px){body::before{display:none!important}.app{grid-template-columns:1fr!important}.sidebar{position:fixed;left:-296px;top:0;bottom:0;width:280px;transition:left .24s ease;z-index:1501}.mobile-menu-btn{display:inline-flex!important}.app.menu-open .sidebar{left:0}.main{padding:18px}.dow-row,.week-row{grid-template-columns:38px 1fr}.topbar h2{font-size:24px}}
-  @media (max-width:767px){body::before{display:none !important}.app{grid-template-columns:1fr !important}.sidebar{display:flex !important;position:fixed !important;top:0 !important;left:-296px !important;bottom:0 !important;width:280px !important;z-index:1501 !important;transition:left .24s ease !important;filter:none !important;opacity:1 !important;pointer-events:auto !important}.app.menu-open .sidebar{left:0 !important}.mobile-menu-btn{display:inline-flex !important}.mobile-overlay.show{display:block !important}.bottom-nav{display:block !important}.main{padding:16px 16px 96px !important}.topbar{position:sticky;top:0;z-index:1200;background:var(--bg);padding-top:4px}.actions{gap:8px}.actions .btn,.actions label.btn,.mobile-menu-btn{padding:10px 12px}.form-grid,.pdf-grid{grid-template-columns:1fr !important}.dow-row,.week-row{display:grid;grid-template-columns:46px 1fr;}.topbar h2{font-size:24px}}
+  @media (max-width:767px){body::before{display:none !important}.app{grid-template-columns:1fr !important}.sidebar{display:flex !important;position:fixed !important;top:0 !important;left:-296px !important;bottom:0 !important;width:280px !important;z-index:1501 !important;transition:left .24s ease !important;filter:none !important;opacity:1 !important;pointer-events:auto !important}.app.menu-open .sidebar{left:0 !important}.mobile-menu-btn{display:inline-flex !important}.mobile-overlay.show{display:block !important}.bottom-nav{display:block !important}.main{padding:16px 16px 96px !important}.topbar{position:sticky;top:0;z-index:1200;background:var(--bg);padding-top:4px}.actions{gap:8px}.actions .md-btn,.actions label.md-btn,.mobile-menu-btn{padding:10px 12px}.form-grid,.pdf-grid{grid-template-columns:1fr !important}.dow-row,.week-row{display:grid;grid-template-columns:46px 1fr;}.topbar h2{font-size:24px}}
   .week-row:hover .week-days{background: rgba(20,83,45,.06)}
   .day-cell.today-col{background: linear-gradient(to bottom, rgba(20,83,45,.08), transparent 55%)}
   .day-cell.today-col.weekend{background: linear-gradient(to bottom, rgba(20,83,45,.10), transparent 55%)}
@@ -104,7 +104,7 @@
   #calendarLayoutPresetSelect{display:none !important}
   @media (max-width:767px){body::before{display:none!important}}
  @media (max-width:1200px){body::before{display:none!important}}
- @media print{body::before,.sidebar,.topbar,.calendar-side,.bottom-nav,.mobile-overlay,.toast-wrap,.editor,.modal{display:none !important}.app{grid-template-columns:1fr !important}.main{padding:0 !important}.calendar-shell,.card{box-shadow:none !important;border:1px solid #ccc !important}}
+ @media print{body::before,.sidebar,.topbar,.calendar-side,.bottom-nav,.mobile-overlay,.toast-wrap,.editor,.modal{display:none !important}.app{grid-template-columns:1fr !important}.main{padding:0 !important}.calendar-shell,.md-card{box-shadow:none !important;border:1px solid #ccc !important}}
  
  /* v9.5.2 cleanup: no team panel, reliable menu, side details panel, dynamic accent */
  .app.menu-open .sidebar{left:0 !important;z-index:2500 !important;pointer-events:auto !important}
@@ -184,9 +184,9 @@ body::before{display:none !important}
 .day-popover-event strong{display:block;font-size:13px}
 .day-popover-event span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .day-popover-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.day-popover-actions .btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}
+.day-popover-actions .md-btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}
 .sy-day.has-events:hover{outline:2px solid var(--accent);outline-offset:1px}
-@media (max-width:680px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .btn{flex:1 1 auto}}
+@media (max-width:680px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .md-btn{flex:1 1 auto}}
 
 
 /* v9.5.9-year-week-bars: stable popover + sending workflow */
@@ -198,7 +198,7 @@ body::before{display:none !important}
 .send-control-hint{color:var(--muted);font-size:11px;margin-top:2px}
 .send-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
-.send-card.is-pending{border-color:rgba(185,28,28,.45);background:rgba(185,28,28,.07)}
+.send-card.is-pending{border-color:rgba(var(--danger-rgb),.45);background:rgba(var(--danger-rgb),.07)}
 .send-card.is-done{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08)}
 .send-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:12px}
 .send-status{font-size:11px;color:var(--muted)}
@@ -209,7 +209,7 @@ body::before{display:none !important}
 .calendar-details-card #calendarSideDetails .side-item-card:has(.entry-actions){display:none !important}
 
 .sync-card{box-shadow:none;border:1px dashed var(--line);border-radius:18px;padding:14px;background:var(--surface2)}
-.sync-card h4{margin:0 0 8px;font-size:16px}.sync-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}.sync-actions .btn{box-shadow:none}.sync-status{margin-top:10px;color:var(--muted);font-size:12px}
+.sync-card h4{margin:0 0 8px;font-size:16px}.sync-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}.sync-actions .md-btn{box-shadow:none}.sync-status{margin-top:10px;color:var(--muted);font-size:12px}
 
 /* v9.5.8: annual view keeps current day/event visible in the side panel */
 .sy-day.selected{outline:2px solid var(--accent) !important;outline-offset:1px !important;background:rgba(var(--accent-rgb),.14) !important}
@@ -242,11 +242,11 @@ body::before{display:none !important}
       <div class="offline-banner" id="offlineBanner">Вы офлайн. Изменения сохраняются локально.</div>
       <header class="topbar">
         <div class="topbar-title-row">
-          <button class="btn mobile-menu-btn" id="mobileMenuToggleBtn" type="button" aria-label="Открыть меню" aria-expanded="false">☰ Меню</button>
+          <button class="md-btn md-btn-outlined md-state-layer mobile-menu-btn" id="mobileMenuToggleBtn" type="button" aria-label="Открыть меню" aria-expanded="false">☰ Меню</button>
           <div class="topbar-title-block">
             <div class="version-badge">Версия: …</div>
             <h2 id="screenTitle">Календарь</h2>
-            <button id="nextVisitPill" class="chip" type="button" style="display:none;margin:6px 0;font-size:14px;padding:7px 14px;max-width:100%;align-items:center;gap:6px"><span id="nextVisitPillName" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0"></span><span id="nextVisitPillDate" style="white-space:nowrap;flex-shrink:0"></span></button>
+            <button id="nextVisitPill" class="md-chip md-state-layer" type="button" style="display:none;margin:6px 0;font-size:14px;padding:7px 14px;max-width:100%;align-items:center;gap:6px"><span id="nextVisitPillName" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0"></span><span id="nextVisitPillDate" style="white-space:nowrap;flex-shrink:0"></span></button>
             <p id="screenSubtitle"></p>
           </div>
         </div>
@@ -257,14 +257,14 @@ body::before{display:none !important}
             <div class="calendar-toolbar">
               <div class="calendar-toolbar-title"><div class="small" id="calendarServiceYearLabel"></div><h3 class="calendar-title" id="monthLabel"></h3><div class="calendar-sub" id="calendarRangeLabel"></div></div>
               <div class="calendar-controls">
-                <div class="calendar-nav"><button class="icon-btn" id="prevMonthBtn" type="button" aria-label="Предыдущий месяц">‹</button><button class="chip" id="todayMonthBtn" type="button">Сегодня</button><button class="icon-btn" id="nextMonthBtn" type="button" aria-label="Следующий месяц">›</button></div>
+                <div class="calendar-nav"><button class="icon-btn" id="prevMonthBtn" type="button" aria-label="Предыдущий месяц">‹</button><button class="md-chip md-state-layer" id="todayMonthBtn" type="button">Сегодня</button><button class="icon-btn" id="nextMonthBtn" type="button" aria-label="Следующий месяц">›</button></div>
                 <details class="toolbar-more">
-                  <summary class="chip">⚙ Ещё</summary>
+                  <summary class="md-chip md-state-layer">⚙ Ещё</summary>
                   <div class="toolbar-more-panel">
-                    <button class="chip full" id="checkRemindersBtnMain" type="button">🔔 S302/письма</button>
-                    <button class="chip full" id="statsBtn" type="button">📊 Статистика</button>
-                    <button class="chip full" id="plannerBtn" type="button">🗓 Авто-план</button>
-                    <button class="chip full" id="toggleTeamPanelBtn" type="button">Вид: служебный год</button>
+                    <button class="md-chip md-chip-full md-state-layer" id="checkRemindersBtnMain" type="button">🔔 S302/письма</button>
+                    <button class="md-chip md-chip-full md-state-layer" id="statsBtn" type="button">📊 Статистика</button>
+                    <button class="md-chip md-chip-full md-state-layer" id="plannerBtn" type="button">🗓 Авто-план</button>
+                    <button class="md-chip md-chip-full md-state-layer" id="toggleTeamPanelBtn" type="button">Вид: служебный год</button>
                   </div>
                 </details>
                 <select id="calendarLayoutPresetSelect" class="calendar-layout-select"></select>
@@ -278,7 +278,7 @@ body::before{display:none !important}
           </aside>
         </div>
       </section>
-      <section id="events" class="screen"><div class="card"><div class="event-tools"><input id="eventSearchInput" type="text" placeholder="Поиск по названию, адресу или расписанию" /><select id="eventColorFilter" aria-label="Группа / цвет"><option value="all">Все группы / цвета</option></select><select id="eventVisitFilter" aria-label="Тип визита"><option value="all">Все записи</option><option value="unset">⚠️ Без типа визита</option><option value="congregation">Собрание</option><option value="group">Группа</option><option value="pregroup">Предгруппа</option></select><button class="btn danger" id="deleteAllEventsBtn" type="button">Удалить все собрания</button><button class="btn primary" id="newEventBtn" type="button">+ Новое собрание</button><div class="small" id="eventsListCount">Показано: 0 из 0</div></div><h3 class="event-templates-title" hidden></h3><div id="eventsList" class="grid"></div></div></section>
+      <section id="events" class="screen"><div class="md-card"><div class="event-tools"><input id="eventSearchInput" type="text" placeholder="Поиск по названию, адресу или расписанию" /><select id="eventColorFilter" aria-label="Группа / цвет"><option value="all">Все группы / цвета</option></select><select id="eventVisitFilter" aria-label="Тип визита"><option value="all">Все записи</option><option value="unset">⚠️ Без типа визита</option><option value="congregation">Собрание</option><option value="group">Группа</option><option value="pregroup">Предгруппа</option></select><button class="md-btn md-btn-danger md-state-layer" id="deleteAllEventsBtn" type="button">Удалить все собрания</button><button class="md-btn md-btn-filled md-state-layer" id="newEventBtn" type="button">+ Новое собрание</button><div class="small" id="eventsListCount">Показано: 0 из 0</div></div><h3 class="event-templates-title" hidden></h3><div id="eventsList" class="grid"></div></div></section>
       <div class="modal" id="eventEditorModal" hidden><div class="modal-card"><div class="modal-head"><h3>Редактор собрания</h3><button class="icon-btn" id="eventEditorCloseBtn" type="button" aria-label="Закрыть">✕</button></div><div class="form-grid"><div><label class="small">Название</label><input id="eventNameInput" type="text" /></div><div>
 <label class="small">Цвет</label>
 <select id="eventColorInput">
@@ -308,16 +308,16 @@ body::before{display:none !important}
 <div><label class="small">E-mail</label><div style="display:flex;gap:6px"><input id="eventContactEmailInput" type="email" placeholder="name@example.com" /><button class="icon-btn copy-btn" type="button" data-copy-input="eventContactEmailInput" title="Копировать" aria-label="Копировать">📋</button></div></div>
 <div style="grid-column:1 / -1"><label class="small">Заметка о собрании/группе</label><textarea id="eventContactNoteInput" rows="2" placeholder="Любая полезная информация"></textarea></div>
 </div>
-</div><div class="editor-actions"><button class="btn" id="resetEventBtn" type="button">Очистить</button><button class="btn danger" id="deleteEventBtn" type="button" hidden>Удалить собрание</button><button class="btn primary" id="saveEventBtn" type="button">Сохранить собрание</button></div></div></div>
+</div><div class="editor-actions"><button class="md-btn md-btn-outlined md-state-layer" id="resetEventBtn" type="button">Очистить</button><button class="md-btn md-btn-danger md-state-layer" id="deleteEventBtn" type="button" hidden>Удалить собрание</button><button class="md-btn md-btn-filled md-state-layer" id="saveEventBtn" type="button">Сохранить собрание</button></div></div></div>
       <section id="settings" class="screen">
         <div class="settings-tabs">
-          <button class="chip settings-tab active" data-settings-tab="appearance" type="button">🎨 Внешний вид</button>
-          <button class="chip settings-tab" data-settings-tab="letter" type="button">✉ Письмо</button>
-          <button class="chip settings-tab" data-settings-tab="data" type="button">💾 Данные и бэкап</button>
+          <button class="md-chip md-state-layer settings-tab active" data-settings-tab="appearance" type="button">🎨 Внешний вид</button>
+          <button class="md-chip md-state-layer settings-tab" data-settings-tab="letter" type="button">✉ Письмо</button>
+          <button class="md-chip md-state-layer settings-tab" data-settings-tab="data" type="button">💾 Данные и бэкап</button>
         </div>
 
         <div class="settings-panel" id="settingsPanelAppearance">
-          <div class="card"><h3>Внешний вид</h3><div class="form-grid"><div><label class="small">Язык</label><select id="languageSelect"><option value="ru">Русский</option><option value="en">English</option><option value="uk">Українська</option><option value="pl">Polski</option></select></div><div><label class="small">Тема</label><select id="themeSelect"><option value="light">Светлая</option><option value="dark">Тёмная</option></select></div>
+          <div class="md-card"><h3>Внешний вид</h3><div class="form-grid"><div><label class="small">Язык</label><select id="languageSelect"><option value="ru">Русский</option><option value="en">English</option><option value="uk">Українська</option><option value="pl">Polski</option></select></div><div><label class="small">Тема</label><select id="themeSelect"><option value="light">Светлая</option><option value="dark">Тёмная</option></select></div>
 <div>
 <label class="small">Цвет интерфейса</label>
 <select id="accentSelect">
@@ -350,7 +350,7 @@ body::before{display:none !important}
         </div>
 
         <div class="settings-panel" id="settingsPanelLetter" hidden>
-          <div class="card"><h3>Отправитель и шапка письма</h3><div style="margin-top:8px"><label class="small">Ваше имя (для подписи «Ваш {sender}» и шапки письма)</label><input id="senderNameInput" type="text" placeholder="Например: Олексій Тимощук" /></div>
+          <div class="md-card"><h3>Отправитель и шапка письма</h3><div style="margin-top:8px"><label class="small">Ваше имя (для подписи «Ваш {sender}» и шапки письма)</label><input id="senderNameInput" type="text" placeholder="Например: Олексій Тимощук" /></div>
 <div class="form-grid" style="margin-top:8px">
 <div><label class="small">Адрес (в шапке письма)</label><input id="senderAddressInput" type="text" placeholder="ul. Przejazd 2, 05-082 Blizne, Poland" /></div>
 <div><label class="small">Телефон (в шапке письма)</label><input id="senderPhoneInput" type="text" placeholder="+48 886 260 883 (WhatsApp)" /></div>
@@ -361,7 +361,7 @@ body::before{display:none !important}
 <div id="owaUrlRow"><label class="small">Ссылка OWA для составления письма</label><input id="owaUrlInput" type="text" placeholder="https://outlook.office.com/mail/deeplink/compose" /></div>
 </div></div>
 
-          <div class="card" style="margin-top:16px">
+          <div class="md-card" style="margin-top:16px">
             <h3>Текст письма</h3>
             <div class="small" style="margin-bottom:8px">Отдельный текст для каждого типа визита. Выдели нужное слово или фразу мышью в любом из редакторов ниже, затем нажми «B» или размер — форматируется только выделенный фрагмент.</div>
             <details style="margin-bottom:12px">
@@ -373,22 +373,22 @@ body::before{display:none !important}
               </table>
             </details>
             <div class="settings-tabs" style="margin-bottom:12px">
-              <button class="chip letter-type-tab active" data-letter-type="Congregation" type="button">Собрание</button>
-              <button class="chip letter-type-tab" data-letter-type="Group" type="button">Группа</button>
-              <button class="chip letter-type-tab" data-letter-type="Pregroup" type="button">Предгруппа</button>
+              <button class="md-chip md-state-layer letter-type-tab active" data-letter-type="Congregation" type="button">Собрание</button>
+              <button class="md-chip md-state-layer letter-type-tab" data-letter-type="Group" type="button">Группа</button>
+              <button class="md-chip md-state-layer letter-type-tab" data-letter-type="Pregroup" type="button">Предгруппа</button>
             </div>
             <div class="rte-toolbar">
-              <button class="btn rte-btn" type="button" data-rte-cmd="bold" title="Жирный (выдели текст)"><strong>B</strong></button>
-              <button class="btn rte-btn" type="button" data-rte-cmd="italic" title="Курсив (выдели текст — см. примечание ниже)"><em>I</em></button>
-              <button class="btn rte-btn" type="button" data-rte-cmd="underline" title="Подчеркнуть (выдели текст)"><u>U</u></button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn" type="button" data-rte-cmd="bold" title="Жирный (выдели текст)"><strong>B</strong></button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn" type="button" data-rte-cmd="italic" title="Курсив (выдели текст — см. примечание ниже)"><em>I</em></button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn" type="button" data-rte-cmd="underline" title="Подчеркнуть (выдели текст)"><u>U</u></button>
               <span class="small" style="margin-left:6px">Размер:</span>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="9">9</button>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="10">10</button>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="11">11</button>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="12">12</button>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="14">14</button>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="16">16</button>
-              <button class="btn rte-btn rte-size-btn" type="button" data-rte-size="18">18</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="9">9</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="10">10</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="11">11</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="12">12</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="14">14</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="16">16</button>
+              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="18">18</button>
               <span class="small rte-font-note">Выдели текст в редакторе, затем нажми нужную кнопку. Шрифт: Aptos</span>
             </div>
             <div class="small" style="color:var(--muted);margin-bottom:6px">Обычный текст (без выделения) отображается 11pt, не жирным.</div>
@@ -398,61 +398,61 @@ body::before{display:none !important}
             <div class="small" style="font-weight:700;margin:4px 0">Страница 1 — само письмо</div>
             <div id="letterTemplateEditor" class="rte-editor" data-rte-page="body" contenteditable="true"></div>
             <div class="small" style="margin-top:8px;color:var(--muted)">Шрифт в PDF — Aptos (с полной поддержкой кириллицы). Жирный и подчёркивание работают в PDF по-настоящему (встроены реальные файлы Aptos Bold). ⚠️ Курсив пока отображается только на экране — файла Aptos Italic ещё нет в PDF-сборке.</div>
-            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="letterSalutationResetBtn" type="button">Сбросить обращение к стандартному</button></div>
-            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="letterTemplateResetBtn" type="button">Сбросить страницу 1 к стандартной</button></div>
+            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button class="md-btn md-btn-outlined md-state-layer" id="letterSalutationResetBtn" type="button">Сбросить обращение к стандартному</button></div>
+            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button class="md-btn md-btn-outlined md-state-layer" id="letterTemplateResetBtn" type="button">Сбросить страницу 1 к стандартной</button></div>
 
             <div class="small" style="font-weight:700;margin:20px 0 8px">Дополнительные страницы (2, 3...)</div>
             <div id="letterPagesList" class="grid" style="gap:16px"></div>
-            <button class="btn" id="addLetterPageBtn" type="button" style="margin-top:10px">+ Добавить страницу</button>
+            <button class="md-btn md-btn-outlined md-state-layer" id="addLetterPageBtn" type="button" style="margin-top:10px">+ Добавить страницу</button>
 
             <div class="editor-actions" style="margin-top:20px;justify-content:flex-start">
-              <button class="btn primary" id="previewLetterPdfBtn" type="button">👁 Предпросмотр PDF (на примере)</button>
+              <button class="md-btn md-btn-filled md-state-layer" id="previewLetterPdfBtn" type="button">👁 Предпросмотр PDF (на примере)</button>
             </div>
           </div>
 
-          <div class="card" style="margin-top:16px">
+          <div class="md-card" style="margin-top:16px">
             <h3>Текст email-сообщения по умолчанию</h3>
             <div class="small" style="margin-bottom:8px">Используется только для новых визитов, для которых ты ещё ничего не писал в окне отправки — свой текст для каждого визита сохраняется отдельно и не перезаписывается этим. Общие плейсхолдеры тоже работают: {congregation}, {start_date}, {end_date}.</div>
             <div class="small" style="margin-bottom:8px">Тип визита выбирается теми же вкладками выше (Собрание / Группа / Предгруппа).</div>
             <textarea id="emailBodyDefaultInput" rows="4" style="font-family:inherit"></textarea>
-            <div style="margin-top:8px"><button class="btn" id="emailBodyDefaultResetBtn" type="button">Сбросить к стандартному</button></div>
+            <div style="margin-top:8px"><button class="md-btn md-btn-outlined md-state-layer" id="emailBodyDefaultResetBtn" type="button">Сбросить к стандартному</button></div>
           </div>
         </div>
 
         <div class="settings-panel" id="settingsPanelData" hidden>
           <div class="grid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="card"><h3>Экспорт и печать</h3><div class="grid"><button class="btn full" id="settingsPdfBtn" type="button">PDF / Печать</button>
+          <div class="md-card"><h3>Экспорт и печать</h3><div class="grid"><button class="md-btn md-btn-outlined md-btn-full md-state-layer" id="settingsPdfBtn" type="button">PDF / Печать</button>
 <div class="actions settings-actions" style="margin-top:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-  <button class="btn" id="themeBtn" type="button">Тема</button>
-  <button class="btn primary" id="exportBtn" type="button">Экспорт</button>
-  <label class="btn" for="importInput">Импорт JSON</label>
+  <button class="md-btn md-btn-outlined md-state-layer" id="themeBtn" type="button">Тема</button>
+  <button class="md-btn md-btn-filled md-state-layer" id="exportBtn" type="button">Экспорт</button>
+  <label class="md-btn md-btn-outlined md-state-layer" for="importInput">Импорт JSON</label>
   <input id="importInput" type="file" accept=".json,application/json,text/plain" hidden />
 </div>
 <p class="small" style="margin-top:4px">PDF использует системную печать браузера.</p>
 </div></div>
-          <div class="card"><h3>Синхронизация</h3>
+          <div class="md-card"><h3>Синхронизация</h3>
 <div class="sync-card">
   <h4 id="syncTitle">Ручная синхронизация</h4>
   <p class="small" id="syncHint">Без API: на основном ноутбуке скачайте файл синхронизации и поместите его в Google Drive (кнопка «Открыть Google Drive» откроет сайт в новой вкладке для загрузки файла). На другом устройстве скачайте этот файл из Drive и загрузите здесь.</p>
   <div class="sync-actions">
-    <button class="btn primary" id="syncExportBtn" type="button">Скачать синхронизацию</button>
-    <label class="btn" id="syncImportLabel" for="syncImportInput">Загрузить синхронизацию</label>
+    <button class="md-btn md-btn-filled md-state-layer" id="syncExportBtn" type="button">Скачать синхронизацию</button>
+    <label class="md-btn md-btn-outlined md-state-layer" id="syncImportLabel" for="syncImportInput">Загрузить синхронизацию</label>
     <input id="syncImportInput" type="file" accept=".json,application/json,text/plain" hidden />
-    <a class="btn" href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px">📁 Открыть Google Drive</a>
+    <a class="md-btn md-btn-outlined md-state-layer" href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px">📁 Открыть Google Drive</a>
   </div>
   <div class="sync-status" id="syncStatus">Синхронизация ещё не выполнялась.</div>
 </div></div>
           </div>
-          <div class="card" style="margin-top:16px">
+          <div class="md-card" style="margin-top:16px">
             <h3>Место проживания (для автопланирования)</h3>
             <div class="small" style="margin-bottom:8px">Используется, чтобы «Авто-план» группировал дальние собрания (Германия, Австрия и т.д.) в один выезд, а не заставлял ездить туда-обратно каждую неделю.</div>
             <div class="form-grid">
               <div><label class="small">Город проживания</label><input id="homeAddressInput" type="text" placeholder="Praha, Česká republika" /></div>
-              <div style="display:flex;gap:10px;align-items:end"><button class="btn" id="geocodeHomeBtn" type="button">📍 Определить координаты</button></div>
+              <div style="display:flex;gap:10px;align-items:end"><button class="md-btn md-btn-outlined md-state-layer" id="geocodeHomeBtn" type="button">📍 Определить координаты</button></div>
             </div>
             <div class="small" id="homeGeocodeStatus" style="margin-top:8px;color:var(--muted)"></div>
           </div>
-          <div class="card" style="margin-top:16px">
+          <div class="md-card" style="margin-top:16px">
             <h3>Служебный год и резервные копии</h3>
             <div class="form-grid">
               <div>
@@ -461,28 +461,28 @@ body::before{display:none !important}
                 <div class="small" style="margin-top:6px">Введите первый год (например 2029 для 2029/2030). Служебный год: 1 сентября — 31 августа.</div>
               </div>
               <div style="display:grid;gap:10px;align-content:end">
-                <button class="btn" id="addNextYearBtn" type="button">Добавить следующий год</button>
-                <button class="btn primary" id="addYearBtn" type="button">Добавить</button>
+                <button class="md-btn md-btn-outlined md-state-layer" id="addNextYearBtn" type="button">Добавить следующий год</button>
+                <button class="md-btn md-btn-filled md-state-layer" id="addYearBtn" type="button">Добавить</button>
               </div>
             </div>
-            <div style="display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" id="backupBtn" type="button">Создать backup</button><button class="btn" id="pinSetupBtn" type="button">🔒 PIN-код: выкл</button><label class="btn" style="display:flex;align-items:center;gap:8px"><input id="holidaysToggle" type="checkbox" style="width:auto" /> Праздники CZ/AT/DE</label><label class="btn" style="display:flex;align-items:center;gap:8px"><input id="autoShowRemindersToggle" type="checkbox" style="width:auto" /> Всплывающее окно напоминаний при открытии</label></div>
+            <div style="display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;margin-top:14px"><button class="md-btn md-btn-filled md-state-layer" id="backupBtn" type="button">Создать backup</button><button class="md-btn md-btn-outlined md-state-layer" id="pinSetupBtn" type="button">🔒 PIN-код: выкл</button><label class="md-btn md-btn-outlined md-state-layer" style="display:flex;align-items:center;gap:8px"><input id="holidaysToggle" type="checkbox" style="width:auto" /> Праздники CZ/AT/DE</label><label class="md-btn md-btn-outlined md-state-layer" style="display:flex;align-items:center;gap:8px"><input id="autoShowRemindersToggle" type="checkbox" style="width:auto" /> Всплывающее окно напоминаний при открытии</label></div>
           </div>
-          <div class="card" style="margin-top:14px">
+          <div class="md-card" style="margin-top:14px">
             <h3>История изменений</h3>
             <div class="small" style="margin-bottom:10px">Программа автоматически сохраняет контрольные точки (не чаще одной раз в несколько минут) — если что-то пошло не так, можно откатиться к одной из последних версий данных.</div>
-            <button class="btn" id="openHistoryBtn" type="button">🕒 Показать историю изменений</button>
+            <button class="md-btn md-btn-outlined md-state-layer" id="openHistoryBtn" type="button">🕒 Показать историю изменений</button>
           </div>
-          <div class="card" style="margin-top:14px;box-shadow:none;border:1px dashed var(--danger);border-radius:18px;padding:14px;background:rgba(185,28,28,.06)">
+          <div class="md-card" style="margin-top:14px;box-shadow:none;border:1px dashed var(--danger);border-radius:18px;padding:14px;background:rgba(var(--danger-rgb),.06)">
             <div class="small" style="color:var(--danger);font-weight:700;margin-bottom:8px">Опасная зона</div>
             <div class="small" style="margin-bottom:10px">Необратимое действие: все локальные данные приложения будут удалены безвозвратно. Перед этим рекомендуем создать backup.</div>
-            <button class="btn danger" id="resetAppBtn" type="button">Сбросить приложение</button>
+            <button class="md-btn md-btn-danger md-state-layer" id="resetAppBtn" type="button">Сбросить приложение</button>
           </div>
         </div>
       </section>
     </main>
     <nav class="bottom-nav" id="bottomNav"><div class="bottom-nav-row" id="bottomNavRow"></div></nav>
   </div>
-  <div class="modal" id="pdfModal" hidden><div class="modal-card"><div class="modal-head"><div><h3>Экспорт в PDF</h3><div class="modal-sub">Выберите формат и используйте печать браузера.</div></div><button class="icon-btn" id="pdfModalCloseBtn" type="button" aria-label="Закрыть">✕</button></div><div class="pdf-section"><h4>Календарная сетка</h4><div class="pdf-grid"><button class="pdf-option active" data-pdf-type="month-grid" type="button"><strong>Календарь месяца</strong><span>Сетка текущего месяца для печати.</span></button><button class="pdf-option" data-pdf-type="custom-range-calendar" type="button"><strong>Календарь периода</strong><span>Печать для выбранного диапазона дат.</span></button></div></div><div class="pdf-section"><h4>Список собраний и отчёты</h4><div class="pdf-grid"><button class="pdf-option" data-pdf-type="month-agenda" type="button"><strong>Список собраний месяца</strong><span>Список собраний за текущий месяц.</span></button><button class="pdf-option" data-pdf-type="half-year-agenda" type="button"><strong>Собрания за полгода</strong><span>Список собраний за 6 месяцев.</span></button><button class="pdf-option" data-pdf-type="year-agenda" type="button"><strong>Собрания за год</strong><span>Список собраний за 12 месяцев.</span></button><button class="pdf-option" data-pdf-type="custom-range" type="button"><strong>Список за период</strong><span>Список событий за любой диапазон дат.</span></button><button class="pdf-option" data-pdf-type="visits-schedule" type="button"><strong>График посещений (для КС)</strong><span>Расписание визитов по собраниям за служебный год.</span></button><button class="pdf-option" data-pdf-type="year-overview" type="button"><strong>Годовой обзор</strong><span>Табличная сводка по служебному году.</span></button></div></div><div class="card" id="pdfRangeCard" style="margin-top:14px;padding:14px;border-radius:18px;display:none;box-shadow:none;"><div class="form-grid"><label><span class="small">Начало периода</span><input id="pdfRangeStartInput" type="date" /></label><label><span class="small">Конец периода</span><input id="pdfRangeEndInput" type="date" /></label></div><p class="small" id="pdfRangeHelp" style="margin:10px 0 0;">Выбери даты начала и конца периода.</p></div><div class="pdf-hint" id="pdfHint">Если окно печати не появилось, разрешите всплывающее окно/печать в браузере.</div><div class="editor-actions"><button class="btn" id="pdfCancelBtn" type="button">Закрыть</button><button class="btn primary" id="pdfExportConfirmBtn" type="button">Печать</button></div></div></div>
+  <div class="modal" id="pdfModal" hidden><div class="modal-card"><div class="modal-head"><div><h3>Экспорт в PDF</h3><div class="modal-sub">Выберите формат и используйте печать браузера.</div></div><button class="icon-btn" id="pdfModalCloseBtn" type="button" aria-label="Закрыть">✕</button></div><div class="pdf-section"><h4>Календарная сетка</h4><div class="pdf-grid"><button class="pdf-option active" data-pdf-type="month-grid" type="button"><strong>Календарь месяца</strong><span>Сетка текущего месяца для печати.</span></button><button class="pdf-option" data-pdf-type="custom-range-calendar" type="button"><strong>Календарь периода</strong><span>Печать для выбранного диапазона дат.</span></button></div></div><div class="pdf-section"><h4>Список собраний и отчёты</h4><div class="pdf-grid"><button class="pdf-option" data-pdf-type="month-agenda" type="button"><strong>Список собраний месяца</strong><span>Список собраний за текущий месяц.</span></button><button class="pdf-option" data-pdf-type="half-year-agenda" type="button"><strong>Собрания за полгода</strong><span>Список собраний за 6 месяцев.</span></button><button class="pdf-option" data-pdf-type="year-agenda" type="button"><strong>Собрания за год</strong><span>Список собраний за 12 месяцев.</span></button><button class="pdf-option" data-pdf-type="custom-range" type="button"><strong>Список за период</strong><span>Список событий за любой диапазон дат.</span></button><button class="pdf-option" data-pdf-type="visits-schedule" type="button"><strong>График посещений (для КС)</strong><span>Расписание визитов по собраниям за служебный год.</span></button><button class="pdf-option" data-pdf-type="year-overview" type="button"><strong>Годовой обзор</strong><span>Табличная сводка по служебному году.</span></button></div></div><div class="md-card" id="pdfRangeCard" style="margin-top:14px;padding:14px;border-radius:18px;display:none;box-shadow:none;"><div class="form-grid"><label><span class="small">Начало периода</span><input id="pdfRangeStartInput" type="date" /></label><label><span class="small">Конец периода</span><input id="pdfRangeEndInput" type="date" /></label></div><p class="small" id="pdfRangeHelp" style="margin:10px 0 0;">Выбери даты начала и конца периода.</p></div><div class="pdf-hint" id="pdfHint">Если окно печати не появилось, разрешите всплывающее окно/печать в браузере.</div><div class="editor-actions"><button class="md-btn md-btn-outlined md-state-layer" id="pdfCancelBtn" type="button">Закрыть</button><button class="md-btn md-btn-filled md-state-layer" id="pdfExportConfirmBtn" type="button">Печать</button></div></div></div>
   <div class="modal" id="calendarEditor" hidden>
     <div class="modal-card">
       <div class="modal-head"><div><h4 class="editor-title" id="editorTitle">Событие</h4><div class="editor-sub" id="editorMeta">—</div></div><button class="icon-btn" id="editorCloseBtn" type="button" aria-label="Закрыть">✕</button></div>
@@ -490,14 +490,14 @@ body::before{display:none !important}
       <div class="editor-grid" id="editorFlagsRow" hidden style="margin-top:4px"><label style="display:flex;align-items:center;gap:8px;flex-direction:row"><input id="editorFlagS302" type="checkbox" style="width:auto" /><span>S302 отправлен</span></label><label style="display:flex;align-items:center;gap:8px;flex-direction:row"><input id="editorFlagLetter" type="checkbox" style="width:auto" /><span>Письмо отправлено</span></label></div>
       <label style="display:grid;gap:6px;margin-top:12px"><span class="small" id="editorResultLabel">Итоги визита (после посещения)</span><textarea id="editorResultInput" rows="2"></textarea></label>
       <div class="editor-meta" id="editorReadonly">—</div>
-      <div class="editor-actions"><button class="btn danger" id="editorDeleteBtn" type="button">Удалить собрание</button><button class="btn" id="editorCancelBtn" type="button">Закрыть</button><button class="btn primary" id="editorSaveBtn" type="button">Сохранить</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-danger md-state-layer" id="editorDeleteBtn" type="button">Удалить собрание</button><button class="md-btn md-btn-outlined md-state-layer" id="editorCancelBtn" type="button">Закрыть</button><button class="md-btn md-btn-filled md-state-layer" id="editorSaveBtn" type="button">Сохранить</button></div>
     </div>
   </div>
   <div class="modal" id="statsModal" hidden>
     <div class="modal-card">
       <div class="modal-head"><div><h3 id="statsModalTitle">Статистика служебного года</h3><div class="modal-sub" id="statsModalSub"></div></div><button class="icon-btn" id="statsModalCloseBtn" type="button" aria-label="Закрыть">✕</button></div>
       <div id="statsModalBody" class="grid"></div>
-      <div class="editor-actions"><button class="btn primary" id="statsModalOkBtn" type="button">Закрыть</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-filled md-state-layer" id="statsModalOkBtn" type="button">Закрыть</button></div>
     </div>
   </div>
   <div class="modal" id="plannerModal" hidden>
@@ -506,16 +506,16 @@ body::before{display:none !important}
       <div class="form-grid"><label><span class="small">Начало периода</span><input id="plannerStartInput" type="date" /></label><label><span class="small">Конец периода</span><input id="plannerEndInput" type="date" /></label></div>
       <div id="plannerEventsList" class="grid" style="margin-top:12px;max-height:40vh;overflow:auto"></div>
       <div id="plannerPreview" class="small" style="margin-top:10px"></div>
-      <div class="editor-actions"><button class="btn" id="plannerCancelBtn" type="button">Закрыть</button><button class="btn primary" id="plannerApplyBtn" type="button">Распределить и создать</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-outlined md-state-layer" id="plannerCancelBtn" type="button">Закрыть</button><button class="md-btn md-btn-filled md-state-layer" id="plannerApplyBtn" type="button">Распределить и создать</button></div>
     </div>
   </div>
   <div id="pinOverlay" hidden style="position:fixed;inset:0;z-index:99999;background:var(--bg,#f2f6f3)">
     <div style="display:grid;place-items:center;height:100%">
-    <div class="card" style="width:min(340px,90vw);text-align:center">
+    <div class="md-card" style="width:min(340px,90vw);text-align:center">
       <h3 style="margin-top:0">🔒 Введите PIN</h3>
       <input id="pinInput" type="password" inputmode="numeric" maxlength="8" style="text-align:center;font-size:22px;letter-spacing:8px" autocomplete="off" />
       <div class="small" id="pinError" style="color:var(--danger);min-height:18px;margin-top:8px"></div>
-      <button class="btn primary full" id="pinSubmitBtn" type="button" style="margin-top:8px;width:100%">Открыть</button>
+      <button class="md-btn md-btn-filled md-btn-full md-state-layer" id="pinSubmitBtn" type="button" style="margin-top:8px;width:100%">Открыть</button>
     </div>
     </div>
   </div>
@@ -528,27 +528,27 @@ body::before{display:none !important}
 
         <h4 style="margin:18px 0 8px">Расписание встреч</h4>
         <div id="vfMeetingsList" class="grid" style="gap:8px"></div>
-        <button class="btn" type="button" id="vfAddMeetingBtn" style="margin-top:8px">+ Добавить встречу</button>
+        <button class="md-btn md-btn-outlined md-state-layer" type="button" id="vfAddMeetingBtn" style="margin-top:8px">+ Добавить встречу</button>
 
         <h4 style="margin:18px 0 8px">План служения</h4>
         <div id="vfServiceDaysList" class="grid" style="gap:14px"></div>
         <datalist id="vfTimeOptionsDefault"><option value="08:00"></option><option value="08:30"></option><option value="09:00"></option><option value="09:30"></option><option value="10:00"></option><option value="10:30"></option><option value="11:00"></option><option value="11:30"></option><option value="12:00"></option><option value="12:30"></option><option value="13:00"></option><option value="13:30"></option><option value="14:00"></option><option value="14:30"></option><option value="15:00"></option><option value="15:30"></option><option value="16:00"></option><option value="16:30"></option><option value="17:00"></option><option value="17:30"></option><option value="18:00"></option><option value="18:30"></option><option value="19:00"></option><option value="19:30"></option><option value="20:00"></option></datalist>
         <datalist id="vfTimeOptionsBefore"><option value="10:00"></option><option value="10:15"></option><option value="10:30"></option><option value="10:45"></option><option value="11:00"></option><option value="11:15"></option><option value="11:30"></option></datalist>
         <datalist id="vfTimeOptionsAfter"><option value="14:00"></option><option value="14:30"></option><option value="15:00"></option><option value="15:30"></option><option value="16:00"></option><option value="16:30"></option><option value="17:00"></option><option value="17:30"></option><option value="18:00"></option><option value="18:30"></option><option value="19:00"></option><option value="19:30"></option></datalist>
-        <button class="btn" type="button" id="vfAddDayBtn" style="margin-top:8px">+ Добавить день</button>
+        <button class="md-btn md-btn-outlined md-state-layer" type="button" id="vfAddDayBtn" style="margin-top:8px">+ Добавить день</button>
 
         <h4 style="margin:18px 0 8px" id="vfPastoralHeading">Пастырские посещения</h4>
         <div id="vfPastoralList" class="grid" style="gap:8px"></div>
-        <button class="btn" type="button" id="vfAddPastoralBtn" style="margin-top:8px">+ Добавить посещение</button>
+        <button class="md-btn md-btn-outlined md-state-layer" type="button" id="vfAddPastoralBtn" style="margin-top:8px">+ Добавить посещение</button>
 
         <h4 style="margin:18px 0 8px">Обеды</h4>
         <div id="vfMealsList" class="grid" style="gap:8px"></div>
-        <button class="btn" type="button" id="vfAddMealBtn" style="margin-top:8px">+ Добавить обед</button>
+        <button class="md-btn md-btn-outlined md-state-layer" type="button" id="vfAddMealBtn" style="margin-top:8px">+ Добавить обед</button>
 
         <h4 style="margin:18px 0 8px">Заметки</h4>
         <textarea id="vfNotesInput" rows="3"></textarea>
       </div>
-      <div class="editor-actions"><button class="btn" id="vfCloseBtn2" type="button">Закрыть</button><button class="btn primary" id="vfGeneratePdfBtn" type="button">📄 Сформировать PDF</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-outlined md-state-layer" id="vfCloseBtn2" type="button">Закрыть</button><button class="md-btn md-btn-filled md-state-layer" id="vfGeneratePdfBtn" type="button">📄 Сформировать PDF</button></div>
     </div>
   </div>
   <div class="modal" id="letterModal" hidden>
@@ -560,23 +560,23 @@ body::before{display:none !important}
       <label class="small" for="letterEmailBodyInput">Текст email-сообщения</label>
       <textarea id="letterEmailBodyInput" rows="10" style="font-family:inherit;margin-top:6px"></textarea>
       <div class="small" style="margin-top:6px;color:var(--muted)">Этот текст сохранён именно для данной записи и с этого момента не следует за изменениями шаблона по умолчанию в Настройках. Если недавно менял шаблон по умолчанию и хочешь применить его здесь — используй кнопку ниже (текущий текст будет заменён).</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn" id="letterEmailBodyResetToDefaultBtn" type="button">↺ Заменить на текущий текст по умолчанию</button><button class="btn copy-btn" type="button" data-copy-input="letterEmailBodyInput" title="Скопировать текст сообщения" aria-label="Скопировать текст сообщения">📋 Скопировать текст</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="md-btn md-btn-outlined md-state-layer" id="letterEmailBodyResetToDefaultBtn" type="button">↺ Заменить на текущий текст по умолчанию</button><button class="md-btn md-btn-outlined md-state-layer copy-btn" type="button" data-copy-input="letterEmailBodyInput" title="Скопировать текст сообщения" aria-label="Скопировать текст сообщения">📋 Скопировать текст</button></div>
       <div class="small" id="letterAttachStatus" style="margin-top:8px"></div>
-      <div class="editor-actions"><button class="btn" id="letterPreviewPdfBtn" type="button">📄 Прикрепить PDF-документ</button><button class="btn" id="letterAttachPdfBtn" type="button">📎 Прикрепить график визитов</button><button class="btn primary" id="letterSendBtn" type="button">📤 Отправить электронное письмо</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-outlined md-state-layer" id="letterPreviewPdfBtn" type="button">📄 Прикрепить PDF-документ</button><button class="md-btn md-btn-outlined md-state-layer" id="letterAttachPdfBtn" type="button">📎 Прикрепить график визитов</button><button class="md-btn md-btn-filled md-state-layer" id="letterSendBtn" type="button">📤 Отправить электронное письмо</button></div>
     </div>
   </div>
   <div class="modal" id="historyModal" hidden>
     <div class="modal-card">
       <div class="modal-head"><div><h3>🕒 История изменений</h3><div class="modal-sub">Контрольные точки сохраняются автоматически, не чаще одной раз в 5 минут.</div></div><button class="icon-btn" id="historyModalCloseBtn" type="button" aria-label="Закрыть">✕</button></div>
       <div id="historyList" class="grid"></div>
-      <div class="editor-actions"><button class="btn primary" id="historyModalCloseBtn2" type="button">Закрыть</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-filled md-state-layer" id="historyModalCloseBtn2" type="button">Закрыть</button></div>
     </div>
   </div>
   <div class="modal" id="remindersModal" hidden>
     <div class="modal-card">
       <div class="modal-head"><div><h3 id="remindersModalTitle">Что нужно отправить</h3><div class="modal-sub" id="remindersModalSub">Ближайшие визиты, которые ждут S302 или письма</div></div><button class="icon-btn" id="remindersModalCloseBtn" type="button" aria-label="Закрыть">✕</button></div>
       <div id="remindersModalList" class="grid"></div>
-      <div class="editor-actions"><button class="btn primary" id="remindersModalOkBtn" type="button">Закрыть</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-filled md-state-layer" id="remindersModalOkBtn" type="button">Закрыть</button></div>
     </div>
   </div>
   <div class="modal" id="exportModal" hidden>
@@ -595,7 +595,7 @@ body::before{display:none !important}
           <button class="pdf-option" data-export-type="ics" type="button"><strong>Календарь (.ics)</strong><span>Импорт в Google Calendar и Apple Calendar.</span></button>
         </div>
       </div>
-      <div class="card" id="exportRangeCard" style="margin-top:14px;padding:14px;border-radius:18px;display:none;box-shadow:none;">
+      <div class="md-card" id="exportRangeCard" style="margin-top:14px;padding:14px;border-radius:18px;display:none;box-shadow:none;">
         <div class="form-grid">
           <label><span class="small">Начало периода</span><input id="exportRangeStartInput" type="date" /></label>
           <label><span class="small">Конец периода</span><input id="exportRangeEndInput" type="date" /></label>
@@ -603,7 +603,7 @@ body::before{display:none !important}
         <p class="small" id="exportRangeHelp" style="margin:10px 0 0;">Для .ics будет экспортирован выбранный диапазон дат.</p>
         <div class="small" style="margin-top:8px;">Подсказка: для Google Calendar откройте «Настройки → Импорт и экспорт → Импорт», выберите .ics. Для Apple Calendar просто откройте файл.</div>
       </div>
-      <div class="editor-actions"><button class="btn" id="exportCancelBtn" type="button">Закрыть</button><button class="btn primary" id="exportConfirmBtn" type="button">Скачать</button></div>
+      <div class="editor-actions"><button class="md-btn md-btn-outlined md-state-layer" id="exportCancelBtn" type="button">Закрыть</button><button class="md-btn md-btn-filled md-state-layer" id="exportConfirmBtn" type="button">Скачать</button></div>
     </div>
   </div>
   <div class="toast-wrap" id="toastWrap"></div>

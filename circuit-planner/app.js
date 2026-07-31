@@ -569,7 +569,7 @@
         const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
       },
       toast(message) {
-        if (!App.els.toastWrap) return; const el = document.createElement('div'); el.className = 'toast'; el.textContent = message; App.els.toastWrap.appendChild(el); setTimeout(() => el.remove(), 3500);
+        if (!App.els.toastWrap) return; const el = document.createElement('div'); el.className = 'md-snackbar'; el.textContent = message; App.els.toastWrap.appendChild(el); setTimeout(() => el.remove(), 3500);
       },
       mapUrl(address) {
         return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || '')}`;
@@ -1137,7 +1137,7 @@
         const titles = { 'month-grid':App.utils.t('month_grid'), 'custom-range-calendar':App.utils.t('period_calendar'), 'month-agenda':App.utils.t('month_list'), 'half-year-agenda':App.utils.t('half_year'), 'year-agenda':App.utils.t('year_events'), 'custom-range':App.utils.t('list_period'), 'year-overview':App.utils.t('year_overview'), 'visits-schedule':App.utils.t('visits_schedule') };
         const title = titles[type] || App.utils.t('pdf_print');
         const flags = (f={}) => [f.letter ? App.utils.t('letter_short') : '', f.f302 ? App.utils.t('s302_short') : ''].filter(Boolean).map((x)=>`<span class="flag">${esc(x)}</span>`).join(' ');
-        const agenda = () => items.length ? `<table><thead><tr><th>${esc(App.utils.t('start'))}</th><th>${esc(App.utils.t('end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('schedule'))}</th><th>${esc(App.utils.t('address'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${items.map((it)=>`<tr><td>${esc(App.utils.prettyDateLong(it.startDate))}</td><td>${esc(App.utils.prettyDateLong(it.endDate))}</td><td><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)} ${flags(it.flags)}</td><td>${esc(it.schedule || App.utils.t('no_schedule'))}</td><td>${esc(it.address || App.utils.t('no_address'))}</td><td>${esc(it.note || App.utils.t('no_note'))}</td></tr>`).join('')}</tbody></table>` : `<div class="empty">${esc(App.utils.t('no_events_month'))}</div>`;
+        const agenda = () => items.length ? `<table><thead><tr><th>${esc(App.utils.t('start'))}</th><th>${esc(App.utils.t('end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('schedule'))}</th><th>${esc(App.utils.t('address'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${items.map((it)=>`<tr><td>${esc(App.utils.prettyDateLong(it.startDate))}</td><td>${esc(App.utils.prettyDateLong(it.endDate))}</td><td><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)} ${flags(it.flags)}</td><td>${esc(it.schedule || App.utils.t('no_schedule'))}</td><td>${esc(it.address || App.utils.t('no_address'))}</td><td>${esc(it.note || App.utils.t('no_note'))}</td></tr>`).join('')}</tbody></table>` : `<div class="md-empty">${esc(App.utils.t('no_events_month'))}</div>`;
         const calendar = () => {
           const start = App.utils.parseLocalDate(range.start), end = App.utils.parseLocalDate(range.end), months = [];
           let cur = new Date(start.getFullYear(), start.getMonth(), 1), last = new Date(end.getFullYear(), end.getMonth(), 1);
@@ -1159,7 +1159,7 @@
               return es && ee && App.utils.overlaps(es, ee, App.utils.parseLocalDate(range.start), App.utils.parseLocalDate(range.end));
             })
             .sort((a, b) => String(a.entry.start).localeCompare(String(b.entry.start)));
-          return rows.length ? `<table><thead><tr><th>№</th><th>${esc(App.utils.t('range_start'))}</th><th>${esc(App.utils.t('range_end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('visit_type'))}</th><th>S-302</th><th>${esc(App.utils.t('letter_short'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${rows.map(({ entry, event }, i) => `<tr><td>${i + 1}</td><td>${esc(App.utils.prettyDateLong(entry.start))}</td><td>${esc(App.utils.prettyDateLong(entry.end))}</td><td><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${esc(entry.title || event.name)}</td><td>${esc(visitLabel(event.visitType))}</td><td>${entry.flags?.f302 ? '✓' : '—'}</td><td>${entry.flags?.letter ? '✓' : '—'}</td><td>${esc(entry.note || '')}</td></tr>`).join('')}</tbody></table>` : `<div class="empty">${esc(App.utils.t('no_events_month'))}</div>`;
+          return rows.length ? `<table><thead><tr><th>№</th><th>${esc(App.utils.t('range_start'))}</th><th>${esc(App.utils.t('range_end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('visit_type'))}</th><th>S-302</th><th>${esc(App.utils.t('letter_short'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${rows.map(({ entry, event }, i) => `<tr><td>${i + 1}</td><td>${esc(App.utils.prettyDateLong(entry.start))}</td><td>${esc(App.utils.prettyDateLong(entry.end))}</td><td><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${esc(entry.title || event.name)}</td><td>${esc(visitLabel(event.visitType))}</td><td>${entry.flags?.f302 ? '✓' : '—'}</td><td>${entry.flags?.letter ? '✓' : '—'}</td><td>${esc(entry.note || '')}</td></tr>`).join('')}</tbody></table>` : `<div class="md-empty">${esc(App.utils.t('no_events_month'))}</div>`;
         };
         const body = (type === 'month-grid' || type === 'custom-range-calendar') ? calendar() : type === 'year-overview' ? overview() : type === 'visits-schedule' ? visitsSchedule() : agenda();
         const label = `${App.utils.prettyDateLong(App.utils.parseLocalDate(range.start))} — ${App.utils.prettyDateLong(App.utils.parseLocalDate(range.end))}`;
@@ -1688,8 +1688,8 @@ showServiceYearDayPopover(anchor, dateIso, pinned = false) {
  if (info.weekItem) rows.push({ kind: App.utils.t('week_planned'), title: info.weekItem.title, color: info.weekItem.color, range: `${App.utils.prettyDate(info.weekStart)} — ${App.utils.prettyDate(info.weekEnd)}`, note: info.week.note || App.utils.t('no_note'), schedule: info.weekEvent?.schedule || App.utils.t('no_schedule') });
  const popoverDayEntries = (info.dayEntries || []).filter((entry) => !(info.weekItem && entry.eventId === info.weekItem.eventId)); 
  popoverDayEntries.forEach((entry) => rows.push({ kind: App.utils.t('type_entry'), title: entry.title, color: entry.color, range: `${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDate(entry.end)}`, note: entry.note || App.utils.t('no_note'), schedule: entry.schedule || App.utils.t('no_schedule') }));
- const listHtml = rows.length ? rows.map((row) => `<div class="day-popover-event"><i class="day-popover-dot" style="background:${App.utils.clampColor(row.color)}"></i><div><strong>${App.utils.escapeHtml(row.title)}</strong><span>${App.utils.escapeHtml(row.kind)} · ${App.utils.escapeHtml(row.range)}</span><span>${App.utils.escapeHtml(row.schedule)}</span>${row.note && row.note !== App.utils.t('no_note') ? `<span>${App.utils.escapeHtml(row.note)}</span>` : ''}</div></div>`).join('') : `<div class="empty" style="padding:12px">${App.utils.escapeHtml(App.utils.t('no_entries_day'))}</div>`;
- popover.innerHTML = `<div class="day-popover-title">${App.utils.escapeHtml(App.utils.prettyDateLong(info.date))}</div><div class="day-popover-meta">W${App.utils.weekNumber(info.date)} · ${App.utils.escapeHtml(App.utils.prettyDate(info.weekStart))} — ${App.utils.escapeHtml(App.utils.prettyDate(info.weekEnd))}</div><div class="day-popover-list">${listHtml}</div><div class="day-popover-actions"><button class="btn primary" type="button" data-popover-details="${App.utils.escapeAttr(dateIso)}">${App.utils.t('open')}</button><button class="btn" type="button" data-popover-add="${App.utils.escapeAttr(dateIso)}">${App.utils.t('add_entry')}</button>${info.weekItem ? `<button class="btn" type="button" data-popover-edit-week="${App.utils.escapeAttr(info.weekItem.id)}">${App.utils.t('edit')}</button>` : ''}</div>`;
+ const listHtml = rows.length ? rows.map((row) => `<div class="day-popover-event"><i class="day-popover-dot" style="background:${App.utils.clampColor(row.color)}"></i><div><strong>${App.utils.escapeHtml(row.title)}</strong><span>${App.utils.escapeHtml(row.kind)} · ${App.utils.escapeHtml(row.range)}</span><span>${App.utils.escapeHtml(row.schedule)}</span>${row.note && row.note !== App.utils.t('no_note') ? `<span>${App.utils.escapeHtml(row.note)}</span>` : ''}</div></div>`).join('') : `<div class="md-empty" style="padding:12px">${App.utils.escapeHtml(App.utils.t('no_entries_day'))}</div>`;
+ popover.innerHTML = `<div class="day-popover-title">${App.utils.escapeHtml(App.utils.prettyDateLong(info.date))}</div><div class="day-popover-meta">W${App.utils.weekNumber(info.date)} · ${App.utils.escapeHtml(App.utils.prettyDate(info.weekStart))} — ${App.utils.escapeHtml(App.utils.prettyDate(info.weekEnd))}</div><div class="day-popover-list">${listHtml}</div><div class="day-popover-actions"><button class="md-btn md-btn-filled md-state-layer" type="button" data-popover-details="${App.utils.escapeAttr(dateIso)}">${App.utils.t('open')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" data-popover-add="${App.utils.escapeAttr(dateIso)}">${App.utils.t('add_entry')}</button>${info.weekItem ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" data-popover-edit-week="${App.utils.escapeAttr(info.weekItem.id)}">${App.utils.t('edit')}</button>` : ''}</div>`;
  const rect = anchor.getBoundingClientRect(); const margin = 12;
  let left = rect.left + rect.width / 2 - 150; let top = rect.bottom + 8;
  popover.hidden = false; const box = popover.getBoundingClientRect();
@@ -1904,7 +1904,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           </div>`;
       },
       renderCalendarDetails(item) {
-        if (!App.els.calendarSideTitle || !App.els.calendarSideMeta || !App.els.calendarSideDetails) return; if (!item) { App.els.calendarSideTitle.textContent = App.utils.t('event_details'); App.els.calendarSideMeta.textContent = '—'; if (App.els.calendarSideCountdownRow) App.els.calendarSideCountdownRow.hidden = true; App.els.calendarSideDetails.innerHTML = `<div class="empty">${App.utils.t('no_events_month')}</div>`; return; }
+        if (!App.els.calendarSideTitle || !App.els.calendarSideMeta || !App.els.calendarSideDetails) return; if (!item) { App.els.calendarSideTitle.textContent = App.utils.t('event_details'); App.els.calendarSideMeta.textContent = '—'; if (App.els.calendarSideCountdownRow) App.els.calendarSideCountdownRow.hidden = true; App.els.calendarSideDetails.innerHTML = `<div class="md-empty">${App.utils.t('no_events_month')}</div>`; return; }
         const itemData = App.data.getCalendarItemById(item.id) || item; const event = App.data.getEventById(itemData.eventId); App.els.calendarSideTitle.textContent = itemData.title; App.els.calendarSideMeta.textContent = `${App.utils.prettyDateLong(itemData.start)} — ${App.utils.prettyDateLong(itemData.end)}`;
         if (App.els.calendarSideCountdownRow) App.els.calendarSideCountdownRow.hidden = false;
         if (App.els.calendarSideCountdown) App.els.calendarSideCountdown.textContent = App.utils.countdownText(itemData.start, App.state.countdownUnit || 'days');
@@ -1922,7 +1922,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const pastResultRow = pastResult ? `<div class="side-row"><div class="side-label">${App.utils.t('last_visit_result')} (${App.utils.prettyDate(pastResult.end)})</div><div class="side-value">${App.utils.escapeHtml(pastResult.resultNote)}</div></div>` : '';
         const hasContact = event && (event.contactName || event.contactPhone || event.contactEmail || event.contactNote);
         const contactBlock = hasContact ? `<div class="send-control" style="margin-top:10px"><div class="send-control-title" style="margin-bottom:8px">${App.utils.t('contact_info')}</div>${event.contactName ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_name')}</div><div class="side-value">${App.utils.escapeHtml(event.contactName)}</div></div>` : ''}${event.contactPhone ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_phone')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="tel:${App.utils.escapeAttr(event.contactPhone.replace(/[^+\d]/g, ''))}">${App.utils.escapeHtml(event.contactPhone)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactPhone)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactEmail ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_email')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="mailto:${App.utils.escapeAttr(event.contactEmail)}">${App.utils.escapeHtml(event.contactEmail)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactEmail)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactNote ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_note')}</div><div class="side-value">${App.utils.escapeHtml(event.contactNote)}</div></div>` : ''}</div>` : '';
-        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="btn primary" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ Ещё действия</summary><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">${itemData.source === 'entry' && event?.visitType ? `<button class="btn" type="button" id="detailVisitFormBtn">📋 Формуляр визита</button><button class="btn" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="btn" type="button" id="detailS302Btn">📋 Сформировать S-302</button>` : ''}<button class="btn" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="btn" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="btn" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="btn" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
+        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ Ещё действия</summary><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">📋 Формуляр визита</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">📋 Сформировать S-302</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
         const editBtn = document.getElementById('detailEditBtn'); if (editBtn) editBtn.addEventListener('click', () => App.actions.openCalendarEditorForItem(itemData.id));
         const icsBtn = document.getElementById('detailIcsBtn'); if (icsBtn) icsBtn.addEventListener('click', () => App.actions.exportSingleEventIcs(itemData.id));
         document.getElementById('detailShareBtn')?.addEventListener('click', () => App.ui.shareWeekText(itemData, event));
@@ -1996,14 +1996,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               ${it.event?.address ? `<div class="small" style="margin-top:4px"><a href="${App.utils.mapUrl(it.event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.escapeHtml(it.event.address)}</a></div>` : ''}
               ${flagToggles('entry', it.entryId, it.flags)}
               <div class="entry-actions">
-                <button class="btn" type="button" data-edit-calendar-item="${App.utils.escapeAttr(it.id)}">${App.utils.t('edit')}</button>
-                <a class="btn" href="${App.utils.googleCalendarUrl(itemData, it.event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a>
-                <button class="btn" type="button" data-ics-id="${App.utils.escapeAttr(it.id)}">${App.utils.t('apple_calendar')}</button>
-                ${it.event?.address ? `<a class="btn" href="${App.utils.mapUrl(it.event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}
+                <button class="md-btn md-btn-outlined md-state-layer" type="button" data-edit-calendar-item="${App.utils.escapeAttr(it.id)}">${App.utils.t('edit')}</button>
+                <a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, it.event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a>
+                <button class="md-btn md-btn-outlined md-state-layer" type="button" data-ics-id="${App.utils.escapeAttr(it.id)}">${App.utils.t('apple_calendar')}</button>
+                ${it.event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(it.event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}
               </div>
             </div>`;
           }).join('')}
-          <div class="calendar-action-grid" style="margin-top:10px"><button class="btn" type="button" id="syAddEntryBtn">${App.utils.t('add_entry')}</button></div>`;
+          <div class="calendar-action-grid" style="margin-top:10px"><button class="md-btn md-btn-outlined md-state-layer" type="button" id="syAddEntryBtn">${App.utils.t('add_entry')}</button></div>`;
         App.els.calendarSideDetails.innerHTML = entriesBlock;
         document.getElementById('syAddEntryBtn')?.addEventListener('click', () => App.actions.openCalendarEditorForCreate(dateIso));
         document.querySelectorAll('[data-edit-calendar-item]').forEach((btn) => btn.addEventListener('click', (e) => {
@@ -2048,10 +2048,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.statsModalTitle) App.els.statsModalTitle.textContent = App.utils.t('stats_title');
         if (App.els.statsModalSub) App.els.statsModalSub.textContent = App.utils.serviceYearLabel(sy);
         const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
-        const statCard = (label, value, sub) => `<div class="card" style="padding:14px;box-shadow:none"><div class="small">${label}</div><div style="font-size:26px;font-weight:800">${value}</div>${sub ? `<div class="small">${sub}</div>` : ''}</div>`;
+        const statCard = (label, value, sub) => `<div class="md-card" style="padding:14px;box-shadow:none"><div class="small">${label}</div><div style="font-size:26px;font-weight:800">${value}</div>${sub ? `<div class="small">${sub}</div>` : ''}</div>`;
         const unvisitedHtml = stats.unvisited.length
-          ? `<div class="card" style="padding:14px;box-shadow:none"><div class="small" style="font-weight:700;margin-bottom:8px">⚠️ ${App.utils.t('unvisited_title')} (${stats.unvisited.length})</div>${stats.unvisited.map((ev) => `<div class="side-row"><div class="side-label"><span class="dot" style="background:${App.utils.clampColor(ev.color)}"></span>${App.utils.escapeHtml(ev.name)}</div><div class="side-value small">${App.utils.escapeHtml(ev.contactName || '')}</div></div>`).join('')}</div>`
-          : `<div class="empty">${App.utils.t('unvisited_none')}</div>`;
+          ? `<div class="md-card" style="padding:14px;box-shadow:none"><div class="small" style="font-weight:700;margin-bottom:8px">⚠️ ${App.utils.t('unvisited_title')} (${stats.unvisited.length})</div>${stats.unvisited.map((ev) => `<div class="side-row"><div class="side-label"><span class="dot" style="background:${App.utils.clampColor(ev.color)}"></span>${App.utils.escapeHtml(ev.name)}</div><div class="side-value small">${App.utils.escapeHtml(ev.contactName || '')}</div></div>`).join('')}</div>`
+          : `<div class="md-empty">${App.utils.t('unvisited_none')}</div>`;
         if (App.els.statsModalBody) App.els.statsModalBody.innerHTML = `
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
             ${statCard(App.utils.t('stats_planned'), stats.planned)}
@@ -2075,7 +2075,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               const distLabel = km !== null ? `<span class="small" style="color:var(--muted)">~${Math.round(km)} км</span>` : `<span class="small" style="color:var(--muted)">без координат</span>`;
               return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:12px"><input type="checkbox" data-planner-event="${App.utils.escapeAttr(ev.id)}" style="width:auto" checked /><span class="dot" style="background:${App.utils.clampColor(ev.color)}"></span><span style="flex:1">${App.utils.escapeHtml(ev.name)}</span>${distLabel}</label>`;
             }).join('')
-          : `<div class="empty">${App.utils.t('unvisited_none')}</div>`;
+          : `<div class="md-empty">${App.utils.t('unvisited_none')}</div>`;
         if (App.els.plannerPreview) App.els.plannerPreview.textContent = '';
         this.openModal(App.els.plannerModal);
       },
@@ -2390,13 +2390,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const type = App.state.letterEditingType || 'Congregation';
         const pages = App.state.app.settings.letterPages[type] || [];
         if (!App.els.letterPagesList) return;
-        if (!pages.length) { App.els.letterPagesList.innerHTML = `<div class="empty">Дополнительных страниц нет — только письмо на странице 1.</div>`; return; }
+        if (!pages.length) { App.els.letterPagesList.innerHTML = `<div class="md-empty">Дополнительных страниц нет — только письмо на странице 1.</div>`; return; }
         App.els.letterPagesList.innerHTML = pages.map((page, i) => `
-          <div class="card" style="padding:14px;box-shadow:none;border:1px solid var(--line)" data-page-card="${App.utils.escapeAttr(page.id)}">
+          <div class="md-card" style="padding:14px;box-shadow:none;border:1px solid var(--line)" data-page-card="${App.utils.escapeAttr(page.id)}">
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
               <span class="small" style="white-space:nowrap">Стр. ${i + 2}:</span>
               <input type="text" data-page-title="${App.utils.escapeAttr(page.id)}" value="${App.utils.escapeAttr(page.title || '')}" placeholder="Заголовок страницы (необязательно)" style="flex:1" />
-              <button class="btn danger" type="button" data-remove-page="${App.utils.escapeAttr(page.id)}" style="white-space:nowrap">Удалить страницу</button>
+              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-page="${App.utils.escapeAttr(page.id)}" style="white-space:nowrap">Удалить страницу</button>
             </div>
             <div class="rte-editor" data-rte-page="${App.utils.escapeAttr(page.id)}" contenteditable="true">${page.html || ''}</div>
           </div>`).join('');
@@ -2711,19 +2711,19 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const vpi = buildVpI18n(state.language);
         // Meetings
         if (App.els.vfMeetingsList) App.els.vfMeetingsList.innerHTML = state.meetings.length ? state.meetings.map((m) => `
-          <div class="card" style="padding:10px;box-shadow:none" data-row-id="${escA(m.id)}" data-row-kind="meeting">
+          <div class="md-card" style="padding:10px;box-shadow:none" data-row-id="${escA(m.id)}" data-row-kind="meeting">
             <div class="form-grid">
               <label><span class="small">Тип</span><select data-field="type">${vpi.MEETING_TYPES.map((mt) => `<option value="${mt}" ${m.type === mt ? 'selected' : ''}>${esc(vpi.t(mt))}</option>`).join('')}</select></label>
               <label><span class="small">День</span><input data-field="day" type="text" value="${escA(m.day)}" /></label>
               <label><span class="small">Время</span><input data-field="time" type="text" value="${escA(m.time)}" /></label>
               <label><span class="small">Место</span><input data-field="place" type="text" value="${escA(m.place)}" /></label>
             </div>
-            <button class="btn danger" type="button" data-remove-row style="margin-top:8px">Удалить</button>
-          </div>`).join('') : `<div class="empty">Встречи ещё не добавлены</div>`;
+            <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">Удалить</button>
+          </div>`).join('') : `<div class="md-empty">Встречи ещё не добавлены</div>`;
         // Service plan (grouped by day)
         if (App.els.vfServiceDaysList) App.els.vfServiceDaysList.innerHTML = state.servicePlan.map((day) => `
-          <div class="card" style="padding:10px;box-shadow:none" data-day-id="${escA(day.id)}">
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input data-day-field="label" type="text" value="${escA(day.label)}" style="font-weight:700" /><button class="btn danger" type="button" data-remove-day style="white-space:nowrap">Удалить день</button></div>
+          <div class="md-card" style="padding:10px;box-shadow:none" data-day-id="${escA(day.id)}">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input data-day-field="label" type="text" value="${escA(day.label)}" style="font-weight:700" /><button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-day style="white-space:nowrap">Удалить день</button></div>
             ${day.rows.map((r) => {
               const listId = r.session === 'before' ? 'vfTimeOptionsBefore' : r.session === 'after' ? 'vfTimeOptionsAfter' : 'vfTimeOptionsDefault';
               return `
@@ -2738,11 +2738,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
                 <label><span class="small">Место</span><input data-field="place" type="text" value="${escA(r.place)}" /></label>
                 <label><span class="small">С кем (имя / телефон)</span><input data-field="partner" type="text" placeholder="Имя / телефон" value="${escA(r.partner)}" /></label>
                 <label><span class="small">Вид служения</span><input data-field="kind" type="text" value="${escA(r.kind)}" /></label>
-                <button class="btn danger" type="button" data-remove-row style="grid-column:1 / -1">Удалить строку</button>
+                <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="grid-column:1 / -1">Удалить строку</button>
               </div>`;
             }).join('')}
-            <button class="btn" type="button" data-add-service-row="${escA(day.id)}">+ Строка</button>
-          </div>`).join('') || '<div class="empty">Дни ещё не добавлены</div>';
+            <button class="md-btn md-btn-outlined md-state-layer" type="button" data-add-service-row="${escA(day.id)}">+ Строка</button>
+          </div>`).join('') || '<div class="md-empty">Дни ещё не добавлены</div>';
         // Pastoral visits — hidden entirely for pregroup, matching the original app's rule
         const showPastoral = state.visitType !== 'pregroup';
         if (App.els.vfPastoralHeading) App.els.vfPastoralHeading.style.display = showPastoral ? '' : 'none';
@@ -2750,7 +2750,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.vfPastoralList) {
           App.els.vfPastoralList.style.display = showPastoral ? '' : 'none';
           App.els.vfPastoralList.innerHTML = state.pastoralVisits.length ? state.pastoralVisits.map((p) => `
-            <div class="card" style="padding:10px;box-shadow:none" data-row-id="${escA(p.id)}" data-row-kind="pastoral">
+            <div class="md-card" style="padding:10px;box-shadow:none" data-row-id="${escA(p.id)}" data-row-kind="pastoral">
               <div class="form-grid">
                 <label><span class="small">Имя</span><input data-field="name" type="text" value="${escA(p.name)}" /></label>
                 <label><span class="small">День</span><input data-field="day" type="text" value="${escA(p.day)}" /></label>
@@ -2758,13 +2758,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
                 <label><span class="small">С кем (имя / телефон)</span><input data-field="partner" type="text" placeholder="Имя / телефон" value="${escA(p.partner)}" /></label>
                 <label style="grid-column:1 / -1"><span class="small">Причина</span><input data-field="reason" type="text" value="${escA(p.reason)}" /></label>
               </div>
-              <button class="btn danger" type="button" data-remove-row style="margin-top:8px">Удалить</button>
-            </div>`).join('') : `<div class="empty">Посещения ещё не добавлены</div>`;
+              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">Удалить</button>
+            </div>`).join('') : `<div class="md-empty">Посещения ещё не добавлены</div>`;
         }
         // Meals
         const MEAL_TIME_OPTIONS = ['12:30', '12:45', '13:00', '13:30'];
         if (App.els.vfMealsList) App.els.vfMealsList.innerHTML = state.meals.length ? state.meals.map((m) => `
-          <div class="card" style="padding:10px;box-shadow:none" data-row-id="${escA(m.id)}" data-row-kind="meal">
+          <div class="md-card" style="padding:10px;box-shadow:none" data-row-id="${escA(m.id)}" data-row-kind="meal">
             <div class="form-grid">
               <label><span class="small">День</span><select data-field="day"><option value=""></option>${vpi.MEAL_DAY_KEYS.map((dk) => { const label = vpi.t(dk); return `<option value="${escA(label)}" ${m.day === label ? 'selected' : ''}>${esc(label)}</option>`; }).join('')}</select></label>
               <label><span class="small">Время</span><select data-field="time"><option value=""></option>${MEAL_TIME_OPTIONS.map((tm) => `<option value="${tm}" ${m.time === tm ? 'selected' : ''}>${tm}</option>`).join('')}</select></label>
@@ -2773,8 +2773,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               <label><span class="small">Телефон</span><input data-field="phone" type="text" value="${escA(m.phone)}" /></label>
               <label><span class="small">Примечание</span><input data-field="note" type="text" value="${escA(m.note)}" /></label>
             </div>
-            <button class="btn danger" type="button" data-remove-row style="margin-top:8px">Удалить</button>
-          </div>`).join('') : `<div class="empty">Обеды ещё не добавлены</div>`;
+            <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">Удалить</button>
+          </div>`).join('') : `<div class="md-empty">Обеды ещё не добавлены</div>`;
         this.bindVisitFormRowEvents();
       },
       bindVisitFormRowEvents() {
@@ -3105,14 +3105,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.remindersModalSub) App.els.remindersModalSub.textContent = App.utils.t('reminders_subtitle');
         if (!App.els.remindersModalList) return;
         if (!items.length) {
-          App.els.remindersModalList.innerHTML = `<div class="empty">${App.utils.t('reminders_none')}</div>`;
+          App.els.remindersModalList.innerHTML = `<div class="md-empty">${App.utils.t('reminders_none')}</div>`;
           return;
         }
         App.els.remindersModalList.innerHTML = items.map((item) => {
           const dayLabel = item.daysUntil < 0 ? `<span class="flag-badge" style="background:#b91c1c">${App.utils.t('reminders_overdue')}</span>` : `<span class="small">${App.utils.t('reminders_days_left', { days: item.daysUntil })}</span>`;
-          const s302Btn = item.needsS302 ? `<button class="btn danger" type="button" data-mark-reminder="s302" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_s302')}</button><button class="btn primary" type="button" data-send-s302="${App.utils.escapeAttr(item.id)}">📋 Сформировать и отправить S-302</button>` : '';
-          const letterBtn = item.needsLetter ? `<button class="btn" type="button" data-mark-reminder="letter" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_letter')}</button>` : '';
-          return `<div class="card" style="padding:14px">
+          const s302Btn = item.needsS302 ? `<button class="md-btn md-btn-danger md-state-layer" type="button" data-mark-reminder="s302" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_s302')}</button><button class="md-btn md-btn-filled md-state-layer" type="button" data-send-s302="${App.utils.escapeAttr(item.id)}">📋 Сформировать и отправить S-302</button>` : '';
+          const letterBtn = item.needsLetter ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" data-mark-reminder="letter" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_letter')}</button>` : '';
+          return `<div class="md-card" style="padding:14px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;flex-wrap:wrap">
               <div><strong>${App.utils.escapeHtml(item.title)}</strong><div class="small">${App.utils.escapeHtml(App.utils.prettyDate(item.start))} — ${App.utils.escapeHtml(App.utils.prettyDate(item.end))}</div></div>
               ${dayLabel}
@@ -3121,7 +3121,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               ${item.needsS302 ? `<span class="pill">${App.utils.t('reminders_s302_needed')}</span>` : ''}
               ${item.needsLetter ? `<span class="pill">${App.utils.t('reminders_letter_needed')}</span>` : ''}
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${s302Btn}${letterBtn}<button class="btn" type="button" data-open-reminder-entry="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_open_entry')}</button></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${s302Btn}${letterBtn}<button class="md-btn md-btn-outlined md-state-layer" type="button" data-open-reminder-entry="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_open_entry')}</button></div>
           </div>`;
         }).join('');
         document.querySelectorAll('[data-mark-reminder]').forEach((btn) => btn.addEventListener('click', () => {
@@ -3151,7 +3151,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!App.els.historyList) return;
         const history = App.store.getHistory();
         if (!history.length) {
-          App.els.historyList.innerHTML = `<div class="empty">Пока нет сохранённых контрольных точек — они появляются автоматически по мере использования программы (не чаще раза в 5 минут).</div>`;
+          App.els.historyList.innerHTML = `<div class="md-empty">Пока нет сохранённых контрольных точек — они появляются автоматически по мере использования программы (не чаще раза в 5 минут).</div>`;
           return;
         }
         const sorted = history.map((snap, realIndex) => ({ snap, realIndex })).reverse(); // newest first, keep original index for restore
@@ -3160,10 +3160,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           const label = date.toLocaleString(App.utils.lang(), { dateStyle: 'medium', timeStyle: 'short' });
           let summary = '';
           try { const data = JSON.parse(snap.data); summary = `${(data.events || []).length} собраний, ${(data.entries || []).length} визитов`; } catch (err) { summary = ''; }
-          return `<div class="card" style="padding:12px;box-shadow:none;border:1px solid var(--line)">
+          return `<div class="md-card" style="padding:12px;box-shadow:none;border:1px solid var(--line)">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div><strong>${App.utils.escapeHtml(label)}</strong><div class="small" style="color:var(--muted)">${App.utils.escapeHtml(summary)}</div></div>
-              <button class="btn danger" type="button" data-restore-snapshot="${realIndex}">Восстановить</button>
+              <button class="md-btn md-btn-danger md-state-layer" type="button" data-restore-snapshot="${realIndex}">Восстановить</button>
             </div>
           </div>`;
         }).join('');
@@ -3254,7 +3254,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               <span class="pill"><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${App.utils.escapeHtml(App.utils.colorName(event.color))}</span>
               ${event.visitType ? `<span class="pill">${App.utils.escapeHtml(visitLabel(event.visitType))}</span>` : `<span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fde68a">⚠️ ${App.utils.escapeHtml(App.utils.t('visit_type_none'))}</span>`}
             </div>
-          </div>`).join('') || `<div class="empty">${query || App.state.eventColorFilter !== 'all' ? App.utils.t('no_events_found') : App.utils.t('no_events_month')}</div>`;
+          </div>`).join('') || `<div class="md-empty">${query || App.state.eventColorFilter !== 'all' ? App.utils.t('no_events_found') : App.utils.t('no_events_month')}</div>`;
         document.querySelectorAll('[data-edit-event]').forEach((btn) => btn.addEventListener('click', () => {
           const event = App.data.getEventById(btn.dataset.editEvent);
           App.state.editingEventId = event?.id || null;
