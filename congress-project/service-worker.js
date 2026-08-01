@@ -1,5 +1,9 @@
 const CACHE='congress-pwa-v43-stable-deploy-cache';
 const ASSETS=['./','./index.html','./styles.css','./manifest.json','./icon-192.png','./icon-512.png',
+// Общий слой (стили + шрифты) — index.html ссылается на ../shared/style.css.
+'../shared/style.css','../shared/nav.js',
+'../shared/fonts/roboto-latin-400-normal.woff2','../shared/fonts/roboto-latin-500-normal.woff2',
+'../shared/fonts/roboto-cyrillic-400-normal.woff2','../shared/fonts/roboto-cyrillic-500-normal.woff2',
 './js/main.js','./js/state.js','./js/render.js','./js/tasks.js','./js/congress.js','./js/directories.js',
 './js/letters.js','./js/plan.js','./js/plan-fit.js','./js/printing.js','./js/template-editor.js','./js/backup.js',
 './js/utils.js','./js/dom.js','./js/icons.js'];

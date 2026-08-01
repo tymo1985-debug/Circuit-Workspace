@@ -6,6 +6,14 @@ const ASSETS = [
   './register.html',
   './manifest.json',
   './css/styles.css',
+  // Общий слой (стили + шрифты). Особенно важно здесь: раньше модуль тянул
+  // шрифты с Google Fonts CDN, которые не кэшировались вовсе.
+  '../shared/style.css',
+  '../shared/nav.js',
+  '../shared/fonts/roboto-latin-400-normal.woff2',
+  '../shared/fonts/roboto-latin-500-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-400-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-500-normal.woff2',
   './js/db.js',
   './js/app.js',
   './js/utils/dateUtils.js',

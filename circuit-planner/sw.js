@@ -19,6 +19,14 @@ const APP_SHELL_URLS = [
   './forms/s302-form.js',
   './favicon.ico',
   './manifest.webmanifest',
+  // Общий слой (стили + шрифты). Без него офлайн модуль терял оформление,
+  // т.к. index.html ссылается на ../shared/style.css.
+  '../shared/style.css',
+  '../shared/nav.js',
+  '../shared/fonts/roboto-latin-400-normal.woff2',
+  '../shared/fonts/roboto-latin-500-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-400-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-500-normal.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   // CDN libs: precache so PDF export works offline even before the second visit
