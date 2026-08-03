@@ -1207,13 +1207,6 @@
       cleanupCalendarChrome() {
         document.querySelectorAll('#calendar .legend, .sy-legend, .sy-compact-hint').forEach((node) => node.remove());
       },
-      removeTeamPanel() {
-        const teamCard = document.getElementById('calendarQuickList')?.closest('.side-card') || document.getElementById('calendarEventQuickFilter')?.closest('.side-card');
-        if (teamCard) teamCard.remove();
-        App.els.calendarQuickList = null;
-        App.els.calendarEventQuickFilter = null;
-        if (App.els.calendarLayout) App.els.calendarLayout.classList.remove('team-hidden');
-      },
       ensureFontSizeControl() {
         if (document.getElementById('fontSizeSelect')) {
           App.els.fontSizeSelect = document.getElementById('fontSizeSelect');
@@ -1348,7 +1341,10 @@
         this.applyFontSize();
         this.applyAccent();
         this.applyLayout();
-        this.removeTeamPanel();
+        // Удалён вызов removeTeamPanel(): панель команды давно вырезана из разметки,
+        // функция искала #calendarQuickList / #calendarEventQuickFilter, которых в
+        // index.html нет, а снятие класса team-hidden уже делает applyLayout().
+        if (App.els.calendarLayout) App.els.calendarLayout.classList.remove('team-hidden');
         this.renderNav();
         this.renderScreenHeader();
         this.renderCalendar();

@@ -14,8 +14,13 @@ const ExcelExport = {
   },
 
   _escape(value) {
-    const str = String(value ?? '');
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    let str = String(value ?? '');
+    // Защита от формульной инъекции: значение, начинающееся с = + - @ (или с
+    // табуляции/CR перед ними), Excel и Google Таблицы трактуют как формулу.
+    // Данные сюда попадают из ручного ввода и импорта PDF, поэтому нейтрализуем
+    // их одинарной кавычкой — она не отображается в ячейке.
+    if (/^[\t\r]*[=+\-@]/.test(str)) str = "'" + str;
+    if (/[",\n\r]/.test(str)) {
       return '"' + str.replace(/"/g, '""') + '"';
     }
     return str;
@@ -56,6 +61,8 @@ const ExcelExport = {
   // покрывает оба случая.
   downloadStudentsXlsx(students, columns, classesById) {
     if (!window.XLSX) { alert('Библиотека для Excel не загрузилась. Проверьте подключение к интернету.'); return; }
+    // В .xlsx экранирование кавычкой не нужно и мешало бы — SheetJS пишет
+    // значения как текстовые ячейки, формулой они не станут.
     const { headers, rows } = this._buildStudentAoa(students, columns, classesById);
     const ws = window.XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = window.XLSX.utils.book_new();

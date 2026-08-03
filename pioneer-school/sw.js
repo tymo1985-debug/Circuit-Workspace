@@ -1,4 +1,7 @@
-const CACHE_NAME = 'pioneer-school-cache-v1.3.0';
+// Школа пионеров — service worker модуля.
+const APP_VERSION = '1.3.1';
+const CACHE_PREFIX = 'pioneer-school-cache-v';
+const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
 const ASSETS = [
   './',
@@ -6,6 +9,8 @@ const ASSETS = [
   './register.html',
   './manifest.json',
   './css/styles.css',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   // Общий слой (стили + шрифты). Особенно важно здесь: раньше модуль тянул
   // шрифты с Google Fonts CDN, которые не кэшировались вовсе.
   '../shared/style.css',
@@ -34,41 +39,70 @@ const ASSETS = [
   './data/seed-lessons.json'
 ];
 
+// Внешние библиотеки. Без предварительного кэширования экспорт PDF/Excel и
+// импорт PDF работали только при наличии сети: на первой загрузке SW ещё не
+// управляет страницей, поэтому runtime-кэширование их не перехватывало.
+// Ошибка загрузки любой из них не должна ломать установку SW, поэтому они
+// кэшируются отдельно и «мягко».
+const CDN_ASSETS = [
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+];
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(ASSETS);
+    await Promise.all(CDN_ASSETS.map(async (url) => {
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (res && res.ok) await cache.put(url, res.clone());
+      } catch (_) { /* нет сети на момент установки — подхватится в рантайме */ }
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    // Cache Storage общий на origin: удаляем только свои кэши по префиксу,
+    // иначе активация этого SW стирала офлайн-кэши хаба и других модулей.
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map((k) => caches.delete(k))
+    );
+    await self.clients.claim();
+  })());
 });
 
-// Cache-first for app shell assets, network-first fallback for anything else (e.g. CDN jsPDF)
+// Cache-first для оболочки, сеть — как запасной вариант.
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response && response.status === 200 && event.request.url.startsWith(self.location.origin)) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => cached);
-    })
-  );
-});
+  const request = event.request;
+  if (request.method !== 'GET') return;
 
-// Заготовка для Background Sync — приложение работает полностью на локальной IndexedDB,
-// поэтому фактической синхронизации с сервером пока нет. Событие оставлено для будущего расширения.
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'pioneer-school-sync') {
-    // место для будущей логики синхронизации с сервером, если он появится
-  }
+  const url = new URL(request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    try {
+      const response = await fetch(request);
+      if (response && response.ok && (url.origin === self.location.origin || response.type === 'cors')) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch (_) {
+      // Раньше здесь возвращался уже проверенный на пустоту `cached`, то есть
+      // undefined, и respondWith падал с TypeError вместо сетевой ошибки.
+      if (request.mode === 'navigate') {
+        const shell = await caches.match('./index.html');
+        if (shell) return shell;
+      }
+      return Response.error();
+    }
+  })());
 });

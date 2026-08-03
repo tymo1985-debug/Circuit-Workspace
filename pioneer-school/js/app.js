@@ -1,21 +1,57 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 let LESSONS_SEED = null;
 
 function $(sel, root = document) { return root.querySelector(sel); }
 function $all(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
 
+// Экранирование пользовательских данных перед вставкой в innerHTML.
+// Без него введённые вручную или импортированные из PDF значения с символами
+// < > & " ' молча искажались при отображении (например, «Класс <b>А</b>»
+// показывался как «Класс А»), а незакрытый тег ломал вёрстку таблицы.
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+const ROUTES = ['dashboard', 'anketa', 'assignment', 'registration', 'substitutes', 'students',
+  'textbooks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup'];
+const DEFAULT_ROUTE = 'dashboard';
+
 function showRoute(route) {
+  // Неизвестный маршрут (устаревшая ссылка, чужой #hash, опечатка) раньше
+  // прятал все экраны и не показывал ни одного — пользователь видел пустую
+  // страницу без объяснения. Теперь неизвестное имя откатывается на дашборд.
+  const safeRoute = ROUTES.includes(route) ? route : DEFAULT_ROUTE;
   $all('.route').forEach((el) => el.classList.add('hidden'));
-  const target = document.getElementById('route-' + route);
+  const target = document.getElementById('route-' + safeRoute);
   if (target) target.classList.remove('hidden');
-  $all('.nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.route === route));
-  window.location.hash = route;
-  renderRoute(route);
+  $all('.nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.route === safeRoute));
+  if (window.location.hash.slice(1) !== safeRoute) window.location.hash = safeRoute;
+  renderRoute(safeRoute);
 }
 
 async function renderRoute(route) {
+  try {
+    await renderRouteInner(route);
+  } catch (error) {
+    // Раньше любой сбой рендера экрана оставлял пустую область без единого
+    // сообщения (промис отклонялся в никуда). Теперь ошибка видна.
+    console.error('Ошибка при отрисовке экрана «' + route + '»', error);
+    const target = document.getElementById('route-' + route);
+    if (target) {
+      const box = document.createElement('p');
+      box.className = 'hint';
+      box.style.color = 'var(--warn)';
+      box.textContent = 'Не удалось загрузить этот раздел: ' + error.message;
+      target.prepend(box);
+    }
+  }
+}
+
+async function renderRouteInner(route) {
   switch (route) {
     case 'dashboard': return renderDashboard();
     case 'anketa': return renderAnketa();
@@ -48,9 +84,9 @@ async function renderDashboard() {
   const el = $('#dashboard-cards');
   el.innerHTML = cards.map((c) => `
     <div class="stat-card">
-      <div class="stat-title">${c.title}</div>
-      <div class="stat-value">${c.value}</div>
-      <div class="stat-sub">${c.sub}</div>
+      <div class="stat-title">${esc(c.title)}</div>
+      <div class="stat-value">${esc(c.value)}</div>
+      <div class="stat-sub">${esc(c.sub)}</div>
     </div>`).join('');
 }
 
@@ -86,7 +122,7 @@ function renderLocationsList(locations) {
   if (!locations.length) { el.innerHTML = '<p class="hint">Мест пока не добавлено.</p>'; return; }
   el.innerHTML = locations.map((l, i) => `
     <div class="list-row">
-      <span>${l.hallName} ${l.hallNumber ? '(' + l.hallNumber + ')' : ''}</span>
+      <span>${esc(l.hallName)} ${l.hallNumber ? '(' + esc(l.hallNumber) + ')' : ''}</span>
       <button class="btn-text remove-location" data-index="${i}">Удалить</button>
     </div>`).join('');
   $all('.remove-location', el).forEach((btn) => {
@@ -183,14 +219,14 @@ function renderRegistrationsTable(list) {
   }
   tbody.innerHTML = list.map((r) => `
     <tr>
-      <td>${r.lastName} ${r.firstName}${r.convertedToStudentId ? ' <span class="badge-warn" style="background:#3E6B4F;">учащийся</span>' : ''}</td>
-      <td>${r.email || ''}<br>${r.phone || ''}</td>
-      <td>${Registration.YES_NO_LABELS[r.attending] || '—'}${r.attending === 'no' && r.attendReason ? ' — ' + r.attendReason : ''}</td>
-      <td>Авто: ${Registration.YES_NO_LABELS[r.transport] || '—'} · Ночлег: ${Registration.YES_NO_LABELS[r.lodging] || '—'}</td>
-      <td>${Registration.LANGUAGE_LABELS[r.language] || r.language || '—'}${(r.format || []).length ? ' · ' + r.format.map((f) => Registration.FORMAT_LABELS[f] || f).join(', ') : ''}</td>
+      <td>${esc(r.lastName)} ${esc(r.firstName)}${r.convertedToStudentId ? ' <span class="badge-warn" style="background:#3E6B4F;">учащийся</span>' : ''}</td>
+      <td>${esc(r.email || '')}<br>${esc(r.phone || '')}</td>
+      <td>${esc(Registration.YES_NO_LABELS[r.attending] || '—')}${r.attending === 'no' && r.attendReason ? ' — ' + esc(r.attendReason) : ''}</td>
+      <td>Авто: ${esc(Registration.YES_NO_LABELS[r.transport] || '—')} · Ночлег: ${esc(Registration.YES_NO_LABELS[r.lodging] || '—')}</td>
+      <td>${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
       <td>
-        ${r.convertedToStudentId ? '' : `<button class="btn-text convert-reg" data-id="${r.id}" style="color:var(--accent);">В учащиеся</button>`}
-        <button class="btn-text remove-reg" data-id="${r.id}">Удалить</button>
+        ${r.convertedToStudentId ? '' : `<button class="btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--accent);">В учащиеся</button>`}
+        <button class="btn-text remove-reg" data-id="${esc(r.id)}">Удалить</button>
       </td>
     </tr>`).join('');
 
@@ -248,11 +284,11 @@ function renderSubstitutesList(list) {
   if (!list.length) { el.innerHTML = '<p class="hint">Заместители пока не добавлены.</p>'; return; }
   el.innerHTML = `<div class="panel"><table class="data-table"><thead><tr><th>#</th><th>Имя</th><th>Возраст</th><th>Утверждён</th><th></th></tr></thead><tbody>
     ${list.map((s) => `<tr>
-      <td>${s.rank ?? '—'}</td>
-      <td>${s.fullName}${s.age >= 80 ? ' <span class="badge-warn">80+</span>' : ''}</td>
-      <td>${s.age ?? '—'}</td>
+      <td>${esc(s.rank ?? '—')}</td>
+      <td>${esc(s.fullName)}${s.age >= 80 ? ' <span class="badge-warn">80+</span>' : ''}</td>
+      <td>${esc(s.age ?? '—')}</td>
       <td>${s.approvedByBranch ? 'Да' : 'Нет'}</td>
-      <td><button class="btn-text remove-sub" data-id="${s.id}">Удалить</button></td>
+      <td><button class="btn-text remove-sub" data-id="${esc(s.id)}">Удалить</button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
   $all('.remove-sub', el).forEach((btn) => {
@@ -290,6 +326,9 @@ async function renderStudents() {
     const updated = await DB.list('classes');
     renderClassSelect(updated);
     renderClassesList(updated);
+    // Таблица учащихся содержит собственные селекты класса в каждой строке —
+    // без перерисовки новый класс в них не появлялся до смены раздела.
+    renderStudentsTable(await Students.list(), updated, await Students.getColumns());
   };
 
   $('#add-student-btn').onclick = async () => {
@@ -299,8 +338,13 @@ async function renderStudents() {
     try {
       await Students.save(student);
       renderStudentFormFields(cols); // очищаем форму
+      // renderStudentFormFields пересоздаёт #student-class-select пустым,
+      // поэтому список классов нужно наполнить заново — иначе после первого
+      // же добавления учащегося выпадающий список классов оказывался пуст.
+      const classesNow = await DB.list('classes');
+      renderClassSelect(classesNow);
       const updatedStudents = await Students.list();
-      renderStudentsTable(updatedStudents, await DB.list('classes'), cols);
+      renderStudentsTable(updatedStudents, classesNow, cols);
       renderDashboard();
     } catch (e) { alert(e.message); }
   };
@@ -310,7 +354,15 @@ async function renderStudents() {
     if (!cls.length) return alert('Сначала добавьте хотя бы один класс.');
     const st = await Students.list();
     const distributed = Students.autoDistribute(st, cls);
-    for (const s of distributed) await DB.put('students', s);
+    // Пишем только изменившееся поле поверх ПОЛНОЙ записи из базы: объекты из
+    // Students.list() усечены до { id, classId, values }, и запись их целиком
+    // стирала служебные поля (например, fromRegistrationId).
+    for (const item of distributed) {
+      const full = await DB.get('students', item.id);
+      if (!full) continue;
+      full.classId = item.classId;
+      await DB.put('students', full);
+    }
     renderStudentsTable(await Students.list(), cls, await Students.getColumns());
   };
 
@@ -327,8 +379,10 @@ async function renderStudents() {
       const newCols = await Students.getColumns();
       renderColumnsManager(newCols);
       renderStudentFormFields(newCols);
+      const classesForForm = await DB.list('classes');
+      renderClassSelect(classesForForm); // см. комментарий в #add-student-btn
       renderStudentsTableHead(newCols);
-      renderStudentsTable(await Students.list(), await DB.list('classes'), newCols);
+      renderStudentsTable(await Students.list(), classesForForm, newCols);
     } catch (e) { alert(e.message); }
   };
 
@@ -353,14 +407,17 @@ function renderStudentFormFields(columns) {
 
 function renderFieldInput(column, value, prefix) {
   const id = `${prefix}-${column.key}`;
+  const idAttr = esc(id);
+  const keyAttr = esc(column.key);
+  const labelHtml = esc(column.label);
   if (column.type === 'select') {
-    const opts = (column.options || []).map((o) => `<option value="${o.value}" ${o.value === value ? 'selected' : ''}>${o.label}</option>`).join('');
-    return `<label>${column.label}<select id="${id}" data-key="${column.key}">${opts}</select></label>`;
+    const opts = (column.options || []).map((o) => `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+    return `<label>${labelHtml}<select id="${idAttr}" data-key="${keyAttr}">${opts}</select></label>`;
   }
   if (column.type === 'textarea') {
-    return `<label>${column.label}<textarea id="${id}" data-key="${column.key}" rows="2">${value || ''}</textarea></label>`;
+    return `<label>${labelHtml}<textarea id="${idAttr}" data-key="${keyAttr}" rows="2">${esc(value || '')}</textarea></label>`;
   }
-  return `<label>${column.label}<input type="text" id="${id}" data-key="${column.key}" value="${(value || '').toString().replace(/"/g, '&quot;')}"></label>`;
+  return `<label>${labelHtml}<input type="text" id="${idAttr}" data-key="${keyAttr}" value="${esc(value ?? '')}"></label>`;
 }
 
 function collectStudentFormValues(columns) {
@@ -375,22 +432,22 @@ function collectStudentFormValues(columns) {
 function renderClassSelect(classes) {
   const sel = document.getElementById('student-class-select');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— без класса —</option>' + classes.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+  sel.innerHTML = '<option value="">— без класса —</option>' + classes.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
 }
 
 function renderClassesList(classes) {
   const el = $('#classes-list');
   if (!classes.length) { el.innerHTML = '<p class="hint">Классов пока нет — школа считается одним классом.</p>'; return; }
-  el.innerHTML = classes.map((c) => `<div class="list-row"><span>${c.name}</span></div>`).join('');
+  el.innerHTML = classes.map((c) => `<div class="list-row"><span>${esc(c.name)}</span></div>`).join('');
 }
 
 function renderColumnsManager(columns) {
   const el = $('#columns-manager');
   el.innerHTML = columns.map((c) => `
     <div class="column-row">
-      <input type="text" class="col-rename" data-key="${c.key}" value="${c.label}">
-      <span class="column-type-badge">${{ text: 'текст', textarea: 'длинный текст', select: 'список' }[c.type] || c.type}</span>
-      ${c.protected ? '<span class="column-protected-badge">системный</span>' : `<button class="btn-text col-remove" data-key="${c.key}">Удалить</button>`}
+      <input type="text" class="col-rename" data-key="${esc(c.key)}" value="${esc(c.label)}">
+      <span class="column-type-badge">${esc({ text: 'текст', textarea: 'длинный текст', select: 'список' }[c.type] || c.type)}</span>
+      ${c.protected ? '<span class="column-protected-badge">системный</span>' : `<button class="btn-text col-remove" data-key="${esc(c.key)}">Удалить</button>`}
     </div>`).join('');
 
   $all('.col-rename', el).forEach((input) => {
@@ -423,7 +480,7 @@ function renderColumnsManager(columns) {
 
 function renderStudentsTableHead(columns) {
   const head = $('#students-table-head');
-  head.innerHTML = columns.map((c) => `<th>${c.label}</th>`).join('') + '<th>Класс</th><th></th>';
+  head.innerHTML = columns.map((c) => `<th>${esc(c.label)}</th>`).join('') + '<th>Класс</th><th></th>';
 }
 
 function renderStudentsTable(students, classes, columns) {
@@ -435,13 +492,13 @@ function renderStudentsTable(students, classes, columns) {
   }
   tbody.innerHTML = students.map((s) => {
     const cells = columns.map((c) => `<td>${renderFieldInput(c, (s.values || {})[c.key], 'row-' + s.id)}</td>`).join('');
-    const classOptions = '<option value="">—</option>' + classes.map((cl) => `<option value="${cl.id}" ${cl.id === s.classId ? 'selected' : ''}>${cl.name}</option>`).join('');
-    return `<tr data-student-id="${s.id}">
+    const classOptions = '<option value="">—</option>' + classes.map((cl) => `<option value="${esc(cl.id)}" ${cl.id === s.classId ? 'selected' : ''}>${esc(cl.name)}</option>`).join('');
+    return `<tr data-student-id="${esc(s.id)}">
       ${cells}
-      <td><select class="row-class-select" data-id="${s.id}">${classOptions}</select></td>
+      <td><select class="row-class-select" data-id="${esc(s.id)}">${classOptions}</select></td>
       <td>
-        <button class="btn-text row-formulaire" data-id="${s.id}" style="color:var(--accent);">Формуляр</button>
-        <button class="btn-text remove-student" data-id="${s.id}">Удалить</button>
+        <button class="btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">Формуляр</button>
+        <button class="btn-text remove-student" data-id="${esc(s.id)}">Удалить</button>
       </td>
     </tr>`;
   }).join('');
@@ -540,13 +597,13 @@ function currentMappingHasNameFields() {
 function renderImportModal(existingColumns, resultPanelHtml) {
   const { headers, rows, mappings, anomalies } = importState;
   const mappingOptions = (currentKey) => {
-    const opts = existingColumns.map((c) => `<option value="${c.key}" ${c.key === currentKey ? 'selected' : ''}>${c.label}</option>`).join('');
+    const opts = existingColumns.map((c) => `<option value="${esc(c.key)}" ${c.key === currentKey ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
     return `<option value="__new__" ${currentKey === '__new__' ? 'selected' : ''}>— новый столбец —</option>${opts}`;
   };
 
   const headerRow = headers.map((h, i) => `
     <th>
-      <div contenteditable="true" class="import-header-edit" data-idx="${i}">${h}</div>
+      <div contenteditable="true" class="import-header-edit" data-idx="${i}">${esc(h)}</div>
       <select class="import-mapping-select" data-idx="${i}" style="width:100%;font-size:11px;border:none;border-top:1px solid var(--line);">
         ${mappingOptions(mappings[i])}
       </select>
@@ -557,7 +614,7 @@ function renderImportModal(existingColumns, resultPanelHtml) {
     <tr data-row="${rIdx}">
       ${headers.map((_, cIdx) => {
         const isAnomaly = anomalies && anomalies[rIdx] && anomalies[rIdx][cIdx];
-        return `<td class="${isAnomaly ? 'import-anomaly-cell' : ''}" ${isAnomaly ? 'title="Похоже на склейку двух ячеек PDF в одну — проверьте и поправьте вручную"' : ''}><div contenteditable="true" class="import-cell" data-row="${rIdx}" data-col="${cIdx}">${row[cIdx] || ''}</div></td>`;
+        return `<td class="${isAnomaly ? 'import-anomaly-cell' : ''}" ${isAnomaly ? 'title="Похоже на склейку двух ячеек PDF в одну — проверьте и поправьте вручную"' : ''}><div contenteditable="true" class="import-cell" data-row="${rIdx}" data-col="${cIdx}">${esc(row[cIdx] || '')}</div></td>`;
       }).join('')}
       <td class="row-remove-cell"><button class="btn-text import-remove-row" data-idx="${rIdx}">✕</button></td>
     </tr>`).join('');
@@ -663,15 +720,17 @@ async function confirmPdfImport(existingColumns) {
     const cols = await Students.getColumns();
     renderStudentFormFields(cols);
     renderColumnsManager(cols);
+    const classesAfterImport = await DB.list('classes');
+    renderClassSelect(classesAfterImport); // см. комментарий в #add-student-btn
     renderStudentsTableHead(cols);
-    renderStudentsTable(await Students.list(), await DB.list('classes'), cols);
+    renderStudentsTable(await Students.list(), classesAfterImport, cols);
     renderDashboard();
 
     const resultHtml = `
       <div class="panel" style="margin-top:14px;background:${errors.length ? '#FBEFE9' : '#EAF3EC'};">
         <h3 style="margin-top:0;">Импорт завершён</h3>
         <p>Успешно импортировано: <strong>${imported}</strong> из ${rows.length}.</p>
-        ${errors.length ? `<p>Не импортировано (${errors.length}) — исправьте эти строки в таблице выше и повторите, либо пропустите:</p><ul class="simple-list">${errors.map((e) => `<li>${e}</li>`).join('')}</ul>` : ''}
+        ${errors.length ? `<p>Не импортировано (${errors.length}) — исправьте эти строки в таблице выше и повторите, либо пропустите:</p><ul class="simple-list">${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
       </div>`;
     $('#pdf-import-status').textContent = `Импортировано: ${imported}${errors.length ? `, ошибок: ${errors.length}` : ''}.`;
     renderImportModal(existingColumns, resultHtml);
@@ -681,7 +740,7 @@ async function confirmPdfImport(existingColumns) {
     renderImportModal(existingColumns, `
       <div class="panel" style="margin-top:14px;background:#FBEFE9;">
         <h3 style="margin-top:0;">Не удалось завершить импорт</h3>
-        <p>${e.message}</p>
+        <p>${esc(e.message)}</p>
       </div>`);
   }
 }
@@ -696,8 +755,8 @@ async function openExportPicker() {
     <div class="export-columns-grid">
       ${columns.map((c) => `
         <label class="export-col-check">
-          <input type="checkbox" class="export-col-cb" value="${c.key}" ${saved.includes(c.key) ? 'checked' : ''}>
-          ${c.label}
+          <input type="checkbox" class="export-col-cb" value="${esc(c.key)}" ${saved.includes(c.key) ? 'checked' : ''}>
+          ${esc(c.label)}
         </label>`).join('')}
     </div>
     <div class="btn-row">
@@ -781,6 +840,9 @@ function updateTextbookQty() {
 async function loadLessonsSeed() {
   if (LESSONS_SEED) return LESSONS_SEED;
   const res = await fetch('data/seed-lessons.json');
+  // Без проверки res.ok ответ 404 уходил в res.json(), падал с невнятной
+  // ошибкой парсинга и оставлял раздел «Расписание» пустым.
+  if (!res.ok) throw new Error('файл уроков data/seed-lessons.json недоступен (' + res.status + ')');
   LESSONS_SEED = await res.json();
   return LESSONS_SEED;
 }
@@ -806,14 +868,14 @@ async function renderSchedule() {
     return `
       <div class="panel lesson-card">
         <div class="lesson-head">
-          <div class="lesson-number">Урок ${lesson.number}${lesson.letter ? lesson.letter : ''}</div>
-          <div class="lesson-teacher">${teacherLabel} · День ${lesson.day}</div>
+          <div class="lesson-number">Урок ${esc(lesson.number)}${lesson.letter ? esc(lesson.letter) : ''}</div>
+          <div class="lesson-teacher">${esc(teacherLabel)} · День ${esc(lesson.day)}</div>
           <label class="checkbox-label lesson-done">
-            <input type="checkbox" class="lesson-done-cb" data-key="${key}" ${doneMap[key] ? 'checked' : ''}> Проведено
+            <input type="checkbox" class="lesson-done-cb" data-key="${esc(key)}" ${doneMap[key] ? 'checked' : ''}> Проведено
           </label>
         </div>
-        ${lesson.note ? `<p class="hint">${lesson.note}</p>` : ''}
-        ${lesson.signLanguageNote ? `<p class="hint">${lesson.signLanguageNote}</p>` : ''}
+        ${lesson.note ? `<p class="hint">${esc(lesson.note)}</p>` : ''}
+        ${lesson.signLanguageNote ? `<p class="hint">${esc(lesson.signLanguageNote)}</p>` : ''}
         ${mediaHtml || '<p class="hint">Наглядные материалы для этого урока в S-255-U не указаны.</p>'}
       </div>`;
   }).join('') + `
@@ -835,9 +897,9 @@ async function renderSchedule() {
 
 function mediaBlock(label, media) {
   return `<div class="media-block">
-    <div class="media-label">${label}: ${media.title}${media.duration ? ' (' + media.duration + ')' : ''}</div>
-    ${media.cue ? `<div class="media-cue">${media.cue}</div>` : ''}
-    ${media.note ? `<div class="media-cue">${media.note}</div>` : ''}
+    <div class="media-label">${esc(label)}: ${esc(media.title)}${media.duration ? ' (' + esc(media.duration) + ')' : ''}</div>
+    ${media.cue ? `<div class="media-cue">${esc(media.cue)}</div>` : ''}
+    ${media.note ? `<div class="media-cue">${esc(media.note)}</div>` : ''}
   </div>`;
 }
 
@@ -848,11 +910,11 @@ async function renderPractical() {
   const el = $('#practical-list');
   el.innerHTML = sessions.map((s) => `
     <div class="panel">
-      <h3>Практическое занятие ${s.sessionNumber}</h3>
-      <label class="checkbox-label"><input type="checkbox" class="pr-rehearsed" data-id="${s.id}" ${s.rehearsed ? 'checked' : ''}> Отрепетировано заранее</label>
-      <label class="checkbox-label"><input type="checkbox" class="pr-general" data-id="${s.id}" ${s.generalRehearsalDone ? 'checked' : ''}> Генеральная репетиция в день выступления проведена</label>
+      <h3>Практическое занятие ${esc(s.sessionNumber)}</h3>
+      <label class="checkbox-label"><input type="checkbox" class="pr-rehearsed" data-id="${esc(s.id)}" ${s.rehearsed ? 'checked' : ''}> Отрепетировано заранее</label>
+      <label class="checkbox-label"><input type="checkbox" class="pr-general" data-id="${esc(s.id)}" ${s.generalRehearsalDone ? 'checked' : ''}> Генеральная репетиция в день выступления проведена</label>
       <label>Чему научились (итог занятия)
-        <textarea class="pr-takeaway" data-id="${s.id}" rows="2">${s.keyTakeaway || ''}</textarea>
+        <textarea class="pr-takeaway" data-id="${esc(s.id)}" rows="2">${esc(s.keyTakeaway || '')}</textarea>
       </label>
     </div>`).join('');
 
@@ -872,16 +934,16 @@ async function savePracticalField(id, field, value) {
 async function renderReview() {
   const reviews = await Review.list();
   const el = $('#review-list');
-  el.innerHTML = `<div class="panel"><p class="hint">${Review.NOTE}</p></div>` + reviews.map((r) => `
+  el.innerHTML = `<div class="panel"><p class="hint">${esc(Review.NOTE)}</p></div>` + reviews.map((r) => `
     <div class="panel">
-      <h3>День ${r.day}</h3>
+      <h3>День ${esc(r.day)}</h3>
       <div class="form-grid">
-        <label>Минут у преподавателя А <input type="number" class="rv-a" data-id="${r.id}" value="${r.teacherAMinutesUsed ?? ''}" max="15"></label>
-        <label>Минут у преподавателя Б <input type="number" class="rv-b" data-id="${r.id}" value="${r.teacherBMinutesUsed ?? ''}" max="15"></label>
-        <label class="checkbox-label"><input type="checkbox" class="rv-done" data-id="${r.id}" ${r.done ? 'checked' : ''}> Проведено</label>
+        <label>Минут у преподавателя А <input type="number" class="rv-a" data-id="${esc(r.id)}" value="${esc(r.teacherAMinutesUsed ?? '')}" max="15"></label>
+        <label>Минут у преподавателя Б <input type="number" class="rv-b" data-id="${esc(r.id)}" value="${esc(r.teacherBMinutesUsed ?? '')}" max="15"></label>
+        <label class="checkbox-label"><input type="checkbox" class="rv-done" data-id="${esc(r.id)}" ${r.done ? 'checked' : ''}> Проведено</label>
       </div>
       <label>Дополнительные местные вопросы
-        <textarea class="rv-notes" data-id="${r.id}" rows="2">${r.additionalLocalQuestions || ''}</textarea>
+        <textarea class="rv-notes" data-id="${esc(r.id)}" rows="2">${esc(r.additionalLocalQuestions || '')}</textarea>
       </label>
     </div>`).join('');
 
@@ -941,10 +1003,10 @@ async function renderAfterSchool() {
 }
 
 function renderNaList(items) {
-  $('#na-list').innerHTML = items.map((i) => `<li>${i.name}${i.reason ? ' — ' + i.reason : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
+  $('#na-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.reason ? ' — ' + esc(i.reason) : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
 }
 function renderAoList(items) {
-  $('#ao-list').innerHTML = items.map((i) => `<li>${i.name}${i.congregation ? ' — ' + i.congregation : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
+  $('#ao-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.congregation ? ' — ' + esc(i.congregation) : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
 }
 
 // ---------- SIGN LANGUAGE ----------
@@ -962,7 +1024,7 @@ async function renderSignLanguage() {
     ['studentAssignmentsWordJwpub', 'Задания Word/JWPUB — учащимся']
   ];
   $('#sl-checklist').innerHTML = checklistItems.map(([key, label]) => `
-    <label class="checkbox-label"><input type="checkbox" class="sl-check" data-key="${key}" ${data.materialsChecklist?.[key] ? 'checked' : ''}> ${label}</label>
+    <label class="checkbox-label"><input type="checkbox" class="sl-check" data-key="${esc(key)}" ${data.materialsChecklist?.[key] ? 'checked' : ''}> ${esc(label)}</label>
   `).join('');
 
   $('#save-sl-btn').onclick = async () => {
@@ -1016,6 +1078,15 @@ window.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW registration failed', e));
   }
 
-  const initialRoute = (window.location.hash || '#dashboard').slice(1);
-  showRoute(initialRoute || 'dashboard');
+  // Реакция на смену #hash: раньше кнопки «Назад»/«Вперёд» в браузере меняли
+  // адрес, но экран не переключался — приложение выглядело зависшим.
+  window.addEventListener('hashchange', () => {
+    const route = window.location.hash.slice(1) || DEFAULT_ROUTE;
+    const current = $all('.route').find((el) => !el.classList.contains('hidden'));
+    if (current && current.id === 'route-' + route) return;
+    showRoute(route);
+  });
+
+  const initialRoute = (window.location.hash || '#' + DEFAULT_ROUTE).slice(1);
+  showRoute(initialRoute || DEFAULT_ROUTE);
 });

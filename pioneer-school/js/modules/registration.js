@@ -54,10 +54,7 @@ const Registration = {
   // Формат учебника из регистрации (print/jwpub/pdf/epub) сопоставляется с
   // упрощённой категорией students.js (standard/otherLanguage/braille/print) —
   // используется только для расчёта заказа обычных бумажных экземпляров.
-  mapFormatToStudentCategory(formatArray, language) {
-    if (language && language !== 'ru' && language !== '') {
-      // если школа обычно на русском, а пионер выбрал другой язык — считаем иноязычным
-    }
+  mapFormatToStudentCategory(formatArray) {
     if (Array.isArray(formatArray) && formatArray.includes('print')) return 'print';
     return 'standard';
   },
@@ -65,6 +62,7 @@ const Registration = {
   async convertToStudent(reg) {
     // На случай, если организатор удалил один из стандартных столбцов —
     // убеждаемся, что нужные столбцы существуют, прежде чем записывать значения.
+    await Students.ensureColumn('congregation', { label: 'Собрание', type: 'text' });
     await Students.ensureColumn('email', { label: 'Email', type: 'text' });
     await Students.ensureColumn('phone', { label: 'Телефон', type: 'text' });
     await Students.ensureColumn('address', { label: 'Адрес проживания', type: 'text' });
@@ -81,7 +79,7 @@ const Registration = {
         firstName: reg.firstName,
         congregation: reg.congregation || '',
         status: reg.attending === 'no' ? 'withdrawn' : 'listed',
-        textbookFormat: this.mapFormatToStudentCategory(reg.format, reg.language),
+        textbookFormat: this.mapFormatToStudentCategory(reg.format),
         email: reg.email || '',
         phone: reg.phone || '',
         address: reg.address || '',

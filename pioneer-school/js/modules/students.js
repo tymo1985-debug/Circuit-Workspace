@@ -167,6 +167,10 @@ const Students = {
     return DB.remove('students', id);
   },
 
+  // ВНИМАНИЕ: на вход подаются объекты из list(), который отдаёт только
+  // { id, classId, values }. Возвращаем ТОЛЬКО изменение classId, чтобы
+  // вызывающий код не записывал в базу усечённую запись поверх полной
+  // (раньше так терялось, например, поле fromRegistrationId).
   autoDistribute(students, classes) {
     if (!classes.length) return students;
     const sorted = [...students].filter((s) => (s.values || {}).status !== 'withdrawn');

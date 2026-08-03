@@ -4,6 +4,50 @@
 // и вставляем как изображение построчно) — тот же обходной путь, что и в Visit Planner.
 
 const PdfExport = {
+  // Единая проверка внешней библиотеки. Раньше при недоступном CDN
+  // `const { jsPDF } = window.jspdf` падал с TypeError, и кнопка экспорта
+  // просто «ничего не делала» — без единого сообщения пользователю
+  // (в excelExport такая проверка уже была, здесь её не хватало).
+  _requireJsPdf() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      const message = 'Библиотека для PDF не загрузилась. Проверьте подключение к интернету и обновите страницу.';
+      alert(message);
+      throw new Error(message);
+    }
+    return window.jspdf.jsPDF;
+  },
+
+  // Разбивает строку на части, которые физически помещаются в заданную ширину.
+  // Без этого длинные строки (например, карточка учащегося со всеми столбцами)
+  // просто обрезались за краем canvas и молча пропадали из готового PDF.
+  _wrapText(text, { fontSize = 12, bold = false, width = 500 } = {}) {
+    const raw = String(text ?? '');
+    if (!raw.trim()) return [' '];
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [raw]; // окружение без canvas — лучше отдать строку как есть, чем упасть
+    ctx.font = `${bold ? 'bold ' : ''}${fontSize}px Arial, sans-serif`;
+    if (ctx.measureText(raw).width <= width) return [raw];
+
+    const lines = [];
+    let current = '';
+    for (const word of raw.split(/\s+/)) {
+      const candidate = current ? current + ' ' + word : word;
+      if (ctx.measureText(candidate).width <= width) { current = candidate; continue; }
+      if (current) lines.push(current);
+      // Отдельное слово шире строки (длинный адрес или e-mail) — режем посимвольно.
+      if (ctx.measureText(word).width <= width) { current = word; continue; }
+      let chunk = '';
+      for (const ch of word) {
+        if (ctx.measureText(chunk + ch).width > width && chunk) { lines.push(chunk); chunk = ch; }
+        else chunk += ch;
+      }
+      current = chunk;
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : [' '];
+  },
+
   _canvasLineToImage(text, { fontSize = 12, bold = false, width = 700 } = {}) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -23,7 +67,7 @@ const PdfExport = {
   },
 
   async buildDocument(title, lines) {
-    const { jsPDF } = window.jspdf;
+    const jsPDF = this._requireJsPdf();
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const marginX = 40;
     let y = 50;
@@ -34,13 +78,15 @@ const PdfExport = {
     y += titleImg.height + 16;
 
     for (const line of lines) {
-      const img = this._canvasLineToImage(line || ' ', { fontSize: 11, width: 500 });
-      if (y + img.height > pageHeight - 40) {
-        doc.addPage();
-        y = 50;
+      for (const part of this._wrapText(line, { fontSize: 11, width: 500 })) {
+        const img = this._canvasLineToImage(part, { fontSize: 11, width: 500 });
+        if (y + img.height > pageHeight - 40) {
+          doc.addPage();
+          y = 50;
+        }
+        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height);
+        y += img.height + 4;
       }
-      doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height);
-      y += img.height + 4;
     }
     return doc;
   },
@@ -88,16 +134,20 @@ const PdfExport = {
       const raw = (student.values || {})[col.key];
       const value = this._formatValue(col, raw) || '—';
       const line = `${col.label}: ${value}`;
-      const img = this._canvasLineToImage(line, { fontSize: 11.5, width: 500 });
-      if (y + img.height > pageHeight - 40) { doc.addPage(); y = 50; }
-      doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height);
-      y += img.height + 5;
+      // Длинные значения (адрес, доп. сведения) переносим, иначе они обрезались
+      // по краю canvas и не попадали в готовый формуляр.
+      for (const part of this._wrapText(line, { fontSize: 11.5, width: 500 })) {
+        const img = this._canvasLineToImage(part, { fontSize: 11.5, width: 500 });
+        if (y + img.height > pageHeight - 40) { doc.addPage(); y = 50; }
+        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height);
+        y += img.height + 5;
+      }
     }
     return y;
   },
 
   async downloadStudentFormulaire(student, columns, classLabel) {
-    const { jsPDF } = window.jspdf;
+    const jsPDF = this._requireJsPdf();
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageHeight = doc.internal.pageSize.getHeight();
     this._renderStudentFormulaire(doc, student, columns, classLabel, 50, pageHeight, 40);
@@ -107,7 +157,7 @@ const PdfExport = {
 
   // Один PDF, одна страница на каждого учащегося — удобно распечатать/разослать всем сразу.
   async downloadAllStudentFormulaires(students, columns, classesById) {
-    const { jsPDF } = window.jspdf;
+    const jsPDF = this._requireJsPdf();
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageHeight = doc.internal.pageSize.getHeight();
     students.forEach((s, idx) => {

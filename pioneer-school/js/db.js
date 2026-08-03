@@ -36,10 +36,22 @@ function openDB() {
         }
       });
     };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
+    req.onsuccess = (e) => {
+      const db = e.target.result;
+      // Освобождаем соединение, если другая вкладка запросит обновление схемы,
+      // иначе она навсегда зависает в onblocked.
+      db.onversionchange = () => { db.close(); dbPromise = null; };
+      resolve(db);
+    };
+    req.onerror = (e) => {
+      // Без сброса кэшированного промиса одна неудачная попытка открыть базу
+      // делала всё приложение нерабочим до перезагрузки страницы.
+      dbPromise = null;
+      reject(e.target.error);
+    };
+    req.onblocked = () => console.warn('Обновление схемы базы заблокировано — закройте другие вкладки приложения.');
   });
-  return dbPromise;
+  return dbPromise.catch((error) => { dbPromise = null; throw error; });
 }
 
 function uid() {
@@ -126,19 +138,38 @@ const DB = {
       dump[s] = await this.list(s);
     }
     dump._exportedAt = new Date().toISOString();
-    dump._version = 1;
+    // Раньше здесь стояла жёсткая единица, хотя схема базы уже была версии 2 —
+    // файл резервной копии сообщал о себе неверную версию.
+    dump._version = DB_VERSION;
     return dump;
   },
 
   // Полное восстановление из JSON (перезаписывает существующие хранилища)
   async importAll(dump) {
-    for (const s of STORES) {
-      if (!dump[s]) continue;
-      await this.clearStore(s);
-      const store = await tx(s, 'readwrite');
-      for (const item of dump[s]) {
-        store.put(item);
-      }
+    if (!dump || typeof dump !== 'object' || Array.isArray(dump)) {
+      throw new Error('Файл не похож на резервную копию: ожидался объект с хранилищами.');
+    }
+    const known = STORES.filter((s) => Array.isArray(dump[s]));
+    if (!known.length) {
+      throw new Error('В файле нет ни одного известного хранилища данных — импорт отменён.');
+    }
+    const db = await openDB();
+    for (const s of known) {
+      // Раньше записи ставились в очередь через store.put() без ожидания
+      // завершения транзакции, поэтому importAll резолвился ДО того, как данные
+      // реально попадали в базу: следующий за импортом рендер читал старое
+      // состояние, а ошибки записи терялись молча.
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction(s, 'readwrite');
+        const store = transaction.objectStore(s);
+        store.clear();
+        for (const item of dump[s]) {
+          if (item && typeof item === 'object') store.put(item);
+        }
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error || new Error('Импорт хранилища «' + s + '» прерван'));
+      });
     }
     return true;
   },

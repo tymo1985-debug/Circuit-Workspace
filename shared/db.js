@@ -51,11 +51,22 @@
         });
       };
 
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-      req.onblocked = () => console.warn('CWDB: upgrade blocked — close other tabs of this app.');
+      req.onsuccess = () => {
+        const db = req.result;
+        // Если другая вкладка запросит апгрейд схемы — освобождаем соединение,
+        // иначе она навсегда зависнет в onblocked.
+        db.onversionchange = () => { db.close(); dbPromise = null; };
+        resolve(db);
+      };
+      req.onerror = () => {
+        // Без сброса кэшированного промиса одна неудачная попытка открыть базу
+        // делала CWDB нерабочим до перезагрузки страницы.
+        dbPromise = null;
+        reject(req.error);
+      };
+      req.onblocked = () => console.warn('CWDB: обновление схемы заблокировано — закройте другие вкладки приложения.');
     });
-    return dbPromise;
+    return dbPromise.catch((error) => { dbPromise = null; throw error; });
   }
 
   function uid(prefix) {
@@ -92,25 +103,44 @@
       /** Добавить запись; если record.id не задан — генерируется автоматически. Возвращает id. */
       async add(record) {
         const store = await tx(storeName, 'readwrite');
-        const payload = { id: record.id || uid(idPrefix), ...record };
+        // id ставится ПОСЛЕ спреда: при { id: ..., ...record } объект с явным
+        // полем id: undefined затирал сгенерированный ключ, и store.add падал.
+        const payload = { ...record, id: record.id || uid(idPrefix) };
         await promisifyRequest(store.add(payload));
         return payload.id;
       },
 
       /** Частично обновить запись по id (merge). Бросает ошибку, если записи нет. */
       async update(id, patch) {
-        const store = await tx(storeName, 'readwrite');
-        const current = await promisifyRequest(store.get(id));
-        if (!current) throw new Error(`CWDB.${storeName}.update: record ${id} not found`);
-        const merged = { ...current, ...patch, id };
-        await promisifyRequest(store.put(merged));
-        return merged;
+        // get и put выполняются внутри ОДНОЙ транзакции, без await между ними:
+        // ожидание промиса между двумя запросами — известная ловушка IndexedDB,
+        // транзакция может успеть закрыться, и put упадёт с TransactionInactiveError.
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(storeName, 'readwrite');
+          const store = transaction.objectStore(storeName);
+          let merged = null;
+          const getReq = store.get(id);
+          getReq.onsuccess = () => {
+            const current = getReq.result;
+            if (!current) {
+              transaction.abort();
+              reject(new Error(`CWDB.${storeName}.update: запись ${id} не найдена`));
+              return;
+            }
+            merged = { ...current, ...patch, id };
+            store.put(merged);
+          };
+          transaction.oncomplete = () => resolve(merged);
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error || new Error('CWDB.update: транзакция прервана'));
+        });
       },
 
       /** Полностью заменить запись (put), либо создать, если не было. */
       async put(record) {
         const store = await tx(storeName, 'readwrite');
-        const payload = { id: record.id || uid(idPrefix), ...record };
+        const payload = { ...record, id: record.id || uid(idPrefix) };
         await promisifyRequest(store.put(payload));
         return payload.id;
       },
@@ -150,7 +180,10 @@
     async importLegacyCommunities(legacyEvents) {
       const results = [];
       for (const ev of legacyEvents || []) {
-        const id = await CWDB.communities.add({
+        // put, а не add: повторный импорт того же набора раньше падал
+        // на ConstraintError первой же существующей записи и оставлял
+        // общий слой в наполовину импортированном состоянии.
+        const id = await CWDB.communities.put({
           id: ev.id,
           name: ev.name || '',
           color: ev.color || '',
@@ -173,4 +206,4 @@
   };
 
   global.CWDB = CWDB;
-})(window);
+})(typeof self !== 'undefined' ? self : globalThis);
