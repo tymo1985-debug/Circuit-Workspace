@@ -179,7 +179,55 @@ body.cw-root {
 .cw-badge--live { color: #ffffff; background: var(--cw-violet); border-color: var(--cw-violet); }
 .cw-badge--soon { color: var(--cw-amber); background: transparent; border-color: var(--cw-magenta); }
 
-/* --- Плавающая кнопка "На главную" (shared/nav.js) — общая для всех модулей --- */
+/* --- Кнопка "Назад в хаб" в шапке модуля (shared/nav.js) --------------------
+   Основной вариант: ведущий слот верхней панели, как в Material Design 3.
+   Цвет не задаётся жёстко — наследуется от шапки модуля, поэтому кнопка
+   одинаково читается и на светлом топбаре Конгрессов, и на тёмном
+   сайдбаре Школы пионеров. Подложка при наведении — нейтральный серый
+   с прозрачностью (state layer), он работает на любом фоне. */
+.cw-home-btn {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+.cw-home-btn:hover { background: rgba(127, 127, 127, 0.18); }
+.cw-home-btn:active { background: rgba(127, 127, 127, 0.28); }
+.cw-home-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.cw-home-btn svg { display: block; }
+
+/* Школа пионеров: слот — вертикальная колонка сайдбара, поэтому кнопку
+   нельзя растягивать по ширине и нужен отступ снизу от блока с логотипом. */
+.cw-home-btn--sidebar {
+  align-self: flex-start;
+  margin: 0 0 14px;
+}
+
+/* Сенсорная цель на мобильных — не меньше рекомендованных MD3 48px. */
+@media (max-width: 767px) {
+  .cw-home-btn { width: 44px; height: 44px; }
+}
+
+@media print {
+  .cw-home-btn { display: none !important; }
+}
+
+/* --- Плавающая кнопка "На главную" (shared/nav.js) — запасной вариант -------
+   Используется только если shared/nav.js не нашёл подходящей шапки
+   (например, в новом модуле без топбара). Не удалять. */
 .cw-home-fab {
   position: fixed;
   right: 18px;

@@ -303,6 +303,35 @@
     document.head.appendChild(s);
   }
 
+  // Возврат из модуля должен ощущаться как «назад», а не как открытие хаба
+  // заново. Хаб — обычная страница (плитки это <a href>), поэтому состояние
+  // между переходами не живёт само: запоминаем позицию прокрутки перед уходом
+  // и восстанавливаем при следующем открытии. Работает одинаково при любом
+  // способе возврата — кнопкой из модуля, браузерным «назад», из закладки.
+  (function () {
+    var KEY = 'cw-hub-scroll';
+
+    // Отключаем штатное восстановление: иначе браузер и скрипт будут
+    // прокручивать страницу наперегонки, и итог зависит от того, кто успел.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+    try {
+      var saved = parseInt(sessionStorage.getItem(KEY) || '', 10);
+      if (saved > 0) window.scrollTo(0, saved);
+    } catch (e) { /* приватный режим — просто без восстановления */ }
+
+    function remember() {
+      try { sessionStorage.setItem(KEY, String(window.scrollY)); } catch (e) {}
+    }
+
+    // pagehide покрывает переход по ссылке, закрытие и уход в bfcache;
+    // visibilitychange добавляет iOS, где pagehide срабатывает не всегда.
+    window.addEventListener('pagehide', remember);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') remember();
+    });
+  })();
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(function (e) {
       console.warn('SW registration failed', e);

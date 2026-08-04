@@ -65,7 +65,7 @@ Circuit-Workspace/
 ├── shared/
 │   ├── style.css               ← MD3-токены поверх фирменных --cw-* переменных
 │   ├── db.js                   ← IndexedDB: communities, people, meetings, roles
-│   ├── nav.js                  ← плавающая кнопка «На главную» для модулей
+│   ├── nav.js                  ← кнопка возврата в хаб (ведущий слот шапки)
 │   ├── version.js              ← self.CW_VERSION + self.CW_MODULES (см. ниже)
 │   └── brand/
 ├── congress-project/           ← Конгрессы (14 ES-модулей, js/main.js — точка входа)
@@ -149,6 +149,21 @@ Circuit-Workspace/
   подмножества шрифта (напр. «·» U+00B7), jsPDF обрывает весь вызов `text()`
   начиная с этого символа — без ошибки и без предупреждения. В
   `pioneer-school/js/export/pdfExport.js` от этого страхует `_sanitizeForFont()`.
+- **Возврат в хаб — только через `shared/nav.js`, не через `history.back()`.**
+  Школа пионеров пишет маршруты в `location.hash`, поэтому `history.back()`
+  из модуля уводит на предыдущий экран модуля, а не в хаб. Кнопка возврата —
+  обычная ссылка на `index.html`; ощущение «вернулся туда, где был» даёт сам
+  хаб: `index.html` сохраняет `window.scrollY` в `sessionStorage['cw-hub-scroll']`
+  на `pagehide`/`visibilitychange` и восстанавливает при загрузке
+  (`history.scrollRestoration = 'manual'`, иначе браузер и скрипт конфликтуют).
+- **Слот кнопки возврата ищется по селекторам, порядок важен.** `shared/nav.js`
+  перебирает `.topbar .topbar-title-row` (Клиндарий) → `header.topbar`
+  (Конгрессы) → `.topbar` → `.sidebar .brand` (ШПС) и вставляет `.cw-home-btn`
+  в первый найденный. Не нашёл ничего — откатывается к прежнему FAB
+  `.cw-home-fab` (оставлен в `style.css` намеренно, не удалять). Новый модуль
+  с нестандартной шапкой задаёт слот сам: `window.CW_HOME_SLOT` +
+  `window.CW_HOME_SLOT_MODE` ('prepend' | 'before'). Разметку модулей при этом
+  править не нужно — подключения `<script src="../shared/nav.js" defer>` достаточно.
 - **localStorage-ключ Клиндария** `service-year-planner-v9-4-2` — менять
   нельзя категорически, риск потери данных пользователей.
 - **CSS календаря в Клиндарии**: инжектируемый блок
