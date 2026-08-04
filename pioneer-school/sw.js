@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -36,7 +36,17 @@ const ASSETS = [
   './js/modules/afterSchool.js',
   './js/modules/signLanguage.js',
   './js/export/pdfExport.js',
+  './js/export/pdfFormExport.js',
   './js/export/excelExport.js',
+  './js/modules/registrationSchema.js',
+  // Шрифты для PDF: встраиваются в сами PDF-файлы (кириллица в бланке и в
+  // интерактивной анкете), поэтому нужны офлайн.
+  './js/export/fonts/dejavu-sans-subset.js',
+  './js/export/fonts/dejavu-form-b64.js',
+  // pdf-lib + fontkit лежат локально, а не на CDN: интерактивная AcroForm-анкета
+  // должна собираться и без сети.
+  './js/vendor/pdf-lib.min.js',
+  './js/vendor/fontkit.umd.min.js',
   './data/seed-lessons.json'
 ];
 

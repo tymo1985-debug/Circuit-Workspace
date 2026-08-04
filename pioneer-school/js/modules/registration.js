@@ -16,8 +16,10 @@ const Registration = {
     return DB.getMeta('registrationConfig', {
       deadline: '',
       email: '',
+      phone: '',
       whatsapp: '',
-      title: ''
+      title: '',
+      extraInstructions: ''
     });
   },
 

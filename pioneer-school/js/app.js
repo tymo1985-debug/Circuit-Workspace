@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 let LESSONS_SEED = null;
 
@@ -169,17 +169,50 @@ async function renderRegistration() {
   const cfg = await Registration.getConfig();
   $('#reg-cfg-deadline').value = cfg.deadline || '';
   $('#reg-cfg-email').value = cfg.email || '';
+  $('#reg-cfg-phone').value = cfg.phone || '';
   $('#reg-cfg-whatsapp').value = cfg.whatsapp || '';
   $('#reg-cfg-title').value = cfg.title || '';
+  $('#reg-cfg-extra').value = cfg.extraInstructions || '';
+
+  const collectConfig = () => ({
+    deadline: $('#reg-cfg-deadline').value,
+    email: $('#reg-cfg-email').value,
+    phone: $('#reg-cfg-phone').value,
+    whatsapp: $('#reg-cfg-whatsapp').value,
+    title: $('#reg-cfg-title').value,
+    extraInstructions: $('#reg-cfg-extra').value
+  });
 
   $('#save-reg-config-btn').onclick = async () => {
-    await Registration.saveConfig({
-      deadline: $('#reg-cfg-deadline').value,
-      email: $('#reg-cfg-email').value,
-      whatsapp: $('#reg-cfg-whatsapp').value,
-      title: $('#reg-cfg-title').value
-    });
-    alert('Настройки формуляра сохранены. Формуляр register.html подхватит их автоматически.');
+    await Registration.saveConfig(collectConfig());
+    alert('Настройки сохранены.');
+  };
+
+  $('#generate-interactive-pdf-btn').onclick = async () => {
+    const status = $('#pdf-form-status');
+    const btn = $('#generate-interactive-pdf-btn');
+    btn.disabled = true;
+    status.textContent = 'Формирую PDF-анкету…';
+    try {
+      // Сохраняем настройки заодно — чтобы сгенерированный файл всегда
+      // соответствовал тому, что организатор видит на экране.
+      const current = collectConfig();
+      await Registration.saveConfig(current);
+      await PdfFormExport.download(current, RegistrationSchema);
+      status.textContent = 'Готово — PDF-анкета скачана. Её можно отправить пионерам по email или через WhatsApp.';
+    } catch (e) {
+      status.textContent = 'Не удалось создать PDF-анкету: ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  $('#download-reg-blank-pdf').onclick = async () => {
+    try {
+      await PdfExport.downloadRegistrationBlankForm(await Registration.getConfig());
+    } catch (e) {
+      alert('Не удалось создать PDF: ' + e.message);
+    }
   };
 
   $('#add-registration-btn').onclick = async () => {

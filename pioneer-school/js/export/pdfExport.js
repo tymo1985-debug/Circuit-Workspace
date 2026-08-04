@@ -293,6 +293,165 @@ const PdfExport = {
     doc.save('registrations.pdf');
   },
 
+  // ---------- Печатный бланк регистрации (для рассылки пионерам) ----------
+  // В отличие от остальных функций этого файла (которые рисуют кириллицу как
+  // растровое изображение через canvas — рабочий, но более тяжёлый приём),
+  // здесь используется НАСТОЯЩИЙ встроенный шрифт (DejaVu Sans, урезанный до
+  // нужных символов). Это возможно только для СТАТИЧНОГО содержимого бланка.
+  //
+  // Важное ограничение (проверено на практике): сделать этот PDF по-настоящему
+  // интерактивным (с полями, которые пионер печатает прямо в Adobe/Preview)
+  // ненадёжно — у jsPDF нет способа привязать встроенный кириллический шрифт
+  // к полю так, чтобы ЛЮБОЙ PDF-редактор корректно показывал вводимый текст
+  // (только к содержимому на момент создания). Поэтому бланк — для печати и
+  // заполнения от руки, либо как приложение к ссылке на онлайн-формуляр
+  // (register.html), а не замена ему.
+  _ensureCyrillicFont(doc) {
+    if (this._cyrillicFontLoaded) return;
+    if (!window.PDF_FONT_DEJAVU_SANS) throw new Error('Шрифт для PDF-бланка не загрузился.');
+    doc.addFileToVFS('DejaVuSans.ttf', window.PDF_FONT_DEJAVU_SANS);
+    doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+    this._cyrillicFontLoaded = true;
+  },
+
+  // Шрифт бланка урезан (см. js/export/fonts/dejavu-sans-subset.js) до Latin +
+  // кириллицы + базовой пунктуации. Любой символ ВНЕ этого набора (например,
+  // «·», emoji, стрелки) не отрисуется — и, что важнее, jsPDF при этом обрежет
+  // ВЕСЬ текстовый вызов начиная с этого символа, без ошибки и без предупреждения
+  // (проверено на практике). Эта функция подстраховывает: заменяет неизвестные
+  // символы на «-», чтобы одна забытая точка/тире не «съедала» остаток строки.
+  _sanitizeForFont(str) {
+    return String(str ?? '').replace(/[^\x20-\x7E\u00A0\u00AB\u00BB\u2013\u2014\u2018-\u201E\u2026\u0400-\u04FF]/g, '-');
+  },
+
+  _checkbox(doc, x, y, label, size = 9) {
+    doc.setDrawColor(90);
+    doc.rect(x, y - size + 2, size, size);
+    doc.setFont('DejaVuSans');
+    doc.setFontSize(11);
+    doc.setTextColor(20);
+    doc.text(this._sanitizeForFont(label), x + size + 4, y);
+  },
+
+  _sectionTitle(doc, y, text) {
+    doc.setFont('DejaVuSans');
+    doc.setFontSize(13);
+    doc.setTextColor(20);
+    doc.text(this._sanitizeForFont(text), 40, y);
+    doc.setDrawColor(200);
+    doc.line(40, y + 4, 555, y + 4);
+    return y + 22;
+  },
+
+  _label(doc, x, y, text, size = 11) {
+    doc.setFont('DejaVuSans');
+    doc.setFontSize(size);
+    doc.setTextColor(20);
+    doc.text(this._sanitizeForFont(text), x, y);
+  },
+
+  _answerLine(doc, x, y, width) {
+    doc.setDrawColor(140);
+    doc.line(x, y, x + width, y);
+  },
+
+  async downloadRegistrationBlankForm(config) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    this._ensureCyrillicFont(doc);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = 50;
+
+    doc.setFont('DejaVuSans');
+    doc.setFontSize(18);
+    doc.setTextColor(20);
+    doc.text(this._sanitizeForFont(config.title || 'Формуляр регистрации — Школа пионерского служения'), 40, y, { maxWidth: pageWidth - 80 });
+    y += 22;
+    doc.setFontSize(11);
+    doc.setTextColor(90);
+    doc.text('Пожалуйста, заполните и передайте районному старейшине как можно скорее.', 40, y);
+    y += 26;
+
+    // 1. Личные данные
+    y = this._sectionTitle(doc, y, '1. Личные данные');
+    this._label(doc, 40, y, 'Фамилия:'); this._answerLine(doc, 100, y + 2, 200);
+    this._label(doc, 320, y, 'Имя:'); this._answerLine(doc, 360, y + 2, 195);
+    y += 26;
+    this._label(doc, 40, y, 'Адрес проживания:'); this._answerLine(doc, 155, y + 2, 400);
+    y += 26;
+    this._label(doc, 40, y, 'Email:'); this._answerLine(doc, 90, y + 2, 220);
+    this._label(doc, 330, y, 'Телефон (WhatsApp):'); this._answerLine(doc, 445, y + 2, 110);
+    y += 34;
+
+    // 2. Участие
+    y = this._sectionTitle(doc, y, '2. Участие в школе');
+    this._label(doc, 40, y, 'Будете ли вы присутствовать на Школе пионерского служения?');
+    y += 20;
+    this._checkbox(doc, 40, y, 'Да'); this._checkbox(doc, 140, y, 'Нет');
+    y += 22;
+    this._label(doc, 40, y, 'Если нет — укажите причину:'); this._answerLine(doc, 210, y + 2, 345);
+    y += 34;
+
+    // 3. Транспорт
+    y = this._sectionTitle(doc, y, '3. Транспорт');
+    this._label(doc, 40, y, 'Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до Школы?');
+    y += 20;
+    this._checkbox(doc, 40, y, 'Да'); this._checkbox(doc, 140, y, 'Нет');
+    y += 34;
+
+    // 4. Проживание
+    y = this._sectionTitle(doc, y, '4. Проживание');
+    this._label(doc, 40, y, 'Нуждаетесь ли вы в месте для ночлега?');
+    y += 20;
+    this._checkbox(doc, 40, y, 'Да'); this._checkbox(doc, 140, y, 'Нет');
+    y += 34;
+
+    // 5. Учебник
+    y = this._sectionTitle(doc, y, '5. Учебник для школы');
+    this._label(doc, 40, y, 'Язык учебника:');
+    y += 20;
+    this._checkbox(doc, 40, y, 'Русский'); this._checkbox(doc, 140, y, 'Украинский');
+    this._checkbox(doc, 250, y, 'Польский'); this._checkbox(doc, 340, y, 'Немецкий');
+    this._checkbox(doc, 430, y, 'Другой:'); this._answerLine(doc, 475, y + 2, 80);
+    y += 26;
+    this._label(doc, 40, y, 'Формат учебника (можно выбрать несколько):');
+    y += 20;
+    this._checkbox(doc, 40, y, 'Печатный'); this._checkbox(doc, 150, y, 'JWPub');
+    this._checkbox(doc, 250, y, 'PDF'); this._checkbox(doc, 340, y, 'EPUB');
+    y += 34;
+
+    // 6. Дополнительные сведения
+    y = this._sectionTitle(doc, y, '6. Дополнительные сведения');
+    this._label(doc, 40, y, 'Аллергии, особенности питания, состояние здоровья, другие важные замечания:', 10.5);
+    y += 20;
+    for (let i = 0; i < 3; i++) { this._answerLine(doc, 40, y, 515); y += 22; }
+    y += 6;
+
+    // Информация для учащегося
+    if (y > pageHeight - 140) { doc.addPage(); y = 50; }
+    doc.setDrawColor(210);
+    doc.line(40, y, 555, y);
+    y += 20;
+    doc.setFont('DejaVuSans');
+    doc.setFontSize(10.5);
+    doc.setTextColor(70);
+    const closing = 'Пожалуйста, заполните и отправьте этот формуляр как можно скорее. Это поможет своевременно подготовить всё необходимое для проведения школы. Благодарим за сотрудничество!';
+    const closingLines = doc.splitTextToSize(this._sanitizeForFont(closing), 515);
+    doc.text(closingLines, 40, y);
+    y += closingLines.length * 13 + 10;
+
+    const deadline = config.deadline ? new Date(config.deadline).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'уточните у районного старейшины';
+    doc.setTextColor(20);
+    doc.text(this._sanitizeForFont(`Заполненный формуляр необходимо отправить не позднее: ${deadline}`), 40, y);
+    y += 16;
+    doc.text('Способ отправки:', 40, y); y += 14;
+    doc.text(this._sanitizeForFont(`- на адрес электронной почты: ${config.email || 'уточните у районного старейшины'}`), 50, y); y += 14;
+    doc.text(this._sanitizeForFont(`- через WhatsApp: ${config.whatsapp || 'уточните у районного старейшины'}`), 50, y);
+
+    doc.save('registration-blank-form.pdf');
+  },
+
   async downloadS253(data) {
     const lines = [
       'Страница 1 — из «Списка», но НЕ прошли обучение в этом районе в этом году:',
