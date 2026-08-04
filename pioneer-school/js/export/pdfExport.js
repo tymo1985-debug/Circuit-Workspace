@@ -3,6 +3,11 @@
 // поэтому для текста используем canvas->image приём (рендерим текст через HTML5 Canvas
 // и вставляем как изображение построчно) — тот же обходной путь, что и в Visit Planner.
 
+// Растр текста без сжатия jsPDF кладёт в документ как есть, из-за чего формуляр
+// на одну страницу весил около мегабайта и его было тяжело отправить письмом
+// или в WhatsApp с телефона. Строки почти целиком белые и жмутся очень хорошо.
+const IMG_COMPRESSION = 'SLOW';
+
 const PdfExport = {
   // Единая проверка внешней библиотеки. Раньше при недоступном CDN
   // `const { jsPDF } = window.jspdf` падал с TypeError, и кнопка экспорта
@@ -52,10 +57,29 @@ const PdfExport = {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const scale = 2; // для чёткости
-    canvas.width = width * scale;
+    const font = `${bold ? 'bold ' : ''}${fontSize}px Arial, sans-serif`;
+
+    // Ширину холста подгоняем под фактическую длину строки, а не под максимально
+    // допустимую. Раньше каждая строка сохранялась как PNG во всю ширину полосы
+    // набора, и готовый файл раздувался до нескольких мегабайт (формуляр на одну
+    // страницу весил ~2,4 МБ) — такой PDF тяжело отправить письмом.
+    const measure = document.createElement('canvas').getContext('2d');
+    let lineWidth = width;
+    if (measure) {
+      measure.font = font;
+      lineWidth = Math.min(width, Math.ceil(measure.measureText(text).width) + 2);
+    }
+    lineWidth = Math.max(1, lineWidth);
+
+    canvas.width = lineWidth * scale;
     canvas.height = (fontSize + 10) * scale;
     ctx.scale(scale, scale);
-    ctx.font = `${bold ? 'bold ' : ''}${fontSize}px Arial, sans-serif`;
+    // Непрозрачная белая подложка: PNG с альфа-каналом заставляет jsPDF писать в
+    // документ дополнительную маску прозрачности на каждую строку, что почти
+    // удваивало размер файла. Страница всё равно белая, потери нет.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, lineWidth, fontSize + 10);
+    ctx.font = font;
     ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
     ctx.fillText(text, 0, 2);
@@ -74,7 +98,7 @@ const PdfExport = {
     const pageHeight = doc.internal.pageSize.getHeight();
 
     const titleImg = this._canvasLineToImage(title, { fontSize: 16, bold: true, width: 500 });
-    doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height);
+    doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height, undefined, IMG_COMPRESSION);
     y += titleImg.height + 16;
 
     for (const line of lines) {
@@ -84,7 +108,7 @@ const PdfExport = {
           doc.addPage();
           y = 50;
         }
-        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height);
+        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height, undefined, IMG_COMPRESSION);
         y += img.height + 4;
       }
     }
@@ -121,12 +145,12 @@ const PdfExport = {
     let y = startY;
     const fullName = `${(student.values || {}).lastName || ''} ${(student.values || {}).firstName || ''}`.trim() || 'Без имени';
     const titleImg = this._canvasLineToImage(`Формуляр учащегося: ${fullName}`, { fontSize: 15, bold: true, width: 500 });
-    doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height);
+    doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height, undefined, IMG_COMPRESSION);
     y += titleImg.height + 10;
 
     if (classLabel) {
       const clsImg = this._canvasLineToImage(`Класс: ${classLabel}`, { fontSize: 11, width: 500 });
-      doc.addImage(clsImg.dataUrl, 'PNG', marginX, y, clsImg.width, clsImg.height);
+      doc.addImage(clsImg.dataUrl, 'PNG', marginX, y, clsImg.width, clsImg.height, undefined, IMG_COMPRESSION);
       y += clsImg.height + 8;
     }
 
@@ -139,7 +163,7 @@ const PdfExport = {
       for (const part of this._wrapText(line, { fontSize: 11.5, width: 500 })) {
         const img = this._canvasLineToImage(part, { fontSize: 11.5, width: 500 });
         if (y + img.height > pageHeight - 40) { doc.addPage(); y = 50; }
-        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height);
+        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height, undefined, IMG_COMPRESSION);
         y += img.height + 5;
       }
     }
@@ -166,6 +190,75 @@ const PdfExport = {
       this._renderStudentFormulaire(doc, s, columns, classLabel, 50, pageHeight, 40);
     });
     doc.save('formulaires-all.pdf');
+  },
+
+  // ——— Формуляр регистрации (register.html) ———
+  // Публичная страница формуляра не грузит всё приложение, поэтому метки берём
+  // из Registration, если он подключён, и подстраховываемся локальными копиями.
+  _regLabels() {
+    const R = window.Registration || {};
+    return {
+      yesNo: R.YES_NO_LABELS || { yes: 'Да', no: 'Нет' },
+      language: R.LANGUAGE_LABELS || { ru: 'Русский', uk: 'Украинский', pl: 'Польский', de: 'Немецкий', other: 'Другой' },
+      format: R.FORMAT_LABELS || { print: 'Печатный экземпляр', jwpub: 'Электронный JWPub', pdf: 'PDF', epub: 'EPUB' }
+    };
+  },
+
+  _formatDateRu(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+  },
+
+  buildRegistrationLines(record, config = {}) {
+    const L = this._regLabels();
+    const language = record.language === 'other'
+      ? (record.languageOther || 'другой')
+      : (L.language[record.language] || record.language || '');
+    const formats = (record.format || []).map((f) => L.format[f] || f).join(', ');
+
+    const lines = [
+      `Дата заполнения: ${this._formatDateRu(record.submittedAt || new Date().toISOString())}`,
+      '',
+      `Фамилия: ${record.lastName || '—'}`,
+      `Имя: ${record.firstName || '—'}`,
+      `Адрес проживания: ${record.address || '—'}`,
+      `Email: ${record.email || '—'}`,
+      `Телефон: ${record.phone || '—'}`,
+      '',
+      `Смогу присутствовать на Школе: ${L.yesNo[record.attending] || '—'}`
+    ];
+    if (record.attending === 'no') lines.push(`Причина: ${record.attendReason || '—'}`);
+    lines.push(
+      `Могу приехать на своём транспорте: ${L.yesNo[record.transport] || '—'}`,
+      `Нужен ночлег: ${L.yesNo[record.lodging] || '—'}`,
+      '',
+      `Язык учебника: ${language || '—'}`,
+      `Формат учебника: ${formats || '—'}`,
+      '',
+      `Дополнительные сведения: ${record.notes || '—'}`
+    );
+
+    // Напоминание о сроке и адресате печатаем в самом формуляре: бумажную копию
+    // часто заполняют заранее и отправляют позже, уже без открытой страницы.
+    const footer = [];
+    if (config.deadline) footer.push(`Срок сдачи формуляра: ${this._formatDateRu(config.deadline)}`);
+    if (config.email) footer.push(`Отправить на email: ${config.email}`);
+    if (config.whatsapp) footer.push(`Отправить в WhatsApp: ${config.whatsapp}`);
+    if (footer.length) lines.push('', '— — —', ...footer);
+
+    return lines;
+  },
+
+  async downloadRegistrationFormulaire(record, config = {}) {
+    const title = config.title || 'Формуляр для Школы пионерского служения';
+    const doc = await this.buildDocument(title, this.buildRegistrationLines(record, config));
+    const namePart = `${record.lastName || ''}-${record.firstName || ''}`
+      .trim()
+      .replace(/[\\/:*?"<>|\s]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'registration';
+    doc.save(`formulyar-${namePart}.pdf`);
   },
 
   async downloadTextbookOrder(order) {

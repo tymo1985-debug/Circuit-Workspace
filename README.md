@@ -15,8 +15,8 @@ circuit-workspace/
 │   ├── version.js           ← единственный источник версии хаба
 │   └── brand/icon-source.svg
 ├── congress-project/         ← Конгрессы, v4.18.1
-├── circuit-planner/          ← Клиндарий, v9.56.1
-└── pioneer-school/            ← Школа пионеров, v1.3.2
+├── circuit-planner/          ← Клиндарий, v9.56.2
+└── pioneer-school/            ← Школа пионеров, v1.4.0
 ```
 
 ## Статус модулей
@@ -24,8 +24,8 @@ circuit-workspace/
 | Модуль | Версия | Источник (GitHub) | Статус |
 |---|---|---|---|
 | Congress Project | v4.18.1 (ES-модули) | `tymo1985-debug/Assembly-Programm-` | Работает, встроен в хаб |
-| Клиндарий | v9.56.1 | `tymo1985-debug/Circuit-Planner` | Работает, встроен в хаб |
-| Школа пионеров | v1.3.2 | `tymo1985-debug/Pioneer-School-Workspace` | Работает, встроен в хаб |
+| Клиндарий | v9.56.2 | `tymo1985-debug/Circuit-Planner` | Работает, встроен в хаб |
+| Школа пионеров | v1.4.0 | `tymo1985-debug/Pioneer-School-Workspace` | Работает, встроен в хаб |
 
 Хаб при каждой сборке сверяется с этими тремя репозиториями как источниками актуальной версии каждого модуля.
 
