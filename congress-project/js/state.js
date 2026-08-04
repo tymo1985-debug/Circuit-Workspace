@@ -5,6 +5,7 @@ import { render } from "./render.js";
 import { clean, clone, id, isSection, noAssignmentNeeded } from "./utils.js";
 
 export const KEY="congress-pwa-v34-speakers",BACKUP_KEY=KEY+"-backups";
+export const STATUSES=["Не назначено","Назначено","Ожидает ответа","Подтверждено","Нужно письмо","Письмо отправлено","Запись получена","Готово"];
 export const BASE_TYPES=["Пункт програми","Промова","Інтерв’ю","Показ","Демонстрація","Музика","Пісня і молитва","Оголошення","Серія промов","Раздел"],BASE_KINDS=["інтерв’ю","показ","демонстрація"];
 export let store={st:{congresses:[],activeId:null,settings:null,series:[]},sel:null,editId:null,previewId:null,listMode:"groups",templateMode:"default",deferredPrompt:null,pendingPrintHTML:"",pendingPrintFilename:"",printTitleBackup:null,lastSavedAt:null};
 export function baseSettings(){return{language:"uk",font:"Arial, Helvetica, sans-serif",fontSize:"17",stageRehearsalDate:"",stageRehearsalTime:"",recordingDeadline:"",responseDeadline:"2025-08-18",senderName:"Олексій Тимощук",senderCode:"EU-K-01",senderEmail:"tymoshchuk@jwpub.org",senderPhone1:"+48 886 260 883",senderPhone2:"+49 1573 62 69 572 (WhatsApp)",senderAddress:"Przejazd 2,\n05-082 Blizne Łaszczyńskiego",templates:clone(DEFAULT_TEMPLATES),templatesByType:{},congregations:["EU-K-01","SZ Warszawa","Warszawa-Ukraiński-Południe (19588)","Warszawa-Ukraiński-Północ (9610)"],speakers:["Олексій Тимощук","Якуб Ульфік","Филип Казіродек"],speakerProfiles:[],assignmentTypes:BASE_TYPES.slice(),assignmentKinds:BASE_KINDS.slice()}}
