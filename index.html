@@ -227,7 +227,7 @@
     </div>
     <div class="cw-grid" id="moduleGrid">
 
-      <a class="cw-tile-link" href="congress-project/index.html">
+      <a class="cw-tile-link" href="congress-project/index.html" data-module="congress-project">
         <article class="cw-card cw-tile">
           <div class="cw-tile__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="1.6"><path d="M4 4h16v12H4z"/><path d="M8 20h8M9 16v4M15 16v4"/></svg>
@@ -235,12 +235,12 @@
           <h2>Конгрессы</h2>
           <p>Программа конгрессов, распределение заданий по участникам и генерация писем в PDF.</p>
           <div class="cw-tile__footer">
-            <span class="cw-badge cw-badge--live">● работает · v4.17</span>
+            <span class="cw-badge cw-badge--live" data-module-badge>● работает</span>
           </div>
         </article>
       </a>
 
-      <a class="cw-tile-link" href="circuit-planner/index.html">
+      <a class="cw-tile-link" href="circuit-planner/index.html" data-module="circuit-planner">
         <article class="cw-card cw-tile">
           <div class="cw-tile__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
@@ -248,12 +248,12 @@
           <h2>Клиндарий</h2>
           <p>Календарь служебного года: недели, приоритеты, посещения, формуляры S-302 и печать PDF.</p>
           <div class="cw-tile__footer">
-            <span class="cw-badge cw-badge--live">● работает · v9.56.0</span>
+            <span class="cw-badge cw-badge--live" data-module-badge>● работает</span>
           </div>
         </article>
       </a>
 
-      <a class="cw-tile-link" href="pioneer-school/index.html">
+      <a class="cw-tile-link" href="pioneer-school/index.html" data-module="pioneer-school">
         <article class="cw-card cw-tile">
           <div class="cw-tile__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="1.6"><path d="M12 3l9 5v8l-9 5-9-5V8z"/><path d="M12 12v9M3 8l9 4 9-4"/></svg>
@@ -261,7 +261,7 @@
           <h2>Школа пионеров</h2>
           <p>Анкеты, назначения, учащиеся и классы, расчёт учебников, расписание уроков, S-253 и импорт/экспорт списков.</p>
           <div class="cw-tile__footer">
-            <span class="cw-badge cw-badge--live">● работает · v1.3.1</span>
+            <span class="cw-badge cw-badge--live" data-module-badge>● работает</span>
           </div>
         </article>
       </a>
@@ -281,6 +281,18 @@
   // Версия хаба — единственный источник: shared/version.js. Никогда не хардкодим
   // номер версии в разметке, чтобы он не мог "отстать" при очередном обновлении.
   document.getElementById('hubVersion').textContent = 'v' + self.CW_VERSION;
+
+  // Версии модулей — тоже из shared/version.js (self.CW_MODULES), а не из
+  // разметки: раньше номер на плитке приходилось править вручную, и он отставал
+  // от реальной версии модуля. Если версии в реестре нет — бейдж просто
+  // остаётся без номера, а не показывает неверный.
+  Object.keys(self.CW_MODULES || {}).forEach(function (key) {
+    var tile = document.querySelector('[data-module="' + key + '"]');
+    if (!tile) return;
+    var badge = tile.querySelector('[data-module-badge]');
+    var version = self.CW_MODULES[key].version;
+    if (badge && version) badge.textContent = '● работает · v' + version;
+  });
 
   // Инициализируем общую БД заранее, чтобы модули, подключающие CWDB,
   // не ждали первого открытия соединения.

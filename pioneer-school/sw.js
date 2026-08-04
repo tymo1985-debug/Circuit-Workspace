@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -9,6 +9,7 @@ const ASSETS = [
   './register.html',
   './manifest.json',
   './css/styles.css',
+  './icons/favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   // Общий слой (стили + шрифты). Особенно важно здесь: раньше модуль тянул

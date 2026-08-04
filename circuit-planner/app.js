@@ -13,7 +13,7 @@
 
   const I18N = {
     ru: {
-      appTitle: 'Service Year Planner',
+      appTitle: 'Клиндарий',
       nav_calendar: 'Календарь', nav_weeks: 'Недели', nav_events: 'Собрания и события', nav_notes: 'Заметки', nav_settings: 'Настройки',
       screen_calendar: 'Календарь', screen_weeks: 'Недели', screen_events: 'Собрания и события', screen_notes: 'Заметки', screen_settings: 'Настройки',
       subtitle_calendar: 'Обзор месяца и собраний по служебному году.',
@@ -99,7 +99,7 @@
       visits_schedule: 'График посещений (для КС)'
     },
     en: {
-      appTitle: 'Service Year Planner',
+      appTitle: 'Klindarium',
       nav_calendar: 'Calendar', nav_weeks: 'Weeks', nav_events: 'Meetings', nav_notes: 'Notes', nav_settings: 'Settings',
       screen_calendar: 'Calendar', screen_weeks: 'Weeks', screen_events: 'Meetings', screen_notes: 'Notes', screen_settings: 'Settings',
       subtitle_calendar: 'Month overview and events for the service year.', subtitle_weeks: 'Weekly planning, notes and priorities.', subtitle_events: 'Meetings, hall addresses and schedules.', subtitle_notes: 'Search and review all weekly notes.', subtitle_settings: 'Theme, language, export, import and year management.',
@@ -137,7 +137,7 @@
       visits_schedule: 'Visit schedule (for CO)'
     },
     uk: {
-      appTitle: 'Service Year Planner',
+      appTitle: 'Кліндарій',
       nav_calendar: 'Календар', nav_weeks: 'Тижні', nav_events: 'Зібрання', nav_notes: 'Нотатки', nav_settings: 'Налаштування',
       screen_calendar: 'Календар', screen_weeks: 'Тижні', screen_events: 'Зібрання', screen_notes: 'Нотатки', screen_settings: 'Налаштування',
       subtitle_calendar: 'Огляд місяця та подій службового року.', subtitle_weeks: 'Тижневе планування, нотатки та пріоритети.', subtitle_events: 'Зібрання, адреси залів і розклад.', subtitle_notes: 'Пошук і перегляд усіх тижневих нотаток.', subtitle_settings: 'Тема, мова, експорт, імпорт і керування роками.',
@@ -175,7 +175,7 @@
       visits_schedule: 'Графік відвідувань (для КН)'
     },
     pl: {
-      appTitle: 'Service Year Planner',
+      appTitle: 'Klindarium',
       nav_calendar: 'Kalendarz', nav_weeks: 'Tygodnie', nav_events: 'Zebrania', nav_notes: 'Notatki', nav_settings: 'Ustawienia',
       screen_calendar: 'Kalendarz', screen_weeks: 'Tygodnie', screen_events: 'Zebrania', screen_notes: 'Notatki', screen_settings: 'Ustawienia',
       subtitle_calendar: 'Przegląd miesiąca i wydarzeń roku służbowego.', subtitle_weeks: 'Planowanie tygodnia, notatki i priorytety.', subtitle_events: 'Zebrania, adresy sal i harmonogramy.', subtitle_notes: 'Wyszukiwanie i przegląd wszystkich notatek tygodniowych.', subtitle_settings: 'Motyw, język, eksport, import i zarządzanie latami.',
@@ -341,7 +341,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.56.0',
+      version: '9.56.1',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1246,10 +1246,10 @@
         const qa = (sel) => Array.from(document.querySelectorAll(sel));
         this.localizeColorOptions();
         const brandH1 = q('.brand h1'); if (brandH1) brandH1.textContent = App.utils.t('appTitle');
-        const brandP = q('.brand p'); if (brandP) brandP.textContent = `v${App.config.version} • index.html + app.js`;
+        const brandP = q('.brand p'); if (brandP) brandP.textContent = `v${App.config.version} • Circuit Workspace`;
         const versionBadge = q('.version-badge'); if (versionBadge) versionBadge.textContent = `${App.utils.t('version')}: v${App.config.version}`;
         // Keep the tab title in sync with the single source of truth instead of hardcoding it in index.html.
-        document.title = `Service Year Planner v${App.config.version}`;
+        document.title = `${App.utils.t('appTitle')} v${App.config.version}`;
         if (App.els.themeBtn) App.els.themeBtn.textContent = App.utils.t('theme');
         if (App.els.exportBtn) App.els.exportBtn.textContent = App.utils.t('export');
         if (App.els.syncTitle) App.els.syncTitle.textContent = App.utils.t('sync_title');

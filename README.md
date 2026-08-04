@@ -14,18 +14,18 @@ circuit-workspace/
 │   ├── nav.js               ← плавающая кнопка «На главную» для всех модулей
 │   ├── version.js           ← единственный источник версии хаба
 │   └── brand/icon-source.svg
-├── congress-project/         ← Конгрессы, v4.17
-├── circuit-planner/          ← Клиндарий, v9.56.0
-└── pioneer-school/            ← Школа пионеров, v1.3.1
+├── congress-project/         ← Конгрессы, v4.18.1
+├── circuit-planner/          ← Клиндарий, v9.56.1
+└── pioneer-school/            ← Школа пионеров, v1.3.2
 ```
 
 ## Статус модулей
 
 | Модуль | Версия | Источник (GitHub) | Статус |
 |---|---|---|---|
-| Congress Project | v4.17 (ES-модули) | `tymo1985-debug/Assembly-Programm-` | Работает, встроен в хаб |
-| Клиндарий | v9.56.0 | `tymo1985-debug/Circuit-Planner` | Работает, встроен в хаб |
-| Школа пионеров | v1.3.1 | `tymo1985-debug/Pioneer-School-Workspace` | Работает, встроен в хаб |
+| Congress Project | v4.18.1 (ES-модули) | `tymo1985-debug/Assembly-Programm-` | Работает, встроен в хаб |
+| Клиндарий | v9.56.1 | `tymo1985-debug/Circuit-Planner` | Работает, встроен в хаб |
+| Школа пионеров | v1.3.2 | `tymo1985-debug/Pioneer-School-Workspace` | Работает, встроен в хаб |
 
 Хаб при каждой сборке сверяется с этими тремя репозиториями как источниками актуальной версии каждого модуля.
 
@@ -33,9 +33,14 @@ circuit-workspace/
 
 GitHub Pages: включить в настройках репозитория (Settings → Pages → Deploy from branch → `main` / root). Один URL на весь хаб — модули открываются как подпапки того же сайта.
 
-## Версионирование хаба
+## Версионирование
 
-Версия оболочки хаба (не модулей) хранится в одном месте — `shared/version.js`. При обновлении меняйте только эту строку: она автоматически отображается в шапке и обновляет кэш service worker'а.
+`shared/version.js` — единственный источник версий на стороне хаба:
+
+- `CW_VERSION` — версия оболочки хаба. Отображается в шапке и формирует имя кэша service worker'а, поэтому при любой правке файлов хаба её нужно поднимать.
+- `CW_MODULES` — версии модулей, которые показываются на плитках. В `index.html` номеров версий нет вообще.
+
+**Чек-лист выпуска модуля:** поднять версию внутри модуля (`congress-project/service-worker.js` → `APP_VERSION`, `circuit-planner/app.js` → `App.config.version`, `pioneer-school/js/app.js` + `sw.js` → `APP_VERSION`) → обновить ту же версию в `CW_MODULES` → поднять `CW_VERSION`.
 
 ## Правила разработки
 

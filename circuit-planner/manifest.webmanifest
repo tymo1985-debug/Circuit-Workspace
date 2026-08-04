@@ -1,6 +1,6 @@
 {
-  "name": "Service Year Planner",
-  "short_name": "SY Planner",
+  "name": "Клиндарий — планировщик служебного года",
+  "short_name": "Клиндарий",
   "description": "Планировщик служебного года. Работает офлайн, хранит данные локально.",
   "lang": "ru",
   "id": "./",
@@ -12,8 +12,8 @@
     "minimal-ui"
   ],
   "orientation": "any",
-  "theme_color": "#14532d",
-  "background_color": "#f4f7f5",
+  "theme_color": "#6a45c9",
+  "background_color": "#fffbff",
   "categories": [
     "productivity",
     "utilities"
