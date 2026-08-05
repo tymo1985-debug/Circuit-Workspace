@@ -341,7 +341,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.56.2',
+      version: '9.57.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1326,7 +1326,17 @@
           if (App.els.exportConfirmBtn) App.els.exportConfirmBtn.textContent = App.utils.t('download');
         }
         if (App.els.languageSelect) {
-          const opts = App.els.languageSelect.options; if (opts[0]) opts[0].textContent = 'Русский'; if (opts[1]) opts[1].textContent = 'English'; if (opts[2]) opts[2].textContent = 'Українська'; if (opts[3]) opts[3].textContent = 'Polski';
+          // Раньше подписи ставились по индексу (opts[0..3]) — добавление
+          // опции «Как в Circuit Workspace» сдвинуло бы их все. Теперь
+          // сопоставление идёт по value и от порядка не зависит.
+          const NATIVE = { ru: 'Русский', en: 'English', uk: 'Українська', pl: 'Polski' };
+          Array.from(App.els.languageSelect.options).forEach((opt) => {
+            if (opt.value === App.i18nBridge.HUB_VALUE) {
+              opt.textContent = App.i18nBridge.ready() ? CWI18n.t('common.language_inherit') : 'Как в Circuit Workspace';
+            } else if (NATIVE[opt.value]) {
+              opt.textContent = NATIVE[opt.value];
+            }
+          });
         }
         if (App.els.themeSelect) {
           const opts = App.els.themeSelect.options; if (opts[0]) opts[0].textContent = App.utils.t('theme_light'); if (opts[1]) opts[1].textContent = App.utils.t('theme_dark');
@@ -3274,7 +3284,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.state.app.settings.language || 'ru'; if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.state.app.settings['letterTemplate' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_TEMPLATE_HTML; this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.state.app.settings['emailBody' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_EMAIL_BODY_TEMPLATES[App.state.letterEditingType || 'Congregation']; if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.state.app.settings['letterSalutation' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_SALUTATIONS[App.state.letterEditingType || 'Congregation']; if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = App.state.app.settings.senderName || ''; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = App.state.app.settings.senderAddress || ''; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = App.state.app.settings.senderPhone || ''; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = App.state.app.settings.senderEmail || ''; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = `📍 Координаты сохранены (${App.state.app.settings.homeLat.toFixed(3)}, ${App.state.app.settings.homeLng.toFixed(3)})`; if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.state.app.settings['letterTemplate' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_TEMPLATE_HTML; this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.state.app.settings['emailBody' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_EMAIL_BODY_TEMPLATES[App.state.letterEditingType || 'Congregation']; if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.state.app.settings['letterSalutation' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_SALUTATIONS[App.state.letterEditingType || 'Congregation']; if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = App.state.app.settings.senderName || ''; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = App.state.app.settings.senderAddress || ''; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = App.state.app.settings.senderPhone || ''; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = App.state.app.settings.senderEmail || ''; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = `📍 Координаты сохранены (${App.state.app.settings.homeLat.toFixed(3)}, ${App.state.app.settings.homeLng.toFixed(3)})`; if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
       closeMobileMenu() {
         if (App.els.appRoot) App.els.appRoot.classList.remove('menu-open');
         if (App.els.mobileOverlay) {
@@ -3318,7 +3328,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.themeSelect?.addEventListener('change', (e) => { App.state.app.settings.theme = e.target.value; App.store.save(); App.ui.renderAll(); });
       App.els.accentSelect?.addEventListener('change', (e) => { App.state.app.settings.accentColor = e.target.value; App.store.save(); App.ui.applyAccent(); });
       App.els.fontSizeSelect?.addEventListener('change', (e) => { App.state.app.settings.fontSize = e.target.value; App.store.save(); App.ui.applyFontSize(); });
-      App.els.languageSelect?.addEventListener('change', (e) => { App.state.app.settings.language = e.target.value; App.store.save(); App.ui.renderAll(); });
+      App.els.languageSelect?.addEventListener('change', (e) => { App.i18nBridge.choose(e.target.value); });
       App.els.layoutPresetSelect?.addEventListener('change', (e) => { App.state.app.settings.layoutPreset = e.target.value; App.store.save(); App.ui.renderAll(); });
       App.els.calendarLayoutPresetSelect?.addEventListener('change', (e) => { App.state.app.settings.layoutPreset = e.target.value; App.store.save(); App.ui.renderAll(); });
       App.els.prevMonthBtn?.addEventListener('click', () => { if (App.state.calendarView === 'year') { const sy = App.utils.getServiceYearForDate(new Date(App.state.calendarYear, App.state.calendarMonth, 1)) - 1; App.state.calendarYear = sy; App.state.calendarMonth = App.config.serviceYearStartMonth; App.ui.renderCalendar(); return; } const date = new Date(App.state.calendarYear, App.state.calendarMonth - 1, 1); App.state.calendarMonth = date.getMonth(); App.state.calendarYear = date.getFullYear(); App.ui.renderCalendar(); });
@@ -3605,9 +3615,97 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { App.ui.hideDayPopover(true); App.ui.closeCalendarEditor(); App.ui.closeModal(App.els.eventEditorModal); App.ui.closeModal(App.els.visitFormModal); App.ui.closeLetterModal(); App.ui.closeModal(App.els.historyModal); App.actions.closePdf(); if (App.els.exportModal) App.els.exportModal.hidden = true; App.ui.closeMobileMenu(); } });
     },
 
+    /* --- Мост к общей локализации хаба (shared/i18n.js) --------------------
+       Модуль ПРОДОЛЖАЕТ хранить свой язык там же, где хранил всегда —
+       в App.state.app.settings.language внутри собственного блоба данных.
+       Мост лишь синхронизирует его с общим ключом 'cw-lang:circuit-planner'
+       и языком хаба 'cw-lang'.
+
+       Почему так, а не «просто читать язык хаба»: отличить «пользователь
+       осознанно выбрал русский» от «русский стоял по умолчанию» в старых
+       данных невозможно. Поэтому при первом запуске после обновления
+       существующая установка ЗАСЕИВАЕТ свой текущий язык как локальный
+       выбор — пользователь не увидит вообще никаких изменений. Наследование
+       от хаба включается только для новых установок и для тех, кто сам
+       выберет «Как в Circuit Workspace».
+
+       Немецкого интерфейса у модуля нет (словари I18N — ru/uk/en/pl), поэтому
+       язык хаба 'de' отображается на ближайший доступный 'en'. Когда в модуле
+       появятся немецкие словари, достаточно добавить 'de' в SUPPORTED. */
+    i18nBridge: {
+      MODULE: 'circuit-planner',
+      HUB_VALUE: '__hub',
+      SUPPORTED: ['ru', 'uk', 'en', 'pl'],
+      NEAREST: { de: 'en' },
+      _busy: false,
+
+      // shared/i18n.js может быть не подключён (например, модуль открыт
+      // отдельно от монорепо) — тогда всё работает ровно как раньше.
+      ready() { return typeof CWI18n !== 'undefined'; },
+
+      toSupported(lang) {
+        const code = this.NEAREST[lang] || lang;
+        return this.SUPPORTED.includes(code) ? code : 'ru';
+      },
+
+      adopt() {
+        if (!this.ready()) return;
+        // apply:false — разметка модуля пока без data-i18n, перевод делает
+        // собственный renderAll(); от общего слоя нужно только разрешение языка.
+        CWI18n.init({ module: this.MODULE, apply: false });
+        const settings = App.state.app.settings;
+        const hadSavedData = !!App.store.lastWrittenPayload;
+
+        if (!CWI18n.isInherited()) {
+          settings.language = this.toSupported(CWI18n.getLang());
+        } else if (hadSavedData) {
+          CWI18n.setLang(settings.language || 'ru', { scope: 'module' });
+        } else {
+          settings.language = this.toSupported(CWI18n.getHubLang());
+        }
+        document.documentElement.lang = settings.language;
+
+        // Сменили язык в хабе в соседней вкладке — модуль без своего выбора
+        // должен перестроиться сам.
+        CWI18n.onChange(() => {
+          if (this._busy || !CWI18n.isInherited()) return;
+          const next = this.toSupported(CWI18n.getLang());
+          if (next === App.state.app.settings.language) return;
+          App.state.app.settings.language = next;
+          document.documentElement.lang = next;
+          App.store.save();
+          App.ui.renderAll();
+        });
+      },
+
+      // Выбор в селекте настроек: конкретный язык или «как в хабе».
+      choose(value) {
+        const settings = App.state.app.settings;
+        this._busy = true;
+        try {
+          if (value === this.HUB_VALUE) {
+            if (this.ready()) { CWI18n.resetToHub(); settings.language = this.toSupported(CWI18n.getLang()); }
+          } else {
+            settings.language = value;
+            if (this.ready()) CWI18n.setLang(value, { scope: 'module' });
+          }
+        } finally { this._busy = false; }
+        document.documentElement.lang = settings.language;
+        App.store.save();
+        App.ui.renderAll();
+      },
+
+      selectValue() {
+        return (this.ready() && CWI18n.isInherited()) ? this.HUB_VALUE : (App.state.app.settings.language || 'ru');
+      },
+    },
+
     init() {
       this.ui.cacheElements();
       this.store.load();
+      // Сразу после load(): язык нужен раньше первого renderAll(), а
+      // store.lastWrittenPayload здесь ещё показывает, была ли установка новой.
+      this.i18nBridge.adopt();
       const currentSY = this.utils.getServiceYearForDate(new Date());
       this.data.ensureServiceYear(currentSY);
       this.data.getWeeksForYear(currentSY);

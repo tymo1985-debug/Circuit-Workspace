@@ -229,6 +229,10 @@ body::before{display:none !important}
 @media (max-width:680px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
 </style>
 <link rel="stylesheet" href="../shared/style.css">
+<!-- Общий слой локализации. Подключается синхронно и ДО app.js (он с defer),
+     чтобы мост App.i18nBridge застал CWI18n готовым. -->
+<script src="../shared/i18n.js"></script>
+<script src="../shared/i18n/common.js"></script>
 </head>
 <body class="cw-has-bottom-nav">
   <div class="app" id="appRoot">
@@ -317,7 +321,7 @@ body::before{display:none !important}
         </div>
 
         <div class="settings-panel" id="settingsPanelAppearance">
-          <div class="md-card"><h3>Внешний вид</h3><div class="form-grid"><div><label class="small">Язык</label><select id="languageSelect"><option value="ru">Русский</option><option value="en">English</option><option value="uk">Українська</option><option value="pl">Polski</option></select></div><div><label class="small">Тема</label><select id="themeSelect"><option value="light">Светлая</option><option value="dark">Тёмная</option></select></div>
+          <div class="md-card"><h3>Внешний вид</h3><div class="form-grid"><div><label class="small">Язык</label><select id="languageSelect"><option value="__hub">Как в Circuit Workspace</option><option value="ru">Русский</option><option value="en">English</option><option value="uk">Українська</option><option value="pl">Polski</option></select></div><div><label class="small">Тема</label><select id="themeSelect"><option value="light">Светлая</option><option value="dark">Тёмная</option></select></div>
 <div>
 <label class="small">Цвет интерфейса</label>
 <select id="accentSelect">

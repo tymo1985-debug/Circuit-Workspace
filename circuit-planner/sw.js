@@ -23,6 +23,10 @@ const APP_SHELL_URLS = [
   // т.к. index.html ссылается на ../shared/style.css.
   '../shared/style.css',
   '../shared/nav.js',
+  // Локализация: скрипты синхронные и в <head>, без них офлайн-запуск
+  // модуля упал бы на CWI18n undefined ещё до отрисовки.
+  '../shared/i18n.js',
+  '../shared/i18n/common.js',
   '../shared/fonts/roboto-latin-400-normal.woff2',
   '../shared/fonts/roboto-latin-500-normal.woff2',
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
