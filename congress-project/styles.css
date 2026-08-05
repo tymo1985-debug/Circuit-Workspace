@@ -17,3 +17,16 @@
 .program-table td.actions-cell::before{display:none}
 .program-table .primary-row{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.topbar h1{font-size:16px}.program-table td::before{font-size:9.5px}.actgrid,.primary-row{gap:3px}.tiny{padding:5px 6px;font-size:11px}.modal-actions{flex-direction:column;align-items:stretch}}@media print{.topbar,.layout,dialog::backdrop,.modal-head,.error-box,#planMeasure{display:none!important}dialog[open]{display:none!important}body{background:#fff}#printArea{display:block!important}.letter-page{box-shadow:none!important;margin:0 auto!important;width:auto!important;min-height:auto!important;padding:0!important;page-break-after:always}.letter-page:last-child{page-break-after:auto}.letter-page+.letter-page{page-break-before:always}#printArea .planPrint{padding:0}.planTable{font-size:9.5pt}.planHead h1{font-size:16pt}}
+
+/* --- Переключатель языка интерфейса в шапке (js/i18n.js) ---
+   Язык ПИСЕМ задаётся отдельно, в настройках письма: это разные вещи, и
+   селекты намеренно стоят в разных местах, чтобы их не путали. */
+.ui-lang{display:inline-flex;align-items:center}
+.ui-lang select{
+  height:36px;padding:0 8px;border:1px solid var(--line,#d9d9e3);border-radius:8px;
+  background:var(--card,#fff);color:inherit;font:inherit;font-size:14px;cursor:pointer;
+}
+.ui-lang select:hover{border-color:var(--accent,#6a45c9)}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.module-version{margin:0;color:var(--muted,#6b6b7b);font-size:12px}
+@media print{.ui-lang{display:none!important}}

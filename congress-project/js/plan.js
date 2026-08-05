@@ -1,5 +1,6 @@
 // Auto-generated module: plan.js
 import { $, $$ } from "./dom.js";
+import { t } from "./i18n.js";
 import { printFilename } from "./letters.js";
 import { printWithOrientation } from "./printing.js";
 import { A } from "./state.js";
@@ -28,7 +29,7 @@ function doPrintPlan(html,orientation,lv,extra){
 
 export function printSelectedPlan(){
   let cols=$$("#printColumnsBox input:checked").map(x=>x.value);
-  if(!cols.length)return alert("Выберите колонку");
+  if(!cols.length)return alert(t("cong.alert.column_required"));
   let orientation=$("#planOrientation").value;
   $("#printColumnsDialog").close();
   let html=planHTML(cols);
@@ -42,11 +43,11 @@ export function printSelectedPlan(){
   let altFit=fitPlan(html,alt);
   pending={html,orientation,fit,alt,altFit};
   let pct=Math.round((fit.overflow-1)*100);
-  let msg=`План не помещается на одну страницу даже при минимально допустимых размерах (шрифт ${fit.level.font}pt, поля ${fit.level.pageMargin}мм). Содержимое превышает страницу примерно на ${pct}%. Дальнейшее уменьшение сделает документ трудночитаемым, поэтому выберите, как поступить.`;
+  let msg=t("cong.fit.overflow",{font:fit.level.font,margin:fit.level.pageMargin,percent:pct});
   let rotBtn=$("#planFitRotateBtn");
   if(altFit.fits){
-    msg+=` Проще всего сменить ориентацию: ${alt==="landscape"?"горизонтально":"вертикально"} план помещается целиком и без потерь, шрифт ${altFit.level.font}pt.`;
-    rotBtn.querySelector("span").textContent=alt==="landscape"?"Печатать горизонтально":"Печатать вертикально";
+    msg+=t("cong.fit.rotate_hint",{orientation:t(alt==="landscape"?"cong.fit.landscape":"cong.fit.portrait"),font:altFit.level.font});
+    rotBtn.querySelector("span").textContent=t(alt==="landscape"?"cong.fit.print_landscape":"cong.fit.print_portrait");
     rotBtn.classList.remove("hidden");
   }else rotBtn.classList.add("hidden");
   $("#planFitInfo").textContent=msg;
@@ -72,7 +73,7 @@ export function planFitZoom(){
   let k=fitByZoom(html,orientation,fit.level);
   let effFont=fit.level.font*k;
   // честно предупреждаем, если ради одной страницы текст придётся сделать нечитаемым
-  if(k<0.7&&!confirm(`Чтобы уместить план на одной странице, масштаб придётся уменьшить до ${Math.round(k*100)}%. Шрифт станет примерно ${effFont.toFixed(1)}pt — это очень мелко и почти нечитаемо. Всё равно продолжить?`))return;
+  if(k<0.7&&!confirm(t("cong.fit.too_small",{percent:Math.round(k*100),font:effFont.toFixed(1)})))return;
   $("#planFitDialog").close();
   doPrintPlan(html,orientation,fit.level,planZoomCSS("#printArea",k));
   pending=null;
@@ -89,7 +90,7 @@ export function planFitTwoPages(){
   // раз вторая страница разрешена — печатаем максимально читаемым размером,
   // который укладывается в две страницы, а не минимальным
   let f=fitPlanPages(html,orientation,2);
-  if(!f.fits&&f.pagesNeeded>2)alert(`В читаемом размере план займёт ${f.pagesNeeded} стр.`);
+  if(!f.fits&&f.pagesNeeded>2)alert(t("cong.fit.pages_needed",{pages:f.pagesNeeded}));
   doPrintPlan(html,orientation,f.level);
   pending=null;
 }

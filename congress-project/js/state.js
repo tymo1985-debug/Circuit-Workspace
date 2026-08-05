@@ -3,6 +3,7 @@ import { $ } from "./dom.js";
 import { DEFAULT_TEMPLATES } from "./letters.js";
 import { render } from "./render.js";
 import { clean, clone, id, isSection, noAssignmentNeeded } from "./utils.js";
+import { t } from "./i18n.js";
 
 export const KEY="congress-pwa-v34-speakers",BACKUP_KEY=KEY+"-backups";
 export const STATUSES=["Не назначено","Назначено","Ожидает ответа","Подтверждено","Нужно письмо","Письмо отправлено","Запись получена","Готово"];
@@ -14,8 +15,8 @@ export function demo(){return[row({time:"9:30",title:"РАНКОВА ПРОГР�
 export function A(){return store.st.congresses.find(c=>c.id===store.st.activeId)}
 export function S(){if(!store.st.settings)store.st.settings=baseSettings();return store.st.settings}
 export function save(){localStorage.setItem(KEY,JSON.stringify(store.st));store.lastSavedAt=new Date();updateSaveStatus()}
-export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent="Сохранено "+store.lastSavedAt.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
-export function makeBackup(label){try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date().toISOString(),label:label||"Автокопия",data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,10)))}catch(e){}}
+export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
+export function makeBackup(label){try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date().toISOString(),label:label||t("cong.msg.autobackup"),data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,10)))}catch(e){}}
 export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.series))store.st.series=[];if(!s.templates)s.templates=b.templates;["uk","ru","de"].forEach(k=>{if(!s.templates[k])s.templates[k]=b.templates[k]});if(!s.templatesByType)s.templatesByType={};if(!s.font)s.font=b.font;if(!s.fontSize)s.fontSize=b.fontSize;if(!Array.isArray(s.congregations))s.congregations=b.congregations;if(!Array.isArray(s.speakers))s.speakers=b.speakers;if(!Array.isArray(s.speakerProfiles))s.speakerProfiles=[];if(!Array.isArray(s.assignmentTypes))s.assignmentTypes=b.assignmentTypes;if(!Array.isArray(s.assignmentKinds))s.assignmentKinds=b.assignmentKinds;(store.st.congresses||[]).forEach(c=>{if(c.theme==null)c.theme="";if(c.language==null)c.language="";if(c.notes==null)c.notes="";if(c.seriesId===undefined)c.seriesId=null;if(c.rehearsalDate===undefined)c.rehearsalDate=s.stageRehearsalDate||"";if(c.rehearsalTime===undefined)c.rehearsalTime=s.stageRehearsalTime||"";if(c.recordingDeadline===undefined)c.recordingDeadline=s.recordingDeadline||"";if(c.responseDeadline===undefined)c.responseDeadline=s.responseDeadline||"";(c.tasks||[]).forEach(t=>{if(t.recordingMedia==null)t.recordingMedia=s.recordingMedia||"аудіо";if(t.recordingKind==null)t.recordingKind=s.recordingKind||t.kind||"інтерв’ю";if(noAssignmentNeeded(t)){t.letterSent=false;t.letterSentDate="";t.status=""}else{if(!t.status)t.status=t.confirmed?"Подтверждено":"Не назначено";if(t.letterSent==null)t.letterSent=false;if(t.letterSentDate==null)t.letterSentDate=""}if(isSection(t))t.section=true})})}
 // Проверка формы объекта состояния ПЕРЕД тем, как заменить им рабочие данные.
 // Без неё импорт произвольного JSON заменял store.st мусором ещё до migrate();
@@ -23,6 +24,6 @@ export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.
 // записывало мусор в localStorage поверх реальных конгрессов.
 export function isValidState(x){return !!x&&typeof x==="object"&&!Array.isArray(x)&&Array.isArray(x.congresses)}
 export function addList(k,vals){let s=S();s[k]=clean((s[k]||[]).concat(vals||[]))}
-export function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(isValidState(x))store.st=x}catch{}migrate();if(!store.st.congresses.length)newC("Районный конгресс 2027 Стокгольм","SZ Warszawa","2026-11-07",demo());render();store.lastSavedAt=new Date();updateSaveStatus()}
+export function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(isValidState(x))store.st=x}catch{}migrate();if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());render();store.lastSavedAt=new Date();updateSaveStatus()}
 export function newC(n,p,d,t,seriesId,letterFields){let lf=letterFields||{};let c={id:id(),name:n,place:p||"",date:d||"",theme:"",language:"",notes:"",tasks:t||[],seriesId:seriesId||null,rehearsalDate:lf.rehearsalDate||"",rehearsalTime:lf.rehearsalTime||"",recordingDeadline:lf.recordingDeadline||"",responseDeadline:lf.responseDeadline||""};store.st.congresses.unshift(c);store.st.activeId=c.id;store.sel=c.tasks[0]?.id||null;save();return c}
 export function cloneTask(t,m){let n=clone(t);n.id=id();if(m==="emptyPeople"){n.participants=(n.participants||[]).map(()=>({name:"",congregation:""}));n.confirmed=false;n.rehearsal=false;n.notes="";n.letterSent=false;n.letterSentDate="";n.status="Не назначено"}return n}

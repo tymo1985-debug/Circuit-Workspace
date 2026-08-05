@@ -3,8 +3,9 @@ import { $ } from "./dom.js";
 import { renderLists } from "./render.js";
 import { S, addList, save, store } from "./state.js";
 import { clean, esc } from "./utils.js";
+import { t } from "./i18n.js";
 
-export function openList(mode){store.listMode=mode;let s=S(),map={groups:["congregations","Собрания / группы","group"],speakers:["speakers","Докладчики","speaker"],types:["assignmentTypes","Типы заданий","type"],kinds:["assignmentKinds","Виды задания","kind"]}[mode];$("#listTitle").textContent=map[1];$("#listHint").textContent="Одна строка — одно значение. Значения используются как подсказки.";$("#listEditor").value=clean(s[map[0]]).join("\n");renderListPreview();$("#listDialog").showModal()}
+export function openList(mode){store.listMode=mode;let s=S(),map={groups:["congregations",t("cong.btn.groups"),"group"],speakers:["speakers",t("cong.btn.speakers"),"speaker"],types:["assignmentTypes",t("cong.field.type"),"type"],kinds:["assignmentKinds",t("cong.field.interview_show"),"kind"]}[mode];$("#listTitle").textContent=map[1];$("#listHint").textContent=t("cong.hint.list_values");$("#listEditor").value=clean(s[map[0]]).join("\n");renderListPreview();$("#listDialog").showModal()}
 export function renderListPreview(){let a=clean($("#listEditor").value.split(/\n/));$("#listPreview").innerHTML=a.slice(0,60).map(x=>`<span class="chip">${esc(x)}</span>`).join("")}
 export function saveList(){let key={groups:"congregations",speakers:"speakers",types:"assignmentTypes",kinds:"assignmentKinds"}[store.listMode];S()[key]=clean($("#listEditor").value.split(/\n/));save();renderLists();$("#listDialog").close()}
 export function collectList(){let fld={groups:"group",speakers:"speaker",types:"type",kinds:"kind"}[store.listMode];let vals=[];store.st.congresses.forEach(c=>(c.tasks||[]).forEach(t=>{if(fld==="type"&&t.type)vals.push(t.type);if(fld==="kind"&&t.kind)vals.push(t.kind);(t.participants||[]).forEach(p=>{if(fld==="group"&&p.congregation)vals.push(p.congregation);if(fld==="speaker"&&p.name)vals.push(p.name)})}));$("#listEditor").value=clean($("#listEditor").value.split(/\n/).concat(vals)).join("\n");renderListPreview()}
