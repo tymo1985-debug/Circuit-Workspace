@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.58.0',
+      version: '9.59.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -157,7 +157,7 @@
         { id: 'settings', icon: '⚙️', tKey: 'nav_settings' }
       ],
       layoutPresets: [
-        { value: 'classic', label: 'Классический' }, { value: 'compact', label: 'Компактный' }, { value: 'spacious', label: 'Просторный' }
+        { value: 'classic', labelKey: 'layout_classic' }, { value: 'compact', labelKey: 'layout_compact' }, { value: 'spacious', labelKey: 'layout_spacious' }
       ],
       monthNames: {
         ru: ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
@@ -1025,7 +1025,7 @@
         const host = layoutSelect?.closest('div');
         if (!host?.parentNode) return;
         const wrap = document.createElement('div');
-        wrap.innerHTML = `<label class="small">Размер шрифта интерфейса</label><select id="fontSizeSelect"><option value="80">80% — Очень мелкий</option><option value="85">85% — Мелкий</option><option value="90">90% — Компактный</option><option value="95">95% — Чуть меньше</option><option value="100">100% — Обычный</option><option value="105">105% — Чуть больше</option><option value="110">110% — Крупный</option><option value="115">115% — Очень крупный</option><option value="120">120% — Максимальный</option><option value="125">125% — Огромный</option></select><div class="layout-help">Меняет размер текста, кнопок и календаря.</div>`;
+        wrap.innerHTML = `<label class="small" data-i18n="cp.font_size_label">Размер шрифта интерфейса</label><select id="fontSizeSelect"><option data-i18n="cp.fs_80" value="80">80% — Очень мелкий</option><option data-i18n="cp.fs_85" value="85">85% — Мелкий</option><option data-i18n="cp.fs_90" value="90">90% — Компактный</option><option data-i18n="cp.fs_95" value="95">95% — Чуть меньше</option><option data-i18n="cp.fs_100" value="100">100% — Обычный</option><option data-i18n="cp.fs_105" value="105">105% — Чуть больше</option><option data-i18n="cp.fs_110" value="110">110% — Крупный</option><option data-i18n="cp.fs_115" value="115">115% — Очень крупный</option><option data-i18n="cp.fs_120" value="120">120% — Максимальный</option><option data-i18n="cp.fs_125" value="125">125% — Огромный</option></select><div class="layout-help" data-i18n="cp.font_size_hint">Меняет размер текста, кнопок и календаря.</div>`;
         host.parentNode.insertBefore(wrap, host);
         App.els.fontSizeSelect = document.getElementById('fontSizeSelect');
       },
@@ -1051,6 +1051,11 @@
       },
       localizeStaticTexts() {
         document.documentElement.lang = App.utils.lang();
+        // Статическая разметка переводится по атрибутам data-i18n общим
+        // механизмом хаба. Язык передаём явно: у модуля свой (мост держит его
+        // в согласии с хабом), и для `de` он отображается на ближайший
+        // доступный — CWI18n.getLang() здесь дал бы не то.
+        if (typeof CWI18n !== 'undefined') CWI18n.apply(document, App.utils.lang());
         const q = (sel) => document.querySelector(sel);
         const qa = (sel) => Array.from(document.querySelectorAll(sel));
         this.localizeColorOptions();
@@ -1098,8 +1103,6 @@
           if (text.includes('Заметка недели') || text.includes('Week note') || text.includes('Нотатка тижня') || text.includes('Notatka tygodnia')) el.textContent = App.utils.t('week_note');
           if (text.includes('Фильтр события') || text.includes('Event filter') || text.includes('Фільтр події') || text.includes('Filtr wydarzeń')) el.textContent = App.utils.t('filter_event');
         });
-        const settingsTextP = qa('#settings p.small');
-        settingsTextP.forEach((p) => { if (p.textContent.includes('PDF')) p.textContent = App.utils.t('print_hint'); });
         const formLabels = qa('#calendarEditor span, #pdfModal h3, #exportModal h3');
         qa('#calendar .legend-chip').forEach((chip, index) => {
           chip.childNodes[1].textContent = index === 0 ? App.utils.t('event') : index === 1 ? App.utils.t('weekend') : App.utils.t('today_label');
@@ -1127,8 +1130,6 @@
           const h3 = App.els.exportModal.querySelector('h3'); if (h3) h3.textContent = App.utils.t('export_title');
           const sub = App.els.exportModal.querySelector('.modal-sub'); if (sub) sub.textContent = App.utils.t('export_sub');
           const h4 = App.els.exportModal.querySelector('.pdf-section h4'); if (h4) h4.textContent = App.utils.t('export');
-          const opts = App.els.exportModal.querySelectorAll('[data-export-type] strong'); if (opts[0]) opts[0].textContent = App.utils.t('json_backup'); if (opts[1]) opts[1].textContent = App.utils.t('ics_calendar');
-          const desc = App.els.exportModal.querySelectorAll('[data-export-type] span'); if (desc[0]) desc[0].textContent = App.utils.t('json_backup_desc'); if (desc[1]) desc[1].textContent = App.utils.t('ics_desc');
           if (App.els.exportRangeHelp) App.els.exportRangeHelp.textContent = App.utils.t('choose_range');
           const hint = App.els.exportModal.querySelector('.small[style*="margin-top:8px"]'); if (hint) hint.textContent = App.utils.t('google_hint');
           if (App.els.exportCancelBtn) App.els.exportCancelBtn.textContent = App.utils.t('close');
@@ -1146,9 +1147,6 @@
               opt.textContent = NATIVE[opt.value];
             }
           });
-        }
-        if (App.els.themeSelect) {
-          const opts = App.els.themeSelect.options; if (opts[0]) opts[0].textContent = App.utils.t('theme_light'); if (opts[1]) opts[1].textContent = App.utils.t('theme_dark');
         }
       },
       renderAll() {
@@ -1221,7 +1219,7 @@
       renderYearOptions() {
         const currentSY = App.utils.getServiceYearForDate(new Date()); App.data.ensureServiceYear(currentSY); App.data.getWeeksForYear(currentSY); const keys = Object.keys(App.state.app.serviceYears).map(Number).sort((a,b) => a - b); if (!keys.length) keys.push(currentSY); if (!keys.includes(App.state.selectedYear)) App.state.selectedYear = keys[keys.length - 1]; const options = keys.map((year) => `<option value="${year}">${App.utils.serviceYearLabel(year)}</option>`).join(''); if (App.els.yearSelect) { App.els.yearSelect.innerHTML = options; App.els.yearSelect.value = String(App.state.selectedYear); }
       },
-      renderLayoutOptions() { const options = App.config.layoutPresets.map((item) => `<option value="${item.value}">${item.label}</option>`).join(''); ['layoutPresetSelect','calendarLayoutPresetSelect'].forEach((id) => { const el = App.els[id]; if (!el) return; el.innerHTML = options; el.value = App.state.app.settings.layoutPreset; }); },
+      renderLayoutOptions() { const options = App.config.layoutPresets.map((item) => `<option value="${item.value}">${App.utils.escapeHtml(App.utils.t(item.labelKey))}</option>`).join(''); ['layoutPresetSelect','calendarLayoutPresetSelect'].forEach((id) => { const el = App.els[id]; if (!el) return; el.innerHTML = options; el.value = App.state.app.settings.layoutPreset; }); },
       applyAccent() {
         const palettes = {
           green:{accent:'#14532d',accent2:'#0d3d22',rgb:'20,83,45'},
@@ -2209,9 +2207,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.els.letterPagesList.innerHTML = pages.map((page, i) => `
           <div class="md-card" style="padding:14px;box-shadow:none;border:1px solid var(--line)" data-page-card="${App.utils.escapeAttr(page.id)}">
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-              <span class="small" style="white-space:nowrap">Стр. ${i + 2}:</span>
-              <input type="text" data-page-title="${App.utils.escapeAttr(page.id)}" value="${App.utils.escapeAttr(page.title || '')}" placeholder=App.utils.t('letter_page_title_ph') style="flex:1" />
-              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-page="${App.utils.escapeAttr(page.id)}" style="white-space:nowrap">Удалить страницу</button>
+              <span class="small" style="white-space:nowrap">${App.utils.escapeHtml(App.utils.t('page_no', { n: i + 2 }))}</span>
+              <input type="text" data-page-title="${App.utils.escapeAttr(page.id)}" value="${App.utils.escapeAttr(page.title || '')}" placeholder="${App.utils.escapeAttr(App.utils.t('letter_page_title_ph'))}" style="flex:1" />
+              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-page="${App.utils.escapeAttr(page.id)}" style="white-space:nowrap">${App.utils.escapeHtml(App.utils.t('delete_page'))}</button>
             </div>
             <div class="rte-editor" data-rte-page="${App.utils.escapeAttr(page.id)}" contenteditable="true">${page.html || ''}</div>
           </div>`).join('');
@@ -2366,14 +2364,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const ukDate = (d) => d.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
         const today = new Date();
         const rows = [
-          ['{congregation}', 'Название собрания/группы/предгруппы этого визита', 'Group Hamburg-Russian-West'],
-          ['{cong_number}', 'Номер собрания (поле «№ собрания» в карточке события, если заполнено)', '14761'],
-          ['{cong_number_suffix}', 'То же самое, но уже в скобках с пробелом впереди — удобно вставлять сразу после названия', ' (14761)'],
-          ['{start_date}', 'Дата начала визита (украинский формат)', ukDate(today)],
-          ['{end_date}', 'Дата окончания визита', ukDate(new Date(today.getTime() + 5 * 86400000))],
-          ['{today}', 'Сегодняшняя дата на момент составления письма', ukDate(today)],
-          ['{sender}', 'Твоё имя из поля «Ваше имя» выше', senderName],
-          ['{contact_name}', 'Имя ответственного/контакта из карточки собрания/группы (поле «Имя» в разделе «Контакт») — удобно для обращения в письме группе/предгруппе', 'Иван Петренко'],
+          ['{congregation}', App.utils.t('ph_congregation'), 'Group Hamburg-Russian-West'],
+          ['{cong_number}', App.utils.t('ph_cong_number'), '14761'],
+          ['{cong_number_suffix}', App.utils.t('ph_cong_number_suffix'), ' (14761)'],
+          ['{start_date}', App.utils.t('ph_start_date'), ukDate(today)],
+          ['{end_date}', App.utils.t('ph_end_date'), ukDate(new Date(today.getTime() + 5 * 86400000))],
+          ['{today}', App.utils.t('ph_today'), ukDate(today)],
+          ['{sender}', App.utils.t('ph_sender'), senderName],
+          ['{contact_name}', App.utils.t('ph_contact_name'), 'Иван Петренко'],
         ];
         App.els.placeholderRefBody.innerHTML = rows.map(([ph, desc, example]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap"><code>${App.utils.escapeHtml(ph)}</code></td><td style="padding:6px 8px;border-bottom:1px solid var(--line)">${App.utils.escapeHtml(desc)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--line);color:var(--muted)">${App.utils.escapeHtml(example)}</td></tr>`).join('');
       },
