@@ -232,6 +232,7 @@ body::before{display:none !important}
 <!-- Общий слой локализации. Подключается синхронно и ДО app.js (он с defer),
      чтобы мост App.i18nBridge застал CWI18n готовым. -->
 <script src="../shared/i18n.js"></script>
+<script src="../shared/sender.js"></script>
 <script src="../shared/i18n/common.js"></script>
 <!-- Словарь модуля: с фазы 5 он вынесен из app.js в общий слой (префикс cp.). -->
 <script src="i18n/dict.js"></script>

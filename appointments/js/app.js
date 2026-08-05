@@ -16,23 +16,25 @@
   var MODULE_ID = 'appointments';
   var STORE_KEY = 'cw-appointments-v1';
 
-  /* Ключ хранилища Конгрессов. Читаем строго на чтение и только поле
-     settings — модуль «Назначения» никогда не пишет в чужое хранилище. */
-  var CONGRESS_KEY = 'congress-pwa-v34-speakers';
+  /* Языки документа. Язык интерфейса сюда не заглядывает вообще — это две
+     независимые настройки (см. shared/doclang.js). Добавление языка = код
+     в этот список + строки doc.* в i18n/dict.js. */
+  var DOC_LANGS = ['uk', 'ru', 'de'];
 
-  /* Запасные данные отправителя — байт-в-байт те же значения, что в
-     congress-project/js/state.js → baseSettings(). Нужны только когда
-     Конгрессы на этом устройстве ещё ни разу не открывали. */
-  var SENDER_FALLBACK = {
-    senderName: 'Олексій Тимощук',
-    senderCode: 'EU-K-01',
-    senderEmail: 'tymoshchuk@jwpub.org',
-    senderPhone1: '+48 886 260 883',
-    senderPhone2: '+49 1573 62 69 572 (WhatsApp)',
-    senderAddress: 'Przejazd 2,\n05-082 Blizne Łaszczyńskiego',
+  /* Локаль форматирования даты для каждого языка документа. */
+  var DOC_LOCALE = { uk: 'uk-UA', ru: 'ru-RU', de: 'de-DE' };
+
+  /* Поля формы отправителя → поля общего слоя. Имена элементов разметки не
+     менялись, чтобы правка не разошлась по всему модулю. */
+  var SENDER_MAP = {
+    senderName: 'name',
+    senderCode: 'code',
+    senderAddress: 'address',
+    senderPhone1: 'phone1',
+    senderPhone2: 'phone2',
+    senderEmail: 'email',
   };
 
-  var SENDER_FIELDS = ['senderName', 'senderCode', 'senderEmail', 'senderPhone1', 'senderPhone2', 'senderAddress'];
   var LISTS = ['elders', 'servants', 'removed'];
 
   var $ = function (sel) { return document.querySelector(sel); };
@@ -49,8 +51,10 @@
       congregation: '',
       coordinator: '',
       coordinatorAddress: '',
-      senderFromCongress: true,
-      sender: {},
+      /* Названия собраний, которые уже вводили — подсказки в поле ввода.
+         Собственные данные модуля: раньше список тянулся из справочника
+         Конгрессов, то есть модуль читал чужое хранилище. */
+      knownCongregations: [],
       lists: { elders: [''], servants: [''], removed: [''] },
     };
   }
@@ -65,7 +69,7 @@
       if (!saved || typeof saved !== 'object') return;
       state = Object.assign(defaults(), saved);
       state.lists = Object.assign(defaults().lists, saved.lists || {});
-      state.sender = saved.sender || {};
+      if (!Array.isArray(state.knownCongregations)) state.knownCongregations = [];
     } catch (e) {
       console.warn('Назначения: сохранённые данные повреждены, начинаем с чистого листа', e);
     }
@@ -88,24 +92,13 @@
     }, 400);
   }
 
-  /* --- Данные отправителя ------------------------------------------- */
-  /* Единый источник — настройки Конгрессов: письма обоих модулей уходят от
-     одного человека, и расхождение в адресе или коде района означало бы два
-     разных документа от одного отправителя. */
-  function congressSettings() {
-    var raw = read(CONGRESS_KEY);
-    if (!raw) return null;
-    try {
-      var st = JSON.parse(raw);
-      return (st && st.settings) ? st.settings : null;
-    } catch (e) { return null; }
-  }
+  /* --- Данные отправителя ---------------------------------------------
+     Единственный источник — общий слой shared/sender.js. Модуль не знает и не
+     должен знать, какие ещё модули пишут туда же. */
+  var EMPTY_SENDER = { name: '', code: '', address: '', phone1: '', phone2: '', email: '' };
 
-  function effectiveSender() {
-    if (!state.senderFromCongress) {
-      return Object.assign({}, SENDER_FALLBACK, state.sender);
-    }
-    return Object.assign({}, SENDER_FALLBACK, congressSettings() || {});
+  function sender() {
+    return self.CWSender ? self.CWSender.get() : Object.assign({}, EMPTY_SENDER);
   }
 
   /* --- Отрисовка списков в панели ----------------------------------- */
@@ -155,14 +148,21 @@
   }
 
   /* --- Отрисовка письма --------------------------------------------- */
-  function ukDate(iso) {
+  function docLang() { return self.CWDocLang ? self.CWDocLang.get() : DOC_LANGS[0]; }
+
+  /** Строка документа: тот же словарь CWI18n, но на языке документа. */
+  function d(key, vars) {
+    return self.CWI18n ? self.CWI18n.t(key, vars, docLang()) : key;
+  }
+
+  function docDate(iso) {
     if (!iso) return '';
-    var d = new Date(iso);
-    if (isNaN(d)) return '';
-    /* Дата письма форматируется по-украински всегда — вместе с остальным
-       текстом документа, независимо от языка интерфейса. */
+    var date = new Date(iso);
+    if (isNaN(date)) return '';
+    /* Локаль берётся от языка документа: дата — часть бумаги, а не оболочки. */
     try {
-      return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+      return new Intl.DateTimeFormat(DOC_LOCALE[docLang()] || 'uk-UA',
+        { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
     } catch (e) { return iso; }
   }
 
@@ -187,22 +187,21 @@
   }
 
   function renderLetter() {
-    var sender = effectiveSender();
+    var sd = sender();
 
-    var senderLines = [
-      sender.senderName,
-      sender.senderCode,
-      sender.senderAddress,
-      sender.senderPhone1,
-      sender.senderPhone2,
-      sender.senderEmail,
-    ].filter(function (line) { return String(line || '').trim(); });
+    var senderLines = [sd.name, sd.code, sd.address, sd.phone1, sd.phone2, sd.email]
+      .filter(function (line) { return String(line || '').trim(); });
     $('#outSender').textContent = senderLines.join('\n');
 
-    $('#outDate').textContent = ukDate(state.date);
-    $('#outCong').textContent = state.congregation.trim() || '—';
+    /* Постоянные строки документа переводит CWDocLang.apply() по разметке;
+       здесь — только те, в которые подставляются данные. */
+    if (self.CWDocLang) self.CWDocLang.apply($('#letter'));
+    document.getElementById('letter').setAttribute('lang', docLang());
+
+    $('#outDate').textContent = docDate(state.date);
+    $('#outCong').textContent = d('doc.ap.congregation', { name: state.congregation.trim() || '—' });
     $('#outCoordinator').textContent = state.coordinator.trim()
-      ? 'ЧЕРЕЗ ' + state.coordinator.trim()
+      ? d('doc.ap.via', { name: state.coordinator.trim() })
       : '';
     $('#outCoordinatorAddress').textContent = state.coordinatorAddress.trim();
 
@@ -210,22 +209,19 @@
     fillNames('outServants', names('servants'));
     fillNames('outRemoved', names('removed'));
 
-    $('#outSignName').textContent = sender.senderName || '';
-    $('#outSignCode').textContent = sender.senderCode || '';
+    $('#outSignName').textContent = sd.name || '';
+    $('#outSignCode').textContent = sd.code || '';
   }
 
   /* --- Панель отправителя -------------------------------------------- */
   function renderSenderPanel() {
-    var sender = effectiveSender();
-    SENDER_FIELDS.forEach(function (id) {
+    var sd = sender();
+    Object.keys(SENDER_MAP).forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.value = sender[id] || '';
+      /* Не перетираем поле, в котором сейчас печатают: обновление может
+         прийти из другой вкладки или другого модуля. */
+      if (el && document.activeElement !== el) el.value = sd[SENDER_MAP[id]] || '';
     });
-    $('#senderFromCongress').checked = !!state.senderFromCongress;
-    $('#senderFields').classList.toggle('locked', !!state.senderFromCongress);
-    $('#senderSourceHint').textContent = state.senderFromCongress
-      ? (congressSettings() ? t('ap.sender.hint_linked') : t('ap.sender.hint_no_congress'))
-      : t('ap.sender.hint_local');
   }
 
   /* --- Имя файла при печати ------------------------------------------
@@ -240,8 +236,8 @@
     var appointed = names('elders').concat(names('servants')).map(sanitize).filter(Boolean);
     var removed = names('removed').map(sanitize).filter(Boolean);
     var parts = [];
-    if (appointed.length) parts.push('призначення – ' + appointed.join('; '));
-    if (removed.length) parts.push('викреслення – ' + removed.join('; '));
+    if (appointed.length) parts.push(d('doc.ap.print.appointed') + ' – ' + appointed.join('; '));
+    if (removed.length) parts.push(d('doc.ap.print.removed') + ' – ' + removed.join('; '));
     return parts.length ? parts.join('; ') : null;
   }
 
@@ -335,28 +331,32 @@
       });
     });
 
-    $('#senderFromCongress').addEventListener('change', function (e) {
-      /* Снимая связь, забираем текущие значения как отправную точку — иначе
-         поля обнулились бы до значений по умолчанию. Читать их нужно ДО
-         смены флага: после неё effectiveSender() уже смотрит в пустой
-         локальный набор, а не в настройки Конгрессов. */
-      var current = effectiveSender();
-      state.senderFromCongress = e.target.checked;
-      if (!state.senderFromCongress) state.sender = current;
-      renderSenderPanel();
-      renderLetter();
-      save();
+    /* Отправитель живёт в общем слое: пишем сразу туда, в состоянии модуля
+       его копии нет. Своё хранилище save() при этом не трогаем. */
+    Object.keys(SENDER_MAP).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || !self.CWSender) return;
+      el.addEventListener('input', function () {
+        var patch = {};
+        patch[SENDER_MAP[id]] = el.value;
+        self.CWSender.set(patch);
+      });
     });
 
-    SENDER_FIELDS.forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('input', function () {
-        if (state.senderFromCongress) return;
-        state.sender[id] = el.value;
-        renderLetter();
-        save();
-      });
+    /* Данные могли поменять в другом модуле или в соседней вкладке. */
+    if (self.CWSender) {
+      self.CWSender.onChange(function () { renderSenderPanel(); renderLetter(); });
+    }
+
+    /* Собрание запоминается в подсказки — но только когда его дописали до
+       конца, а не после каждой нажатой буквы. */
+    $('#congName').addEventListener('change', function () {
+      var name = $('#congName').value.trim();
+      if (!name || state.knownCongregations.indexOf(name) >= 0) return;
+      state.knownCongregations.push(name);
+      state.knownCongregations = state.knownCongregations.slice(-20);
+      fillCongregations();
+      save();
     });
 
     $('#printBtn').addEventListener('click', function () { window.print(); });
@@ -364,18 +364,46 @@
     window.addEventListener('afterprint', afterPrint);
   }
 
-  /* --- Справочник собраний из Конгрессов ------------------------------ */
+  /* --- Подсказки собраний ---------------------------------------------
+     Собственная история ввода. Раньше список приходил из справочника
+     Конгрессов — удобно, но это было чтение чужого хранилища. */
   function fillCongregations() {
-    var settings = congressSettings();
-    var list = (settings && Array.isArray(settings.congregations)) ? settings.congregations : [];
     var datalist = $('#congList');
     if (!datalist) return;
     datalist.innerHTML = '';
-    list.forEach(function (name) {
+    state.knownCongregations.forEach(function (name) {
       var option = document.createElement('option');
       option.value = name;
       datalist.appendChild(option);
     });
+  }
+
+  /* --- Переключатель языка документа ------------------------------------
+     Отдельный от языка интерфейса контрол: смена одного не трогает другое. */
+  function initDocLanguage() {
+    var select = $('#docLanguage');
+    if (!select || !self.CWDocLang) return;
+
+    self.CWDocLang.init({ module: MODULE_ID, langs: DOC_LANGS, apply: false });
+
+    /* Подписи языков — эндонимы из общего реестра, они не переводятся. */
+    var labels = {};
+    if (self.CWI18n) self.CWI18n.LANGS.forEach(function (l) { labels[l.code] = l.label; });
+
+    DOC_LANGS.forEach(function (code) {
+      var option = document.createElement('option');
+      option.value = code;
+      option.textContent = labels[code] || code;
+      select.appendChild(option);
+    });
+    select.value = self.CWDocLang.get();
+
+    select.addEventListener('change', function (e) {
+      self.CWDocLang.set(e.target.value);
+      renderLetter();
+    });
+
+    self.CWDocLang.onChange(function (lang) { select.value = lang; renderLetter(); });
   }
 
   /* --- Старт ----------------------------------------------------------- */
@@ -386,6 +414,7 @@
     var version = (self.CW_MODULES && self.CW_MODULES[MODULE_ID] || {}).version;
     if (version) $('#moduleVersion').textContent = 'v' + version;
 
+    initDocLanguage();
     bind();
     fillCongregations();
     LISTS.forEach(renderList);

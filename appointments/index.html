@@ -16,6 +16,8 @@
      мелькает русская разметка (то же правило, что в хабе и Конгрессах). -->
 <script src="../shared/version.js"></script>
 <script src="../shared/i18n.js"></script>
+<script src="../shared/sender.js"></script>
+<script src="../shared/doclang.js"></script>
 <script src="../shared/i18n/common.js"></script>
 <script src="i18n/dict.js"></script>
 </head>
@@ -98,11 +100,7 @@
 
     <h2 class="md-title-medium section-heading" data-i18n="ap.sender.heading">Данные отправителя</h2>
 
-    <label class="switch-row">
-      <input id="senderFromCongress" type="checkbox">
-      <span class="md-body-small" data-i18n="ap.sender.from_congress">Брать из модуля «Конгрессы»</span>
-    </label>
-    <p class="md-body-small hint" id="senderSourceHint"></p>
+    <p class="md-body-small hint" data-i18n="ap.sender.shared_hint">Общие данные: те же во всех модулях Circuit Workspace.</p>
 
     <div id="senderFields">
       <div class="field">
@@ -131,6 +129,12 @@
       </div>
     </div>
 
+    <div class="field doc-lang">
+      <label class="md-label-medium" for="docLanguage" data-i18n="ap.doc.language">Язык письма</label>
+      <select id="docLanguage"></select>
+      <p class="md-body-small hint" data-i18n="ap.doc.language_hint">Язык печатного письма. От языка интерфейса не зависит.</p>
+    </div>
+
     <button type="button" class="md-btn md-btn-filled md-btn-full print-btn" id="printBtn" data-i18n="common.print">Печать</button>
     <p class="md-body-small save-status" id="saveStatus"></p>
   </aside>
@@ -139,37 +143,37 @@
     <!-- Язык письма — свойство документа, а не интерфейса: письмо всегда
          украинское, даже когда интерфейс переключён на другой язык.
          См. AGENTS.md → «Локализация». -->
-    <article class="letter" lang="uk" aria-label="Лист">
+    <article class="letter" id="letter" aria-label="Letter">
       <div class="letter-sender" id="outSender"></div>
       <div class="letter-date" id="outDate"></div>
       <div class="letter-addressee">
-        <div>РАДІ СТАРІЙШИН</div>
-        <div>ЗБОРУ «<span id="outCong">—</span>»</div>
+        <div data-doc-i18n="doc.ap.to_elders"></div>
+        <div id="outCong"></div>
         <div id="outCoordinator"></div>
         <div class="letter-coord-address" id="outCoordinatorAddress"></div>
       </div>
-      <div class="letter-subject">Тема: Призначення і викреслення старійшин і служителів збору</div>
-      <div class="letter-greeting">Дорогі брати!</div>
+      <div class="letter-subject" data-doc-i18n="doc.ap.subject"></div>
+      <div class="letter-greeting" data-doc-i18n="doc.ap.greeting"></div>
 
       <section class="letter-section">
-        <p>Цим листом підтверджую, що я призначив <b>старійшиною(-ами)</b> наступного(-их) брата(-ів):</p>
+        <p><span data-doc-i18n="doc.ap.appoint.pre"></span> <b data-doc-i18n="doc.ap.role.elders"></b> <span data-doc-i18n="doc.ap.appoint.post"></span></p>
         <ul class="names" id="outElders"></ul>
       </section>
 
       <section class="letter-section">
-        <p>Цим листом підтверджую, що я призначив <b>служителем(-ями) збору</b> наступного(-их) брата(-ів):</p>
+        <p><span data-doc-i18n="doc.ap.appoint.pre"></span> <b data-doc-i18n="doc.ap.role.servants"></b> <span data-doc-i18n="doc.ap.appoint.post"></span></p>
         <ul class="names" id="outServants"></ul>
       </section>
 
       <section class="letter-section">
-        <p>Цим листом підтверджую, що я <b>викреслив</b> наступного(-их) брата(-ів) як старійшин(-у) або служителя(-ів) збору:</p>
+        <p><span data-doc-i18n="doc.ap.remove.pre"></span> <b data-doc-i18n="doc.ap.remove.verb"></b> <span data-doc-i18n="doc.ap.remove.post"></span></p>
         <ul class="names" id="outRemoved"></ul>
       </section>
 
-      <p class="letter-closing">Прийміть мою щиру християнську любов і найкращі побажання.</p>
+      <p class="letter-closing" data-doc-i18n="doc.ap.closing"></p>
 
       <div class="letter-signature">
-        <div>Ваш брат,</div>
+        <div data-doc-i18n="doc.ap.signoff"></div>
         <div id="outSignName"></div>
         <div id="outSignCode"></div>
       </div>

@@ -103,6 +103,15 @@ body {
 .hint { margin: 0 0 4px; color: var(--md-on-surface-variant); }
 #senderFields.locked { opacity: 0.55; pointer-events: none; }
 
+.doc-lang { margin-top: 20px; }
+.doc-lang select {
+  width: 100%; box-sizing: border-box; height: 38px; padding: 0 10px;
+  border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-sm);
+  background: var(--md-surface-container-lowest); color: var(--md-on-surface);
+  font: 400 14px/20px var(--md-font-family); cursor: pointer;
+}
+.doc-lang .hint { margin-top: 6px; }
+
 .print-btn { margin-top: 18px; }
 .save-status { margin: 8px 0 0; text-align: center; color: var(--md-on-surface-variant); }
 
