@@ -11,6 +11,11 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="shared/style.css">
+<!-- Локализация подключается в <head>, а не в конце <body>: перевод должен
+     примениться до первой отрисовки, иначе при неруском языке на кадр
+     мелькает русская разметка. -->
+<script src="shared/i18n.js"></script>
+<script src="shared/i18n/common.js"></script>
 <style>
   .cw-hub-header {
     position: relative;
@@ -76,6 +81,56 @@
     white-space: nowrap;
   }
 
+  /* --- Переключатель языка -------------------------------------------
+     Нативный <select>: на мобильных он открывает системный список выбора,
+     который удобнее и доступнее любого самописного меню. Стилизуем только
+     оболочку, стрелку рисуем сами (штатная стрелка не наследует цвет). */
+  .cw-hub-header__tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cw-lang {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .cw-lang__icon {
+    position: absolute;
+    left: 10px;
+    width: 16px; height: 16px;
+    pointer-events: none;
+    color: var(--cw-muted);
+  }
+  .cw-lang__select {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 32px;
+    padding: 0 28px 0 32px;
+    border: 1px solid var(--cw-line);
+    border-radius: 999px;
+    background: var(--cw-surface);
+    color: var(--cw-text);
+    font: 500 12px/16px var(--md-font-family);
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+  .cw-lang__select:hover { border-color: var(--cw-violet-dim); }
+  .cw-lang__select:focus-visible {
+    outline: 3px solid var(--cw-lavender);
+    outline-offset: 2px;
+  }
+  /* Список опций рисует ОС — на тёмном фоне системная палитра может дать
+     белый текст на белом. Задаём цвета явно. */
+  .cw-lang__select option { background: var(--cw-bg-raised); color: var(--cw-text); }
+  .cw-lang__arrow {
+    position: absolute;
+    right: 10px;
+    width: 12px; height: 12px;
+    pointer-events: none;
+    color: var(--cw-muted);
+  }
+
   /* --- Плата модулей: шина-коннектор + плитки ---
      Каждая плитка "запитана" от общей шины сверху: горизонтальная линия
      соединяет три контактные площадки (pad), от каждой вниз идёт дорожка
@@ -84,95 +139,167 @@
     position: relative;
     z-index: 1;
     padding: 12px 0 64px;
+
+    /* Число колонок и зазор объявлены ОДИН раз и используются и сеткой,
+       и шиной-коннектором. Раньше площадки шины стояли на 16,666%/50%/
+       83,333%, а реальные центры колонок из-за зазора приходятся на
+       15,76%/50%/84,24% — крайние дорожки всегда промахивались мимо
+       плиток ровно на gap/3 (≈9px). Теперь шина — такая же сетка, и
+       попадание в центр обеспечено на любой ширине и при любом числе
+       модулей. */
+    --cw-cols: 3;
+    --cw-gap: 28px;
   }
+  /* Промежуточная ступень в 2 колонки: раньше её не было, и в диапазоне
+     861–1000px три колонки сжимались до нечитаемых. */
+  @media (max-width: 1000px) { .cw-board { --cw-cols: 2; } }
+  @media (max-width: 700px)  { .cw-board { --cw-cols: 1; } }
+
   .cw-bus {
-    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--cw-cols), minmax(0, 1fr));
+    gap: var(--cw-gap);
     height: 32px;
     margin-bottom: 2px;
   }
-  .cw-bus__line {
+  /* Шина осмысленна только когда все модули стоят в один ряд. */
+  @media (max-width: 1000px) { .cw-bus { display: none; } }
+
+  .cw-bus__cell { position: relative; }
+  .cw-bus__cell::before {
+    content: "";
     position: absolute;
-    top: 0; left: 16.666%; width: 66.666%; height: 2px;
+    top: 0; left: 0; right: 0;
+    height: 2px;
     background: var(--cw-line);
   }
+  /* Крайние ячейки: линия доходит только до своей площадки, а не торчит
+     за пределы крайних плиток. */
+  .cw-bus__cell:first-child::before { left: 50%; }
+  .cw-bus__cell:last-child::before  { right: 50%; }
+
   .cw-bus__pad {
     position: absolute;
-    top: 0;
-    width: 12px; height: 12px;
+    top: -7px; left: 50%;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    width: 16px; height: 16px;
     border-radius: 50%;
     background: var(--cw-bg-raised);
     border: 2px solid var(--cw-line);
-    transform: translate(-50%, -50%);
   }
   .cw-bus__pad::after {
     content: "";
     position: absolute;
-    top: 50%; left: 50%;
-    width: 2px; height: 32px;
-    background: var(--cw-line);
+    top: 100%; left: 50%;
     transform: translateX(-50%);
-    z-index: -1;
+    width: 2px; height: 23px;
+    background: var(--cw-line);
   }
-  .cw-bus__pad:nth-of-type(2) { left: 16.666%; }
-  .cw-bus__pad:nth-of-type(3) { left: 50%; }
-  .cw-bus__pad:nth-of-type(4) { left: 83.333%; }
   .cw-bus__pad--live { border-color: var(--cw-violet); background: var(--cw-violet-dim); }
   .cw-bus__pad--live::after { background: var(--cw-violet-dim); }
 
   .cw-grid {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px;
+    grid-template-columns: repeat(var(--cw-cols), minmax(0, 1fr));
+    gap: var(--cw-gap);
+    align-items: stretch;
   }
-  @media (max-width: 860px) {
-    .cw-grid { grid-template-columns: 1fr; }
-    .cw-bus { display: none; }
+
+  /* Гридовый элемент — ссылка, а карточка лежит внутри неё. При
+     display:block карточка не тянулась до высоты строки, и плитки
+     расходились по высоте на величину лишней строки описания (~20px).
+     flex + flex:1 растягивает карточку на всю ячейку. */
+  .cw-tile-link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    border-radius: var(--cw-radius);
+  }
+  .cw-tile-link:focus-visible {
+    outline: 3px solid var(--cw-lavender);
+    outline-offset: 3px;
   }
 
   .cw-tile {
     position: relative;
     z-index: 1;
+    flex: 1 1 auto;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    padding: 26px;
-    min-height: 210px;
+    /* Все отступы кратны 4px (шаг MD3): было 26/18/6/18 вразнобой. */
+    padding: 24px;
+    min-height: 200px;
   }
   .cw-tile__icon {
-    width: 44px; height: 44px;
-    border-radius: var(--md-radius-md);
+    width: 48px; height: 48px;
+    /* Радиус из фирменной шкалы, а не из MD3: карточка тоже на ней
+       (--cw-radius), смешение двух шкал давало разный «характер» углов. */
+    border-radius: var(--cw-radius-sm);
     display: flex; align-items: center; justify-content: center;
     background: var(--cw-surface-2);
     border: 1px solid var(--cw-line);
-    margin-bottom: 18px;
+    margin-bottom: 16px;
+    color: var(--cw-violet);
   }
-  .cw-tile__icon svg { width: 22px; height: 22px; }
+  /* Цвет иконки наследуется от .cw-tile__icon (currentColor в разметке),
+     а не задаётся хексом в каждом <svg> — тема остаётся управляемой. */
+  .cw-tile__icon svg { width: 24px; height: 24px; }
   .cw-tile h2 {
     font: 500 16px/24px var(--md-font-family);
     letter-spacing: 0.15px;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
   }
   .cw-tile p {
     color: var(--cw-text-dim);
     font: 400 14px/20px var(--md-font-family);
     letter-spacing: 0.25px;
-    margin: 0 0 18px;
-    flex-grow: 1;
+    margin: 0 0 16px;
+    flex: 1 1 auto;
   }
   .cw-tile__footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
   }
-  .cw-tile--disabled { opacity: 0.55; cursor: default; }
-  .cw-tile--disabled:hover { transform: none; box-shadow: var(--cw-shadow-sm); border-color: var(--cw-line); }
-  .cw-tile-link { text-decoration: none; color: inherit; display: block; border-radius: var(--cw-radius); }
+  .cw-tile__badge { display: inline-flex; align-items: center; gap: 6px; }
+  .cw-tile__dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: 0 0 auto;
+  }
+  .cw-tile__ver { opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+  /* Подъём карточки — только там, где есть настоящий курсор: на тач-экране
+     :hover «залипает» после тапа и плитка остаётся приподнятой. */
+  @media (hover: none) {
+    .cw-tile-link .cw-card:hover {
+      transform: none;
+      box-shadow: var(--cw-shadow-sm);
+      border-color: var(--cw-line);
+    }
+  }
   /* Видимый фокус для навигации с клавиатуры: раньше плитки фокусировались
      без какого-либо визуального отклика. */
   .cw-tile-link:focus-visible {
     outline: 3px solid var(--cw-lavender);
     outline-offset: 3px;
+  }
+
+  /* Подпись селекта нужна скринридеру, но визуально её роль выполняет
+     иконка глобуса. */
+  .cw-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .cw-footer {
@@ -210,32 +337,45 @@
         </svg>
         <span class="cw-logo__text">Circuit<span>Workspace</span></span>
       </div>
-      <span class="cw-version cw-mono" id="hubVersion">v…</span>
+      <div class="cw-hub-header__tools">
+        <span class="cw-lang">
+          <svg class="cw-lang__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18"/></svg>
+          <label class="cw-sr-only" for="hubLanguage" data-i18n="hub.language_label">Язык интерфейса</label>
+          <select class="cw-lang__select" id="hubLanguage" data-i18n-title="hub.language_label"></select>
+          <svg class="cw-lang__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+        <span class="cw-version cw-mono" id="hubVersion" data-i18n-title="hub.version_label">v…</span>
+      </div>
     </div>
-    <h1>Один вход для всех инструментов района</h1>
-    <p>Каждая плитка — самостоятельный модуль. Общие данные (общины, люди, встречи) вводятся один раз в общей базе и постепенно становятся доступны во всех модулях по мере их подключения к общему слою.</p>
+    <h1 data-i18n="hub.title">Один вход для всех инструментов района</h1>
+    <p data-i18n="hub.subtitle">Каждая плитка — самостоятельный модуль. Общие данные вводятся один раз и постепенно становятся доступны во всех модулях.</p>
   </div>
 </header>
 
 <main class="cw-board">
   <div class="cw-container">
+    <!-- Ячеек ровно столько же, сколько плиток: площадка каждой ячейки
+         центрируется гридом, а не процентами. -->
     <div class="cw-bus" aria-hidden="true">
-      <div class="cw-bus__line"></div>
-      <div class="cw-bus__pad cw-bus__pad--live"></div>
-      <div class="cw-bus__pad cw-bus__pad--live"></div>
-      <div class="cw-bus__pad cw-bus__pad--live"></div>
+      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
+      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
+      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
     </div>
     <div class="cw-grid" id="moduleGrid">
 
       <a class="cw-tile-link" href="congress-project/index.html" data-module="congress-project">
         <article class="cw-card cw-tile">
           <div class="cw-tile__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="1.6"><path d="M4 4h16v12H4z"/><path d="M8 20h8M9 16v4M15 16v4"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v12H4z"/><path d="M8 20h8M9 16v4M15 16v4"/></svg>
           </div>
-          <h2>Конгрессы</h2>
-          <p>Программа конгрессов, распределение заданий по участникам и генерация писем в PDF.</p>
+          <h2 data-i18n="module.congress-project.title">Конгрессы</h2>
+          <p data-i18n="module.congress-project.desc">Программа конгрессов, распределение заданий и генерация писем участникам в PDF.</p>
           <div class="cw-tile__footer">
-            <span class="cw-badge cw-badge--live" data-module-badge>● работает</span>
+            <span class="cw-badge cw-badge--live cw-tile__badge">
+              <span class="cw-tile__dot" aria-hidden="true"></span>
+              <span data-i18n="status.live">работает</span>
+              <span class="cw-tile__ver" data-module-version></span>
+            </span>
           </div>
         </article>
       </a>
@@ -243,12 +383,16 @@
       <a class="cw-tile-link" href="circuit-planner/index.html" data-module="circuit-planner">
         <article class="cw-card cw-tile">
           <div class="cw-tile__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
           </div>
-          <h2>Клиндарий</h2>
-          <p>Календарь служебного года: недели, приоритеты, посещения, формуляры S-302 и печать PDF.</p>
+          <h2 data-i18n="module.circuit-planner.title">Клиндарий</h2>
+          <p data-i18n="module.circuit-planner.desc">Календарь служебного года: недели, посещения, формуляры S-302 и печать PDF.</p>
           <div class="cw-tile__footer">
-            <span class="cw-badge cw-badge--live" data-module-badge>● работает</span>
+            <span class="cw-badge cw-badge--live cw-tile__badge">
+              <span class="cw-tile__dot" aria-hidden="true"></span>
+              <span data-i18n="status.live">работает</span>
+              <span class="cw-tile__ver" data-module-version></span>
+            </span>
           </div>
         </article>
       </a>
@@ -256,12 +400,16 @@
       <a class="cw-tile-link" href="pioneer-school/index.html" data-module="pioneer-school">
         <article class="cw-card cw-tile">
           <div class="cw-tile__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="1.6"><path d="M12 3l9 5v8l-9 5-9-5V8z"/><path d="M12 12v9M3 8l9 4 9-4"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9 5v8l-9 5-9-5V8z"/><path d="M12 12v9M3 8l9 4 9-4"/></svg>
           </div>
-          <h2>Школа пионеров</h2>
-          <p>Анкеты, назначения, учащиеся и классы, расчёт учебников, расписание уроков, S-253 и импорт/экспорт списков.</p>
+          <h2 data-i18n="module.pioneer-school.title">Школа пионеров</h2>
+          <p data-i18n="module.pioneer-school.desc">Учащиеся и классы, расписание уроков, учебники, формуляры S-253 и экспорт списков.</p>
           <div class="cw-tile__footer">
-            <span class="cw-badge cw-badge--live" data-module-badge>● работает</span>
+            <span class="cw-badge cw-badge--live cw-tile__badge">
+              <span class="cw-tile__dot" aria-hidden="true"></span>
+              <span data-i18n="status.live">работает</span>
+              <span class="cw-tile__ver" data-module-version></span>
+            </span>
           </div>
         </article>
       </a>
@@ -272,7 +420,7 @@
 
 <footer class="cw-footer">
   <div class="cw-container">
-    Circuit Workspace · единая точка входа поверх независимых модулей
+    <span data-i18n="hub.footer">Circuit Workspace · единая точка входа поверх независимых модулей</span>
   </div>
 </footer>
 
@@ -284,15 +432,47 @@
 
   // Версии модулей — тоже из shared/version.js (self.CW_MODULES), а не из
   // разметки: раньше номер на плитке приходилось править вручную, и он отставал
-  // от реальной версии модуля. Если версии в реестре нет — бейдж просто
-  // остаётся без номера, а не показывает неверный.
+  // от реальной версии модуля. Если версии в реестре нет — элемент остаётся
+  // пустым, а не показывает неверный номер.
+  // Важно: номер лежит в ОТДЕЛЬНОМ <span>, а не в тексте всего бейджа —
+  // иначе смена языка затирала бы версию, а простановка версии затирала бы
+  // перевод статуса.
   Object.keys(self.CW_MODULES || {}).forEach(function (key) {
     var tile = document.querySelector('[data-module="' + key + '"]');
     if (!tile) return;
-    var badge = tile.querySelector('[data-module-badge]');
+    var slot = tile.querySelector('[data-module-version]');
     var version = self.CW_MODULES[key].version;
-    if (badge && version) badge.textContent = '● работает · v' + version;
+    if (slot && version) slot.textContent = '· v' + version;
   });
+
+  // --- Язык интерфейса ------------------------------------------------
+  // Хаб задаёт язык по умолчанию для всей экосистемы: CWI18n.setLang здесь
+  // пишет общий ключ 'cw-lang'. Модуль, в котором пользователь язык не менял,
+  // подхватит его при следующем открытии; модуль с собственным выбором
+  // (ключ 'cw-lang:<module>') останется на своём — это и есть наследование
+  // с локальным переопределением.
+  (function () {
+    var select = document.getElementById('hubLanguage');
+
+    // Опции строим из реестра языков, а не из разметки: добавление языка =
+    // одна строка в shared/i18n.js + переводы, без правки HTML.
+    CWI18n.LANGS.forEach(function (lang) {
+      var option = document.createElement('option');
+      option.value = lang.code;
+      option.textContent = lang.label;
+      select.appendChild(option);
+    });
+
+    var active = CWI18n.init();   // без module → это хаб
+    select.value = active;
+
+    select.addEventListener('change', function (e) {
+      CWI18n.setLang(e.target.value);   // apply() внутри — перерисовка мгновенная
+    });
+
+    // Смена языка в другой вкладке (событие storage) — держим селект в курсе.
+    CWI18n.onChange(function (lang) { select.value = lang; });
+  })();
 
   // Инициализируем общую БД заранее, чтобы модули, подключающие CWDB,
   // не ждали первого открытия соединения.

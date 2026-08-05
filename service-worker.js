@@ -23,6 +23,10 @@ const SHELL_FILES = [
   './shared/db.js',
   './shared/nav.js',
   './shared/version.js',
+  // Локализация: без неё офлайн-хаб остался бы без переводов и упал бы
+  // на CWI18n undefined в inline-скрипте.
+  './shared/i18n.js',
+  './shared/i18n/common.js',
   // Шрифты общего слоя: без них офлайн-хаб откатывался на системный шрифт.
   './shared/fonts/roboto-latin-400-normal.woff2',
   './shared/fonts/roboto-latin-500-normal.woff2',
