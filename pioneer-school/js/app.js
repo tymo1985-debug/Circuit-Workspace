@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 let LESSONS_SEED = null;
 
