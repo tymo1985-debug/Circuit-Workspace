@@ -116,12 +116,21 @@
     return (dict && Object.prototype.hasOwnProperty.call(dict, key)) ? dict[key] : null;
   }
 
-  function t(key, vars) {
+  /**
+   * @param {string} key
+   * @param {Object} [vars]
+   * @param {string} [lang] — явный язык вместо текущего. Нужен модулям, чей
+   *   словарь покрывает не все языки экосистемы: Клиндарий пока без немецкого,
+   *   и при `cw-lang=de` он должен показать ближайший доступный язык, а не
+   *   свалиться в русский запасной вариант.
+   */
+  function t(key, vars, lang) {
     // Ленивое разрешение языка: модуль может позвать t() раньше init()
     // (например, при первой отрисовке), и тогда без этой строки он получил бы
     // русский запасной вариант вместо выбранного языка.
     if (!current) current = resolve();
-    var value = lookup(key, current) || lookup(key, FALLBACK);
+    var active = normalize(lang) || current;
+    var value = lookup(key, active) || lookup(key, FALLBACK);
     if (value == null) {
       /* Предупреждаем один раз на ключ: иначе перерисовка списка зальёт
          консоль сотней одинаковых строк и спрячет настоящие ошибки. */
@@ -149,22 +158,23 @@
     ['data-i18n-placeholder', 'placeholder'],
   ];
 
-  function apply(root) {
+  /** @param {Element|Document} [root] @param {string} [lang] — см. t() */
+  function apply(root, lang) {
     var scope = root || global.document;
     if (!scope || !scope.querySelectorAll) return;
 
     scope.querySelectorAll('[data-i18n]').forEach(function (el) {
-      el.textContent = t(el.getAttribute('data-i18n'));
+      el.textContent = t(el.getAttribute('data-i18n'), null, lang);
     });
 
     ATTRS.forEach(function (pair) {
       scope.querySelectorAll('[' + pair[0] + ']').forEach(function (el) {
-        el.setAttribute(pair[1], t(el.getAttribute(pair[0])));
+        el.setAttribute(pair[1], t(el.getAttribute(pair[0]), null, lang));
       });
     });
 
     if (global.document && global.document.documentElement) {
-      global.document.documentElement.lang = current;
+      global.document.documentElement.lang = normalize(lang) || current;
     }
   }
 

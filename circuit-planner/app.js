@@ -11,208 +11,9 @@
     document.head.appendChild(favicon);
   }
 
-  const I18N = {
-    ru: {
-      appTitle: 'Клиндарий',
-      nav_calendar: 'Календарь', nav_weeks: 'Недели', nav_events: 'Собрания и события', nav_notes: 'Заметки', nav_settings: 'Настройки',
-      screen_calendar: 'Календарь', screen_weeks: 'Недели', screen_events: 'Собрания и события', screen_notes: 'Заметки', screen_settings: 'Настройки',
-      subtitle_calendar: 'Обзор месяца и собраний по служебному году.',
-      subtitle_weeks: 'Недельное планирование, заметки и приоритеты.',
-      subtitle_events: 'Собрания, адреса залов и расписания.',
-      subtitle_notes: 'Поиск и просмотр всех заметок по неделям.',
-      subtitle_settings: 'Тема, язык, экспорт, импорт и управление годами.',
-      version: 'Версия',
-      theme: 'Тема', export: 'Экспорт', import_json: 'Импорт JSON',
-      hide_team_panel: 'Скрыть панель команды', show_team_panel: 'Показать панель команды',
-      today: 'Сегодня', all_events: 'Все собрания',
-      service_year: 'Служебный год', context: 'Контекст',
-      event: 'Собрание', weekend: 'Выходные', today_label: 'Сегодня',
-      no_events_month: 'Нет собраний в выбранном месяце.',
-      no_note: 'Без примечания', no_schedule: 'Без расписания', no_address: 'Адрес не указан', no_template: 'Собрание не выбрано',
-      quick_status: 'Быстрый статус', years_count: 'Служебных лет', templates_count: 'Собраний', entries_count: 'Записей собраний', notes_count: 'Заметок',
-      weeks_search: 'Поиск по неделе, заметке или собранию', notes_search: 'Поиск по заметкам',
-      week_details: 'Детали недели', choose_week: 'Выберите неделю слева, чтобы редактировать её.',
-      assigned_event: 'Назначенное собрание', priority: 'Приоритет', priority_normal: 'Обычный', priority_important: 'Важный', priority_critical: 'Критичный',
-      letter: 'Письмо', s302: 'S302', week_note: 'Заметка недели', save: 'Сохранить', delete: 'Удалить',
-      delete_week: 'Удалить неделю', clear_week_confirm: 'Очистить данные выбранной недели?',
-      event_templates: '', events_search: 'Поиск по названию, адресу или расписанию', event_group_filter: 'Группа / цвет', all_event_groups: 'Все группы / цвета', delete_all_events: 'Удалить все собрания', delete_all_events_confirm: 'Удалить все собрания и связанные записи календаря? Это действие нельзя отменить.', delete_all_events_done: 'Все собрания удалены.', events_shown_count: 'Показано: {shown} из {total}', event_editor: 'Редактор собрания', name: 'Название', color: 'Цвет', address: 'Адрес', schedule: 'Расписание',
-      clear: 'Очистить', save_event: 'Сохранить собрание',
-      look_and_feel: 'Внешний вид', language: 'Язык', layout: 'Макет календаря', theme_light: 'Светлая', theme_dark: 'Тёмная',
-      layout_help: 'Доступно 5 вариантов отображения календаря.',
-      data_management: 'Управление данными', pdf_print: 'PDF / Печать', add_service_year: 'Добавить служебный год',
-      add_next_year: 'Добавить следующий год', add: 'Добавить', create_backup: 'Создать backup', reset_app: 'Сбросить приложение',
-      print_hint: 'PDF использует системную печать браузера.',
-      export_pdf_title: 'Экспорт в PDF', export_pdf_sub: 'Выберите формат и используйте печать браузера.',
-      month_grid: 'Календарь месяца', period_calendar: 'Календарь периода',
-      month_grid_desc: 'Сетка текущего месяца для печати.', period_calendar_desc: 'Печать для выбранного диапазона дат.',
-      reports: 'Список собраний и отчёты', month_list: 'Список собраний месяца', half_year: 'События за полгода', year_events: 'Собрания за год', list_period: 'Список за период', year_overview: 'Годовой обзор', notes_report: 'Отчёт по заметкам',
-      choose_range: 'Выберите даты начала и конца периода.', close: 'Закрыть', print: 'Печать',
-      export_title: 'Экспорт', export_sub: 'Выберите формат экспорта: резервный JSON или календарь (.ics) для Google/Apple.',
-      json_backup: 'JSON backup', json_backup_desc: 'Полная резервная копия данных приложения.', ics_calendar: 'Календарь (.ics)', ics_desc: 'Импорт в Google Calendar и Apple Calendar.',
-      range_start: 'Начало периода', range_end: 'Конец периода', download: 'Скачать',
-      google_hint: 'Подсказка: для Google Calendar откройте «Настройки → Импорт и экспорт → Импорт», выберите .ics. Для Apple Calendar просто откройте файл.',
-      sync_title: 'Ручная синхронизация', sync_hint: 'Без API: на основном ноутбуке скачайте файл синхронизации и поместите его в Google Drive. На другом устройстве скачайте этот файл из Drive и загрузите здесь.', sync_export: 'Скачать синхронизацию', sync_import: 'Загрузить синхронизацию', sync_export_done: 'Файл синхронизации создан. Поместите его в Google Drive.', sync_import_confirm: 'Заменить текущие данные данными из файла синхронизации?', sync_import_done: 'Данные синхронизации загружены.', sync_import_failed: 'Не удалось загрузить файл синхронизации.', sync_no_file: 'Выберите файл синхронизации JSON.', sync_last_export: 'Последняя выгрузка', sync_last_import: 'Последняя загрузка', sync_never: 'Синхронизация ещё не выполнялась.',
-      team_panel: 'Панель команды', filter_event: 'Фильтр события', event_details: 'Детали собрания',
-      no_events_found: 'Совпадений не найдено.', no_notes: 'Нет заметок.', open: 'Открыть',
-      new_event: 'Новое собрание', edit_event: 'Редактирование собрания', choose_template: 'Выберите собрание', start: 'Начало', end: 'Конец', delete_event: 'Удалить собрание',
-      create_entry_help: 'Будет создана отдельная запись собрания.', edit_entry_help: 'Вы можете изменить шаблон, даты, заметку или удалить событие.',
-      note: 'Заметка', google_maps: 'Google Maps', google_calendar: 'Google Calendar', apple_calendar: 'Apple / .ics', edit: 'Редактировать', type: 'Тип',
-      type_week: 'Неделя', type_entry: 'Запись', template: 'Собрание',
-      imported_backup: 'Старый backup импортирован и очищен от дублей.', imported_json: 'JSON успешно импортирован.', import_failed: 'Не удалось импортировать JSON.',
-      week_saved: 'Неделя сохранена.', event_template_saved: 'Собрание сохранено.', calendar_event_saved: 'Собрание в календаре сохранено.', calendar_event_deleted: 'Собрание удалено.', week_deleted: 'Данные недели очищены.',
-      reset_confirm: 'Сбросить данные приложения?', app_reset: 'Приложение сброшено.',
-      invalid_year: 'Введите корректный год, например 2029.', added_year: 'Добавлен служебный год {year}',
-      choose_template_dates: 'Выберите собрание и даты.', wrong_end_date: 'Дата окончания не может быть раньше даты начала.', enter_event_name: 'Введите название собрания.',
-      offline: 'Вы офлайн. Изменения сохраняются локально.',
-      import_google_single: 'Импортировать собрание в Google/Apple календарь',
-      add_on_date: 'Добавить собрание',
-      placeholder_schedule: 'Ср 19:00, Сб 10:00',
-      delete_note: 'Удалить заметку',
-      delete_template: 'Удалить собрание',
-      delete_note_confirm: 'Удалить эту заметку?',
-      delete_template_confirm: 'Удалить собрание',
-      calendar_view_month: 'Вид: месяц',
-      calendar_view_year: 'Вид: служебный год',
-      day_details_title: 'День и неделя',
-      week_planned: 'Собрание на неделю',
-      entries_on_day: 'Собрания в этот день',
-      no_entries_day: 'Нет собраний на этот день.',
-      open_week: 'Открыть неделю',
-      add_entry: 'Добавить собрание',
-      edit_week_event: 'Редактировать план недели',
-      compact_year_hint: 'На маленьком экране включён компактный вид: нажмите день, чтобы увидеть детали недели и события.',
- sent_status: 'Контроль отправки', letter_short: 'Письмо', s302_short: 'S-302', send_control: 'Контроль отправки', needs_sending: 'Нужно отправить', sent_done: 'Отправлено', deadline: 'Срок', before_visit_hint: 'Рекомендуемый срок: до начала недели посещения.',
-      reminders_title: 'Что нужно отправить', reminders_subtitle: 'Ближайшие визиты, которые ждут S302 или письма', reminders_none: 'Все визиты в порядке — ничего срочного нет.',
-      reminders_s302_needed: 'Отправить S302', reminders_letter_needed: 'Отправить письмо', reminders_mark_s302: 'S302 отправлен', reminders_mark_letter: 'Письмо отправлено',
-      reminders_overdue: 'Просрочено', reminders_days_left: 'осталось {days} дн.', reminders_close: 'Закрыть', reminders_open_entry: 'Открыть запись',
-      visit_type: 'Тип визита', visit_type_none: 'Не визит', visit_type_congregation: 'Собрание', visit_type_group: 'Группа', visit_type_pregroup: 'Предгруппа',
-      contact_info: 'Контакт ответственного', contact_name: 'Имя', contact_phone: 'Телефон', contact_email: 'E-mail', contact_note: 'Заметка',
-      countdown_today: 'Сегодня', countdown_future: 'Через {value} {label}', countdown_past: '{value} {label} назад', copied: 'Скопировано', copy: 'Копировать',
-      stats_title: 'Статистика служебного года', stats_planned: 'Визитов запланировано', stats_done: 'Проведено', unvisited_title: 'Не запланирован визит', unvisited_none: 'Все собрания имеют запланированный визит ✓',
-      planner_nothing: 'Выберите хотя бы одно собрание', planner_no_free_weeks: 'Нет свободных недель в выбранном периоде', planner_confirm: 'Создать визиты по плану', planner_created: 'Создано визитов',
-      conflict_warning: '⚠️ На эти даты уже запланирован другой визит:', conflict_proceed: 'Всё равно сохранить?',
-      next_visit: 'Следующий визит', next_visit_none: 'Нет предстоящих визитов',
-      compose_letter: 'Составить письмо', share: 'Поделиться', letter_subject: 'Посещение районного надзирателя', letter_body_greeting: 'Дорогие братья!', letter_body_visit: 'Планируется посещение', letter_body_closing: 'С братской любовью.',
-      result_note: 'Итоги визита (после посещения)', result_note_short: 'Итоги визита', last_visit_result: 'Прошлый визит',
-      backup_prompt: 'Скачать резервную копию сейчас?', backup_never: 'Резервная копия ещё ни разу не создавалась.', backup_overdue: 'Последний backup был {days} дн. назад.',
-      pin_on: 'PIN-код: вкл', pin_off: 'PIN-код: выкл', pin_set_prompt: 'Задайте PIN (4–8 цифр):', pin_format: 'PIN должен состоять из 4–8 цифр', pin_enabled: 'PIN-код включён', pin_disabled: 'PIN-код отключён', pin_wrong: 'Неверный PIN', pin_enter_current: 'Введите текущий PIN:', pin_disable_confirm: 'Отключить PIN-код?',
-      visits_schedule: 'График посещений (для КС)'
-    },
-    en: {
-      appTitle: 'Klindarium',
-      nav_calendar: 'Calendar', nav_weeks: 'Weeks', nav_events: 'Meetings', nav_notes: 'Notes', nav_settings: 'Settings',
-      screen_calendar: 'Calendar', screen_weeks: 'Weeks', screen_events: 'Meetings', screen_notes: 'Notes', screen_settings: 'Settings',
-      subtitle_calendar: 'Month overview and events for the service year.', subtitle_weeks: 'Weekly planning, notes and priorities.', subtitle_events: 'Meetings, hall addresses and schedules.', subtitle_notes: 'Search and review all weekly notes.', subtitle_settings: 'Theme, language, export, import and year management.',
-      version: 'Version', theme: 'Theme', export: 'Export', import_json: 'Import JSON', hide_team_panel: 'Hide team panel', show_team_panel: 'Show team panel', today: 'Today', all_events: 'All meetings', service_year: 'Service year', context: 'Context', event: 'Meeting', weekend: 'Weekend', today_label: 'Today', no_events_month: 'No events in the selected month.', no_note: 'No note', no_schedule: 'No schedule', no_address: 'Address not specified', no_template: 'No meeting selected', quick_status: 'Quick status', years_count: 'Service years', templates_count: 'Event templates', entries_count: 'Calendar entries', notes_count: 'Notes', weeks_search: 'Search week, note or event', notes_search: 'Search notes', week_details: 'Week details', choose_week: 'Select a week on the left to edit it.', assigned_event: 'Assigned event', priority: 'Priority', priority_normal: 'Normal', priority_important: 'Important', priority_critical: 'Critical', letter: 'Letter', s302: 'S302', week_note: 'Week note', save: 'Save', delete: 'Delete', delete_week: 'Delete week', clear_week_confirm: 'Clear the selected week data?', event_templates: '', events_search: 'Search by name, address or schedule', event_group_filter: 'Group / color', all_event_groups: 'All groups / colors', delete_all_events: 'Delete all meetings', delete_all_events_confirm: 'Delete all meetings and related calendar entries? This action cannot be undone.', delete_all_events_done: 'All meetings deleted.', events_shown_count: 'Shown: {shown} of {total}', event_editor: 'Meeting editor', name: 'Name', color: 'Color', address: 'Address', schedule: 'Schedule', clear: 'Clear', save_event: 'Save meeting', look_and_feel: 'Appearance', language: 'Language', layout: 'Calendar layout', theme_light: 'Light', theme_dark: 'Dark', layout_help: '5 calendar layout options are available.', data_management: 'Data management', pdf_print: 'PDF / Print', add_service_year: 'Add service year', add_next_year: 'Add next year', add: 'Add', create_backup: 'Create backup', reset_app: 'Reset app', print_hint: 'PDF uses browser system print.', export_pdf_title: 'Export to PDF', export_pdf_sub: 'Choose format and use browser print.', month_grid: 'Month calendar', period_calendar: 'Period calendar', month_grid_desc: 'Printable grid for the current month.', period_calendar_desc: 'Print for selected date range.', reports: 'Event lists and reports', month_list: 'Month event list', half_year: 'Half-year events', year_events: 'Year events', list_period: 'Range list', year_overview: 'Year overview', notes_report: 'Notes report', choose_range: 'Choose start and end dates.', close: 'Close', print: 'Print', export_title: 'Export', export_sub: 'Choose export format: JSON backup or calendar (.ics) for Google/Apple.', json_backup: 'JSON backup', json_backup_desc: 'Complete application data backup.', ics_calendar: 'Calendar (.ics)', ics_desc: 'Import into Google Calendar and Apple Calendar.', range_start: 'Start date', range_end: 'End date', download: 'Download', google_hint: 'Tip: in Google Calendar open “Settings → Import & Export → Import”, choose the .ics file. In Apple Calendar just open the file.',
-      sync_title: 'Manual sync', sync_hint: 'No API: on the main laptop download the sync file and place it in Google Drive. On another device download that file from Drive and load it here.', sync_export: 'Download sync file', sync_import: 'Load sync file', sync_export_done: 'Sync file created. Place it in Google Drive.', sync_import_confirm: 'Replace current data with data from the sync file?', sync_import_done: 'Sync data loaded.', sync_import_failed: 'Failed to load sync file.', sync_no_file: 'Choose a JSON sync file.', sync_last_export: 'Last download', sync_last_import: 'Last load', sync_never: 'Sync has not been run yet.', team_panel: 'Team panel', filter_event: 'Event filter', event_details: 'Event details', no_events_found: 'No matches found.', no_notes: 'No notes.', open: 'Open', new_event: 'New meeting', edit_event: 'Edit meeting', choose_template: 'Choose template', start: 'Start', end: 'End', delete_event: 'Delete meeting', create_entry_help: 'A separate calendar entry will be created.', edit_entry_help: 'You can change template, dates, note or delete the event.', note: 'Note', google_maps: 'Google Maps', google_calendar: 'Google Calendar', apple_calendar: 'Apple / .ics', edit: 'Edit', type: 'Type', type_week: 'Week', type_entry: 'Entry', template: 'Meeting', imported_backup: 'Legacy backup imported and duplicates cleaned.', imported_json: 'JSON imported successfully.', import_failed: 'Failed to import JSON.', week_saved: 'Week saved.', event_template_saved: 'Event template saved.', calendar_event_saved: 'Calendar event saved.', calendar_event_deleted: 'Event deleted.', week_deleted: 'Week data cleared.', reset_confirm: 'Reset application data?', app_reset: 'Application reset.', invalid_year: 'Enter a valid year, for example 2029.', added_year: 'Added service year {year}', choose_template_dates: 'Choose template and dates.', wrong_end_date: 'End date cannot be earlier than start date.', enter_event_name: 'Enter event name.', offline: 'You are offline. Changes are stored locally.', import_google_single: 'Import event into Google/Apple calendar', add_on_date: 'Add event', placeholder_schedule: 'Wed 19:00, Sat 10:00',
-      delete_note: 'Delete note',
-      delete_template: 'Delete meeting',
-      delete_note_confirm: 'Delete this note?',
-      delete_template_confirm: 'Delete event template',
-      calendar_view_month: 'View: month',
-      calendar_view_year: 'View: service year',
-      day_details_title: 'Day & week',
-      week_planned: 'Weekly plan',
-      entries_on_day: 'Meetings on this day',
-      no_entries_day: 'No meetings for this day.',
-      open_week: 'Open week',
-      add_entry: 'Add meeting',
-      edit_week_event: 'Edit weekly plan',
-      compact_year_hint: 'Compact view is enabled on small screens: tap a day to see week details and events.',
- sent_status: 'Sending control', letter_short: 'Letter', s302_short: 'S-302', send_control: 'Sending control', needs_sending: 'Needs sending', sent_done: 'Sent', deadline: 'Deadline', before_visit_hint: 'Recommended deadline: before the visit week starts.',
-      reminders_title: 'What needs to be sent', reminders_subtitle: 'Upcoming visits awaiting S302 or a letter', reminders_none: 'All visits are in order — nothing urgent.',
-      reminders_s302_needed: 'Send S302', reminders_letter_needed: 'Send letter', reminders_mark_s302: 'S302 sent', reminders_mark_letter: 'Letter sent',
-      reminders_overdue: 'Overdue', reminders_days_left: '{days} d. left', reminders_close: 'Close', reminders_open_entry: 'Open entry',
-      visit_type: 'Visit type', visit_type_none: 'Not a visit', visit_type_congregation: 'Congregation', visit_type_group: 'Group', visit_type_pregroup: 'Pregroup',
-      contact_info: 'Responsible contact', contact_name: 'Name', contact_phone: 'Phone', contact_email: 'E-mail', contact_note: 'Note',
-      countdown_today: 'Today', countdown_future: 'In {value} {label}', countdown_past: '{value} {label} ago', copied: 'Copied', copy: 'Copy',
-      stats_title: 'Service year statistics', stats_planned: 'Visits planned', stats_done: 'Completed', unvisited_title: 'No visit planned', unvisited_none: 'All congregations have a planned visit ✓',
-      planner_nothing: 'Select at least one congregation', planner_no_free_weeks: 'No free weeks in the selected range', planner_confirm: 'Create visits per plan', planner_created: 'Visits created',
-      conflict_warning: '⚠️ Another visit is already planned for these dates:', conflict_proceed: 'Save anyway?',
-      next_visit: 'Next visit', next_visit_none: 'No upcoming visits',
-      compose_letter: 'Compose letter', share: 'Share', letter_subject: 'Circuit overseer visit', letter_body_greeting: 'Dear brothers!', letter_body_visit: 'A visit is planned', letter_body_closing: 'With brotherly love.',
-      result_note: 'Visit results (after the visit)', result_note_short: 'Visit results', last_visit_result: 'Previous visit',
-      backup_prompt: 'Download a backup now?', backup_never: 'A backup has never been created.', backup_overdue: 'Last backup was {days} days ago.',
-      pin_on: 'PIN: on', pin_off: 'PIN: off', pin_set_prompt: 'Set a PIN (4–8 digits):', pin_format: 'PIN must be 4–8 digits', pin_enabled: 'PIN enabled', pin_disabled: 'PIN disabled', pin_wrong: 'Wrong PIN', pin_enter_current: 'Enter current PIN:', pin_disable_confirm: 'Disable PIN?',
-      visits_schedule: 'Visit schedule (for CO)'
-    },
-    uk: {
-      appTitle: 'Кліндарій',
-      nav_calendar: 'Календар', nav_weeks: 'Тижні', nav_events: 'Зібрання', nav_notes: 'Нотатки', nav_settings: 'Налаштування',
-      screen_calendar: 'Календар', screen_weeks: 'Тижні', screen_events: 'Зібрання', screen_notes: 'Нотатки', screen_settings: 'Налаштування',
-      subtitle_calendar: 'Огляд місяця та подій службового року.', subtitle_weeks: 'Тижневе планування, нотатки та пріоритети.', subtitle_events: 'Зібрання, адреси залів і розклад.', subtitle_notes: 'Пошук і перегляд усіх тижневих нотаток.', subtitle_settings: 'Тема, мова, експорт, імпорт і керування роками.',
-      version: 'Версія', theme: 'Тема', export: 'Експорт', import_json: 'Імпорт JSON', hide_team_panel: 'Сховати панель команди', show_team_panel: 'Показати панель команди', today: 'Сьогодні', all_events: 'Усі зібрання', service_year: 'Службовий рік', context: 'Контекст', event: 'Зібрання', weekend: 'Вихідні', today_label: 'Сьогодні', no_events_month: 'У вибраному місяці немає подій.', no_note: 'Без примітки', no_schedule: 'Без розкладу', no_address: 'Адресу не вказано', no_template: 'Зібрання не вибрано', quick_status: 'Швидкий статус', years_count: 'Службових років', templates_count: 'Шаблонів подій', entries_count: 'Записів календаря', notes_count: 'Нотаток', weeks_search: 'Пошук за тижнем, нотаткою чи подією', notes_search: 'Пошук нотаток', week_details: 'Деталі тижня', choose_week: 'Виберіть тиждень ліворуч, щоб редагувати його.', assigned_event: 'Призначена подія', priority: 'Пріоритет', priority_normal: 'Звичайний', priority_important: 'Важливий', priority_critical: 'Критичний', letter: 'Лист', s302: 'S302', week_note: 'Нотатка тижня', save: 'Зберегти', delete: 'Видалити', delete_week: 'Видалити тиждень', clear_week_confirm: 'Очистити дані вибраного тижня?', event_templates: '', events_search: 'Пошук за назвою, адресою або розкладом', event_group_filter: 'Група / колір', all_event_groups: 'Усі групи / кольори', delete_all_events: 'Видалити всі зібрання', delete_all_events_confirm: 'Видалити всі зібрання та пов’язані записи календаря? Цю дію не можна скасувати.', delete_all_events_done: 'Усі зібрання видалено.', events_shown_count: 'Показано: {shown} з {total}', event_editor: 'Редактор зібрання', name: 'Назва', color: 'Колір', address: 'Адреса', schedule: 'Розклад', clear: 'Очистити', save_event: 'Зберегти зібрання', look_and_feel: 'Зовнішній вигляд', language: 'Мова', layout: 'Макет календаря', theme_light: 'Світла', theme_dark: 'Темна', layout_help: 'Доступно 5 варіантів відображення календаря.', data_management: 'Керування даними', pdf_print: 'PDF / Друк', add_service_year: 'Додати службовий рік', add_next_year: 'Додати наступний рік', add: 'Додати', create_backup: 'Створити backup', reset_app: 'Скинути застосунок', print_hint: 'PDF використовує системний друк браузера.', export_pdf_title: 'Експорт у PDF', export_pdf_sub: 'Виберіть формат і використайте друк браузера.', month_grid: 'Календар місяця', period_calendar: 'Календар періоду', month_grid_desc: 'Сітка поточного місяця для друку.', period_calendar_desc: 'Друк для вибраного діапазону дат.', reports: 'Список подій і звіти', month_list: 'Список подій місяця', half_year: 'Події за пів року', year_events: 'Події за рік', list_period: 'Список за період', year_overview: 'Річний огляд', notes_report: 'Звіт по нотатках', choose_range: 'Виберіть дати початку та кінця періоду.', close: 'Закрити', print: 'Друк', export_title: 'Експорт', export_sub: 'Виберіть формат експорту: резервний JSON або календар (.ics) для Google/Apple.', json_backup: 'JSON backup', json_backup_desc: 'Повна резервна копія даних застосунку.', ics_calendar: 'Календар (.ics)', ics_desc: 'Імпорт у Google Calendar та Apple Calendar.', range_start: 'Початок періоду', range_end: 'Кінець періоду', download: 'Завантажити', google_hint: 'Підказка: у Google Calendar відкрийте «Налаштування → Імпорт і експорт → Імпорт», виберіть .ics. Для Apple Calendar просто відкрийте файл.',
-      sync_title: 'Ручна синхронізація', sync_hint: 'Без API: на основному ноутбуці завантажте файл синхронізації та помістіть його в Google Drive. На іншому пристрої завантажте цей файл із Drive і відкрийте тут.', sync_export: 'Завантажити синхронізацію', sync_import: 'Завантажити з файлу синхронізації', sync_export_done: 'Файл синхронізації створено. Помістіть його в Google Drive.', sync_import_confirm: 'Замінити поточні дані даними з файлу синхронізації?', sync_import_done: 'Дані синхронізації завантажено.', sync_import_failed: 'Не вдалося завантажити файл синхронізації.', sync_no_file: 'Виберіть JSON-файл синхронізації.', sync_last_export: 'Останнє вивантаження', sync_last_import: 'Останнє завантаження', sync_never: 'Синхронізацію ще не виконували.', team_panel: 'Панель команди', filter_event: 'Фільтр події', event_details: 'Деталі події', no_events_found: 'Нічого не знайдено.', no_notes: 'Немає нотаток.', open: 'Відкрити', new_event: 'Нове зібрання', edit_event: 'Редагування зібрання', choose_template: 'Виберіть шаблон', start: 'Початок', end: 'Кінець', delete_event: 'Видалити зібрання', create_entry_help: 'Буде створено окремий запис календаря.', edit_entry_help: 'Ви можете змінити шаблон, дати, нотатку або видалити подію.', note: 'Нотатка', google_maps: 'Google Maps', google_calendar: 'Google Calendar', apple_calendar: 'Apple / .ics', edit: 'Редагувати', type: 'Тип', type_week: 'Тиждень', type_entry: 'Запис', template: 'Зібрання', imported_backup: 'Старий backup імпортовано й очищено від дублів.', imported_json: 'JSON успішно імпортовано.', import_failed: 'Не вдалося імпортувати JSON.', week_saved: 'Тиждень збережено.', event_template_saved: 'Шаблон події збережено.', calendar_event_saved: 'Подію календаря збережено.', calendar_event_deleted: 'Подію видалено.', week_deleted: 'Дані тижня очищено.', reset_confirm: 'Скинути дані застосунку?', app_reset: 'Застосунок скинуто.', invalid_year: 'Введіть коректний рік, наприклад 2029.', added_year: 'Додано службовий рік {year}', choose_template_dates: 'Виберіть шаблон і дати.', wrong_end_date: 'Дата завершення не може бути раніше дати початку.', enter_event_name: 'Введіть назву події.', offline: 'Ви офлайн. Зміни зберігаються локально.', import_google_single: 'Імпортувати подію в Google/Apple календар', add_on_date: 'Додати подію', placeholder_schedule: 'Ср 19:00, Сб 10:00',
-      delete_note: 'Видалити нотатку',
-      delete_template: 'Видалити зібрання',
-      delete_note_confirm: 'Видалити цю нотатку?',
-      delete_template_confirm: 'Видалити шаблон події',
-      calendar_view_month: 'Вигляд: місяць',
-      calendar_view_year: 'Вигляд: службовий рік',
-      day_details_title: 'День і тиждень',
-      week_planned: 'План на тиждень',
-      entries_on_day: 'Зібрання цього дня',
-      no_entries_day: 'Немає зібрань на цей день.',
-      open_week: 'Відкрити тиждень',
-      add_entry: 'Додати зібрання',
-      edit_week_event: 'Редагувати план тижня',
-      compact_year_hint: 'На малому екрані ввімкнено компактний вигляд: натисніть день, щоб побачити деталі тижня та події.',
- sent_status: 'Контроль надсилання', letter_short: 'Лист', s302_short: 'S-302', send_control: 'Контроль надсилання', needs_sending: 'Потрібно надіслати', sent_done: 'Надіслано', deadline: 'Термін', before_visit_hint: 'Рекомендований термін: до початку тижня відвідування.',
-      reminders_title: 'Що потрібно надіслати', reminders_subtitle: 'Найближчі візити, які чекають S302 або листа', reminders_none: 'Усі візити в порядку — нічого термінового.',
-      reminders_s302_needed: 'Надіслати S302', reminders_letter_needed: 'Надіслати листа', reminders_mark_s302: 'S302 надіслано', reminders_mark_letter: 'Листа надіслано',
-      reminders_overdue: 'Прострочено', reminders_days_left: 'залишилося {days} дн.', reminders_close: 'Закрити', reminders_open_entry: 'Відкрити запис',
-      visit_type: 'Тип візиту', visit_type_none: 'Не візит', visit_type_congregation: 'Зібрання', visit_type_group: 'Група', visit_type_pregroup: 'Передгрупа',
-      contact_info: 'Контакт відповідального', contact_name: 'Ім’я', contact_phone: 'Телефон', contact_email: 'E-mail', contact_note: 'Нотатка',
-      countdown_today: 'Сьогодні', countdown_future: 'Через {value} {label}', countdown_past: '{value} {label} тому', copied: 'Скопійовано', copy: 'Копіювати',
-      stats_title: 'Статистика службового року', stats_planned: 'Візитів заплановано', stats_done: 'Проведено', unvisited_title: 'Візит не заплановано', unvisited_none: 'Усі зібрання мають запланований візит ✓',
-      planner_nothing: 'Виберіть хоча б одне зібрання', planner_no_free_weeks: 'Немає вільних тижнів у вибраному періоді', planner_confirm: 'Створити візити за планом', planner_created: 'Створено візитів',
-      conflict_warning: '⚠️ На ці дати вже заплановано інший візит:', conflict_proceed: 'Все одно зберегти?',
-      next_visit: 'Наступний візит', next_visit_none: 'Немає майбутніх візитів',
-      compose_letter: 'Скласти листа', share: 'Поділитися', letter_subject: 'Відвідування районного наглядача', letter_body_greeting: 'Дорогі брати!', letter_body_visit: 'Планується відвідування', letter_body_closing: 'З братньою любов’ю.',
-      result_note: 'Підсумки візиту (після відвідування)', result_note_short: 'Підсумки візиту', last_visit_result: 'Минулий візит',
-      backup_prompt: 'Завантажити резервну копію зараз?', backup_never: 'Резервна копія ще не створювалася.', backup_overdue: 'Останній backup був {days} дн. тому.',
-      pin_on: 'PIN-код: увімк', pin_off: 'PIN-код: вимк', pin_set_prompt: 'Задайте PIN (4–8 цифр):', pin_format: 'PIN має складатися з 4–8 цифр', pin_enabled: 'PIN-код увімкнено', pin_disabled: 'PIN-код вимкнено', pin_wrong: 'Невірний PIN', pin_enter_current: 'Введіть поточний PIN:', pin_disable_confirm: 'Вимкнути PIN-код?',
-      visits_schedule: 'Графік відвідувань (для КН)'
-    },
-    pl: {
-      appTitle: 'Klindarium',
-      nav_calendar: 'Kalendarz', nav_weeks: 'Tygodnie', nav_events: 'Zebrania', nav_notes: 'Notatki', nav_settings: 'Ustawienia',
-      screen_calendar: 'Kalendarz', screen_weeks: 'Tygodnie', screen_events: 'Zebrania', screen_notes: 'Notatki', screen_settings: 'Ustawienia',
-      subtitle_calendar: 'Przegląd miesiąca i wydarzeń roku służbowego.', subtitle_weeks: 'Planowanie tygodnia, notatki i priorytety.', subtitle_events: 'Zebrania, adresy sal i harmonogramy.', subtitle_notes: 'Wyszukiwanie i przegląd wszystkich notatek tygodniowych.', subtitle_settings: 'Motyw, język, eksport, import i zarządzanie latami.',
-      version: 'Wersja', theme: 'Motyw', export: 'Eksport', import_json: 'Import JSON', hide_team_panel: 'Ukryj panel zespołu', show_team_panel: 'Pokaż panel zespołu', today: 'Dzisiaj', all_events: 'Wszystkie zebrania', service_year: 'Rok służbowy', context: 'Kontekst', event: 'Zebranie', weekend: 'Weekend', today_label: 'Dzisiaj', no_events_month: 'Brak wydarzeń w wybranym miesiącu.', no_note: 'Brak notatki', no_schedule: 'Brak harmonogramu', no_address: 'Adres nie został podany', no_template: 'Nie wybrano zebrania', quick_status: 'Szybki status', years_count: 'Lat służbowych', templates_count: 'Szablonów wydarzeń', entries_count: 'Wpisów kalendarza', notes_count: 'Notatek', weeks_search: 'Szukaj tygodnia, notatki lub wydarzenia', notes_search: 'Szukaj notatek', week_details: 'Szczegóły tygodnia', choose_week: 'Wybierz tydzień po lewej stronie, aby go edytować.', assigned_event: 'Przypisane wydarzenie', priority: 'Priorytet', priority_normal: 'Normalny', priority_important: 'Ważny', priority_critical: 'Krytyczny', letter: 'List', s302: 'S302', week_note: 'Notatka tygodnia', save: 'Zapisz', delete: 'Usuń', delete_week: 'Usuń tydzień', clear_week_confirm: 'Wyczyścić dane wybranego tygodnia?', event_templates: '', events_search: 'Szukaj według nazwy, adresu lub harmonogramu', event_group_filter: 'Grupa / kolor', all_event_groups: 'Wszystkie grupy / kolory', delete_all_events: 'Usuń wszystkie zebrania', delete_all_events_confirm: 'Usunąć wszystkie zebrania i powiązane wpisy kalendarza? Tej czynności nie można cofnąć.', delete_all_events_done: 'Wszystkie zebrania usunięte.', events_shown_count: 'Pokazano: {shown} z {total}', event_editor: 'Edytor zebrania', name: 'Nazwa', color: 'Kolor', address: 'Adres', schedule: 'Harmonogram', clear: 'Wyczyść', save_event: 'Zapisz zebranie', look_and_feel: 'Wygląd', language: 'Język', layout: 'Układ kalendarza', theme_light: 'Jasny', theme_dark: 'Ciemny', layout_help: 'Dostępnych jest 5 układów kalendarza.', data_management: 'Zarządzanie danymi', pdf_print: 'PDF / Druk', add_service_year: 'Dodaj rok służbowy', add_next_year: 'Dodaj kolejny rok', add: 'Dodaj', create_backup: 'Utwórz backup', reset_app: 'Zresetuj aplikację', print_hint: 'PDF korzysta z systemowego druku przeglądarki.', export_pdf_title: 'Eksport do PDF', export_pdf_sub: 'Wybierz format i użyj drukowania przeglądarki.', month_grid: 'Kalendarz miesiąca', period_calendar: 'Kalendarz okresu', month_grid_desc: 'Siatka bieżącego miesiąca do wydruku.', period_calendar_desc: 'Wydruk dla wybranego zakresu dat.', reports: 'Listy wydarzeń i raporty', month_list: 'Lista wydarzeń miesiąca', half_year: 'Wydarzenia za pół roku', year_events: 'Wydarzenia za rok', list_period: 'Lista za okres', year_overview: 'Przegląd roku', notes_report: 'Raport notatek', choose_range: 'Wybierz datę początkową i końcową.', close: 'Zamknij', print: 'Drukuj', export_title: 'Eksport', export_sub: 'Wybierz format eksportu: kopia JSON lub kalendarz (.ics) dla Google/Apple.', json_backup: 'JSON backup', json_backup_desc: 'Pełna kopia zapasowa danych aplikacji.', ics_calendar: 'Kalendarz (.ics)', ics_desc: 'Import do Google Calendar i Apple Calendar.', range_start: 'Początek okresu', range_end: 'Koniec okresu', download: 'Pobierz', google_hint: 'Wskazówka: w Google Calendar otwórz „Ustawienia → Import i eksport → Import”, wybierz plik .ics. W Apple Calendar po prostu otwórz plik.',
-      sync_title: 'Ręczna synchronizacja', sync_hint: 'Bez API: na głównym laptopie pobierz plik synchronizacji i umieść go w Google Drive. Na innym urządzeniu pobierz ten plik z Drive i wczytaj go tutaj.', sync_export: 'Pobierz synchronizację', sync_import: 'Wczytaj synchronizację', sync_export_done: 'Plik synchronizacji utworzony. Umieść go w Google Drive.', sync_import_confirm: 'Zastąpić bieżące dane danymi z pliku synchronizacji?', sync_import_done: 'Dane synchronizacji wczytane.', sync_import_failed: 'Nie udało się wczytać pliku synchronizacji.', sync_no_file: 'Wybierz plik JSON synchronizacji.', sync_last_export: 'Ostatnie pobranie', sync_last_import: 'Ostatnie wczytanie', sync_never: 'Synchronizacja nie była jeszcze uruchamiana.', team_panel: 'Panel zespołu', filter_event: 'Filtr wydarzeń', event_details: 'Szczegóły wydarzenia', no_events_found: 'Brak wyników.', no_notes: 'Brak notatek.', open: 'Otwórz', new_event: 'Nowe zebranie', edit_event: 'Edycja zebrania', choose_template: 'Wybierz szablon', start: 'Początek', end: 'Koniec', delete_event: 'Usuń zebranie', create_entry_help: 'Zostanie utworzony oddzielny wpis kalendarza.', edit_entry_help: 'Możesz zmienić szablon, daty, notatkę lub usunąć wydarzenie.', note: 'Notatka', google_maps: 'Google Maps', google_calendar: 'Google Calendar', apple_calendar: 'Apple / .ics', edit: 'Edytuj', type: 'Typ', type_week: 'Tydzień', type_entry: 'Wpis', template: 'Zebranie', imported_backup: 'Starszy backup został zaimportowany i oczyszczony z duplikatów.', imported_json: 'JSON został pomyślnie zaimportowany.', import_failed: 'Nie udało się zaimportować JSON.', week_saved: 'Tydzień zapisany.', event_template_saved: 'Szablon wydarzenia zapisany.', calendar_event_saved: 'Wpis kalendarza zapisany.', calendar_event_deleted: 'Wydarzenie usunięte.', week_deleted: 'Dane tygodnia wyczyszczone.', reset_confirm: 'Zresetować dane aplikacji?', app_reset: 'Aplikacja została zresetowana.', invalid_year: 'Wpisz poprawny rok, np. 2029.', added_year: 'Dodano rok służbowy {year}', choose_template_dates: 'Wybierz szablon i daty.', wrong_end_date: 'Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.', enter_event_name: 'Wpisz nazwę wydarzenia.', offline: 'Jesteś offline. Zmiany są zapisywane lokalnie.', import_google_single: 'Importuj wydarzenie do kalendarza Google/Apple', add_on_date: 'Dodaj wydarzenie', placeholder_schedule: 'Śr 19:00, Sob 10:00',
-      delete_note: 'Usuń notatkę',
-      delete_template: 'Usuń zebranie',
-      delete_note_confirm: 'Usunąć tę notatkę?',
-      delete_template_confirm: 'Usunąć szablon wydarzenia',
-      calendar_view_month: 'Widok: miesiąc',
-      calendar_view_year: 'Widok: rok służbowy',
-      day_details_title: 'Dzień i tydzień',
-      week_planned: 'Plan tygodnia',
-      entries_on_day: 'Zebrania w tym dniu',
-      no_entries_day: 'Brak zebrań na ten dzień.',
-      open_week: 'Otwórz tydzień',
-      add_entry: 'Dodaj zebranie',
-      edit_week_event: 'Edytuj plan tygodnia',
-      compact_year_hint: 'Na małym ekranie włączony jest widok kompaktowy: stuknij dzień, aby zobaczyć szczegóły tygodnia i wydarzenia.',
- sent_status: 'Kontrola wysyłki', letter_short: 'List', s302_short: 'S-302', send_control: 'Kontrola wysyłki', needs_sending: 'Do wysłania', sent_done: 'Wysłano', deadline: 'Termin', before_visit_hint: 'Zalecany termin: przed początkiem tygodnia wizyty.',
-      reminders_title: 'Co trzeba wysłać', reminders_subtitle: 'Nadchodzące wizyty czekające na S302 lub list', reminders_none: 'Wszystkie wizyty w porządku — nic pilnego.',
-      reminders_s302_needed: 'Wyślij S302', reminders_letter_needed: 'Wyślij list', reminders_mark_s302: 'S302 wysłano', reminders_mark_letter: 'List wysłano',
-      reminders_overdue: 'Zaległe', reminders_days_left: 'pozostało {days} dni', reminders_close: 'Zamknij', reminders_open_entry: 'Otwórz wpis',
-      visit_type: 'Typ wizyty', visit_type_none: 'Nie wizyta', visit_type_congregation: 'Zbór', visit_type_group: 'Grupa', visit_type_pregroup: 'Pregrupa',
-      contact_info: 'Kontakt odpowiedzialnego', contact_name: 'Imię', contact_phone: 'Telefon', contact_email: 'E-mail', contact_note: 'Notatka',
-      countdown_today: 'Dzisiaj', countdown_future: 'Za {value} {label}', countdown_past: '{value} {label} temu', copied: 'Skopiowano', copy: 'Kopiuj',
-      stats_title: 'Statystyka roku służbowego', stats_planned: 'Zaplanowanych wizyt', stats_done: 'Odbytych', unvisited_title: 'Brak zaplanowanej wizyty', unvisited_none: 'Wszystkie zbory mają zaplanowaną wizytę ✓',
-      planner_nothing: 'Wybierz co najmniej jeden zbór', planner_no_free_weeks: 'Brak wolnych tygodni w wybranym okresie', planner_confirm: 'Utworzyć wizyty według planu', planner_created: 'Utworzono wizyt',
-      conflict_warning: '⚠️ Na te daty zaplanowano już inną wizytę:', conflict_proceed: 'Zapisać mimo to?',
-      next_visit: 'Następna wizyta', next_visit_none: 'Brak nadchodzących wizyt',
-      compose_letter: 'Napisz list', share: 'Udostępnij', letter_subject: 'Wizyta nadzorcy obwodu', letter_body_greeting: 'Drodzy bracia!', letter_body_visit: 'Planowana jest wizyta', letter_body_closing: 'Z braterską miłością.',
-      result_note: 'Wyniki wizyty (po odwiedzinach)', result_note_short: 'Wyniki wizyty', last_visit_result: 'Poprzednia wizyta',
-      backup_prompt: 'Pobrać kopię zapasową teraz?', backup_never: 'Kopia zapasowa nie została jeszcze utworzona.', backup_overdue: 'Ostatnia kopia była {days} dni temu.',
-      pin_on: 'PIN: wł', pin_off: 'PIN: wył', pin_set_prompt: 'Ustaw PIN (4–8 cyfr):', pin_format: 'PIN musi mieć 4–8 cyfr', pin_enabled: 'PIN włączony', pin_disabled: 'PIN wyłączony', pin_wrong: 'Błędny PIN', pin_enter_current: 'Podaj obecny PIN:', pin_disable_confirm: 'Wyłączyć PIN?',
-      visits_schedule: 'Harmonogram wizyt (dla NO)'
-    }
-  };
+  // Словарь модуля вынесен в i18n/dict.js и живёт в общем слое (префикс `cp.`).
+  // Здесь он больше не хранится: раньше это были ~39 КБ внутри app.js, недоступные
+  // ни хабу, ни другим модулям, и правились они вручную по индексам.
 
   // --- Merged from the standalone "Visit Planner / Формуляр посещения" project ---
   // Minimal i18n shim satisfying visit-pdf.js's contract: t(key), lang, WEEKDAYS, MEETING_TYPES, MEAL_DAY_KEYS.
@@ -341,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.57.0',
+      version: '9.58.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -396,13 +197,21 @@
     utils: {
       uid(prefix = 'id') { return `${prefix}_${Math.random().toString(36).slice(2, 10)}`; },
       lang() {
+        // Язык модуля по-прежнему живёт в его собственных настройках (мост
+        // App.i18nBridge держит их в согласии с языком хаба). Здесь только
+        // страховка от значения, которого нет в словаре модуля.
         const lang = App.state.app?.settings?.language || 'ru';
-        return I18N[lang] ? lang : 'ru';
+        return App.i18nBridge.SUPPORTED.includes(lang) ? lang : 'ru';
       },
       t(key, vars = {}) {
-        const lang = this.lang();
-        const dict = I18N[lang] || I18N.ru;
-        let value = dict[key] || I18N.ru[key] || key;
+        // Ключи вызовов не менялись — префикс `cp.` подставляется здесь, чтобы
+        // перенос словаря не потребовал править сотни мест вызова.
+        if (typeof CWI18n === 'undefined') return key;
+        const full = `cp.${key}`;
+        // Третий аргумент — явный язык: у модуля пока нет немецкого, и при
+        // `cw-lang=de` показать нужно ближайший доступный, а не русский.
+        let value = CWI18n.t(full, null, this.lang());
+        if (value === full) value = key;
         Object.keys(vars).forEach((k) => { value = value.replace(`{${k}}`, String(vars[k])); });
         return value;
       },
@@ -673,7 +482,7 @@
           this.lastWrittenPayload = payload;
         } catch (error) {
           console.error('Storage save failed', error);
-          App.utils.toast('Ошибка сохранения! Возможно, хранилище переполнено. Сделайте backup.');
+          App.utils.toast(App.utils.t('msg_storage_full'));
         }
       },
       // Used by the unload/hide safety net only. A plain save() there is dangerous: if another tab
@@ -900,7 +709,7 @@
           App.ui.closeModal(App.els.eventEditorModal);
         } catch (err) {
           console.error('saveEventTemplate failed:', err);
-          App.utils.toast(`Ошибка сохранения: ${err?.message || err}`);
+          App.utils.toast(App.utils.t('msg_save_error', { error: err?.message || err }));
         }
       },
       deleteAllEventTemplates() {
@@ -1370,7 +1179,7 @@
       },
       updateReminderButtonBadge() {
         const count = App.data.getUpcomingReminders().length;
-        if (App.els.checkRemindersBtnMain) App.els.checkRemindersBtnMain.textContent = count ? `🔔 S302/письма (${count})` : '🔔 S302/письма';
+        if (App.els.checkRemindersBtnMain) App.els.checkRemindersBtnMain.textContent = count ? App.utils.t('reminders_btn_count', { count }) : App.utils.t('reminders_btn');
       },
       renderNav() {
         const buildButton = (item, mobile = false) => `<button class="${mobile ? 'bottom-nav-btn' : 'nav-btn'} ${App.state.selectedScreen === item.id ? 'active' : ''}" data-screen="${item.id}" type="button"><span class="icon">${item.icon}</span><span class="label">${App.utils.t(item.tKey)}</span></button>`;
@@ -2078,7 +1887,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               const hasHome = typeof settings.homeLat === 'number' && typeof settings.homeLng === 'number';
               const hasCoords = typeof ev.lat === 'number' && typeof ev.lng === 'number';
               const km = (hasHome && hasCoords) ? App.utils.haversineKm(settings.homeLat, settings.homeLng, ev.lat, ev.lng) : null;
-              const distLabel = km !== null ? `<span class="small" style="color:var(--muted)">~${Math.round(km)} км</span>` : `<span class="small" style="color:var(--muted)">без координат</span>`;
+              const distLabel = km !== null ? `<span class="small" style="color:var(--muted)">${App.utils.t('dist_km', { km: Math.round(km) })}</span>` : `<span class="small" style="color:var(--muted)">${App.utils.t('dist_none')}</span>`;
               return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:12px"><input type="checkbox" data-planner-event="${App.utils.escapeAttr(ev.id)}" style="width:auto" checked /><span class="dot" style="background:${App.utils.clampColor(ev.color)}"></span><span style="flex:1">${App.utils.escapeHtml(ev.name)}</span>${distLabel}</label>`;
             }).join('')
           : `<div class="md-empty">${App.utils.t('unvisited_none')}</div>`;
@@ -2176,8 +1985,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!assignments.length) return App.utils.toast(App.utils.t('planner_no_free_weeks'));
         assignments.sort((a, b) => String(a.start).localeCompare(String(b.start)));
         const summary = assignments.map((a) => `${a.event?.name}: ${App.utils.prettyDate(a.start)} — ${App.utils.prettyDate(a.end)}`).join('\n');
-        const clusterNote = tours.length ? `\n\n${tours.length > clusters.length ? tours.length : clusters.length} дальн. выезд(ов) сгруппировано вместе.` : '';
-        const uncodedNote = uncoded ? `\n⚠️ ${uncoded} собрание(й) без координат учтено как «рядом» — добавь адрес и нажми 📍 в редакторе собрания для точной группировки.` : '';
+        const clusterNote = tours.length ? '\n\n' + App.utils.t('tours_grouped', { count: tours.length > clusters.length ? tours.length : clusters.length }) : '';
+        const uncodedNote = uncoded ? '\n' + App.utils.t('uncoded_note', { count: uncoded }) : '';
         if (!window.confirm(`${App.utils.t('planner_confirm')} (${assignments.length}):${uncodedNote}\n\n${summary}${clusterNote}`)) return;
         assignments.forEach((a) => App.state.app.entries.push({ id: App.utils.uid('entry'), eventId: a.eventId, start: a.start, end: a.end, title: a.event?.name || '', note: '', flags: { f302: false, letter: false }, resultNote: '', source: 'entry' }));
         App.store.save();
@@ -2375,7 +2184,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             const cmd = btn.dataset.rteCmd;
             const map = { bold: ['fontWeight', 'bold'], italic: ['fontStyle', 'italic'], underline: ['textDecoration', 'underline'] };
             const [prop, value] = map[cmd] || [];
-            if (!prop || !App.ui.wrapSelection(editor, prop, value)) { App.utils.toast('Сначала выдели текст в редакторе'); return; }
+            if (!prop || !App.ui.wrapSelection(editor, prop, value)) { App.utils.toast(App.utils.t('select_text_first')); return; }
             App.ui.onRteEditorInput(editor);
           });
         });
@@ -2386,7 +2195,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           btn.addEventListener('click', () => {
             const editor = App.state.activeRteEditor || App.els.letterTemplateEditor;
             if (!editor) return;
-            if (!App.ui.wrapSelection(editor, 'fontSize', `${btn.dataset.rteSize}pt`)) { App.utils.toast('Сначала выдели текст в редакторе'); return; }
+            if (!App.ui.wrapSelection(editor, 'fontSize', `${btn.dataset.rteSize}pt`)) { App.utils.toast(App.utils.t('select_text_first')); return; }
             App.ui.onRteEditorInput(editor);
           });
         });
@@ -2396,12 +2205,12 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const type = App.state.letterEditingType || 'Congregation';
         const pages = App.state.app.settings.letterPages[type] || [];
         if (!App.els.letterPagesList) return;
-        if (!pages.length) { App.els.letterPagesList.innerHTML = `<div class="md-empty">Дополнительных страниц нет — только письмо на странице 1.</div>`; return; }
+        if (!pages.length) { App.els.letterPagesList.innerHTML = `<div class="md-empty">${App.utils.t('letter_pages_empty')}</div>`; return; }
         App.els.letterPagesList.innerHTML = pages.map((page, i) => `
           <div class="md-card" style="padding:14px;box-shadow:none;border:1px solid var(--line)" data-page-card="${App.utils.escapeAttr(page.id)}">
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
               <span class="small" style="white-space:nowrap">Стр. ${i + 2}:</span>
-              <input type="text" data-page-title="${App.utils.escapeAttr(page.id)}" value="${App.utils.escapeAttr(page.title || '')}" placeholder="Заголовок страницы (необязательно)" style="flex:1" />
+              <input type="text" data-page-title="${App.utils.escapeAttr(page.id)}" value="${App.utils.escapeAttr(page.title || '')}" placeholder=App.utils.t('letter_page_title_ph') style="flex:1" />
               <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-page="${App.utils.escapeAttr(page.id)}" style="white-space:nowrap">Удалить страницу</button>
             </div>
             <div class="rte-editor" data-rte-page="${App.utils.escapeAttr(page.id)}" contenteditable="true">${page.html || ''}</div>
@@ -2413,7 +2222,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.ui.bindRteEditor(editor);
           card.querySelector('[data-page-title]')?.addEventListener('input', (e) => { page.title = e.target.value; App.store.save(); });
           card.querySelector('[data-remove-page]')?.addEventListener('click', () => {
-            if (!window.confirm('Удалить эту страницу письма?')) return;
+            if (!window.confirm(App.utils.t('letter_page_delete_confirm'))) return;
             const idx = pages.findIndex((p) => p.id === page.id);
             if (idx >= 0) pages.splice(idx, 1);
             App.store.save();
@@ -2575,17 +2384,17 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!coords) { App.els.eventDistanceStatus.textContent = ''; return; }
         if (typeof settings.homeLat === 'number' && typeof settings.homeLng === 'number') {
           const km = App.utils.haversineKm(settings.homeLat, settings.homeLng, coords.lat, coords.lng);
-          App.els.eventDistanceStatus.textContent = km === null ? '📍 Координаты сохранены' : `📍 ~${Math.round(km)} км от дома`;
+          App.els.eventDistanceStatus.textContent = km === null ? App.utils.t('geo_saved') : App.utils.t('geo_distance', { km: Math.round(km) });
         } else {
-          App.els.eventDistanceStatus.textContent = '📍 Координаты сохранены (укажи место проживания в Настройках, чтобы видеть расстояние)';
+          App.els.eventDistanceStatus.textContent = App.utils.t('geo_saved_hint');
         }
       },
       async geocodeCurrentEvent() {
         const address = App.els.eventAddressInput?.value.trim();
-        if (!address) return App.utils.toast('Сначала укажи адрес собрания');
-        if (App.els.eventDistanceStatus) App.els.eventDistanceStatus.textContent = 'Определяю координаты…';
+        if (!address) return App.utils.toast(App.utils.t('geo_need_address'));
+        if (App.els.eventDistanceStatus) App.els.eventDistanceStatus.textContent = App.utils.t('geo_locating');
         const result = await App.utils.geocodeAddress(address);
-        if (!result) { if (App.els.eventDistanceStatus) App.els.eventDistanceStatus.textContent = '⚠️ Не удалось определить координаты по этому адресу'; return; }
+        if (!result) { if (App.els.eventDistanceStatus) App.els.eventDistanceStatus.textContent = App.utils.t('geo_failed'); return; }
         App.state.editingEventCoords = { lat: result.lat, lng: result.lng };
         // If editing an existing (already saved) event, persist immediately so the user doesn't have to remember to hit Save.
         if (App.state.editingEventId) {
@@ -2596,15 +2405,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
       async geocodeHome() {
         const address = App.els.homeAddressInput?.value.trim();
-        if (!address) return App.utils.toast('Сначала укажи город проживания');
-        if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = 'Определяю координаты…';
+        if (!address) return App.utils.toast(App.utils.t('geo_need_city'));
+        if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = App.utils.t('geo_locating');
         const result = await App.utils.geocodeAddress(address);
-        if (!result) { if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = '⚠️ Не удалось определить координаты по этому адресу'; return; }
+        if (!result) { if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = App.utils.t('geo_failed'); return; }
         App.state.app.settings.homeLat = result.lat;
         App.state.app.settings.homeLng = result.lng;
         App.store.save();
-        if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = `📍 Найдено: ${result.displayName || address}`;
-        App.utils.toast('Место проживания сохранено');
+        if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = App.utils.t('geo_found', { place: result.displayName || address });
+        App.utils.toast(App.utils.t('geo_home_saved'));
       },
       retranslateVisitFormWeekdays(oldLang, newLang) {
         const state = App.state.visitFormData; if (!state) return;
@@ -2669,7 +2478,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
       openVisitForm(itemId) {
         const item = App.data.getCalendarItemById(itemId);
-        if (!item || item.source !== 'entry') return App.utils.toast('Формуляр визита доступен только для записей визитов.');
+        if (!item || item.source !== 'entry') return App.utils.toast(App.utils.t('vf_only_visits'));
         const entry = App.state.app.entries.find((e) => e.id === item.refId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
@@ -2701,7 +2510,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (lang !== interfaceLang) {
           App.els.vfLanguageReminder.innerHTML = `⚠️ Обрати внимание: формуляр составляется на языке <strong>${App.utils.escapeHtml(langName)}</strong>, а интерфейс программы сейчас на языке <strong>${App.utils.escapeHtml(VP_LANG_NAMES[interfaceLang] || interfaceLang)}</strong>. Проверь, что это правильный язык для данного собрания, прежде чем заполнять поля.`;
         } else {
-          App.els.vfLanguageReminder.innerHTML = `🌐 Формуляр составляется на языке: <strong>${App.utils.escapeHtml(langName)}</strong> (совпадает с языком интерфейса).`;
+          App.els.vfLanguageReminder.innerHTML = App.utils.t('vf_language_note', { lang: App.utils.escapeHtml(langName) });
         }
       },
       saveVisitFormState() {
@@ -2721,10 +2530,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             <div class="form-grid">
               <label><span class="small">Тип</span><select data-field="type">${vpi.MEETING_TYPES.map((mt) => `<option value="${mt}" ${m.type === mt ? 'selected' : ''}>${esc(vpi.t(mt))}</option>`).join('')}</select></label>
               <label><span class="small">День</span><input data-field="day" type="text" value="${escA(m.day)}" /></label>
-              <label><span class="small">Время</span><input data-field="time" type="text" value="${escA(m.time)}" /></label>
-              <label><span class="small">Место</span><input data-field="place" type="text" value="${escA(m.place)}" /></label>
+              <label><span class="small">${App.utils.t('vf_time')}</span><input data-field="time" type="text" value="${escA(m.time)}" /></label>
+              <label><span class="small">${App.utils.t('vf_place')}</span><input data-field="place" type="text" value="${escA(m.place)}" /></label>
             </div>
-            <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">Удалить</button>
+            <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">${App.utils.t('vf_delete_row')}</button>
           </div>`).join('') : `<div class="md-empty">Встречи ещё не добавлены</div>`;
         // Service plan (grouped by day)
         if (App.els.vfServiceDaysList) App.els.vfServiceDaysList.innerHTML = state.servicePlan.map((day) => `
@@ -2734,15 +2543,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               const listId = r.session === 'before' ? 'vfTimeOptionsBefore' : r.session === 'after' ? 'vfTimeOptionsAfter' : 'vfTimeOptionsDefault';
               return `
               <div class="form-grid" data-row-id="${escA(r.id)}" data-row-kind="service" data-day-id="${escA(day.id)}" style="margin-bottom:8px">
-                <label><span class="small">Время</span>
+                <label><span class="small">${App.utils.t('vf_time')}</span>
                   <div class="session-toggle">
                     <button type="button" class="session-toggle-btn ${r.session === 'before' ? 'active' : ''}" data-set-session="before">До обеда</button>
                     <button type="button" class="session-toggle-btn ${r.session === 'after' ? 'active' : ''}" data-set-session="after">После обеда</button>
                   </div>
-                  <input data-field="time" type="text" list="${listId}" value="${escA(r.time)}" placeholder="чч:мм" />
+                  <input data-field="time" type="text" list="${listId}" value="${escA(r.time)}" placeholder="${escA(App.utils.t('vf_time_ph'))}" />
                 </label>
-                <label><span class="small">Место</span><input data-field="place" type="text" value="${escA(r.place)}" /></label>
-                <label><span class="small">С кем (имя / телефон)</span><input data-field="partner" type="text" placeholder="Имя / телефон" value="${escA(r.partner)}" /></label>
+                <label><span class="small">${App.utils.t('vf_place')}</span><input data-field="place" type="text" value="${escA(r.place)}" /></label>
+                <label><span class="small">${App.utils.t('vf_partner_label')}</span><input data-field="partner" type="text" placeholder="${escA(App.utils.t('vf_partner_ph'))}" value="${escA(r.partner)}" /></label>
                 <label><span class="small">Вид служения</span><input data-field="kind" type="text" value="${escA(r.kind)}" /></label>
                 <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="grid-column:1 / -1">Удалить строку</button>
               </div>`;
@@ -2760,11 +2569,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               <div class="form-grid">
                 <label><span class="small">Имя</span><input data-field="name" type="text" value="${escA(p.name)}" /></label>
                 <label><span class="small">День</span><input data-field="day" type="text" value="${escA(p.day)}" /></label>
-                <label><span class="small">Время</span><input data-field="time" type="text" value="${escA(p.time)}" /></label>
-                <label><span class="small">С кем (имя / телефон)</span><input data-field="partner" type="text" placeholder="Имя / телефон" value="${escA(p.partner)}" /></label>
+                <label><span class="small">${App.utils.t('vf_time')}</span><input data-field="time" type="text" value="${escA(p.time)}" /></label>
+                <label><span class="small">${App.utils.t('vf_partner_label')}</span><input data-field="partner" type="text" placeholder="${escA(App.utils.t('vf_partner_ph'))}" value="${escA(p.partner)}" /></label>
                 <label style="grid-column:1 / -1"><span class="small">Причина</span><input data-field="reason" type="text" value="${escA(p.reason)}" /></label>
               </div>
-              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">Удалить</button>
+              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">${App.utils.t('vf_delete_row')}</button>
             </div>`).join('') : `<div class="md-empty">Посещения ещё не добавлены</div>`;
         }
         // Meals
@@ -2773,13 +2582,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           <div class="md-card" style="padding:10px;box-shadow:none" data-row-id="${escA(m.id)}" data-row-kind="meal">
             <div class="form-grid">
               <label><span class="small">День</span><select data-field="day"><option value=""></option>${vpi.MEAL_DAY_KEYS.map((dk) => { const label = vpi.t(dk); return `<option value="${escA(label)}" ${m.day === label ? 'selected' : ''}>${esc(label)}</option>`; }).join('')}</select></label>
-              <label><span class="small">Время</span><select data-field="time"><option value=""></option>${MEAL_TIME_OPTIONS.map((tm) => `<option value="${tm}" ${m.time === tm ? 'selected' : ''}>${tm}</option>`).join('')}</select></label>
-              <label><span class="small">Место</span><input data-field="place" type="text" value="${escA(m.place)}" /></label>
-              <label><span class="small">Кто принимает</span><input data-field="host" type="text" value="${escA(m.host)}" /></label>
-              <label><span class="small">Телефон</span><input data-field="phone" type="text" value="${escA(m.phone)}" /></label>
-              <label><span class="small">Примечание</span><input data-field="note" type="text" value="${escA(m.note)}" /></label>
+              <label><span class="small">${App.utils.t('vf_time')}</span><select data-field="time"><option value=""></option>${MEAL_TIME_OPTIONS.map((tm) => `<option value="${tm}" ${m.time === tm ? 'selected' : ''}>${tm}</option>`).join('')}</select></label>
+              <label><span class="small">${App.utils.t('vf_place')}</span><input data-field="place" type="text" value="${escA(m.place)}" /></label>
+              <label><span class="small">${App.utils.t('vf_host')}</span><input data-field="host" type="text" value="${escA(m.host)}" /></label>
+              <label><span class="small">${App.utils.t('vf_phone')}</span><input data-field="phone" type="text" value="${escA(m.phone)}" /></label>
+              <label><span class="small">${App.utils.t('vf_note')}</span><input data-field="note" type="text" value="${escA(m.note)}" /></label>
             </div>
-            <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">Удалить</button>
+            <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-row style="margin-top:8px">${App.utils.t('vf_delete_row')}</button>
           </div>`).join('') : `<div class="md-empty">Обеды ещё не добавлены</div>`;
         this.bindVisitFormRowEvents();
       },
@@ -2829,12 +2638,12 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       buildVisitPdfDoc() {
         const state = App.state.visitFormData;
         if (!state) return null;
-        if (typeof window.PdfGenerator === 'undefined' || !window.jspdf) { App.utils.toast('Модуль PDF ещё не загрузился, попробуйте ещё раз через секунду.'); return null; }
+        if (typeof window.PdfGenerator === 'undefined' || !window.jspdf) { App.utils.toast(App.utils.t('pdf_not_loaded')); return null; }
         return window.PdfGenerator.generate(state, buildVpI18n(state.language));
       },
       // ===================== Letter PDF (preserves the original document's layout) =====================
       buildLetterPdfDoc(entry, event, draftOverride) {
-        if (!window.jspdf) { App.utils.toast('Модуль PDF ещё не загрузился, попробуйте ещё раз через секунду.'); return null; }
+        if (!window.jspdf) { App.utils.toast(App.utils.t('pdf_not_loaded')); return null; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
         const FONT = 'Aptos';
@@ -2973,13 +2782,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
       openLetterModal(itemId) {
         const item = App.data.getCalendarItemById(itemId);
-        if (!item || item.source !== 'entry') return App.utils.toast('Письмо доступно только для записей визитов.');
+        if (!item || item.source !== 'entry') return App.utils.toast(App.utils.t('letter_only_visits'));
         const entry = App.state.app.entries.find((e) => e.id === item.refId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
         App.state.letterEntryId = entry.id;
         const suffix = this.letterTypeSuffix(event?.visitType);
-        const visitLabel = { Congregation: 'собрание', Group: 'группа', Pregroup: 'предгруппа' }[suffix];
+        const visitLabel = { Congregation: App.utils.t('visit_congregation'), Group: App.utils.t('visit_group'), Pregroup: App.utils.t('visit_pregroup') }[suffix];
         if (App.els.letterModalSub) App.els.letterModalSub.textContent = `${entry.title || event?.name || ''} (${visitLabel}) · ${App.utils.prettyDateLong(entry.start)} — ${App.utils.prettyDateLong(entry.end)}`;
         // The email-body text is saved on the entry itself, so reopening this modal for the same
         // visit later shows what was written before. Only a brand-new (never-edited) visit falls
@@ -2991,7 +2800,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.letterSubjectInput) App.els.letterSubjectInput.value = entry.subject || this.buildLetterSubject(entry, event);
         const extraPages = App.state.app.settings.letterPages?.[suffix] || [];
         const totalPages = 1 + extraPages.length;
-        if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = entry.visitForm ? `📎 Письмо (${totalPages} стр.) и график визита будут отправлены как PDF-вложения.` : `📎 Письмо будет отправлено как PDF-вложение (${totalPages} стр.). График визита ещё не заполнен — если нужен, сначала открой «Формуляр визита».`;
+        if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = entry.visitForm ? App.utils.t('attach_letter_and_plan', { pages: totalPages }) : App.utils.t('attach_letter_only', { pages: totalPages });
         this.openModal(App.els.letterModal);
       },
       // Fills the ORIGINAL Watchtower S-302-K form (embedded byte-for-byte, never redrawn) using its
@@ -2999,8 +2808,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       // PDF, only the four blanks are filled in. Field names below are the exact (if oddly-encoded)
       // internal names confirmed by inspecting the source PDF's AcroForm — do not "clean them up".
       async buildS302Pdf(entry, event) {
-        if (!window.S302_FORM_B64) { App.utils.toast('Форма S-302 не найдена (файл формы не загружен).'); return null; }
-        if (!window.PDFLib) { App.utils.toast('Не удалось загрузить библиотеку для заполнения PDF (проверь подключение к интернету).'); return null; }
+        if (!window.S302_FORM_B64) { App.utils.toast(App.utils.t('s302_form_missing')); return null; }
+        if (!window.PDFLib) { App.utils.toast(App.utils.t('s302_lib_missing')); return null; }
         try {
           const bytes = Uint8Array.from(atob(window.S302_FORM_B64), (c) => c.charCodeAt(0));
           const pdfDoc = await window.PDFLib.PDFDocument.load(bytes);
@@ -3013,7 +2822,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               pdfDoc.registerFontkit(window.fontkit);
               const fontBytes = Uint8Array.from(atob(window.APTOS_REGULAR_B64), (c) => c.charCodeAt(0));
               customFont = await pdfDoc.embedFont(fontBytes, { subset: true });
-            } catch (err) { console.warn('S-302: не удалось встроить шрифт Aptos, кириллица может не отобразиться', err); }
+            } catch (err) { console.warn(App.utils.t('s302_font_failed'), err); }
           }
           const form = pdfDoc.getForm();
           const setIfExists = (fieldName, value) => {
@@ -3021,7 +2830,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               const field = form.getTextField(fieldName);
               field.setText(value || '');
               if (customFont) field.updateAppearances(customFont);
-            } catch (err) { console.warn('S-302: поле не найдено —', fieldName, err); }
+            } catch (err) { console.warn(App.utils.t('s302_field_missing'), fieldName, err); }
           };
           const senderName = App.state.app.settings.senderName || '';
           const congregationName = entry.title || event?.name || '';
@@ -3031,11 +2840,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           setIfExists('yZZSy ZWqhB.0', senderName);
           setIfExists('yZZSy ZWqhB.1.0', dateRange);
           setIfExists('yZZSy ZWqhB.1.1', senderName);
-          try { form.flatten(); } catch (err) { console.warn('S-302: не удалось сделать поля нередактируемыми', err); }
+          try { form.flatten(); } catch (err) { console.warn(App.utils.t('s302_readonly_failed'), err); }
           return await pdfDoc.save();
         } catch (err) {
           console.error('S-302 fill failed', err);
-          App.utils.toast('Не удалось заполнить форму S-302.');
+          App.utils.toast(App.utils.t('s302_fill_failed'));
           return null;
         }
       },
@@ -3043,7 +2852,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const entry = App.state.app.entries.find((e) => e.id === entryId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
-        App.utils.toast('Формирую S-302…');
+        App.utils.toast(App.utils.t('s302_generating'));
         const bytes = await this.buildS302Pdf(entry, event);
         if (!bytes) return;
         const file = new File([bytes], `S-302-${App.utils.slug(entry.title || 'congregation')}.pdf`, { type: 'application/pdf' });
@@ -3057,7 +2866,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.store.save();
         App.ui.renderAll();
         App.ui.renderRemindersModal();
-        App.utils.toast('S-302 сформирован и отмечен как отправленный.');
+        App.utils.toast(App.utils.t('s302_done'));
       },
       async sendLetterNow() {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
@@ -3097,7 +2906,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }
         if (files.length) {
           files.forEach((f) => App.utils.downloadBlob(f, f.name));
-          App.utils.toast(files.length > 1 ? 'Файлы скачаны — прикрепи их к письму вручную.' : 'Файл скачан — прикрепи его к письму вручную.');
+          App.utils.toast(files.length > 1 ? App.utils.t('files_downloaded') : App.utils.t('file_downloaded'));
         }
         mailto();
         App.ui.closeLetterModal();
@@ -3157,7 +2966,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!App.els.historyList) return;
         const history = App.store.getHistory();
         if (!history.length) {
-          App.els.historyList.innerHTML = `<div class="md-empty">Пока нет сохранённых контрольных точек — они появляются автоматически по мере использования программы (не чаще раза в 5 минут).</div>`;
+          App.els.historyList.innerHTML = `<div class="md-empty">${App.utils.t('history_empty')}</div>`;
           return;
         }
         const sorted = history.map((snap, realIndex) => ({ snap, realIndex })).reverse(); // newest first, keep original index for restore
@@ -3165,7 +2974,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           const date = new Date(snap.at);
           const label = date.toLocaleString(App.utils.lang(), { dateStyle: 'medium', timeStyle: 'short' });
           let summary = '';
-          try { const data = JSON.parse(snap.data); summary = `${(data.events || []).length} собраний, ${(data.entries || []).length} визитов`; } catch (err) { summary = ''; }
+          try { const data = JSON.parse(snap.data); summary = App.utils.t('history_summary', { events: (data.events || []).length, entries: (data.entries || []).length }); } catch (err) { summary = ''; }
           return `<div class="md-card" style="padding:12px;box-shadow:none;border:1px solid var(--line)">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div><strong>${App.utils.escapeHtml(label)}</strong><div class="small" style="color:var(--muted)">${App.utils.escapeHtml(summary)}</div></div>
@@ -3175,13 +2984,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }).join('');
         document.querySelectorAll('[data-restore-snapshot]').forEach((btn) => btn.addEventListener('click', () => {
           const index = Number(btn.dataset.restoreSnapshot);
-          if (!window.confirm('Восстановить данные на этот момент? Текущее состояние тоже будет сохранено как контрольная точка, так что этот откат тоже можно будет отменить.')) return;
+          if (!window.confirm(App.utils.t('history_restore_confirm'))) return;
           if (App.store.restoreSnapshot(index)) {
             App.ui.closeModal(App.els.historyModal);
             App.ui.renderAll();
-            App.utils.toast('Данные восстановлены.');
+            App.utils.toast(App.utils.t('history_restored'));
           } else {
-            App.utils.toast('Не удалось восстановить эту точку.');
+            App.utils.toast(App.utils.t('history_restore_failed'));
           }
         }));
       },
@@ -3209,9 +3018,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!due.length) return;
         if (due.length === 1) {
           const entry = due[0]; const event = App.data.getEventById(entry.eventId);
-          App.utils.toast(`⏰ До визита «${entry.title || event?.name || ''}» осталось ≤60 дней — пора отправить письмо.`);
+          App.utils.toast(App.utils.t('reminder_60days', { title: entry.title || event?.name || '' }));
         } else {
-          App.utils.toast(`⏰ ${due.length} визита(ов) уже в пределах 60 дней без отправленного письма — см. «🔔 S302/письма».`);
+          App.utils.toast(App.utils.t('reminder_60days_many', { count: due.length }));
         }
         due.forEach((entry) => { entry.notified60 = true; });
         App.store.save();
@@ -3284,7 +3093,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.state.app.settings['letterTemplate' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_TEMPLATE_HTML; this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.state.app.settings['emailBody' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_EMAIL_BODY_TEMPLATES[App.state.letterEditingType || 'Congregation']; if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.state.app.settings['letterSalutation' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_SALUTATIONS[App.state.letterEditingType || 'Congregation']; if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = App.state.app.settings.senderName || ''; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = App.state.app.settings.senderAddress || ''; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = App.state.app.settings.senderPhone || ''; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = App.state.app.settings.senderEmail || ''; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = `📍 Координаты сохранены (${App.state.app.settings.homeLat.toFixed(3)}, ${App.state.app.settings.homeLng.toFixed(3)})`; if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.state.app.settings['letterTemplate' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_TEMPLATE_HTML; this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.state.app.settings['emailBody' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_EMAIL_BODY_TEMPLATES[App.state.letterEditingType || 'Congregation']; if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.state.app.settings['letterSalutation' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_SALUTATIONS[App.state.letterEditingType || 'Congregation']; if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = App.state.app.settings.senderName || ''; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = App.state.app.settings.senderAddress || ''; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = App.state.app.settings.senderPhone || ''; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = App.state.app.settings.senderEmail || ''; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
       closeMobileMenu() {
         if (App.els.appRoot) App.els.appRoot.classList.remove('menu-open');
         if (App.els.mobileOverlay) {
@@ -3409,7 +3218,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       });
       App.els.vfAddDayBtn?.addEventListener('click', () => {
         if (!App.state.visitFormData) return;
-        App.state.visitFormData.servicePlan.push({ id: App.utils.uid('vd'), label: 'Новый день', rows: [{ id: App.utils.uid('vr'), time: '', place: '', partner: '', kind: '', session: '' }] });
+        App.state.visitFormData.servicePlan.push({ id: App.utils.uid('vd'), label: App.utils.t('new_day'), rows: [{ id: App.utils.uid('vr'), time: '', place: '', partner: '', kind: '', session: '' }] });
         App.ui.saveVisitFormState(); App.ui.renderVisitFormLists();
       });
       App.els.vfAddPastoralBtn?.addEventListener('click', () => {
@@ -3430,7 +3239,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const event = entry ? App.data.getEventById(entry.eventId) : null;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
         doc.save(`${App.utils.slug(entry?.title || 'visit')}${suffix ? '-' + suffix : ''}.pdf`);
-        App.utils.toast('PDF сформирован');
+        App.utils.toast(App.utils.t('pdf_done'));
       });
       // Letter modal
       App.els.letterModalCloseBtn?.addEventListener('click', () => App.ui.closeLetterModal());
@@ -3460,24 +3269,24 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
         const suffix = App.ui.letterTypeSuffix(event?.visitType);
-        if (!window.confirm('Заменить текущий текст письма на актуальный шаблон по умолчанию? Текущий текст будет потерян.')) return;
+        if (!window.confirm(App.utils.t('letter_reset_confirm'))) return;
         const defaultTemplate = App.state.app.settings['emailBody' + suffix] || DEFAULT_EMAIL_BODY_TEMPLATES[suffix];
         const fresh = App.ui.substitutePlaceholders(defaultTemplate, entry, event);
         if (App.els.letterEmailBodyInput) App.els.letterEmailBodyInput.value = fresh;
         entry.emailBody = fresh;
         App.store.save();
-        App.utils.toast('Текст заменён на текущий шаблон по умолчанию.');
+        App.utils.toast(App.utils.t('letter_reset_done'));
       });
       App.els.letterAttachPdfBtn?.addEventListener('click', () => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
-        if (!entry?.visitForm) return App.utils.toast('Сначала заполни «Формуляр визита» для этой записи.');
+        if (!entry?.visitForm) return App.utils.toast(App.utils.t('vf_fill_first'));
         App.state.visitFormData = JSON.parse(JSON.stringify(entry.visitForm));
         const doc = App.ui.buildVisitPdfDoc();
         if (!doc) return;
         const event = App.data.getEventById(entry.eventId);
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
         doc.save(`${App.utils.slug(entry.title || 'visit')}${suffix ? '-' + suffix : ''}-schedule.pdf`);
-        if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = '📎 График скачан отдельно — «Отправить» приложит письмо и график вместе, если платформа поддерживает.';
+        if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = App.utils.t('plan_downloaded');
       });
       App.els.letterSendBtn?.addEventListener('click', () => App.ui.sendLetterNow());
       App.ui.wireRteToolbar();
@@ -3500,7 +3309,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.state.app.settings['emailBody' + type] = DEFAULT_EMAIL_BODY_TEMPLATES[type];
         App.store.save();
         if (App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = DEFAULT_EMAIL_BODY_TEMPLATES[type];
-        App.utils.toast('Текст по умолчанию восстановлен');
+        App.utils.toast(App.utils.t('email_default_restored'));
       });
       App.els.letterSalutationInput?.addEventListener('input', (e) => {
         const type = App.state.letterEditingType || 'Congregation';
@@ -3512,7 +3321,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.state.app.settings['letterSalutation' + type] = DEFAULT_LETTER_SALUTATIONS[type];
         App.store.save();
         if (App.els.letterSalutationInput) App.els.letterSalutationInput.value = DEFAULT_LETTER_SALUTATIONS[type];
-        App.utils.toast('Обращение восстановлено к стандартному');
+        App.utils.toast(App.utils.t('salutation_restored'));
       });
       App.els.geocodeEventBtn?.addEventListener('click', () => App.ui.geocodeCurrentEvent());
       App.els.eventVisitTypeInput?.addEventListener('change', () => App.ui.syncEventVisitFieldsVisibility());
@@ -3551,7 +3360,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const type = App.state.letterEditingType || 'Congregation';
         App.ui.setLetterTemplateFor(type, DEFAULT_LETTER_TEMPLATE_HTML);
         if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = DEFAULT_LETTER_TEMPLATE_HTML;
-        App.utils.toast('Шаблон восстановлен');
+        App.utils.toast(App.utils.t('template_restored'));
       });
       App.els.countdownUnitSelect?.addEventListener('change', (e) => { App.state.countdownUnit = e.target.value; App.ui.renderAll(); });
       App.els.checkRemindersBtnMain?.addEventListener('click', () => App.ui.openRemindersModal());

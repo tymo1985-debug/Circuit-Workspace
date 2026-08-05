@@ -27,6 +27,9 @@ const APP_SHELL_URLS = [
   // модуля упал бы на CWI18n undefined ещё до отрисовки.
   '../shared/i18n.js',
   '../shared/i18n/common.js',
+  // Словарь модуля: с фазы 5 он живёт отдельным файлом, а не внутри app.js.
+  // Без него офлайн-запуск дал бы интерфейс из голых ключей.
+  './i18n/dict.js',
   '../shared/fonts/roboto-latin-400-normal.woff2',
   '../shared/fonts/roboto-latin-500-normal.woff2',
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
