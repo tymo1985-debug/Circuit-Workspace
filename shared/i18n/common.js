@@ -54,6 +54,8 @@
       'module.circuit-planner.desc': 'Календарь служебного года: недели, посещения, формуляры S-302 и печать PDF.',
       'module.pioneer-school.title': 'Школа пионеров',
       'module.pioneer-school.desc': 'Учащиеся и классы, расписание уроков, учебники, формуляры S-253 и экспорт списков.',
+      'module.appointments.title': 'Назначения',
+      'module.appointments.desc': 'Письмо о назначении и вычёркивании старейшин и служителей собрания.',
     },
 
     uk: {
@@ -86,6 +88,8 @@
       'module.circuit-planner.desc': 'Календар службового року: тижні, відвідування, формуляри S-302 і друк PDF.',
       'module.pioneer-school.title': 'Школа піонерів',
       'module.pioneer-school.desc': 'Учні та класи, розклад уроків, підручники, формуляри S-253 і експорт списків.',
+      'module.appointments.title': 'Призначення',
+      'module.appointments.desc': 'Лист про призначення і викреслення старійшин та служителів збору.',
     },
 
     en: {
@@ -118,6 +122,8 @@
       'module.circuit-planner.desc': 'Service-year calendar: weeks, visits, S-302 forms and PDF printing.',
       'module.pioneer-school.title': 'Pioneer school',
       'module.pioneer-school.desc': 'Students and classes, lesson schedule, textbooks, S-253 forms and list export.',
+      'module.appointments.title': 'Appointments',
+      'module.appointments.desc': 'Letter about appointing and deleting elders and ministerial servants.',
     },
 
     pl: {
@@ -150,6 +156,8 @@
       'module.circuit-planner.desc': 'Kalendarz roku służbowego: tygodnie, wizyty, formularze S-302 i wydruk PDF.',
       'module.pioneer-school.title': 'Szkoła pionierska',
       'module.pioneer-school.desc': 'Uczniowie i klasy, plan lekcji, podręczniki, formularze S-253 i eksport list.',
+      'module.appointments.title': 'Mianowania',
+      'module.appointments.desc': 'List o mianowaniu i skreśleniu starszych oraz sług pomocniczych.',
     },
 
     de: {
@@ -182,6 +190,8 @@
       'module.circuit-planner.desc': 'Dienstjahr-Kalender: Wochen, Besuche, S-302-Formulare und PDF-Druck.',
       'module.pioneer-school.title': 'Pionierschule',
       'module.pioneer-school.desc': 'Schüler und Klassen, Stundenplan, Lehrbücher, S-253-Formulare und Listenexport.',
+      'module.appointments.title': 'Ernennungen',
+      'module.appointments.desc': 'Brief über Ernennung und Streichung von Ältesten und Dienstamtgehilfen.',
     },
 
   });

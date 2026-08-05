@@ -1,0 +1,187 @@
+/**
+ * Назначения — словарь модуля.
+ *
+ * ГРАНИЦА, КОТОРУЮ НЕЛЬЗЯ РАЗМЫВАТЬ: здесь переводится только интерфейс.
+ * Текст письма («Раді старійшин», «Тема: Призначення і викреслення…»,
+ * «Ваш брат») живёт в разметке index.html и в js/app.js и остаётся
+ * украинским при любом языке интерфейса — это готовый документ, который
+ * отправляют в собрание. Секретарь может работать в польском интерфейсе и
+ * печатать украинское письмо: это нормальный рабочий случай, тот же, что в
+ * Конгрессах с языком писем.
+ *
+ * Название и описание модуля здесь отсутствуют намеренно: они лежат в
+ * shared/i18n/common.js под ключами module.appointments.title/desc — одно
+ * место и для плитки хаба, и для шапки модуля.
+ */
+(function (global) {
+  'use strict';
+
+  if (!global.CWI18n) {
+    console.error('appointments/i18n/dict.js подключён раньше shared/i18n.js');
+    return;
+  }
+
+  global.CWI18n.register({
+
+    ru: {
+      'ap.panel.heading': 'Настройки письма',
+      'ap.field.date': 'Дата письма',
+      'ap.field.congregation': 'Собрание',
+      'ap.field.coordinator': 'Координатор совета старейшин',
+      'ap.field.coordinator_address': 'Адрес координатора',
+      'ap.placeholder.congregation': 'Название собрания',
+      'ap.placeholder.coordinator': 'Имя и фамилия',
+      'ap.placeholder.address': 'Улица, дом\nГород\nИндекс',
+      'ap.placeholder.name': 'Имя и фамилия',
+      'ap.lists.heading': 'Списки братьев',
+      'ap.list.elders': 'Назначены старейшинами',
+      'ap.list.servants': 'Назначены служителями собрания',
+      'ap.list.removed': 'Вычеркнуты',
+      'ap.btn.add': 'Добавить',
+      'ap.btn.clear': 'Очистить',
+      'ap.btn.remove_row': 'Удалить строку',
+      'ap.sender.heading': 'Данные отправителя',
+      'ap.sender.from_congress': 'Брать из модуля «Конгрессы»',
+      'ap.sender.name': 'Имя и фамилия',
+      'ap.sender.code': 'Код района',
+      'ap.sender.address': 'Адрес',
+      'ap.sender.phone1': 'Телефон',
+      'ap.sender.phone2': 'Второй телефон',
+      'ap.sender.email': 'Эл. почта',
+      'ap.sender.hint_linked': 'Данные берутся из настроек писем модуля «Конгрессы». Изменить их можно там.',
+      'ap.sender.hint_no_congress': 'Модуль «Конгрессы» на этом устройстве ещё не открывали — показаны значения по умолчанию.',
+      'ap.sender.hint_local': 'Данные заданы только для этого модуля и с «Конгрессами» не связаны.',
+      'ap.saved_at': 'сохранено {time}',
+      'ap.save_failed': 'не удалось сохранить',
+    },
+
+    uk: {
+      'ap.panel.heading': 'Налаштування листа',
+      'ap.field.date': 'Дата листа',
+      'ap.field.congregation': 'Збір',
+      'ap.field.coordinator': 'Координатор ради старійшин',
+      'ap.field.coordinator_address': 'Адреса координатора',
+      'ap.placeholder.congregation': 'Назва збору',
+      'ap.placeholder.coordinator': 'Ім’я та прізвище',
+      'ap.placeholder.address': 'Вулиця, будинок\nМісто\nІндекс',
+      'ap.placeholder.name': 'Ім’я та прізвище',
+      'ap.lists.heading': 'Списки братів',
+      'ap.list.elders': 'Призначені старійшинами',
+      'ap.list.servants': 'Призначені служителями збору',
+      'ap.list.removed': 'Викреслені',
+      'ap.btn.add': 'Додати',
+      'ap.btn.clear': 'Очистити',
+      'ap.btn.remove_row': 'Видалити рядок',
+      'ap.sender.heading': 'Дані відправника',
+      'ap.sender.from_congress': 'Брати з модуля «Конгреси»',
+      'ap.sender.name': 'Ім’я та прізвище',
+      'ap.sender.code': 'Код району',
+      'ap.sender.address': 'Адреса',
+      'ap.sender.phone1': 'Телефон',
+      'ap.sender.phone2': 'Другий телефон',
+      'ap.sender.email': 'Ел. пошта',
+      'ap.sender.hint_linked': 'Дані беруться з налаштувань листів модуля «Конгреси». Змінити їх можна там.',
+      'ap.sender.hint_no_congress': 'Модуль «Конгреси» на цьому пристрої ще не відкривали — показано значення за замовчуванням.',
+      'ap.sender.hint_local': 'Дані задано лише для цього модуля і з «Конгресами» вони не пов’язані.',
+      'ap.saved_at': 'збережено {time}',
+      'ap.save_failed': 'не вдалося зберегти',
+    },
+
+    en: {
+      'ap.panel.heading': 'Letter settings',
+      'ap.field.date': 'Letter date',
+      'ap.field.congregation': 'Congregation',
+      'ap.field.coordinator': 'Coordinator of the body of elders',
+      'ap.field.coordinator_address': 'Coordinator’s address',
+      'ap.placeholder.congregation': 'Congregation name',
+      'ap.placeholder.coordinator': 'First and last name',
+      'ap.placeholder.address': 'Street, number\nCity\nPostal code',
+      'ap.placeholder.name': 'First and last name',
+      'ap.lists.heading': 'Lists of brothers',
+      'ap.list.elders': 'Appointed as elders',
+      'ap.list.servants': 'Appointed as ministerial servants',
+      'ap.list.removed': 'Deleted',
+      'ap.btn.add': 'Add',
+      'ap.btn.clear': 'Clear',
+      'ap.btn.remove_row': 'Remove row',
+      'ap.sender.heading': 'Sender details',
+      'ap.sender.from_congress': 'Take from the Conventions module',
+      'ap.sender.name': 'First and last name',
+      'ap.sender.code': 'Circuit code',
+      'ap.sender.address': 'Address',
+      'ap.sender.phone1': 'Phone',
+      'ap.sender.phone2': 'Second phone',
+      'ap.sender.email': 'Email',
+      'ap.sender.hint_linked': 'Taken from the letter settings of the Conventions module. Change them there.',
+      'ap.sender.hint_no_congress': 'The Conventions module has not been opened on this device yet — showing default values.',
+      'ap.sender.hint_local': 'These details apply to this module only and are not linked to Conventions.',
+      'ap.saved_at': 'saved at {time}',
+      'ap.save_failed': 'could not save',
+    },
+
+    pl: {
+      'ap.panel.heading': 'Ustawienia listu',
+      'ap.field.date': 'Data listu',
+      'ap.field.congregation': 'Zbór',
+      'ap.field.coordinator': 'Koordynator grona starszych',
+      'ap.field.coordinator_address': 'Adres koordynatora',
+      'ap.placeholder.congregation': 'Nazwa zboru',
+      'ap.placeholder.coordinator': 'Imię i nazwisko',
+      'ap.placeholder.address': 'Ulica, numer\nMiasto\nKod pocztowy',
+      'ap.placeholder.name': 'Imię i nazwisko',
+      'ap.lists.heading': 'Listy braci',
+      'ap.list.elders': 'Mianowani na starszych',
+      'ap.list.servants': 'Mianowani na sługi pomocnicze',
+      'ap.list.removed': 'Skreśleni',
+      'ap.btn.add': 'Dodaj',
+      'ap.btn.clear': 'Wyczyść',
+      'ap.btn.remove_row': 'Usuń wiersz',
+      'ap.sender.heading': 'Dane nadawcy',
+      'ap.sender.from_congress': 'Pobierz z modułu „Kongresy”',
+      'ap.sender.name': 'Imię i nazwisko',
+      'ap.sender.code': 'Kod obwodu',
+      'ap.sender.address': 'Adres',
+      'ap.sender.phone1': 'Telefon',
+      'ap.sender.phone2': 'Drugi telefon',
+      'ap.sender.email': 'E-mail',
+      'ap.sender.hint_linked': 'Dane pochodzą z ustawień listów modułu „Kongresy”. Tam można je zmienić.',
+      'ap.sender.hint_no_congress': 'Moduł „Kongresy” nie był jeszcze otwierany na tym urządzeniu — pokazano wartości domyślne.',
+      'ap.sender.hint_local': 'Dane dotyczą tylko tego modułu i nie są powiązane z „Kongresami”.',
+      'ap.saved_at': 'zapisano {time}',
+      'ap.save_failed': 'nie udało się zapisać',
+    },
+
+    de: {
+      'ap.panel.heading': 'Briefeinstellungen',
+      'ap.field.date': 'Datum des Briefes',
+      'ap.field.congregation': 'Versammlung',
+      'ap.field.coordinator': 'Koordinator der Ältestenschaft',
+      'ap.field.coordinator_address': 'Adresse des Koordinators',
+      'ap.placeholder.congregation': 'Name der Versammlung',
+      'ap.placeholder.coordinator': 'Vor- und Nachname',
+      'ap.placeholder.address': 'Straße, Hausnummer\nStadt\nPostleitzahl',
+      'ap.placeholder.name': 'Vor- und Nachname',
+      'ap.lists.heading': 'Listen der Brüder',
+      'ap.list.elders': 'Als Älteste ernannt',
+      'ap.list.servants': 'Als Dienstamtgehilfen ernannt',
+      'ap.list.removed': 'Gestrichen',
+      'ap.btn.add': 'Hinzufügen',
+      'ap.btn.clear': 'Leeren',
+      'ap.btn.remove_row': 'Zeile entfernen',
+      'ap.sender.heading': 'Absenderdaten',
+      'ap.sender.from_congress': 'Aus dem Modul „Kongresse“ übernehmen',
+      'ap.sender.name': 'Vor- und Nachname',
+      'ap.sender.code': 'Kreiscode',
+      'ap.sender.address': 'Adresse',
+      'ap.sender.phone1': 'Telefon',
+      'ap.sender.phone2': 'Zweites Telefon',
+      'ap.sender.email': 'E-Mail',
+      'ap.sender.hint_linked': 'Die Daten stammen aus den Briefeinstellungen des Moduls „Kongresse“ und werden dort geändert.',
+      'ap.sender.hint_no_congress': 'Das Modul „Kongresse“ wurde auf diesem Gerät noch nicht geöffnet — es werden Standardwerte angezeigt.',
+      'ap.sender.hint_local': 'Die Daten gelten nur für dieses Modul und sind nicht mit „Kongresse“ verknüpft.',
+      'ap.saved_at': 'gespeichert {time}',
+      'ap.save_failed': 'Speichern fehlgeschlagen',
+    },
+
+  });
+})(typeof self !== 'undefined' ? self : this);

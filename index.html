@@ -147,11 +147,13 @@
        плиток ровно на gap/3 (≈9px). Теперь шина — такая же сетка, и
        попадание в центр обеспечено на любой ширине и при любом числе
        модулей. */
-    --cw-cols: 3;
+    --cw-cols: 4;
     --cw-gap: 28px;
   }
-  /* Промежуточная ступень в 2 колонки: раньше её не было, и в диапазоне
-     861–1000px три колонки сжимались до нечитаемых. */
+  /* Ступени рассчитаны от читаемой ширины плитки (~230px минимум с учётом
+     зазора), а не от числа модулей: четыре в ряд имеют смысл только на
+     широком экране, ниже 1240px плитки сжимались бы до нечитаемых. */
+  @media (max-width: 1240px) { .cw-board { --cw-cols: 3; } }
   @media (max-width: 1000px) { .cw-board { --cw-cols: 2; } }
   @media (max-width: 700px)  { .cw-board { --cw-cols: 1; } }
 
@@ -162,8 +164,10 @@
     height: 32px;
     margin-bottom: 2px;
   }
-  /* Шина осмысленна только когда все модули стоят в один ряд. */
-  @media (max-width: 1000px) { .cw-bus { display: none; } }
+  /* Шина осмысленна только когда все модули стоят в один ряд. Порог
+     совпадает с первой ступенью сетки: как только колонок стало меньше,
+     чем модулей, дорожки уже никуда не ведут. */
+  @media (max-width: 1240px) { .cw-bus { display: none; } }
 
   .cw-bus__cell { position: relative; }
   .cw-bus__cell::before {
@@ -360,6 +364,7 @@
       <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
       <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
       <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
+      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
     </div>
     <div class="cw-grid" id="moduleGrid">
 
@@ -404,6 +409,23 @@
           </div>
           <h2 data-i18n="module.pioneer-school.title">Школа пионеров</h2>
           <p data-i18n="module.pioneer-school.desc">Учащиеся и классы, расписание уроков, учебники, формуляры S-253 и экспорт списков.</p>
+          <div class="cw-tile__footer">
+            <span class="cw-badge cw-badge--live cw-tile__badge">
+              <span class="cw-tile__dot" aria-hidden="true"></span>
+              <span data-i18n="status.live">работает</span>
+              <span class="cw-tile__ver" data-module-version></span>
+            </span>
+          </div>
+        </article>
+      </a>
+
+      <a class="cw-tile-link" href="appointments/index.html" data-module="appointments">
+        <article class="cw-card cw-tile">
+          <div class="cw-tile__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/><path d="m9 15 2 2 4-4"/></svg>
+          </div>
+          <h2 data-i18n="module.appointments.title">Назначения</h2>
+          <p data-i18n="module.appointments.desc">Письмо о назначении и вычёркивании старейшин и служителей собрания.</p>
           <div class="cw-tile__footer">
             <span class="cw-badge cw-badge--live cw-tile__badge">
               <span class="cw-tile__dot" aria-hidden="true"></span>

@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.7.5';
+self.CW_VERSION = '0.8.0';
 
 /**
  * Реестр модулей хаба.
@@ -29,6 +29,7 @@ self.CW_VERSION = '0.7.5';
  *   congress-project → service-worker.js: APP_VERSION
  *   circuit-planner  → app.js: App.config.version
  *   pioneer-school   → js/app.js: APP_VERSION (и sw.js)
+ *   appointments     → sw.js: APP_VERSION
  */
 // ВНИМАНИЕ: поле title здесь — только запасной вариант для отладки.
 // Отображаемое название модуля берётся из локализации по ключу
@@ -38,4 +39,5 @@ self.CW_MODULES = {
   'congress-project': { title: 'Конгрессы',       version: '4.19.0' },
   'circuit-planner':  { title: 'Клиндарий',       version: '9.59.0' },
   'pioneer-school':   { title: 'Школа пионеров',  version: '1.6.0'  },
+  'appointments':     { title: 'Назначения',      version: '5.0.0'  },
 };
