@@ -20,10 +20,10 @@ const Assignment = {
 
   validate(data) {
     const errors = [];
-    if (!data.startDate) errors.push('Укажите дату начала Школы');
-    if (!data.endDate) errors.push('Укажите дату окончания Школы');
-    if (!data.location || !data.location.trim()) errors.push('Укажите место проведения');
-    if (!data.teacherA || !data.teacherA.trim()) errors.push('Укажите Преподавателя А (районного старейшину)');
+    if (!data.startDate) errors.push(T('ps.val.ukazhite_datu_nachala'));
+    if (!data.endDate) errors.push(T('ps.val.ukazhite_datu_okonchaniya'));
+    if (!data.location || !data.location.trim()) errors.push(T('ps.val.ukazhite_mesto_provedeniya'));
+    if (!data.teacherA || !data.teacherA.trim()) errors.push(T('ps.val.ukazhite_prepodavatelya_a'));
     return errors;
   }
 };

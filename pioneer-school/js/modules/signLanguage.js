@@ -22,11 +22,11 @@ const SignLanguage = {
   },
 
   NOTES: [
-    'Столы полукругом при 20–30 учащихся; больше — как на встрече собрания (гл.5, п.1)',
-    'Видео «Полностью подготовлены „ко всякому доброму делу“» НЕ входит в жестовый курс (гл.5, п.7)',
-    'PowerPoint/Keynote РАЗРЕШЕНЫ для Писания/видео/иллюстраций (в отличие от обычного класса) (гл.5, п.7)',
-    'Художественное чтение Библии заменяется прямым показом текста Писания (гл.5, п.8)',
-    'Для слепоглухих/слабовидящих глухих пионеров — S-59 с пометкой «Учебник для слепоглухого пионера» (гл.5, п.6)'
+    T('ps.sl.stoly_polukrugom_pri_20'),
+    T('ps.sl.video_polnostyu_podgotovleny_ko'),
+    T('ps.sl.powerpoint_keynote_razresheny_dlya'),
+    T('ps.sl.hudozhestvennoe_chtenie_biblii_zamenya'),
+    T('ps.sl.dlya_slepogluhih_slabovidyaschih_gluhi')
   ]
 };
 

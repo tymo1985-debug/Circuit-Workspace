@@ -24,7 +24,7 @@
 
 const PdfImport = {
   async extractTable(file) {
-    if (!window.pdfjsLib) throw new Error('Библиотека для чтения PDF не загрузилась. Проверьте подключение к интернету и повторите попытку.');
+    if (!window.pdfjsLib) throw new Error(T('ps.imp.biblioteka_dlya_chteniya_pdf'));
     const OPS = window.pdfjsLib.OPS;
     const NUM_ARGS = {
       [OPS.moveTo]: 2, [OPS.lineTo]: 2, [OPS.curveTo]: 6, [OPS.rectangle]: 4, [OPS.closePath]: 0
@@ -169,7 +169,7 @@ const PdfImport = {
     }
 
     const headerResult = rowToCells(allRows[0]);
-    const headers = headerResult.cells.map((h, i) => h || `Столбец ${i + 1}`);
+    const headers = headerResult.cells.map((h, i) => h || T('ps.imp.column_n', { n: i + 1 }));
 
     const dataRowsRaw = allRows.slice(1).map(rowToCells);
     const rows = [];
@@ -178,7 +178,7 @@ const PdfImport = {
       const isBlank = r.cells.every((c) => c.trim() === '');
       if (isBlank) return;
       // Повторяющаяся на следующих страницах шапка таблицы — пропускаем как данные,
-      // чтобы не создать "учащегося" с именем вроде "Фамилия".
+      // чтобы не создать "учащегося" с именем вроде T('ps.ui.familiya').
       const isRepeatedHeader = r.cells.every((c, i) => this._normEq(c, headerResult.cells[i]));
       if (isRepeatedHeader) return;
       rows.push(r.cells);

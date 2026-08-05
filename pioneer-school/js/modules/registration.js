@@ -8,9 +8,9 @@
 //     данные дважды.
 
 const Registration = {
-  LANGUAGE_LABELS: { ru: 'Русский', uk: 'Украинский', pl: 'Польский', de: 'Немецкий', other: 'Другой' },
-  FORMAT_LABELS: { print: 'Печатный экземпляр', jwpub: 'Электронный JWPub', pdf: 'PDF', epub: 'EPUB' },
-  YES_NO_LABELS: { yes: 'Да', no: 'Нет' },
+  LANGUAGE_LABELS: { ru: T('ps.ui.russkiy'), uk: T('ps.ui.ukrainskiy'), pl: T('ps.ui.polskiy'), de: T('ps.ui.nemeckiy'), other: T('ps.ui.drugoy') },
+  FORMAT_LABELS: { print: T('ps.reg.pechatnyy_ekzemplyar'), jwpub: T('ps.reg.elektronnyy_jwpub'), pdf: 'PDF', epub: 'EPUB' },
+  YES_NO_LABELS: { yes: T('ps.ui.da'), no: T('ps.ui.net') },
 
   async getConfig() {
     return DB.getMeta('registrationConfig', {
@@ -34,10 +34,10 @@ const Registration = {
 
   validate(reg) {
     const errors = [];
-    if (!reg.lastName || !reg.lastName.trim()) errors.push('Укажите фамилию');
-    if (!reg.firstName || !reg.firstName.trim()) errors.push('Укажите имя');
-    if (!reg.email || !reg.email.trim()) errors.push('Укажите email');
-    if (!reg.phone || !reg.phone.trim()) errors.push('Укажите телефон');
+    if (!reg.lastName || !reg.lastName.trim()) errors.push(T('ps.stud.ukazhite_familiyu'));
+    if (!reg.firstName || !reg.firstName.trim()) errors.push(T('ps.stud.ukazhite_imya'));
+    if (!reg.email || !reg.email.trim()) errors.push(T('ps.reg.enter_email'));
+    if (!reg.phone || !reg.phone.trim()) errors.push(T('ps.reg.enter_phone'));
     return errors;
   },
 
@@ -64,14 +64,14 @@ const Registration = {
   async convertToStudent(reg) {
     // На случай, если организатор удалил один из стандартных столбцов —
     // убеждаемся, что нужные столбцы существуют, прежде чем записывать значения.
-    await Students.ensureColumn('congregation', { label: 'Собрание', type: 'text' });
+    await Students.ensureColumn('congregation', { label: T('ps.ph.sobranie'), type: 'text' });
     await Students.ensureColumn('email', { label: 'Email', type: 'text' });
-    await Students.ensureColumn('phone', { label: 'Телефон', type: 'text' });
-    await Students.ensureColumn('address', { label: 'Адрес проживания', type: 'text' });
-    await Students.ensureColumn('transport', { label: 'Есть автомобиль', type: 'select', options: Students.YES_NO_OPTIONS });
-    await Students.ensureColumn('lodging', { label: 'Нужен ночлег', type: 'select', options: Students.YES_NO_OPTIONS });
-    await Students.ensureColumn('language', { label: 'Язык учебника (текстом)', type: 'text' });
-    await Students.ensureColumn('notes', { label: 'Доп. сведения', type: 'textarea' });
+    await Students.ensureColumn('phone', { label: T('ps.ui.telefon'), type: 'text' });
+    await Students.ensureColumn('address', { label: T('ps.stud.adres_prozhivaniya'), type: 'text' });
+    await Students.ensureColumn('transport', { label: T('ps.ui.est_avtomobil'), type: 'select', options: Students.YES_NO_OPTIONS });
+    await Students.ensureColumn('lodging', { label: T('ps.ui.nuzhen_nochleg'), type: 'select', options: Students.YES_NO_OPTIONS });
+    await Students.ensureColumn('language', { label: T('ps.stud.yazyk_uchebnika_tekstom'), type: 'text' });
+    await Students.ensureColumn('notes', { label: T('ps.stud.dop_svedeniya'), type: 'textarea' });
 
     const student = {
       id: DB.uid(),

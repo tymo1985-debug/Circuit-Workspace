@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6.0';
 
 let LESSONS_SEED = null;
 
@@ -39,13 +39,13 @@ async function renderRoute(route) {
   } catch (error) {
     // Раньше любой сбой рендера экрана оставлял пустую область без единого
     // сообщения (промис отклонялся в никуда). Теперь ошибка видна.
-    console.error('Ошибка при отрисовке экрана «' + route + '»', error);
+    console.error(T('ps.app.render_error', { screen: route }), error);
     const target = document.getElementById('route-' + route);
     if (target) {
       const box = document.createElement('p');
       box.className = 'hint';
       box.style.color = 'var(--warn)';
-      box.textContent = 'Не удалось загрузить этот раздел: ' + error.message;
+      box.textContent = T('ps.app.load_failed', { error: error.message });
       target.prepend(box);
     }
   }
@@ -75,11 +75,11 @@ async function renderDashboard() {
     Assignment.get(), Students.list(), Textbooks.getOrder(), Substitutes.list(), Registration.list()
   ]);
   const cards = [
-    { title: 'Назначение', value: assignment.startDate ? DateUtils.formatRu(assignment.startDate) : 'не заполнено', sub: assignment.location || '—' },
-    { title: 'Регистрации', value: registrations.length, sub: 'получено формуляров' },
-    { title: 'Учащиеся', value: students.length, sub: 'всего в базе' },
-    { title: 'Заместители', value: substitutes.length, sub: 'рекомендовано' },
-    { title: 'Учебники к заказу', value: Textbooks.calcOrderQuantity(order), sub: 'штук' }
+    { title: T('ps.ui.naznachenie'), value: assignment.startDate ? DateUtils.formatRu(assignment.startDate) : T('ps.app.ne_zapolneno'), sub: assignment.location || '—' },
+    { title: T('ps.app.registracii'), value: registrations.length, sub: T('ps.app.polucheno_formulyarov') },
+    { title: T('ps.ui.uchaschiesya'), value: students.length, sub: T('ps.app.vsego_v_baze') },
+    { title: T('ps.ui.zamestiteli'), value: substitutes.length, sub: T('ps.app.rekomendovano') },
+    { title: T('ps.app.uchebniki_k_zakazu'), value: Textbooks.calcOrderQuantity(order), sub: T('ps.app.shtuk') }
   ];
   const el = $('#dashboard-cards');
   el.innerHTML = cards.map((c) => `
@@ -99,9 +99,9 @@ async function renderAnketa() {
   renderLocationsList(data.proposedLocations || []);
 
   $('#add-location-btn').onclick = async () => {
-    const name = prompt('Название Зала Царства:');
+    const name = prompt(T('ps.app.nazvanie_zala_carstva'));
     if (!name) return;
-    const number = prompt('Номер собрания (одно собрание на место, гл.1 п.2):') || '';
+    const number = prompt(T('ps.app.nomer_sobraniya_odno_sobranie')) || '';
     const d = await Anketa.get();
     d.proposedLocations = d.proposedLocations || [];
     d.proposedLocations.push({ hallName: name, hallNumber: number, notes: '' });
@@ -113,17 +113,17 @@ async function renderAnketa() {
     const d = await Anketa.get();
     d.unavailableDates = $('#unavailable-dates').value;
     await Anketa.save(d);
-    alert('Анкета сохранена');
+    alert(T('ps.app.anketa_sohranena'));
   };
 }
 
 function renderLocationsList(locations) {
   const el = $('#locations-list');
-  if (!locations.length) { el.innerHTML = '<p class="hint">Мест пока не добавлено.</p>'; return; }
+  if (!locations.length) { el.innerHTML = `<p class="hint">${T('ps.app.mest_poka_ne_dobavleno')}</p>`; return; }
   el.innerHTML = locations.map((l, i) => `
     <div class="list-row">
       <span>${esc(l.hallName)} ${l.hallNumber ? '(' + esc(l.hallNumber) + ')' : ''}</span>
-      <button class="btn-text remove-location" data-index="${i}">Удалить</button>
+      <button class="btn-text remove-location" data-index="${i}">${T('ps.app.udalit')}</button>
     </div>`).join('');
   $all('.remove-location', el).forEach((btn) => {
     btn.onclick = async () => {
@@ -159,7 +159,7 @@ async function renderAssignment() {
     const errors = Assignment.validate(payload);
     if (errors.length) return Validators.showErrors(errors);
     await Assignment.save(payload);
-    alert('Назначение сохранено');
+    alert(T('ps.app.naznachenie_sohraneno'));
     renderDashboard();
   };
 }
@@ -185,23 +185,23 @@ async function renderRegistration() {
 
   $('#save-reg-config-btn').onclick = async () => {
     await Registration.saveConfig(collectConfig());
-    alert('Настройки сохранены.');
+    alert(T('ps.app.nastroyki_sohraneny'));
   };
 
   $('#generate-interactive-pdf-btn').onclick = async () => {
     const status = $('#pdf-form-status');
     const btn = $('#generate-interactive-pdf-btn');
     btn.disabled = true;
-    status.textContent = 'Формирую PDF-анкету…';
+    status.textContent = T('ps.app.formiruyu_pdf_anketu');
     try {
       // Сохраняем настройки заодно — чтобы сгенерированный файл всегда
       // соответствовал тому, что организатор видит на экране.
       const current = collectConfig();
       await Registration.saveConfig(current);
       await PdfFormExport.download(current, RegistrationSchema);
-      status.textContent = 'Готово — PDF-анкета скачана. Её можно отправить пионерам по email или через WhatsApp.';
+      status.textContent = T('ps.app.gotovo_pdf_anketa_skachana');
     } catch (e) {
-      status.textContent = 'Не удалось создать PDF-анкету: ' + e.message;
+      status.textContent = T('ps.app.pdf_form_failed', { error: e.message });
     } finally {
       btn.disabled = false;
     }
@@ -211,7 +211,7 @@ async function renderRegistration() {
     try {
       await PdfExport.downloadRegistrationBlankForm(await Registration.getConfig());
     } catch (e) {
-      alert('Не удалось создать PDF: ' + e.message);
+      alert(T('ps.app.pdf_failed', { error: e.message }));
     }
   };
 
@@ -247,19 +247,19 @@ async function renderRegistration() {
 function renderRegistrationsTable(list) {
   const tbody = $('#registrations-table tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="hint">Регистраций пока нет.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="6" class="hint">${T('ps.app.registraciy_poka_net')}</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map((r) => `
     <tr>
-      <td>${esc(r.lastName)} ${esc(r.firstName)}${r.convertedToStudentId ? ' <span class="badge-warn" style="background:#3E6B4F;">учащийся</span>' : ''}</td>
+      <td>${esc(r.lastName)} ${esc(r.firstName)}${r.convertedToStudentId ? ` <span class="badge-warn" style="background:#3E6B4F;">${T('ps.app.uchaschiysya')}</span>` : ''}</td>
       <td>${esc(r.email || '')}<br>${esc(r.phone || '')}</td>
       <td>${esc(Registration.YES_NO_LABELS[r.attending] || '—')}${r.attending === 'no' && r.attendReason ? ' — ' + esc(r.attendReason) : ''}</td>
-      <td>Авто: ${esc(Registration.YES_NO_LABELS[r.transport] || '—')} · Ночлег: ${esc(Registration.YES_NO_LABELS[r.lodging] || '—')}</td>
+      <td>${esc(T('ps.app.reg_transport', { car: Registration.YES_NO_LABELS[r.transport] || '—', lodging: Registration.YES_NO_LABELS[r.lodging] || '—' }))}</td>
       <td>${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
       <td>
-        ${r.convertedToStudentId ? '' : `<button class="btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--accent);">В учащиеся</button>`}
-        <button class="btn-text remove-reg" data-id="${esc(r.id)}">Удалить</button>
+        ${r.convertedToStudentId ? '' : `<button class="btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--accent);">${T('ps.app.v_uchaschiesya')}</button>`}
+        <button class="btn-text remove-reg" data-id="${esc(r.id)}">${T('ps.app.udalit')}</button>
       </td>
     </tr>`).join('');
 
@@ -276,14 +276,14 @@ function renderRegistrationsTable(list) {
       const reg = list.find((r) => r.id === btn.dataset.id);
       if (!reg) return;
       if (!reg.congregation) {
-        const congregation = prompt('В формуляре нет поля «Собрание» — укажите его для карточки учащегося:');
+        const congregation = prompt(T('ps.app.v_formulyare_net_polya'));
         if (congregation === null) return;
         reg.congregation = congregation;
       }
       await Registration.convertToStudent(reg);
       renderRegistrationsTable(await Registration.list());
       renderDashboard();
-      alert('Учащийся добавлен в раздел «Учащиеся».');
+      alert(T('ps.app.uchaschiysya_dobavlen_v_razdel'));
     };
   });
 }
@@ -314,14 +314,14 @@ async function renderSubstitutes() {
 
 function renderSubstitutesList(list) {
   const el = $('#substitutes-list');
-  if (!list.length) { el.innerHTML = '<p class="hint">Заместители пока не добавлены.</p>'; return; }
-  el.innerHTML = `<div class="panel"><table class="data-table"><thead><tr><th>#</th><th>Имя</th><th>Возраст</th><th>Утверждён</th><th></th></tr></thead><tbody>
+  if (!list.length) { el.innerHTML = `<p class="hint">${T('ps.app.zamestiteli_poka_ne_dobavleny')}</p>`; return; }
+  el.innerHTML = `<div class="panel"><table class="data-table"><thead><tr><th>#</th><th>${T('ps.ui.imya')}</th><th>${T('ps.ui.vozrast')}</th><th>${T('ps.app.utverzhden')}</th><th></th></tr></thead><tbody>
     ${list.map((s) => `<tr>
       <td>${esc(s.rank ?? '—')}</td>
       <td>${esc(s.fullName)}${s.age >= 80 ? ' <span class="badge-warn">80+</span>' : ''}</td>
       <td>${esc(s.age ?? '—')}</td>
-      <td>${s.approvedByBranch ? 'Да' : 'Нет'}</td>
-      <td><button class="btn-text remove-sub" data-id="${esc(s.id)}">Удалить</button></td>
+      <td>${s.approvedByBranch ? T('ps.ui.da') : T('ps.ui.net')}</td>
+      <td><button class="btn-text remove-sub" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
   $all('.remove-sub', el).forEach((btn) => {
@@ -384,7 +384,7 @@ async function renderStudents() {
 
   $('#auto-distribute-btn').onclick = async () => {
     const cls = await DB.list('classes');
-    if (!cls.length) return alert('Сначала добавьте хотя бы один класс.');
+    if (!cls.length) return alert(T('ps.app.snachala_dobavte_hotya_by'));
     const st = await Students.list();
     const distributed = Students.autoDistribute(st, cls);
     // Пишем только изменившееся поле поверх ПОЛНОЙ записи из базы: объекты из
@@ -401,7 +401,7 @@ async function renderStudents() {
 
   $('#add-column-btn').onclick = async () => {
     const label = $('#new-col-label').value.trim();
-    if (!label) return alert('Укажите название столбца');
+    if (!label) return alert(T('ps.app.ukazhite_nazvanie_stolbca'));
     const type = $('#new-col-type').value;
     const options = type === 'select'
       ? $('#new-col-options').value.split(',').map((s) => s.trim()).filter(Boolean).map((s) => ({ value: s, label: s }))
@@ -423,7 +423,7 @@ async function renderStudents() {
   $('#open-export-picker-btn').onclick = () => openExportPicker();
   $('#export-all-formulaires-btn').onclick = async () => {
     const st = await Students.list();
-    if (!st.length) return alert('Список учащихся пуст.');
+    if (!st.length) return alert(T('ps.app.spisok_uchaschihsya_pust'));
     const cols = await Students.getColumns();
     const cls = await DB.list('classes');
     const byId = Object.fromEntries(cls.map((c) => [c.id, c]));
@@ -434,7 +434,7 @@ async function renderStudents() {
 function renderStudentFormFields(columns) {
   const el = $('#student-form-fields');
   el.innerHTML = columns.map((c) => renderFieldInput(c, '', 'sf')).join('') +
-    `<label>Класс <select id="student-class-select"></select></label>`;
+    `<label>${T('ps.app.klass')} <select id="student-class-select"></select></label>`;
   // класс select наполняется отдельно через renderClassSelect на общий #student-class-select
 }
 
@@ -442,9 +442,9 @@ function renderFieldInput(column, value, prefix) {
   const id = `${prefix}-${column.key}`;
   const idAttr = esc(id);
   const keyAttr = esc(column.key);
-  const labelHtml = esc(column.label);
+  const labelHtml = esc(Students.label(column));
   if (column.type === 'select') {
-    const opts = (column.options || []).map((o) => `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+    const opts = (column.options || []).map((o) => `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(Students.optionLabel(o))}</option>`).join('');
     return `<label>${labelHtml}<select id="${idAttr}" data-key="${keyAttr}">${opts}</select></label>`;
   }
   if (column.type === 'textarea') {
@@ -465,12 +465,12 @@ function collectStudentFormValues(columns) {
 function renderClassSelect(classes) {
   const sel = document.getElementById('student-class-select');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— без класса —</option>' + classes.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  sel.innerHTML = `<option value="">${T('ps.app.bez_klassa')}</option>` + classes.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
 }
 
 function renderClassesList(classes) {
   const el = $('#classes-list');
-  if (!classes.length) { el.innerHTML = '<p class="hint">Классов пока нет — школа считается одним классом.</p>'; return; }
+  if (!classes.length) { el.innerHTML = `<p class="hint">${T('ps.app.klassov_poka_net_shkola')}</p>`; return; }
   el.innerHTML = classes.map((c) => `<div class="list-row"><span>${esc(c.name)}</span></div>`).join('');
 }
 
@@ -478,9 +478,9 @@ function renderColumnsManager(columns) {
   const el = $('#columns-manager');
   el.innerHTML = columns.map((c) => `
     <div class="column-row">
-      <input type="text" class="col-rename" data-key="${esc(c.key)}" value="${esc(c.label)}">
-      <span class="column-type-badge">${esc({ text: 'текст', textarea: 'длинный текст', select: 'список' }[c.type] || c.type)}</span>
-      ${c.protected ? '<span class="column-protected-badge">системный</span>' : `<button class="btn-text col-remove" data-key="${esc(c.key)}">Удалить</button>`}
+      <input type="text" class="col-rename" data-key="${esc(c.key)}" value="${esc(Students.label(c))}">
+      <span class="column-type-badge">${esc({ text: T('ps.app.tekst'), textarea: T('ps.app.dlinnyy_tekst'), select: T('ps.app.spisok') }[c.type] || c.type)}</span>
+      ${c.protected ? `<span class="column-protected-badge">${T('ps.app.sistemnyy')}</span>` : `<button class="btn-text col-remove" data-key="${esc(c.key)}">${T('ps.app.udalit')}</button>`}
     </div>`).join('');
 
   $all('.col-rename', el).forEach((input) => {
@@ -496,7 +496,7 @@ function renderColumnsManager(columns) {
   });
   $all('.col-remove', el).forEach((btn) => {
     btn.onclick = async () => {
-      if (!confirm('Удалить этот столбец? Значения в нём у существующих учащихся перестанут отображаться и редактироваться.')) return;
+      if (!confirm(T('ps.app.udalit_etot_stolbec_znacheniya'))) return;
       try {
         await Students.removeColumn(btn.dataset.key);
         const cols = await Students.getColumns();
@@ -513,14 +513,14 @@ function renderColumnsManager(columns) {
 
 function renderStudentsTableHead(columns) {
   const head = $('#students-table-head');
-  head.innerHTML = columns.map((c) => `<th>${esc(c.label)}</th>`).join('') + '<th>Класс</th><th></th>';
+  head.innerHTML = columns.map((c) => `<th>${esc(Students.label(c))}</th>`).join('') + `<th>${T('ps.app.klass')}</th><th></th>`;
 }
 
 function renderStudentsTable(students, classes, columns) {
   const classById = Object.fromEntries(classes.map((c) => [c.id, c]));
   const tbody = $('#students-table tbody');
   if (!students.length) {
-    tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" class="hint">Учащихся пока нет.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" class="hint">${T('ps.app.uchaschihsya_poka_net')}</td></tr>`;
     return;
   }
   tbody.innerHTML = students.map((s) => {
@@ -530,8 +530,8 @@ function renderStudentsTable(students, classes, columns) {
       ${cells}
       <td><select class="row-class-select" data-id="${esc(s.id)}">${classOptions}</select></td>
       <td>
-        <button class="btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">Формуляр</button>
-        <button class="btn-text remove-student" data-id="${esc(s.id)}">Удалить</button>
+        <button class="btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.app.formulyar')}</button>
+        <button class="btn-text remove-student" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button>
       </td>
     </tr>`;
   }).join('');
@@ -593,11 +593,11 @@ async function handlePdfImportParse() {
   const input = $('#pdf-import-input');
   const status = $('#pdf-import-status');
   const file = input.files[0];
-  if (!file) { alert('Выберите PDF-файл'); return; }
-  status.textContent = 'Разбираю PDF…';
+  if (!file) { alert(T('ps.app.vyberite_pdf_fayl')); return; }
+  status.textContent = T('ps.app.razbirayu_pdf');
   try {
     const { headers, rows, anomalies, usedLineDetection } = await PdfImport.extractTable(file);
-    if (!headers.length) { status.textContent = 'Не удалось найти таблицу в этом PDF.'; return; }
+    if (!headers.length) { status.textContent = T('ps.app.ne_udalos_nayti_tablicu'); return; }
     const existingColumns = await Students.getColumns();
     const norm = (s) => String(s || '').replace(/[\u00A0\u2007\u202F]/g, ' ').normalize('NFC').trim().toLowerCase();
     importState = {
@@ -605,16 +605,16 @@ async function handlePdfImportParse() {
       rows,
       anomalies,
       mappings: headers.map((h) => {
-        const match = existingColumns.find((c) => norm(c.label) === norm(h));
+        const match = existingColumns.find((c) => norm(Students.label(c)) === norm(h) || norm(c.label) === norm(h));
         return match ? match.key : '__new__';
       })
     };
     status.textContent = usedLineDetection
-      ? `Найдены линии таблицы — столбцы определены по ним (надёжнее). Строк: ${rows.length}.`
-      : `Линии таблицы не найдены — столбцы определены приблизительно по тексту заголовка. Строк: ${rows.length}. Проверьте результат особенно внимательно.`;
+      ? T('ps.app.import_lines_found', { rows: rows.length })
+      : T('ps.app.import_lines_missing', { rows: rows.length });
     await openImportPreviewModal(existingColumns);
   } catch (e) {
-    status.textContent = 'Ошибка чтения PDF: ' + e.message;
+    status.textContent = T('ps.app.pdf_read_failed', { error: e.message });
   }
 }
 
@@ -630,8 +630,8 @@ function currentMappingHasNameFields() {
 function renderImportModal(existingColumns, resultPanelHtml) {
   const { headers, rows, mappings, anomalies } = importState;
   const mappingOptions = (currentKey) => {
-    const opts = existingColumns.map((c) => `<option value="${esc(c.key)}" ${c.key === currentKey ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
-    return `<option value="__new__" ${currentKey === '__new__' ? 'selected' : ''}>— новый столбец —</option>${opts}`;
+    const opts = existingColumns.map((c) => `<option value="${esc(c.key)}" ${c.key === currentKey ? 'selected' : ''}>${esc(Students.label(c))}</option>`).join('');
+    return `<option value="__new__" ${currentKey === '__new__' ? 'selected' : ''}>${T('ps.app.novyy_stolbec')}</option>${opts}`;
   };
 
   const headerRow = headers.map((h, i) => `
@@ -640,14 +640,14 @@ function renderImportModal(existingColumns, resultPanelHtml) {
       <select class="import-mapping-select" data-idx="${i}" style="width:100%;font-size:11px;border:none;border-top:1px solid var(--line);">
         ${mappingOptions(mappings[i])}
       </select>
-      <button class="btn-text import-remove-col" data-idx="${i}" style="font-size:10px;">удалить столбец</button>
+      <button class="btn-text import-remove-col" data-idx="${i}" style="font-size:10px;">${T('ps.app.udalit_stolbec')}</button>
     </th>`).join('') + '<th class="col-remove-cell"></th>';
 
   const bodyRows = rows.map((row, rIdx) => `
     <tr data-row="${rIdx}">
       ${headers.map((_, cIdx) => {
         const isAnomaly = anomalies && anomalies[rIdx] && anomalies[rIdx][cIdx];
-        return `<td class="${isAnomaly ? 'import-anomaly-cell' : ''}" ${isAnomaly ? 'title="Похоже на склейку двух ячеек PDF в одну — проверьте и поправьте вручную"' : ''}><div contenteditable="true" class="import-cell" data-row="${rIdx}" data-col="${cIdx}">${esc(row[cIdx] || '')}</div></td>`;
+        return `<td class="${isAnomaly ? 'import-anomaly-cell' : ''}" ${isAnomaly ? `title="${T('ps.app.pohozhe_na_skleyku_dvuh')}"` : ''}><div contenteditable="true" class="import-cell" data-row="${rIdx}" data-col="${cIdx}">${esc(row[cIdx] || '')}</div></td>`;
       }).join('')}
       <td class="row-remove-cell"><button class="btn-text import-remove-row" data-idx="${rIdx}">✕</button></td>
     </tr>`).join('');
@@ -656,10 +656,10 @@ function renderImportModal(existingColumns, resultPanelHtml) {
   const anyAnomalies = anomalies && anomalies.some((rowFlags) => rowFlags.some(Boolean));
 
   openModal(`
-    <h2>Проверьте распознанную таблицу</h2>
-    <p class="hint">Автоматическое распознавание может ошибаться — поправьте заголовки, сопоставление со столбцами приложения и значения перед импортом.</p>
-    ${anyAnomalies ? '<p class="hint" style="color:var(--warn);">⚠ Ячейки с оранжевым фоном — там текстовый элемент PDF физически пересекает границу столбца. Скорее всего, в исходном файле содержимое двух ячеек «склеилось» без пробела (например, слишком длинное имя). Автоматически это не восстановить — проверьте и при необходимости вручную разделите значение.</p>' : ''}
-    ${!hasNameMapping ? '<p class="hint" style="color:var(--warn);">⚠ Сопоставьте один из столбцов с «Фамилия» и один со «Имя» — без этого импорт недоступен, так как эти поля обязательны для каждого учащегося.</p>' : ''}
+    <h2>${T('ps.app.proverte_raspoznannuyu_tablicu')}</h2>
+    <p class="hint">${T('ps.app.avtomaticheskoe_raspoznavanie_mozhet_o')}</p>
+    ${anyAnomalies ? `<p class="hint" style="color:var(--warn);">${T('ps.app.yacheyki_s_oranzhevym_fonom')}</p>` : ''}
+    ${!hasNameMapping ? `<p class="hint" style="color:var(--warn);">${T('ps.app.sopostavte_odin_iz_stolbcov')}</p>` : ''}
     <div class="editable-table-wrap">
       <table class="editable-table">
         <thead><tr>${headerRow}</tr></thead>
@@ -667,13 +667,13 @@ function renderImportModal(existingColumns, resultPanelHtml) {
       </table>
     </div>
     <div class="btn-row">
-      <button class="btn-secondary" id="import-add-row">+ Строка</button>
-      <button class="btn-secondary" id="import-add-col">+ Столбец</button>
+      <button class="btn-secondary" id="import-add-row">${T('ps.app.stroka')}</button>
+      <button class="btn-secondary" id="import-add-col">${T('ps.app.stolbec')}</button>
     </div>
     ${resultPanelHtml || ''}
     <div class="modal-close-row">
-      <button class="btn-secondary" id="import-cancel-btn">${resultPanelHtml ? 'Закрыть' : 'Отмена'}</button>
-      ${resultPanelHtml ? '' : `<button class="btn-primary" id="import-confirm-btn" ${hasNameMapping ? '' : 'disabled'}>Импортировать (${rows.length})</button>`}
+      <button class="btn-secondary" id="import-cancel-btn">${resultPanelHtml ? T('ps.app.zakryt') : T('ps.app.otmena')}</button>
+      ${resultPanelHtml ? '' : `<button class="btn-primary" id="import-confirm-btn" ${hasNameMapping ? '' : 'disabled'}>${T('ps.app.import_btn', { n: rows.length })}</button>`}
     </div>
   `);
 
@@ -712,7 +712,7 @@ function renderImportModal(existingColumns, resultPanelHtml) {
     renderImportModal(existingColumns);
   };
   $('#import-add-col').onclick = () => {
-    importState.headers.push('Новый столбец');
+    importState.headers.push(T('ps.app.column_new'));
     importState.mappings.push('__new__');
     importState.rows.forEach((r) => r.push(''));
     importState.anomalies.forEach((r) => r.push(false));
@@ -731,7 +731,7 @@ async function confirmPdfImport(existingColumns) {
     const keys = [];
     for (let i = 0; i < headers.length; i++) {
       if (mappings[i] === '__new__') {
-        keys.push(await Students.resolveColumnByLabel(headers[i] || `Столбец ${i + 1}`));
+        keys.push(await Students.resolveColumnByLabel(headers[i] || T('ps.app.column_n', { n: i + 1 })));
       } else {
         keys.push(mappings[i]);
       }
@@ -761,18 +761,18 @@ async function confirmPdfImport(existingColumns) {
 
     const resultHtml = `
       <div class="panel" style="margin-top:14px;background:${errors.length ? '#FBEFE9' : '#EAF3EC'};">
-        <h3 style="margin-top:0;">Импорт завершён</h3>
-        <p>Успешно импортировано: <strong>${imported}</strong> из ${rows.length}.</p>
-        ${errors.length ? `<p>Не импортировано (${errors.length}) — исправьте эти строки в таблице выше и повторите, либо пропустите:</p><ul class="simple-list">${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+        <h3 style="margin-top:0;">${T('ps.app.import_zavershen')}</h3>
+        <p>${T('ps.app.imported_ok', { ok: imported, total: rows.length })}</p>
+        ${errors.length ? `<p>${T('ps.app.not_imported', { n: errors.length })}</p><ul class="simple-list">${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
       </div>`;
-    $('#pdf-import-status').textContent = `Импортировано: ${imported}${errors.length ? `, ошибок: ${errors.length}` : ''}.`;
+    $('#pdf-import-status').textContent = (errors.length ? T('ps.app.import_summary_errors', { ok: imported, err: errors.length }) : T('ps.app.import_summary', { ok: imported })) + '.';
     renderImportModal(existingColumns, resultHtml);
   } catch (e) {
     // Любая непредвиденная ошибка теперь видна пользователю внутри окна,
     // а не приводит к «зависшему» модальному окну без обратной связи.
     renderImportModal(existingColumns, `
       <div class="panel" style="margin-top:14px;background:#FBEFE9;">
-        <h3 style="margin-top:0;">Не удалось завершить импорт</h3>
+        <h3 style="margin-top:0;">${T('ps.app.ne_udalos_zavershit_import')}</h3>
         <p>${esc(e.message)}</p>
       </div>`);
   }
@@ -783,22 +783,22 @@ async function openExportPicker() {
   const columns = await Students.getColumns();
   const saved = await DB.getMeta('studentExportColumns', columns.map((c) => c.key));
   openModal(`
-    <h2>Экспорт списка учащихся</h2>
-    <p class="hint">Выберите, какие столбцы включить в файл.</p>
+    <h2>${T('ps.app.eksport_spiska_uchaschihsya')}</h2>
+    <p class="hint">${T('ps.app.vyberite_kakie_stolbcy_vklyuchit')}</p>
     <div class="export-columns-grid">
       ${columns.map((c) => `
         <label class="export-col-check">
           <input type="checkbox" class="export-col-cb" value="${esc(c.key)}" ${saved.includes(c.key) ? 'checked' : ''}>
-          ${esc(c.label)}
+          ${esc(Students.label(c))}
         </label>`).join('')}
     </div>
     <div class="btn-row">
-      <button class="btn-primary" id="export-do-pdf">Скачать PDF (список)</button>
-      <button class="btn-primary" id="export-do-xlsx">Скачать Excel (.xlsx)</button>
-      <button class="btn-secondary" id="export-do-csv">Скачать CSV</button>
+      <button class="btn-primary" id="export-do-pdf">${T('ps.app.skachat_pdf_spisok')}</button>
+      <button class="btn-primary" id="export-do-xlsx">${T('ps.app.skachat_excel_xlsx')}</button>
+      <button class="btn-secondary" id="export-do-csv">${T('ps.app.skachat_csv')}</button>
     </div>
-    <p class="hint">Файл .xlsx открывается в Excel, Google Таблицах и Apple Numbers — отдельного формата для Numbers не требуется.</p>
-    <div class="modal-close-row"><button class="btn-secondary" id="export-close-btn">Закрыть</button></div>
+    <p class="hint">${T('ps.app.fayl_xlsx_otkryvaetsya_v')}</p>
+    <div class="modal-close-row"><button class="btn-secondary" id="export-close-btn">${T('ps.app.zakryt')}</button></div>
   `);
 
   const getSelectedColumns = async () => {
@@ -851,7 +851,7 @@ async function renderTextbooks() {
       recountedOnReceipt: $('#tb-recounted').checked
     };
     await Textbooks.save(payload);
-    alert('Данные по учебникам сохранены');
+    alert(T('ps.app.dannye_po_uchebnikam_sohraneny'));
     renderDashboard();
   };
 
@@ -875,7 +875,7 @@ async function loadLessonsSeed() {
   const res = await fetch('data/seed-lessons.json');
   // Без проверки res.ok ответ 404 уходил в res.json(), падал с невнятной
   // ошибкой парсинга и оставлял раздел «Расписание» пустым.
-  if (!res.ok) throw new Error('файл уроков data/seed-lessons.json недоступен (' + res.status + ')');
+  if (!res.ok) throw new Error(T('ps.app.lessons_seed_missing', { error: res.status }));
   LESSONS_SEED = await res.json();
   return LESSONS_SEED;
 }
@@ -888,36 +888,36 @@ async function renderSchedule() {
   const el = $('#lessons-list');
   el.innerHTML = seed.lessons.map((lesson) => {
     const key = `${lesson.number}${lesson.letter || ''}`;
-    const teacherLabel = lesson.teacher === 'A' ? 'Преподаватель А' : lesson.teacher === 'Б' ? 'Преподаватель Б' : lesson.teacher;
+    const teacherLabel = lesson.teacher === 'A' ? T('ps.app.prepodavatel_a') : lesson.teacher === 'Б' ? T('ps.ui.prepodavatel_b') : lesson.teacher;
     let mediaHtml = '';
-    if (lesson.videoBefore) mediaHtml += mediaBlock('Видео (до урока)', lesson.videoBefore);
-    if (lesson.videoAfterIntro) mediaHtml += mediaBlock('Видео (после вступления)', lesson.videoAfterIntro);
-    if (lesson.videoBeforeSection) mediaHtml += mediaBlock('Видео (перед разделом)', lesson.videoBeforeSection);
-    if (lesson.videoAfterSection) mediaHtml += mediaBlock('Видео (после раздела)', lesson.videoAfterSection);
-    if (lesson.videoAfter) mediaHtml += mediaBlock('Видео (в конце урока)', lesson.videoAfter);
+    if (lesson.videoBefore) mediaHtml += mediaBlock(T('ps.app.video_do_uroka'), lesson.videoBefore);
+    if (lesson.videoAfterIntro) mediaHtml += mediaBlock(T('ps.app.video_posle_vstupleniya'), lesson.videoAfterIntro);
+    if (lesson.videoBeforeSection) mediaHtml += mediaBlock(T('ps.app.video_pered_razdelom'), lesson.videoBeforeSection);
+    if (lesson.videoAfterSection) mediaHtml += mediaBlock(T('ps.app.video_posle_razdela'), lesson.videoAfterSection);
+    if (lesson.videoAfter) mediaHtml += mediaBlock(T('ps.app.video_v_konce_uroka'), lesson.videoAfter);
     if (lesson.bibleReadings) {
-      mediaHtml += lesson.bibleReadings.map((r) => mediaBlock('Худож. чтение Библии', { title: r.passage, duration: r.duration, cue: r.cue })).join('');
+      mediaHtml += lesson.bibleReadings.map((r) => mediaBlock(T('ps.app.hudozh_chtenie_biblii'), { title: r.passage, duration: r.duration, cue: r.cue })).join('');
     }
     return `
       <div class="panel lesson-card">
         <div class="lesson-head">
-          <div class="lesson-number">Урок ${esc(lesson.number)}${lesson.letter ? esc(lesson.letter) : ''}</div>
-          <div class="lesson-teacher">${esc(teacherLabel)} · День ${esc(lesson.day)}</div>
+          <div class="lesson-number">${T('ps.app.lesson_n', { n: esc(lesson.number) })}${lesson.letter ? esc(lesson.letter) : ''}</div>
+          <div class="lesson-teacher">${esc(teacherLabel)} ${T('ps.app.day_suffix', { n: esc(lesson.day) })}</div>
           <label class="checkbox-label lesson-done">
-            <input type="checkbox" class="lesson-done-cb" data-key="${esc(key)}" ${doneMap[key] ? 'checked' : ''}> Проведено
+            <input type="checkbox" class="lesson-done-cb" data-key="${esc(key)}" ${doneMap[key] ? 'checked' : ''}> ${T('ps.app.provedeno')}
           </label>
         </div>
         ${lesson.note ? `<p class="hint">${esc(lesson.note)}</p>` : ''}
         ${lesson.signLanguageNote ? `<p class="hint">${esc(lesson.signLanguageNote)}</p>` : ''}
-        ${mediaHtml || '<p class="hint">Наглядные материалы для этого урока в S-255-U не указаны.</p>'}
+        ${mediaHtml || `<p class="hint">${T('ps.app.naglyadnye_materialy_dlya_etogo')}</p>`}
       </div>`;
   }).join('') + `
     <div class="panel">
-      <h3>Правило по наглядным пособиям</h3>
+      <h3>${T('ps.app.pravilo_po_naglyadnym_posobiyam')}</h3>
       <ul class="fact-list">
-        <li>Максимум ${seed.visualAidsRule.maxImagesPerLesson} статичных изображения на урок</li>
-        <li>Видео/PowerPoint/Keynote — запрещены, кроме случаев прямого указания в программе (искл. жестовый язык)</li>
-        <li>Маркерные доски разрешены</li>
+        <li>${T('ps.app.max_images', { n: seed.visualAidsRule.maxImagesPerLesson })}</li>
+        <li>${T('ps.app.video_powerpoint_keynote_zaprescheny')}</li>
+        <li>${T('ps.app.markernye_doski_razresheny')}</li>
       </ul>
     </div>`;
 
@@ -943,10 +943,10 @@ async function renderPractical() {
   const el = $('#practical-list');
   el.innerHTML = sessions.map((s) => `
     <div class="panel">
-      <h3>Практическое занятие ${esc(s.sessionNumber)}</h3>
-      <label class="checkbox-label"><input type="checkbox" class="pr-rehearsed" data-id="${esc(s.id)}" ${s.rehearsed ? 'checked' : ''}> Отрепетировано заранее</label>
-      <label class="checkbox-label"><input type="checkbox" class="pr-general" data-id="${esc(s.id)}" ${s.generalRehearsalDone ? 'checked' : ''}> Генеральная репетиция в день выступления проведена</label>
-      <label>Чему научились (итог занятия)
+      <h3>${T('ps.app.practical_n', { n: esc(s.sessionNumber) })}</h3>
+      <label class="checkbox-label"><input type="checkbox" class="pr-rehearsed" data-id="${esc(s.id)}" ${s.rehearsed ? 'checked' : ''}> ${T('ps.app.otrepetirovano_zaranee')}</label>
+      <label class="checkbox-label"><input type="checkbox" class="pr-general" data-id="${esc(s.id)}" ${s.generalRehearsalDone ? 'checked' : ''}> ${T('ps.app.generalnaya_repeticiya_v_den')}</label>
+      <label>${T('ps.app.chemu_nauchilis_itog_zanyatiya')}
         <textarea class="pr-takeaway" data-id="${esc(s.id)}" rows="2">${esc(s.keyTakeaway || '')}</textarea>
       </label>
     </div>`).join('');
@@ -969,13 +969,13 @@ async function renderReview() {
   const el = $('#review-list');
   el.innerHTML = `<div class="panel"><p class="hint">${esc(Review.NOTE)}</p></div>` + reviews.map((r) => `
     <div class="panel">
-      <h3>День ${esc(r.day)}</h3>
+      <h3>${T('ps.app.day_n', { n: esc(r.day) })}</h3>
       <div class="form-grid">
-        <label>Минут у преподавателя А <input type="number" class="rv-a" data-id="${esc(r.id)}" value="${esc(r.teacherAMinutesUsed ?? '')}" max="15"></label>
-        <label>Минут у преподавателя Б <input type="number" class="rv-b" data-id="${esc(r.id)}" value="${esc(r.teacherBMinutesUsed ?? '')}" max="15"></label>
-        <label class="checkbox-label"><input type="checkbox" class="rv-done" data-id="${esc(r.id)}" ${r.done ? 'checked' : ''}> Проведено</label>
+        <label>${T('ps.app.minut_u_prepodavatelya_a')} <input type="number" class="rv-a" data-id="${esc(r.id)}" value="${esc(r.teacherAMinutesUsed ?? '')}" max="15"></label>
+        <label>${T('ps.app.minut_u_prepodavatelya_b')} <input type="number" class="rv-b" data-id="${esc(r.id)}" value="${esc(r.teacherBMinutesUsed ?? '')}" max="15"></label>
+        <label class="checkbox-label"><input type="checkbox" class="rv-done" data-id="${esc(r.id)}" ${r.done ? 'checked' : ''}> ${T('ps.app.provedeno')}</label>
       </div>
-      <label>Дополнительные местные вопросы
+      <label>${T('ps.app.dopolnitelnye_mestnye_voprosy')}
         <textarea class="rv-notes" data-id="${esc(r.id)}" rows="2">${esc(r.additionalLocalQuestions || '')}</textarea>
       </label>
     </div>`).join('');
@@ -1027,7 +1027,7 @@ async function renderAfterSchool() {
     d.submitted = true;
     d.submittedDate = DateUtils.todayIso();
     await AfterSchool.save(d);
-    alert('S-253 сохранён');
+    alert(T('ps.app.s_253_sohranen'));
   };
 
   $('#export-s253-pdf').onclick = async () => {
@@ -1036,10 +1036,10 @@ async function renderAfterSchool() {
 }
 
 function renderNaList(items) {
-  $('#na-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.reason ? ' — ' + esc(i.reason) : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
+  $('#na-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.reason ? ' — ' + esc(i.reason) : ''}</li>`).join('') || `<li class="hint">${T('ps.app.pusto')}</li>`;
 }
 function renderAoList(items) {
-  $('#ao-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.congregation ? ' — ' + esc(i.congregation) : ''}</li>`).join('') || '<li class="hint">Пусто</li>';
+  $('#ao-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.congregation ? ' — ' + esc(i.congregation) : ''}</li>`).join('') || `<li class="hint">${T('ps.app.pusto')}</li>`;
 }
 
 // ---------- SIGN LANGUAGE ----------
@@ -1049,12 +1049,12 @@ async function renderSignLanguage() {
   $('#sl-notes').innerHTML = SignLanguage.NOTES.map((n) => `<li>${n}</li>`).join('');
 
   const checklistItems = [
-    ['substituteTextbookAccess', 'Доступ заместителя к учебнику на жестовом языке'],
-    ['adaptedPracticalPlans', 'Адаптированные планы практических занятий'],
-    ['s255Access', 'Доступ к S-255'],
-    ['studentJwpubTextbook', 'Учебник JWPUB на жестовом языке — учащимся'],
-    ['studentNotesPdf', 'Заметки к учебнику PDF (pt14slsh) — учащимся'],
-    ['studentAssignmentsWordJwpub', 'Задания Word/JWPUB — учащимся']
+    ['substituteTextbookAccess', T('ps.app.dostup_zamestitelya_k_uchebniku')],
+    ['adaptedPracticalPlans', T('ps.app.adaptirovannye_plany_prakticheskih_zan')],
+    ['s255Access', T('ps.app.dostup_k_s_255')],
+    ['studentJwpubTextbook', T('ps.app.uchebnik_jwpub_na_zhestovom')],
+    ['studentNotesPdf', T('ps.app.zametki_k_uchebniku_pdf')],
+    ['studentAssignmentsWordJwpub', T('ps.app.zadaniya_word_jwpub_uchaschimsya')]
   ];
   $('#sl-checklist').innerHTML = checklistItems.map(([key, label]) => `
     <label class="checkbox-label"><input type="checkbox" class="sl-check" data-key="${esc(key)}" ${data.materialsChecklist?.[key] ? 'checked' : ''}> ${esc(label)}</label>
@@ -1066,7 +1066,7 @@ async function renderSignLanguage() {
     d.materialsChecklist = d.materialsChecklist || {};
     $all('.sl-check').forEach((cb) => { d.materialsChecklist[cb.dataset.key] = cb.checked; });
     await SignLanguage.save(d);
-    alert('Сохранено');
+    alert(T('ps.app.sohraneno'));
   };
 }
 
@@ -1088,15 +1088,15 @@ function initBackup() {
   $('#import-backup-input').onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm('Импорт заменит текущие данные. Продолжить?')) return;
+    if (!confirm(T('ps.app.import_zamenit_tekuschie_dannye'))) return;
     const text = await file.text();
     try {
       const dump = JSON.parse(text);
       await DB.importAll(dump);
-      alert('Данные восстановлены');
+      alert(T('ps.app.dannye_vosstanovleny'));
       showRoute('dashboard');
     } catch (err) {
-      alert('Не удалось прочитать файл резервной копии: ' + err.message);
+      alert(T('ps.app.backup_read_failed', { error: err.message }));
     }
   };
 }
@@ -1104,6 +1104,13 @@ function initBackup() {
 // ---------- INIT ----------
 window.addEventListener('DOMContentLoaded', () => {
   $('#version-sub').textContent = `v${APP_VERSION} · S-255-U`;
+  // Язык поднимаем ДО первого showRoute(): экраны строятся в JS, и язык должен
+  // быть известен раньше первой отрисовки. Перерисовку при смене языка делает
+  // тот же showRoute — статическую разметку переводит CWI18n.apply().
+  PSI18n.init(() => {
+    const current = $all('.route').find((el) => !el.classList.contains('hidden'));
+    if (current) showRoute(current.id.replace('route-', ''));
+  });
   $all('.nav-item').forEach((btn) => btn.addEventListener('click', () => showRoute(btn.dataset.route)));
   initBackup();
 

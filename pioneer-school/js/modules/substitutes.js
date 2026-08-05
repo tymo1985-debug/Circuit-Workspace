@@ -1,5 +1,10 @@
 // substitutes.js — заместители преподавателей (S-257: рекомендация; гл.2 п.9: что им предоставить)
 
+// Предупреждения (в отличие от блокирующих ошибок) помечаются техническим
+// префиксом, а не словом «Внимание»: раньше проверка шла по русскому тексту
+// и сломалась бы при переводе интерфейса.
+const WARN_PREFIX = '\u26A0 ';
+
 const Substitutes = {
   async list() {
     const items = await DB.list('substitutes');
@@ -9,9 +14,9 @@ const Substitutes = {
 
   validate(sub) {
     const errors = [];
-    if (!sub.fullName || !sub.fullName.trim()) errors.push('Укажите имя и фамилию');
+    if (!sub.fullName || !sub.fullName.trim()) errors.push(T('ps.sub.ukazhite_imya_i_familiyu'));
     if (sub.age !== undefined && sub.age !== null && sub.age !== '' && Number(sub.age) >= 80) {
-      errors.push('Внимание: братьев 80 лет и старше не следует рассматривать заместителем преподавателя (гл.1, п.5)');
+      errors.push(WARN_PREFIX + T('ps.sub.age_warning'));
     }
     return errors;
   },
@@ -20,7 +25,7 @@ const Substitutes = {
     const errors = this.validate(sub);
     // возрастное предупреждение не блокирует сохранение, только предупреждает — это не запрет ввода данных,
     // а требование регламента к рекомендации; оставляем решение районному старейшине.
-    const blocking = errors.filter((e) => !e.startsWith('Внимание'));
+    const blocking = errors.filter((e) => !e.startsWith(WARN_PREFIX));
     if (blocking.length) throw new Error(blocking.join('; '));
     return DB.put('substitutes', sub);
   },
@@ -31,12 +36,12 @@ const Substitutes = {
 
   // Чек-лист того, что нужно предоставить заместителю (гл.2, п.9)
   NOTIFICATION_CHECKLIST: [
-    'Доступ на JW Hub к учебнику S-255 (эл. версия)',
-    'Доступ на JW Hub к планам практических занятий',
-    'Копия бланка «Назначение на Школу пионерского служения»',
-    'Информация о кредите 30 часов (если преподаёт все 6 дней)',
-    'Ссылка на «Инструкции для новых общих пионеров» (S-236)',
-    'Для спецпионеров/миссионеров: напоминание сделать пометку «Преподавал на Школе пионерского служения» в S-212 и S-4'
+    T('ps.sub.check_s255'),
+    T('ps.sub.check_plans'),
+    T('ps.sub.check_form'),
+    T('ps.sub.check_credit'),
+    T('ps.sub.check_s236'),
+    T('ps.sub.check_s212')
   ]
 };
 

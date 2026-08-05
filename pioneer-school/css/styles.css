@@ -508,3 +508,16 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .editable-table .row-remove-cell, .editable-table .col-remove-cell { text-align: center; background: var(--bg); }
 .editable-table .import-anomaly-cell { background: #FBE9D9; }
 .editable-table .import-anomaly-cell [contenteditable]:focus { background: #FFF3E4; }
+
+/* --- Переключатель языка интерфейса в сайдбаре (js/i18n.js) ---
+   Язык документов (PDF-анкета, формуляры, экспорт) намеренно не зависит от
+   этого выбора — это свойство бумаги, а не оболочки. */
+.sidebar-lang{padding:8px 12px}
+.sidebar-lang select{
+  width:100%;height:34px;padding:0 8px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);
+  color:inherit;font:inherit;font-size:13px;cursor:pointer;
+}
+.sidebar-lang select option{color:#1b1b1f;background:#fff}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media print{.sidebar-lang{display:none!important}}

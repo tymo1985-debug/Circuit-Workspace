@@ -49,7 +49,7 @@ function openDB() {
       dbPromise = null;
       reject(e.target.error);
     };
-    req.onblocked = () => console.warn('Обновление схемы базы заблокировано — закройте другие вкладки приложения.');
+    req.onblocked = () => console.warn(T('ps.db.obnovlenie_shemy_bazy_zablokirovano'));
   });
   return dbPromise.catch((error) => { dbPromise = null; throw error; });
 }
@@ -147,11 +147,11 @@ const DB = {
   // Полное восстановление из JSON (перезаписывает существующие хранилища)
   async importAll(dump) {
     if (!dump || typeof dump !== 'object' || Array.isArray(dump)) {
-      throw new Error('Файл не похож на резервную копию: ожидался объект с хранилищами.');
+      throw new Error(T('ps.db.fayl_ne_pohozh_na'));
     }
     const known = STORES.filter((s) => Array.isArray(dump[s]));
     if (!known.length) {
-      throw new Error('В файле нет ни одного известного хранилища данных — импорт отменён.');
+      throw new Error(T('ps.db.v_fayle_net_ni'));
     }
     const db = await openDB();
     for (const s of known) {
@@ -168,7 +168,7 @@ const DB = {
         }
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
-        transaction.onabort = () => reject(transaction.error || new Error('Импорт хранилища «' + s + '» прерван'));
+        transaction.onabort = () => reject(transaction.error || new Error(T('ps.db.import_store_failed', { store: s })));
       });
     }
     return true;

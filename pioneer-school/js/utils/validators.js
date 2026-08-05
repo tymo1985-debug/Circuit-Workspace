@@ -3,7 +3,7 @@
 const Validators = {
   required(value, fieldLabel) {
     if (value === undefined || value === null || String(value).trim() === '') {
-      return `Поле «${fieldLabel}» обязательно`;
+      return T('ps.val.field_required', { field: fieldLabel });
     }
     return null;
   },

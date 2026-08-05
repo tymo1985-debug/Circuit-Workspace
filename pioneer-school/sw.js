@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6.0';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -17,6 +17,13 @@ const ASSETS = [
   // шрифты с Google Fonts CDN, которые не кэшировались вовсе.
   '../shared/style.css',
   '../shared/nav.js',
+  // Локализация: общий слой + словарь модуля. Без них офлайн-запуск падал бы
+  // на T is not defined — T() зовут ещё на этапе объявления констант.
+  '../shared/version.js',
+  '../shared/i18n.js',
+  '../shared/i18n/common.js',
+  './i18n/dict.js',
+  './js/i18n.js',
   '../shared/fonts/roboto-latin-400-normal.woff2',
   '../shared/fonts/roboto-latin-500-normal.woff2',
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
