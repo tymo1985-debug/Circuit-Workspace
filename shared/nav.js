@@ -38,6 +38,11 @@
  *
  * id модуля берётся из пути (`/circuit-planner/index.html` → `circuit-planner`),
  * чтобы не заводить ещё одну настройку, которую придётся держать в согласии.
+ *
+ * ПОДПИСИ. Обе кнопки берут текст из общего слоя локализации
+ * (`common.back_to_hub`, `backup.module`) и перерисовываются по
+ * `CWI18n.onChange`. Если `shared/i18n.js` в модуле не подключён, обе
+ * деградируют на русскую строку — кнопка остаётся подписанной всегда.
  */
 (function () {
   var SLOTS = [
@@ -52,7 +57,10 @@
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>';
 
-  var LABEL = 'На главную — Circuit Workspace';
+  /* Русская строка остаётся запасным вариантом: nav.js подключают и модули,
+     в которых общий слой локализации ещё не поднят, — без CWI18n кнопка
+     должна оставаться подписанной, а не безымянной. */
+  var LABEL_FALLBACK = 'На главную — Circuit Workspace';
 
   function homeUrl() {
     return window.CW_HOME_URL || '../index.html';
@@ -63,10 +71,21 @@
     a.id = 'cwHomeFab';
     a.className = className;
     a.href = homeUrl();
-    a.setAttribute('aria-label', LABEL);
-    a.title = LABEL;
+    applyHomeLabel(a);
     a.innerHTML = ICON;
+
+    /* Язык можно сменить, не перезагружая страницу, — подписываемся на смену,
+       иначе кнопка осталась бы на языке, который был при первой отрисовке. */
+    if (window.CWI18n) {
+      window.CWI18n.onChange(function () { applyHomeLabel(a); });
+    }
     return a;
+  }
+
+  function applyHomeLabel(node) {
+    var text = label('common.back_to_hub', LABEL_FALLBACK);
+    node.setAttribute('aria-label', text);
+    node.title = text;
   }
 
   function findSlot() {

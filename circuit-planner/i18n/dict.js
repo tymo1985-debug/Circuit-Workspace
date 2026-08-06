@@ -11,6 +11,14 @@
  * Общие строки («Сохранить», «Закрыть», название модуля) остаются в
  * shared/i18n/common.js и здесь не дублируются.
  *
+ * ⚠️ КЛЮЧ = ОДНА СТРОКА В ОДНОМ МЕСТЕ. Словарь собран из двух источников —
+ * атрибутов `data-i18n` разметки и старого объекта I18N из app.js, — и на
+ * стыке четыре ключа совпали по имени при разном смысле. В объектном литерале
+ * JS побеждает последнее значение, поэтому подпись поля «Тема письма» молча
+ * подменялась текстом темы письма. Разведено: подпись вкладки настроек —
+ * `cp.letter_tab` (с ✉), бейдж и заголовок таблицы — `cp.letter_short` (без
+ * значка). Прежде чем добавлять ключ, проверь, что имени ещё нет в файле.
+ *
  * Немецкого пока нет намеренно: у модуля ещё остаются строки, вшитые прямо в
  * разметку и в JS. Пока они не вынесены сюда, немецкий интерфейс был бы
  * наполовину русским — поэтому язык хаба `de` продолжает отображаться на
@@ -77,7 +85,7 @@
     'cp.placeholder_word': 'Плейсхолдер',
     'cp.what_is_it': 'Что это',
     'cp.example': 'Пример',
-    'cp.letter_short': '✉ Письмо',
+    'cp.letter_tab': '✉ Письмо',
     'cp.letter_before_visit': '✉ Письмо перед визитом',
     'cp.visit_type_label': 'Тип визита (для напоминаний S302/письмо)',
     'cp.not_a_visit': 'Не визит (обычная запись)',
@@ -174,7 +182,6 @@
     'cp.color_amber': 'Янтарный',
     'cp.menu_btn': '☰ Меню',
     'cp.more_btn': '⚙ Ещё',
-    'cp.pin_off': '🔒 PIN-код: выкл',
     'cp.pin_enter': '🔒 Введите PIN',
     'cp.size_label': 'Размер:',
     'cp.days': 'дни',
@@ -392,7 +399,6 @@
     'cp.download': 'Скачать',
     'cp.google_hint': 'Подсказка: для Google Calendar откройте «Настройки → Импорт и экспорт → Импорт», выберите .ics. Для Apple Calendar просто откройте файл.',
     'cp.sync_title': 'Ручная синхронизация',
-    'cp.sync_hint': 'Без API: на основном ноутбуке скачайте файл синхронизации и поместите его в Google Drive. На другом устройстве скачайте этот файл из Drive и загрузите здесь.',
     'cp.sync_export': 'Скачать синхронизацию',
     'cp.sync_import': 'Загрузить синхронизацию',
     'cp.sync_export_done': 'Файл синхронизации создан. Поместите его в Google Drive.',
@@ -508,7 +514,6 @@
     'cp.next_visit_none': 'Нет предстоящих визитов',
     'cp.compose_letter': 'Составить письмо',
     'cp.share': 'Поделиться',
-    'cp.letter_subject': 'Посещение районного надзирателя',
     'cp.letter_body_greeting': 'Дорогие братья!',
     'cp.letter_body_visit': 'Планируется посещение',
     'cp.letter_body_closing': 'С братской любовью.',
@@ -582,7 +587,7 @@
     'cp.placeholder_word': 'Плейсхолдер',
     'cp.what_is_it': 'Що це',
     'cp.example': 'Приклад',
-    'cp.letter_short': '✉ Лист',
+    'cp.letter_tab': '✉ Лист',
     'cp.letter_before_visit': '✉ Лист перед візитом',
     'cp.visit_type_label': 'Тип візиту (для нагадувань S302/лист)',
     'cp.not_a_visit': 'Не візит (звичайний запис)',
@@ -679,7 +684,6 @@
     'cp.color_amber': 'Бурштиновий',
     'cp.menu_btn': '☰ Меню',
     'cp.more_btn': '⚙ Ще',
-    'cp.pin_off': '🔒 PIN-код: вимк',
     'cp.pin_enter': '🔒 Введіть PIN',
     'cp.size_label': 'Розмір:',
     'cp.days': 'дні',
@@ -897,7 +901,6 @@
     'cp.download': 'Завантажити',
     'cp.google_hint': 'Підказка: у Google Calendar відкрийте «Налаштування → Імпорт і експорт → Імпорт», виберіть .ics. Для Apple Calendar просто відкрийте файл.',
     'cp.sync_title': 'Ручна синхронізація',
-    'cp.sync_hint': 'Без API: на основному ноутбуці завантажте файл синхронізації та помістіть його в Google Drive. На іншому пристрої завантажте цей файл із Drive і відкрийте тут.',
     'cp.sync_export': 'Завантажити синхронізацію',
     'cp.sync_import': 'Завантажити з файлу синхронізації',
     'cp.sync_export_done': 'Файл синхронізації створено. Помістіть його в Google Drive.',
@@ -1013,7 +1016,6 @@
     'cp.next_visit_none': 'Немає майбутніх візитів',
     'cp.compose_letter': 'Скласти листа',
     'cp.share': 'Поділитися',
-    'cp.letter_subject': 'Відвідування районного наглядача',
     'cp.letter_body_greeting': 'Дорогі брати!',
     'cp.letter_body_visit': 'Планується відвідування',
     'cp.letter_body_closing': 'З братньою любов’ю.',
@@ -1087,7 +1089,7 @@
     'cp.placeholder_word': 'Placeholder',
     'cp.what_is_it': 'What it is',
     'cp.example': 'Example',
-    'cp.letter_short': '✉ Letter',
+    'cp.letter_tab': '✉ Letter',
     'cp.letter_before_visit': '✉ Letter before the visit',
     'cp.visit_type_label': 'Visit type (for S-302/letter reminders)',
     'cp.not_a_visit': 'Not a visit (ordinary entry)',
@@ -1184,7 +1186,6 @@
     'cp.color_amber': 'Amber',
     'cp.menu_btn': '☰ Menu',
     'cp.more_btn': '⚙ More',
-    'cp.pin_off': '🔒 PIN: off',
     'cp.pin_enter': '🔒 Enter the PIN',
     'cp.size_label': 'Size:',
     'cp.days': 'days',
@@ -1402,7 +1403,6 @@
     'cp.download': 'Download',
     'cp.google_hint': 'Tip: in Google Calendar open “Settings → Import & Export → Import”, choose the .ics file. In Apple Calendar just open the file.',
     'cp.sync_title': 'Manual sync',
-    'cp.sync_hint': 'No API: on the main laptop download the sync file and place it in Google Drive. On another device download that file from Drive and load it here.',
     'cp.sync_export': 'Download sync file',
     'cp.sync_import': 'Load sync file',
     'cp.sync_export_done': 'Sync file created. Place it in Google Drive.',
@@ -1518,7 +1518,6 @@
     'cp.next_visit_none': 'No upcoming visits',
     'cp.compose_letter': 'Compose letter',
     'cp.share': 'Share',
-    'cp.letter_subject': 'Circuit overseer visit',
     'cp.letter_body_greeting': 'Dear brothers!',
     'cp.letter_body_visit': 'A visit is planned',
     'cp.letter_body_closing': 'With brotherly love.',
@@ -1592,7 +1591,7 @@
     'cp.placeholder_word': 'Symbol zastępczy',
     'cp.what_is_it': 'Co to jest',
     'cp.example': 'Przykład',
-    'cp.letter_short': '✉ List',
+    'cp.letter_tab': '✉ List',
     'cp.letter_before_visit': '✉ List przed wizytą',
     'cp.visit_type_label': 'Typ wizyty (do przypomnień S-302/list)',
     'cp.not_a_visit': 'Nie wizyta (zwykły wpis)',
@@ -1689,7 +1688,6 @@
     'cp.color_amber': 'Bursztynowy',
     'cp.menu_btn': '☰ Menu',
     'cp.more_btn': '⚙ Więcej',
-    'cp.pin_off': '🔒 PIN: wył.',
     'cp.pin_enter': '🔒 Wpisz PIN',
     'cp.size_label': 'Rozmiar:',
     'cp.days': 'dni',
@@ -1907,7 +1905,6 @@
     'cp.download': 'Pobierz',
     'cp.google_hint': 'Wskazówka: w Google Calendar otwórz „Ustawienia → Import i eksport → Import”, wybierz plik .ics. W Apple Calendar po prostu otwórz plik.',
     'cp.sync_title': 'Ręczna synchronizacja',
-    'cp.sync_hint': 'Bez API: na głównym laptopie pobierz plik synchronizacji i umieść go w Google Drive. Na innym urządzeniu pobierz ten plik z Drive i wczytaj go tutaj.',
     'cp.sync_export': 'Pobierz synchronizację',
     'cp.sync_import': 'Wczytaj synchronizację',
     'cp.sync_export_done': 'Plik synchronizacji utworzony. Umieść go w Google Drive.',
@@ -2023,7 +2020,6 @@
     'cp.next_visit_none': 'Brak nadchodzących wizyt',
     'cp.compose_letter': 'Napisz list',
     'cp.share': 'Udostępnij',
-    'cp.letter_subject': 'Wizyta nadzorcy obwodu',
     'cp.letter_body_greeting': 'Drodzy bracia!',
     'cp.letter_body_visit': 'Planowana jest wizyta',
     'cp.letter_body_closing': 'Z braterską miłością.',
