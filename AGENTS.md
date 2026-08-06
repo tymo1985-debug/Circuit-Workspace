@@ -307,6 +307,49 @@ localStorage + имена баз IndexedDB. Ключи `cw-lang:<id>` и `cw-doc
    явного запроса на автономность и т.п.).
 8. Деплой: распаковать ZIP → drag&drop файлов в репозиторий на GitHub →
    commit → GitHub Actions деплоит за 20–40 сек.
+9. **Пост-проверка после КАЖДОГО залива (обязательно, ~10 секунд).**
+   Drag&drop папки целиком в GitHub может удалить файлы, которых нет внутри
+   перетаскиваемой папки — коммит выглядит как «залил обновление», а по факту
+   часть дерева стёрта. Так уже ломался деплой (см. ниже «Инцидент 06.08.2026»).
+   Сразу после коммита открыть репозиторий на GitHub и глазами убедиться,
+   что на месте:
+   - `shared/version.js` — без него хаб не читает `CW_VERSION`/`CW_MODULES`;
+   - `index.html` в каждом из четырёх модулей (`appointments/`,
+     `circuit-planner/`, `congress-project/`, `pioneer-school/`) —
+     без них все плитки хаба ведут в 404;
+   - service worker'ы: `service-worker.js` (корень),
+     `congress-project/service-worker.js`, `circuit-planner/sw.js`,
+     `pioneer-school/sw.js`, `appointments/sw.js`.
+
+   Быстрее и надёжнее — не глазами, а командой в свежем клоне:
+   ```bash
+   git clone --depth 1 https://github.com/tymo1985-debug/Circuit-Workspace.git tmp && cd tmp
+   for f in shared/version.js */index.html service-worker.js \
+            congress-project/service-worker.js circuit-planner/sw.js \
+            pioneer-school/sw.js appointments/sw.js; do
+     [ -e "$f" ] || echo "ПРОПАЛ: $f"
+   done
+   node scripts/check-versions.mjs
+   ```
+   Пусто на выходе + «Версии согласованы» = залив прошёл целиком.
+   Проверять до того, как закрывать вкладку, а не когда «деплой не работает».
+
+### Инцидент 06.08.2026 — потеря 8 файлов при заливе
+
+Коммиты `4f07be6` → `a494646` → `b1a649a` («new»/«new»/«renewed») суммарно
+удалили из репозитория 8 файлов: `shared/version.js`, `index.html` всех
+четырёх модулей и `sw.js` у `appointments/`, `circuit-planner/`,
+`pioneer-school/`. Код при этом нигде не был сломан — содержимое всех
+уцелевших файлов оказалось байт-в-байт идентично состоянию до сбоя.
+
+Урок на будущее, если повторится: **не чинить руками и не пересобирать**.
+Найти последний коммит, где файл ещё существовал, и достать оттуда:
+```bash
+git log --diff-filter=D -1 --format=%h -- <путь>   # коммит, где файл удалён
+git checkout <этот_коммит>^ -- <путь>              # версия из родителя
+```
+Именно `^` (родитель коммита удаления), а не «последний заведомо хороший
+коммит» — иначе вместе с восстановлением откатятся версии модулей.
 
 ## Известные технические ловушки
 
