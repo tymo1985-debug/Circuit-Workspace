@@ -17,6 +17,7 @@ const ASSETS = [
   // шрифты с Google Fonts CDN, которые не кэшировались вовсе.
   '../shared/style.css',
   '../shared/nav.js',
+  '../shared/backup.js',
   // Локализация: общий слой + словарь модуля. Без них офлайн-запуск падал бы
   // на T is not defined — T() зовут ещё на этапе объявления констант.
   '../shared/version.js',

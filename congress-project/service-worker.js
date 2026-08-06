@@ -9,7 +9,7 @@ const CACHE='congress-pwa-v'+APP_VERSION;
 const CACHE_PREFIX='congress-pwa-';
 const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32.png','./icon-192.png','./icon-512.png','./icon-maskable-512.png',
 // Общий слой (стили + шрифты) — index.html ссылается на ../shared/style.css.
-'../shared/style.css','../shared/nav.js',
+'../shared/style.css','../shared/nav.js','../shared/backup.js',
 '../shared/fonts/roboto-latin-400-normal.woff2','../shared/fonts/roboto-latin-500-normal.woff2',
 '../shared/fonts/roboto-cyrillic-400-normal.woff2','../shared/fonts/roboto-cyrillic-500-normal.woff2',
 './js/main.js','./js/state.js','./js/render.js','./js/tasks.js','./js/congress.js','./js/directories.js',

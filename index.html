@@ -16,6 +16,7 @@
      мелькает русская разметка. -->
 <script src="shared/i18n.js"></script>
 <script src="shared/i18n/common.js"></script>
+<script src="shared/backup.js"></script>
 <style>
   .cw-hub-header {
     position: relative;
@@ -306,6 +307,41 @@
     border: 0;
   }
 
+  /* --- Резервное копирование ------------------------------------------
+     Отдельная карточка под плитками: это не модуль, а действие над всем
+     рабочим пространством, и его место — рядом с модулями, но не среди них. */
+  .cw-backup { margin-top: 40px; }
+  .cw-backup__head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .cw-backup__head h2 {
+    font: 500 16px/24px var(--md-font-family);
+    letter-spacing: 0.15px; margin: 0;
+  }
+  .cw-backup__hint { color: var(--cw-text-dim); font: 400 13px/20px var(--md-font-family); margin: 0 0 16px; }
+  .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .cw-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0 18px;
+    border-radius: 999px; border: 1px solid var(--cw-line);
+    background: var(--cw-surface); color: var(--cw-text);
+    font: 500 14px/20px var(--md-font-family); cursor: pointer;
+  }
+  .cw-btn:hover { border-color: var(--cw-violet-dim); }
+  .cw-btn:focus-visible { outline: 3px solid var(--cw-lavender); outline-offset: 2px; }
+  .cw-btn--primary { background: var(--cw-violet); border-color: var(--cw-violet); color: #fff; }
+  .cw-btn svg { width: 18px; height: 18px; }
+  .cw-backup__table { width: 100%; border-collapse: collapse; font: 400 13px/20px var(--md-font-family); }
+  .cw-backup__table th {
+    text-align: left; color: var(--cw-muted); font-weight: 500;
+    padding: 6px 8px; border-bottom: 1px solid var(--cw-line);
+  }
+  .cw-backup__table td { padding: 8px; border-bottom: 1px solid var(--cw-line); }
+  .cw-backup__table td:last-child, .cw-backup__table th:last-child { text-align: right; white-space: nowrap; }
+  .cw-backup__never { color: var(--cw-muted); }
+  .cw-backup__status { margin: 12px 0 0; font: 400 13px/20px var(--md-font-family); color: var(--cw-text-dim); min-height: 20px; }
+
   .cw-footer {
     position: relative; z-index: 1;
     padding: 24px 0 48px;
@@ -437,6 +473,35 @@
       </a>
 
     </div>
+
+    <section class="cw-backup cw-card" aria-labelledby="backupHeading">
+      <div class="cw-backup__head">
+        <h2 id="backupHeading" data-i18n="backup.title">Резервное копирование</h2>
+      </div>
+      <p class="cw-backup__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
+      <div class="cw-backup__actions">
+        <button type="button" class="cw-btn cw-btn--primary" id="backupSaveAll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          <span data-i18n="backup.save_all">Сохранить всё</span>
+        </button>
+        <button type="button" class="cw-btn" id="backupRestoreBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"/><path d="M7 14l5-5 5 5"/><path d="M12 9v12"/></svg>
+          <span data-i18n="backup.restore">Восстановить из файла</span>
+        </button>
+        <input type="file" id="backupFile" accept=".json,application/json" hidden />
+      </div>
+      <table class="cw-backup__table">
+        <thead>
+          <tr>
+            <th data-i18n="backup.col_module">Модуль</th>
+            <th data-i18n="backup.col_version">Версия</th>
+            <th data-i18n="backup.col_last">Последняя копия</th>
+          </tr>
+        </thead>
+        <tbody id="backupRows"></tbody>
+      </table>
+      <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
+    </section>
   </div>
 </main>
 
@@ -532,6 +597,87 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden') remember();
     });
+  })();
+
+  // --- Резервное копирование -------------------------------------------
+  // Хаб читает хранилища модулей напрямую (один origin), поэтому полная копия
+  // всегда собирается свежей и не может состоять из кусков разного возраста.
+  (function () {
+    var rows = document.getElementById('backupRows');
+    var status = document.getElementById('backupStatus');
+    var fileInput = document.getElementById('backupFile');
+    if (!rows || typeof CWBackup === 'undefined') return;
+
+    function say(key, vars) { status.textContent = CWI18n.t(key, vars); }
+
+    function fmt(iso) {
+      if (!iso) return null;
+      var d = new Date(iso);
+      return isNaN(d) ? null : d.toLocaleString(CWI18n.getLang(), {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+      });
+    }
+
+    function renderRows() {
+      var log = CWBackup.log();
+      rows.innerHTML = Object.keys(CWBackup.MODULES).map(function (id) {
+        var version = (self.CW_MODULES && self.CW_MODULES[id] || {}).version || '—';
+        var at = fmt((log[id] || {}).at);
+        var cell = at
+          ? '<span>' + at + '</span>'
+          : '<span class="cw-backup__never">' + CWI18n.t('backup.never') + '</span>';
+        return '<tr><td>' + CWI18n.t('module.' + id + '.title') + '</td><td>v' + version + '</td><td>' + cell + '</td></tr>';
+      }).join('');
+    }
+
+    document.getElementById('backupSaveAll').addEventListener('click', function () {
+      say('backup.working');
+      CWBackup.saveAll().then(function (snap) {
+        renderRows();
+        say('backup.saved', { count: snap.modules.length });
+      }).catch(function (e) {
+        console.error(e);
+        say('backup.failed');
+      });
+    });
+
+    document.getElementById('backupRestoreBtn').addEventListener('click', function () { fileInput.click(); });
+
+    fileInput.addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onerror = function () { say('backup.unreadable'); };
+      reader.onload = function () {
+        var check = CWBackup.inspect(reader.result);
+        if (!check.ok) {
+          say(check.error === 'too-new' ? 'backup.too_new' : 'backup.not_a_backup');
+          return;
+        }
+        var snap = check.snapshot;
+        var when = fmt(snap.createdAt) || snap.createdAt;
+        if (!confirm(CWI18n.t('backup.confirm_restore', { date: when, version: snap.app && snap.app.hub || '—' }))) return;
+
+        // Перед заменой данных выгружаем текущее состояние: если файл окажется
+        // не тем, откатиться будет нечем — модули уже перезаписаны.
+        say('backup.working');
+        CWBackup.snapshot().then(function (before) {
+          CWBackup.download(before, 'circuit-workspace-before-restore-' + before.createdAt.slice(0, 10) + '.json');
+          return CWBackup.restore(snap);
+        }).then(function () {
+          say('backup.restored');
+          setTimeout(function () { location.reload(); }, 1200);
+        }).catch(function (err) {
+          console.error(err);
+          say('backup.failed');
+        });
+      };
+      reader.readAsText(file);
+    });
+
+    renderRows();
+    CWI18n.onChange(renderRows);
   })();
 
   if ('serviceWorker' in navigator) {

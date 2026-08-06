@@ -28,6 +28,16 @@
  *
  * Если модуль имеет собственную нижнюю мобильную навигацию (как Клиндарий),
  * класс "cw-has-bottom-nav" на <body> поднимает запасной FAB над ней.
+ *
+ * КНОПКА КОПИИ МОДУЛЯ. Рядом с кнопкой возврата встраивается кнопка
+ * «Копия модуля» — она сохраняет ТОЛЬКО данные текущего модуля. Общий слой
+ * (язык, отправитель, общая база) в неё не входит: он принадлежит хабу, там же
+ * делается полная копия. Кнопка появляется, только если подключён
+ * shared/backup.js и модуль есть в его реестре, поэтому подключение файла
+ * остаётся делом самого модуля, а не навязывается всем подряд.
+ *
+ * id модуля берётся из пути (`/circuit-planner/index.html` → `circuit-planner`),
+ * чтобы не заводить ещё одну настройку, которую придётся держать в согласии.
  */
 (function () {
   var SLOTS = [
@@ -73,6 +83,51 @@
     return null;
   }
 
+  var BACKUP_ICON =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>';
+
+  function moduleId() {
+    var parts = location.pathname.split('/').filter(Boolean);
+    // Последний сегмент может быть файлом (index.html, register.html).
+    if (parts.length && parts[parts.length - 1].indexOf('.') >= 0) parts.pop();
+    return parts.length ? parts[parts.length - 1] : '';
+  }
+
+  function label(key, fallback) {
+    return (window.CWI18n && window.CWI18n.t(key)) || fallback;
+  }
+
+  function makeBackupButton() {
+    var id = moduleId();
+    if (!window.CWBackup || !window.CWBackup.MODULES[id]) return null;
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'cwBackupBtn';
+    btn.className = 'cw-home-btn';
+    btn.innerHTML = BACKUP_ICON;
+    var title = label('backup.module', 'Копия модуля');
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      window.CWBackup.saveModule(id)
+        .then(function () { btn.title = label('backup.module_done', 'Копия модуля сохранена'); })
+        .catch(function (e) { console.error('CWBackup: копия модуля не удалась', e); })
+        .then(function () { btn.disabled = false; });
+    });
+    if (window.CWI18n) {
+      window.CWI18n.onChange(function () {
+        var next = label('backup.module', 'Копия модуля');
+        btn.title = next;
+        btn.setAttribute('aria-label', next);
+      });
+    }
+    return btn;
+  }
+
   function injectFab() {
     document.body.appendChild(makeLink('cw-home-fab'));
   }
@@ -100,6 +155,9 @@
     } else {
       slot.node.insertBefore(link, slot.node.firstChild);
     }
+
+    var backup = makeBackupButton();
+    if (backup && link.parentNode) link.parentNode.insertBefore(backup, link.nextSibling);
   }
 
   function start() { inject(true); }

@@ -24,6 +24,7 @@ const ASSETS = [
   // и падает на CWI18n undefined.
   '../shared/style.css',
   '../shared/nav.js',
+  '../shared/backup.js',
   '../shared/version.js',
   '../shared/i18n.js',
   '../shared/sender.js',
