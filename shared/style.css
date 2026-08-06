@@ -1,0 +1,652 @@
+/* Circuit Workspace — shared design tokens & components
+   Единый слой стилей для хаба и всех модулей.
+   Подключать после собственных стилей модуля, если нужно точечно переопределить.
+
+   ────────────────────────────────────────────────────────────────
+   Структура файла:
+     1. Шрифты (локальные, для офлайн-PWA)
+     2. Фирменные токены --cw-* и компоненты .cw-*  — БЕЗ ИЗМЕНЕНИЙ
+     3. Слой Material Design 3: токены --md-* и компоненты .md-*
+   ────────────────────────────────────────────────────────────────
+   MD3-палитра сгенерирована библиотекой Material Color Utilities
+   от seed-цвета #6a45c9 — центрального цвета градиента логотипа
+   (shared/brand/icon-source.svg, bgGrad 45%). Поверхности намеренно
+   взяты не нейтрально-серые (как даёт алгоритм по умолчанию), а
+   фиолетово-подкрашенные из фирменной палитры — MD3 это допускает
+   через концепцию surface tint, и так сохраняется узнаваемость бренда.
+
+   ВАЖНО: раздел 2 менять нельзя без проверки — от него зависят
+   index.html хаба и index.html всех трёх модулей.
+*/
+
+/* ═══ 1. ШРИФТЫ ═══════════════════════════════════════════════ */
+/* Roboto — латиница + кириллица, начертания 400/500 (шкала MD3).
+   Material Symbols Outlined — сабсет только под используемые иконки.
+   Без внешних CDN: PWA должно работать офлайн. */
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./fonts/roboto-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal; font-weight: 500; font-display: swap;
+  src: url('./fonts/roboto-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./fonts/roboto-cyrillic-400-normal.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal; font-weight: 500; font-display: swap;
+  src: url('./fonts/roboto-cyrillic-500-normal.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Иконки в сабсете: home, calendar_month, school, settings, add, close,
+   check, menu, chevron_right, search, event, mail, group, dark_mode,
+   light_mode, delete, edit, description, apps, person, notifications,
+   filter_list, print, more_vert, arrow_back, download, upload.
+   Новую иконку — только через пересборку сабсета. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal; font-weight: 400; font-display: block;
+  src: url('./fonts/material-symbols-outlined-subset.woff2') format('woff2');
+}
+
+/* ═══ 2. ФИРМЕННЫЙ СЛОЙ (без изменений) ══════════════════════ */
+
+:root {
+  /* --- Палитра: тёмная плата в тонах логотипа (icon-source.svg) ---
+     Взято напрямую из градиента и акцентов иконки: bgGrad (#3d2470→#6a45c9→#2a3f8f),
+     glow1 (#c9a3ff), боковые пятна (#a24bd6 фиолетовое, #4be0d0 бирюзовое). */
+  --cw-bg:        #140d28;
+  --cw-bg-raised: #1c1338;
+  --cw-surface:   #221947;
+  --cw-surface-2: #2b2058;
+  --cw-line:      #3a2d73;
+  --cw-line-soft: #291f52;
+
+  --cw-text:      #f1eefb;
+  --cw-text-dim:  #c6bce3;
+  --cw-muted:     #8c7fb5;
+
+  --cw-violet:     #8a5cf6;
+  --cw-violet-dim: #6a45c9;
+  --cw-lavender:   #c9a3ff;
+  --cw-indigo:     #2a3f8f;
+  --cw-magenta:    #a24bd6;
+  --cw-teal:      #4be0d0;
+  --cw-teal-dim:  #2fb3a5;
+  --cw-amber:     #e8b34a;
+  --cw-red:       #e2634f;
+
+  --cw-radius-sm: 8px;
+  --cw-radius:    14px;
+  --cw-radius-lg: 20px;
+
+  --cw-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --cw-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
+
+  --cw-font-display: "Segoe UI", "Helvetica Neue", system-ui, -apple-system, sans-serif;
+  --cw-font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cw-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body.cw-root {
+  margin: 0;
+  background: var(--cw-bg);
+  color: var(--cw-text);
+  font-family: var(--cw-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Фоновая текстура: едва заметная плата --- */
+.cw-board-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--cw-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cw-line-soft) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 75%);
+}
+
+/* --- Компонент: карточка / плитка модуля --- */
+.cw-card {
+  background: var(--cw-surface);
+  border: 1px solid var(--cw-line);
+  border-radius: var(--cw-radius);
+  box-shadow: var(--cw-shadow-sm);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cw-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--cw-violet-dim);
+  box-shadow: var(--cw-shadow);
+}
+
+/* --- Компонент: кнопка --- */
+.cw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--cw-radius-sm);
+  border: 1px solid var(--cw-line);
+  background: var(--cw-surface-2);
+  color: var(--cw-text);
+  font-family: var(--cw-font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.cw-btn:hover { background: var(--cw-line); border-color: var(--cw-violet-dim); }
+.cw-btn--accent {
+  background: var(--cw-violet);
+  border-color: var(--cw-violet);
+  color: #ffffff;
+}
+.cw-btn--accent:hover { background: var(--cw-violet-dim); border-color: var(--cw-violet-dim); color: #ffffff; }
+
+/* --- Компонент: значок статуса (badge) --- */
+.cw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--cw-line);
+  background: var(--cw-surface-2);
+  color: var(--cw-muted);
+}
+.cw-badge--live { color: #ffffff; background: var(--cw-violet); border-color: var(--cw-violet); }
+.cw-badge--soon { color: var(--cw-amber); background: transparent; border-color: var(--cw-magenta); }
+
+/* --- Кнопка "Назад в хаб" в шапке модуля (shared/nav.js) --------------------
+   Основной вариант: ведущий слот верхней панели, как в Material Design 3.
+   Цвет не задаётся жёстко — наследуется от шапки модуля, поэтому кнопка
+   одинаково читается и на светлом топбаре Конгрессов, и на тёмном
+   сайдбаре Школы пионеров. Подложка при наведении — нейтральный серый
+   с прозрачностью (state layer), он работает на любом фоне. */
+.cw-home-btn {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+.cw-home-btn:hover { background: rgba(127, 127, 127, 0.18); }
+.cw-home-btn:active { background: rgba(127, 127, 127, 0.28); }
+.cw-home-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.cw-home-btn svg { display: block; }
+
+/* Школа пионеров: слот — вертикальная колонка сайдбара, поэтому кнопку
+   нельзя растягивать по ширине и нужен отступ снизу от блока с логотипом. */
+.cw-home-btn--sidebar {
+  align-self: flex-start;
+  margin: 0 0 14px;
+}
+
+/* Сенсорная цель на мобильных — не меньше рекомендованных MD3 48px. */
+@media (max-width: 767px) {
+  .cw-home-btn { width: 44px; height: 44px; }
+}
+
+@media print {
+  .cw-home-btn { display: none !important; }
+}
+
+/* --- Плавающая кнопка "На главную" (shared/nav.js) — запасной вариант -------
+   Используется только если shared/nav.js не нашёл подходящей шапки
+   (например, в новом модуле без топбара). Не удалять. */
+.cw-home-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2000;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cw-violet, #6a45c9);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.cw-home-fab:hover {
+  background: var(--cw-violet-dim, #6a45c9);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+.cw-home-fab:active { transform: translateY(0); }
+.cw-home-fab svg { display: block; }
+
+/* Модули со своей нижней мобильной навигацией (класс на <body>) —
+   поднимаем кнопку выше неё, чтобы не перекрывать. */
+@media (max-width: 767px) {
+  body.cw-has-bottom-nav .cw-home-fab { bottom: 84px; }
+}
+
+@media print {
+  .cw-home-fab { display: none !important; }
+}
+
+/* --- Утилиты --- */
+.cw-muted { color: var(--cw-muted); }
+.cw-mono { font-family: var(--cw-font-mono); }
+.cw-container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cw-card { transition: none; }
+}
+
+/* ═══ 3. СЛОЙ MATERIAL DESIGN 3 ══════════════════════════════ */
+/* Новый слой. Существующие .cw-* классы он не переопределяет —
+   модули переводятся на .md-* постепенно, по одному. */
+
+:root {
+  --md-font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+
+  /* Акцентные роли (тёмная схема от seed #6a45c9, согласована
+     с фирменной лавандой --cw-lavender #c9a3ff) */
+  --md-primary: #cebdff;
+  --md-on-primary: #390093;
+  --md-primary-container: #5127af;
+  --md-on-primary-container: #e8ddff;
+  --md-inverse-primary: #6944c8;
+
+  --md-secondary: #cbc3dc;
+  --md-on-secondary: #332d41;
+  --md-secondary-container: #494458;
+  --md-on-secondary-container: #e8def8;
+
+  /* Tertiary — фирменная бирюза из логотипа вместо алгоритмического розового */
+  --md-tertiary: #4be0d0;
+  --md-on-tertiary: #00382f;
+  --md-tertiary-container: #2fb3a5;
+  --md-on-tertiary-container: #002019;
+
+  --md-error: #ffb4ab;
+  --md-on-error: #690005;
+  --md-error-container: #93000a;
+  --md-on-error-container: #ffb4ab;
+
+  /* Поверхности — фирменные фиолетовые, разложенные по ролям MD3 */
+  --md-background: var(--cw-bg);
+  --md-on-background: var(--cw-text);
+  --md-surface: var(--cw-bg);
+  --md-on-surface: var(--cw-text);
+  --md-surface-dim: #0f0920;
+  --md-surface-bright: #3a2d73;
+  --md-surface-container-lowest: #0f0920;
+  --md-surface-container-low: var(--cw-bg-raised);
+  --md-surface-container: var(--cw-surface);
+  --md-surface-container-high: var(--cw-surface-2);
+  --md-surface-container-highest: #342765;
+  --md-surface-variant: var(--cw-line-soft);
+  --md-on-surface-variant: var(--cw-text-dim);
+  --md-outline: var(--cw-muted);
+  --md-outline-variant: var(--cw-line);
+  --md-inverse-surface: var(--cw-text);
+  --md-inverse-on-surface: var(--cw-bg);
+  --md-scrim: #000000;
+  --md-shadow: #000000;
+
+  /* Статусная семантика проекта (critical/important/normal —
+     приоритеты из модели данных Клиндария; не роль MD3) */
+  --status-critical: #ffb4ab;
+  --status-critical-bg: #5c1310;
+  --status-important: var(--cw-amber);
+  --status-important-bg: #4a3400;
+  --status-normal: var(--cw-text-dim);
+  --status-normal-bg: var(--cw-surface-2);
+  --status-success: #7ee0b0;
+  --status-success-bg: #10402c;
+
+  /* State layers */
+  --md-state-hover: 0.08;
+  --md-state-focus: 0.12;
+  --md-state-pressed: 0.12;
+
+  /* Shape scale (официальная MD3) */
+  --md-radius-xs: 4px;
+  --md-radius-sm: 8px;
+  --md-radius-md: 12px;
+  --md-radius-lg: 16px;
+  --md-radius-xl: 28px;
+  --md-radius-full: 999px;
+
+  /* Elevation */
+  --md-elevation-1: 0px 1px 2px rgba(0,0,0,0.40), 0px 1px 3px 1px rgba(0,0,0,0.25);
+  --md-elevation-2: 0px 1px 2px rgba(0,0,0,0.40), 0px 2px 6px 2px rgba(0,0,0,0.25);
+  --md-elevation-3: 0px 1px 3px rgba(0,0,0,0.40), 0px 4px 8px 3px rgba(0,0,0,0.25);
+
+  /* Motion */
+  --md-dur-short: 100ms;
+  --md-dur-medium: 200ms;
+  --md-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Светлая тема — на случай, если модуль её поддерживает
+   (Клиндарий имеет собственный переключатель data-theme). */
+[data-theme="light"] {
+  --md-primary: #6944c8;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #e8ddff;
+  --md-on-primary-container: #21005d;
+  --md-inverse-primary: #cebdff;
+
+  --md-secondary: #615b71;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #e8def8;
+  --md-on-secondary-container: #1d192b;
+
+  --md-tertiary: #2fb3a5;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #a8f2e6;
+  --md-on-tertiary-container: #00201b;
+
+  --md-error: #ba1a1a;
+  --md-on-error: #ffffff;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #410002;
+
+  --md-background: #fffbff;
+  --md-on-background: #1c1b1e;
+  --md-surface: #fdf8fd;
+  --md-on-surface: #1c1b1e;
+  --md-surface-dim: #ddd8dd;
+  --md-surface-bright: #fdf8fd;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #f7f2f7;
+  --md-surface-container: #f1ecf1;
+  --md-surface-container-high: #ece7eb;
+  --md-surface-container-highest: #e6e1e6;
+  --md-surface-variant: #e6e0ec;
+  --md-on-surface-variant: #49454e;
+  --md-outline: #7a757f;
+  --md-outline-variant: #cac4cf;
+  --md-inverse-surface: #313033;
+  --md-inverse-on-surface: #f4eff4;
+
+  --status-critical: #ba1a1a;
+  --status-critical-bg: #ffdad6;
+  --status-important: #825500;
+  --status-important-bg: #ffdea6;
+  --status-normal: #49454e;
+  --status-normal-bg: #e6e0ec;
+  --status-success: #206b4b;
+  --status-success-bg: #b7f0d2;
+}
+
+/* --- Типографическая шкала MD3 --- */
+.md-display-large  { font: 400 57px/64px var(--md-font-family); letter-spacing: -0.25px; margin: 0; }
+.md-display-medium { font: 400 45px/52px var(--md-font-family); letter-spacing: 0; margin: 0; }
+.md-display-small  { font: 400 36px/44px var(--md-font-family); letter-spacing: 0; margin: 0; }
+.md-headline-large  { font: 400 32px/40px var(--md-font-family); letter-spacing: 0; margin: 0; }
+.md-headline-medium { font: 400 28px/36px var(--md-font-family); letter-spacing: 0; margin: 0; }
+.md-headline-small  { font: 400 24px/32px var(--md-font-family); letter-spacing: 0; margin: 0; }
+.md-title-large  { font: 400 22px/28px var(--md-font-family); letter-spacing: 0; margin: 0; }
+.md-title-medium { font: 500 16px/24px var(--md-font-family); letter-spacing: 0.15px; margin: 0; }
+.md-title-small  { font: 500 14px/20px var(--md-font-family); letter-spacing: 0.1px; margin: 0; }
+.md-body-large  { font: 400 16px/24px var(--md-font-family); letter-spacing: 0.5px; margin: 0; }
+.md-body-medium { font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px; margin: 0; }
+.md-body-small  { font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px; margin: 0; }
+.md-label-large  { font: 500 14px/20px var(--md-font-family); letter-spacing: 0.1px; margin: 0; }
+.md-label-medium { font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px; margin: 0; }
+.md-label-small  { font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px; margin: 0; }
+
+/* --- Иконки --- */
+.md-icon {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal; font-style: normal;
+  font-size: 24px; line-height: 1;
+  letter-spacing: normal; text-transform: none;
+  display: inline-block; white-space: nowrap;
+  word-wrap: normal; direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+}
+.md-icon.md-icon-sm { font-size: 18px; }
+.md-icon.md-icon-lg { font-size: 32px; }
+
+/* --- State layer --- */
+.md-state-layer { position: relative; overflow: hidden; }
+.md-state-layer::after {
+  content: ""; position: absolute; inset: 0;
+  background: currentColor; opacity: 0; pointer-events: none;
+  transition: opacity var(--md-dur-short) var(--md-ease-standard);
+}
+.md-state-layer:hover::after { opacity: var(--md-state-hover); }
+.md-state-layer:focus-visible::after { opacity: var(--md-state-focus); }
+.md-state-layer:active::after { opacity: var(--md-state-pressed); }
+
+/* --- Кнопки (5 типов MD3 + деструктивная) --- */
+.md-btn {
+  height: 40px; padding: 0 24px;
+  border-radius: var(--md-radius-full);
+  border: none;
+  font: 500 14px/20px var(--md-font-family);
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  color: inherit;
+}
+.md-btn-elevated { background: var(--md-surface-container-low); color: var(--md-primary); box-shadow: var(--md-elevation-1); }
+.md-btn-filled   { background: var(--md-primary); color: var(--md-on-primary); }
+.md-btn-tonal    { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.md-btn-outlined { background: transparent; color: var(--md-primary); border: 1px solid var(--md-outline); }
+.md-btn-text     { background: transparent; color: var(--md-primary); padding: 0 12px; }
+.md-btn-danger   { background: var(--md-error); color: var(--md-on-error); }
+.md-btn-full     { width: 100%; }
+
+.md-icon-btn {
+  width: 40px; height: 40px;
+  border-radius: var(--md-radius-full);
+  border: none; background: transparent;
+  color: var(--md-on-surface-variant);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.md-icon-btn.selected { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+.md-fab {
+  position: fixed; right: 24px; bottom: 24px;
+  width: 56px; height: 56px;
+  border-radius: var(--md-radius-lg);
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border: none; box-shadow: var(--md-elevation-3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 20;
+}
+.md-fab-extended { width: auto; padding: 0 20px 0 16px; gap: 8px; font: 500 14px/20px var(--md-font-family); letter-spacing: 0.1px; }
+/* Не сталкиваемся с общей кнопкой "На главную" (.cw-home-fab справа снизу) */
+.md-fab { right: 84px; }
+@media (max-width: 767px) {
+  body.cw-has-bottom-nav .md-fab { bottom: 84px; }
+}
+
+/* --- Карточки (уровни через surface-container, не через тень) --- */
+.md-card { background: var(--md-surface-container-low); border-radius: var(--md-radius-lg); padding: 16px; }
+.md-card.md-card-filled   { background: var(--md-surface-container-highest); }
+.md-card.md-card-outlined { background: var(--md-surface); border: 1px solid var(--md-outline-variant); }
+.md-card.md-card-elevated { background: var(--md-surface-container-low); box-shadow: var(--md-elevation-1); }
+
+/* --- Поля ввода: Outlined text field, 56px, floating label --- */
+.md-field { position: relative; height: 56px; }
+.md-field input, .md-field select, .md-field textarea {
+  width: 100%; height: 56px;
+  border-radius: var(--md-radius-xs);
+  border: 1px solid var(--md-outline);
+  background: transparent;
+  color: var(--md-on-surface);
+  padding: 20px 16px 6px;
+  font: 400 16px/24px var(--md-font-family);
+}
+.md-field textarea { height: auto; min-height: 96px; padding-top: 24px; resize: vertical; }
+.md-field label {
+  position: absolute; left: 12px; top: 18px;
+  padding: 0 4px;
+  background: var(--md-surface);
+  color: var(--md-on-surface-variant);
+  font: 400 16px/16px var(--md-font-family);
+  transition: all var(--md-dur-short) var(--md-ease-standard);
+  pointer-events: none;
+}
+.md-field input:focus, .md-field select:focus, .md-field textarea:focus {
+  outline: none; border: 2px solid var(--md-primary);
+}
+/* Floating label — только input/textarea: псевдокласс :placeholder-shown
+   спецификацией для <select> не определён и там работать не будет. */
+.md-field input:focus ~ label,
+.md-field input:not(:placeholder-shown) ~ label,
+.md-field textarea:focus ~ label,
+.md-field textarea:not(:placeholder-shown) ~ label {
+  top: -8px; font-size: 12px; line-height: 16px; letter-spacing: 0.4px;
+}
+.md-field input:focus ~ label, .md-field textarea:focus ~ label { color: var(--md-primary); }
+
+/* Select — статичный лейбл сверху (MD3 Dropdown menu) */
+.md-field-select { height: auto; }
+.md-field-select label {
+  position: static; display: block; background: none;
+  font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.md-field-select select { height: 40px; padding: 0 12px; }
+
+/* Состояние ошибки */
+.md-field.error input, .md-field.error select, .md-field.error textarea { border-color: var(--md-error); }
+.md-field.error label { color: var(--md-error); }
+.md-field-error-text { font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-error); margin-top: 4px; }
+
+/* --- Чипы --- */
+.md-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 16px;
+  border-radius: var(--md-radius-sm);
+  border: 1px solid var(--md-outline-variant);
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  font: 500 14px/20px var(--md-font-family); letter-spacing: 0.1px;
+  cursor: pointer;
+}
+.md-chip.selected { background: var(--md-secondary-container); color: var(--md-on-secondary-container); border-color: transparent; }
+.md-chip-full { width: 100%; justify-content: flex-start; }
+
+/* --- Статус-бейджи --- */
+.md-status { display: inline-block; padding: 2px 10px; border-radius: var(--md-radius-full); font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px; }
+.md-status-critical  { background: var(--status-critical-bg);  color: var(--status-critical); }
+.md-status-important { background: var(--status-important-bg); color: var(--status-important); }
+.md-status-normal    { background: var(--status-normal-bg);    color: var(--status-normal); }
+.md-status-success   { background: var(--status-success-bg);   color: var(--status-success); }
+
+/* --- Таблицы --- */
+.md-table { width: 100%; border-collapse: collapse; font: 400 14px/20px var(--md-font-family); background: var(--md-surface); border-radius: var(--md-radius-md); overflow: hidden; }
+.md-table th {
+  text-align: left; font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px;
+  color: var(--md-on-surface-variant); background: var(--md-surface-container-low);
+  padding: 12px 16px; border-bottom: 1px solid var(--md-outline-variant);
+}
+.md-table td { padding: 12px 16px; border-bottom: 1px solid var(--md-outline-variant); color: var(--md-on-surface); }
+.md-table tr:last-child td { border-bottom: none; }
+.md-table tr:hover td { background: var(--md-surface-container); }
+
+/* --- Списки --- */
+.md-list { list-style: none; margin: 0; padding: 0; }
+.md-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--md-radius-sm); cursor: pointer; color: var(--md-on-surface); }
+.md-list-item:hover { background: var(--md-surface-container); }
+.md-list-item.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+/* --- Пустое состояние --- */
+.md-empty {
+  padding: 24px;
+  border: 1px dashed var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  color: var(--md-on-surface-variant);
+  text-align: center;
+  font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px;
+}
+
+/* --- Диалоги --- */
+.md-dialog { border: none; border-radius: var(--md-radius-xl); padding: 0; box-shadow: var(--md-elevation-3); background: var(--md-surface-container-high); color: var(--md-on-surface); }
+.md-dialog::backdrop { background: rgba(0,0,0,0.32); }
+.md-dialog-head { padding: 24px 24px 16px; }
+.md-dialog-body { padding: 0 24px 24px; }
+.md-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 24px 24px; }
+
+/* --- Уведомления --- */
+.md-snackbar {
+  background: var(--md-inverse-surface); color: var(--md-inverse-on-surface);
+  padding: 14px 16px; border-radius: var(--md-radius-xs);
+  font: 400 14px/20px var(--md-font-family);
+  display: inline-flex; align-items: center; gap: 12px;
+  box-shadow: var(--md-elevation-3);
+}
+
+/* --- Навигация --- */
+.md-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  height: 64px; padding: 0 16px;
+  background: var(--md-surface-container-low);
+  position: sticky; top: 0; z-index: 10;
+}
+.md-nav-rail { width: 80px; flex-shrink: 0; background: var(--md-surface-container-low); padding: 16px 8px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.md-nav-rail-item { width: 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; border-radius: var(--md-radius-lg); color: var(--md-on-surface-variant); cursor: pointer; border: none; background: transparent; }
+.md-nav-indicator { width: 56px; height: 32px; border-radius: var(--md-radius-full); display: flex; align-items: center; justify-content: center; }
+.md-nav-rail-item.active .md-nav-indicator { background: var(--md-secondary-container); }
+.md-nav-rail-item.active .md-icon { color: var(--md-on-secondary-container); }
+.md-nav-rail-item.active .md-nav-label { color: var(--md-on-surface); }
+
+.md-nav-bottom { display: none; position: sticky; bottom: 0; height: 80px; background: var(--md-surface-container); padding: 12px 4px; justify-content: space-around; }
+.md-nav-bottom-item { display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: transparent; color: var(--md-on-surface-variant); }
+.md-nav-bottom-item .md-nav-indicator { width: 64px; }
+.md-nav-bottom-item.active .md-nav-indicator { background: var(--md-secondary-container); }
+.md-nav-bottom-item.active .md-icon { color: var(--md-on-secondary-container); }
+.md-nav-bottom-item.active .md-nav-label { color: var(--md-on-surface); }
+
+@media (max-width: 720px) {
+  .md-nav-rail { display: none; }
+  .md-nav-bottom { display: flex; }
+}
+
+/* --- Утилиты --- */
+.md-hidden { display: none !important; }
+.md-flex { display: flex; }
+.md-gap-sm { gap: 8px; }
+.md-gap-md { gap: 16px; }
+.md-grid-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
