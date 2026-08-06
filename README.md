@@ -117,3 +117,5 @@ Service worker и `fetch` не работают по `file://`, поэтому �
 python3 -m http.server 5173
 # затем http://localhost:5173/
 ```
+
+<!-- restart Pages deployment -->
