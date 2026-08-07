@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.61.0',
+      version: '9.62.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2151,18 +2151,53 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           parent.removeChild(container);
           return true;
         }
-        const span = document.createElement('span');
-        span.dataset.rteStyleProp = styleProp;
-        span.style[styleProp] = value;
+        // Simple case: the selection sits inside a single element — wrap it in one go.
         try {
+          const span = document.createElement('span');
+          span.dataset.rteStyleProp = styleProp;
+          span.style[styleProp] = value;
           range.surroundContents(span);
+          const newRange = document.createRange();
+          newRange.selectNodeContents(span);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+          return true;
         } catch (_) {
-          const contents = range.extractContents();
-          span.appendChild(contents);
-          range.insertNode(span);
+          // surroundContents() throws when the selection crosses element boundaries (the common
+          // case: dragging across two or more paragraphs). The previous fallback was
+          // extractContents() + wrap-everything-in-one-inline-span, which pulled the block
+          // elements themselves inside an inline span and collapsed separate paragraphs into a
+          // single run of text — this is what "формат письма ломается" was. Instead, style each
+          // selected TEXT NODE individually so the surrounding block structure stays untouched.
         }
+        const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, {
+          acceptNode(node) {
+            if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+          },
+        });
+        const textNodes = [];
+        let current = walker.nextNode();
+        while (current) { textNodes.push(current); current = walker.nextNode(); }
+        if (!textNodes.length) return false;
+        const wrapped = [];
+        textNodes.forEach((node) => {
+          // Only the selected PART of the first/last node is inside the range.
+          const start = node === range.startContainer ? range.startOffset : 0;
+          const end = node === range.endContainer ? range.endOffset : node.nodeValue.length;
+          if (end <= start) return;
+          const piece = document.createRange();
+          piece.setStart(node, start);
+          piece.setEnd(node, end);
+          const span = document.createElement('span');
+          span.dataset.rteStyleProp = styleProp;
+          span.style[styleProp] = value;
+          try { piece.surroundContents(span); wrapped.push(span); } catch (_) { /* skip this node */ }
+        });
+        if (!wrapped.length) return false;
         const newRange = document.createRange();
-        newRange.selectNodeContents(span);
+        newRange.setStartBefore(wrapped[0]);
+        newRange.setEndAfter(wrapped[wrapped.length - 1]);
         sel.removeAllRanges();
         sel.addRange(newRange);
         return true;
