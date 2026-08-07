@@ -46,6 +46,11 @@
  */
 (function () {
   var SLOTS = [
+    /* Новая единая оболочка (дизайн-система, .md-topbar-v2) ищется первой.
+       Старые селекторы намеренно оставлены ниже: пока модули мигрируют по
+       одному, оба вида шапок должны работать одновременно. Удалять их можно
+       только когда все модули переведены. */
+    { sel: '.md-topbar-v2__lead', mode: 'prepend' },
     { sel: '.topbar .topbar-title-row', mode: 'prepend' },
     { sel: 'header.topbar', mode: 'prepend' },
     { sel: '.topbar', mode: 'prepend' },

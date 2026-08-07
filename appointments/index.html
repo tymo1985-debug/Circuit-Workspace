@@ -22,122 +22,148 @@
 <script src="../shared/i18n/common.js"></script>
 <script src="i18n/dict.js"></script>
 </head>
-<body>
+<!-- data-module включает акцент модуля (--cw-module и родственные). Значение
+     совпадает с data-module плитки хаба и с градиентом иконки в shared/brand.
+     Пилотный модуль дизайн-системы: оболочка целиком на общих компонентах. -->
+<body data-module="appointments">
 
-<header class="topbar">
-  <!-- .topbar .topbar-title-row — ведущий слот, в который shared/nav.js
-       ставит кнопку возврата в хаб. Имена классов заданы именно так,
-       чтобы не задавать window.CW_HOME_SLOT вручную. -->
-  <div class="topbar-title-row">
-    <div class="topbar-title-block">
-      <h1 class="md-title-large" data-i18n="module.appointments.title">Назначения</h1>
-      <p class="md-body-small subtitle" data-i18n="module.appointments.desc">Письмо о назначении и вычёркивании старейшин и служителей собрания.</p>
+<!-- Единая шапка модуля (.md-topbar-v2). Кнопку возврата в хаб ставит
+     shared/nav.js — он ищет .md-topbar-v2__lead первым слотом, поэтому
+     window.CW_HOME_SLOT задавать не нужно.
+     Печать вынесена в шапку намеренно: у модуля одно основное действие на
+     весь экран, и относится оно к модулю, а не к части содержимого. -->
+<header class="md-topbar-v2">
+  <div class="md-topbar-v2__lead">
+    <div class="md-topbar-v2__mark" aria-hidden="true"><span class="md-icon md-icon-sm">mail</span></div>
+    <div class="md-topbar-v2__titles">
+      <p class="md-topbar-v2__title" data-i18n="module.appointments.title">Назначения</p>
+      <p class="md-topbar-v2__sub">
+        <span id="moduleVersion"></span>
+        <span class="md-savestatus" id="saveStatus"></span>
+      </p>
     </div>
   </div>
-  <div class="actions">
-    <span class="md-label-small module-version" id="moduleVersion"></span>
+  <span class="md-topbar-v2__spacer"></span>
+  <div class="md-topbar-v2__actions">
     <label class="sr-only" for="uiLanguage" data-i18n="hub.language_label">Язык интерфейса</label>
     <select id="uiLanguage" class="lang-select"></select>
+    <button type="button" class="md-btn md-btn-filled print-btn" id="printBtn">
+      <span class="md-icon md-icon-sm" aria-hidden="true">print</span>
+      <span data-i18n="common.print">Печать</span>
+    </button>
   </div>
 </header>
 
 <div class="app">
 
-  <aside class="md-card panel" aria-labelledby="panelHeading">
-    <h2 class="md-title-medium" id="panelHeading" data-i18n="ap.panel.heading">Настройки письма</h2>
+  <aside class="editor" aria-labelledby="panelHeading">
 
-    <div class="field">
-      <label class="md-label-medium" for="letterDate" data-i18n="ap.field.date">Дата письма</label>
-      <input id="letterDate" type="date">
-    </div>
-
-    <div class="field">
-      <label class="md-label-medium" for="congName" data-i18n="ap.field.congregation">Собрание</label>
-      <input id="congName" type="text" list="congList" data-i18n-placeholder="ap.placeholder.congregation" placeholder="Название собрания">
-      <!-- Список подсказок берётся из справочника Конгрессов (только чтение). -->
-      <datalist id="congList"></datalist>
-    </div>
-
-    <div class="field">
-      <label class="md-label-medium" for="coordinator" data-i18n="ap.field.coordinator">Координатор совета старейшин</label>
-      <input id="coordinator" type="text" data-i18n-placeholder="ap.placeholder.coordinator" placeholder="Имя и фамилия">
-    </div>
-
-    <div class="field">
-      <label class="md-label-medium" for="coordinatorAddress" data-i18n="ap.field.coordinator_address">Адрес координатора</label>
-      <textarea id="coordinatorAddress" rows="3" data-i18n-placeholder="ap.placeholder.address" placeholder="Улица, дом
-Город
-Индекс"></textarea>
-    </div>
-
-    <h2 class="md-title-medium section-heading" data-i18n="ap.lists.heading">Списки братьев</h2>
-
-    <div class="field">
-      <label class="md-label-medium" data-i18n="ap.list.elders">Назначены старейшинами</label>
-      <div class="list-editor" id="listElders" data-list="elders"></div>
-      <div class="list-actions">
-        <button type="button" class="md-btn md-btn-text" data-add="elders" data-i18n="ap.btn.add">Добавить</button>
-        <button type="button" class="md-btn md-btn-text" data-clear="elders" data-i18n="ap.btn.clear">Очистить</button>
+    <section class="md-formsection">
+      <div class="md-formsection__head">
+        <h2 class="md-formsection__title" id="panelHeading" data-i18n="ap.panel.heading">Настройки письма</h2>
+        <p class="md-formsection__hint" data-i18n="module.appointments.desc">Письмо о назначении и вычёркивании старейшин и служителей собрания.</p>
       </div>
-    </div>
 
-    <div class="field">
-      <label class="md-label-medium" data-i18n="ap.list.servants">Назначены служителями собрания</label>
-      <div class="list-editor" id="listServants" data-list="servants"></div>
-      <div class="list-actions">
-        <button type="button" class="md-btn md-btn-text" data-add="servants" data-i18n="ap.btn.add">Добавить</button>
-        <button type="button" class="md-btn md-btn-text" data-clear="servants" data-i18n="ap.btn.clear">Очистить</button>
+      <!-- input[type="date"] всегда имеет видимое содержимое, поэтому
+           плавающая подпись здесь неприменима — .md-field-static. -->
+      <div class="md-field md-field-static">
+        <label for="letterDate" data-i18n="ap.field.date">Дата письма</label>
+        <input id="letterDate" type="date">
       </div>
-    </div>
 
-    <div class="field">
-      <label class="md-label-medium" data-i18n="ap.list.removed">Вычеркнуты</label>
-      <div class="list-editor" id="listRemoved" data-list="removed"></div>
-      <div class="list-actions">
-        <button type="button" class="md-btn md-btn-text" data-add="removed" data-i18n="ap.btn.add">Добавить</button>
-        <button type="button" class="md-btn md-btn-text" data-clear="removed" data-i18n="ap.btn.clear">Очистить</button>
+      <div class="md-field">
+        <input id="congName" type="text" list="congList" placeholder=" ">
+        <label for="congName" data-i18n="ap.field.congregation">Собрание</label>
+        <!-- Список подсказок берётся из справочника Конгрессов (только чтение). -->
+        <datalist id="congList"></datalist>
       </div>
-    </div>
 
-    <h2 class="md-title-medium section-heading" data-i18n="ap.sender.heading">Данные отправителя</h2>
+      <div class="md-field">
+        <input id="coordinator" type="text" placeholder=" ">
+        <label for="coordinator" data-i18n="ap.field.coordinator">Координатор совета старейшин</label>
+      </div>
 
-    <p class="md-body-small hint" data-i18n="ap.sender.shared_hint">Общие данные: те же во всех модулях Circuit Workspace.</p>
+      <div class="md-field">
+        <textarea id="coordinatorAddress" rows="3" placeholder=" "></textarea>
+        <label for="coordinatorAddress" data-i18n="ap.field.coordinator_address">Адрес координатора</label>
+      </div>
+    </section>
 
-    <div id="senderFields">
-      <div class="field">
-        <label class="md-label-medium" for="senderName" data-i18n="ap.sender.name">Имя и фамилия</label>
-        <input id="senderName" type="text">
+    <section class="md-formsection">
+      <div class="md-formsection__head">
+        <h2 class="md-formsection__title" data-i18n="ap.lists.heading">Списки братьев</h2>
       </div>
-      <div class="field">
-        <label class="md-label-medium" for="senderCode" data-i18n="ap.sender.code">Код района</label>
-        <input id="senderCode" type="text">
-      </div>
-      <div class="field">
-        <label class="md-label-medium" for="senderAddress" data-i18n="ap.sender.address">Адрес</label>
-        <textarea id="senderAddress" rows="2"></textarea>
-      </div>
-      <div class="field">
-        <label class="md-label-medium" for="senderPhone1" data-i18n="ap.sender.phone1">Телефон</label>
-        <input id="senderPhone1" type="text">
-      </div>
-      <div class="field">
-        <label class="md-label-medium" for="senderPhone2" data-i18n="ap.sender.phone2">Второй телефон</label>
-        <input id="senderPhone2" type="text">
-      </div>
-      <div class="field">
-        <label class="md-label-medium" for="senderEmail" data-i18n="ap.sender.email">Эл. почта</label>
-        <input id="senderEmail" type="text">
-      </div>
-    </div>
 
-    <div class="field doc-lang">
-      <label class="md-label-medium" for="docLanguage" data-i18n="ap.doc.language">Язык письма</label>
-      <select id="docLanguage"></select>
+      <div class="list-group">
+        <span class="md-label-medium list-group__label" data-i18n="ap.list.elders">Назначены старейшинами</span>
+        <div class="list-editor" id="listElders" data-list="elders"></div>
+        <div class="list-actions">
+          <button type="button" class="md-btn md-btn-text" data-add="elders" data-i18n="ap.btn.add">Добавить</button>
+          <button type="button" class="md-btn md-btn-text" data-clear="elders" data-i18n="ap.btn.clear">Очистить</button>
+        </div>
+      </div>
+
+      <div class="list-group">
+        <span class="md-label-medium list-group__label" data-i18n="ap.list.servants">Назначены служителями собрания</span>
+        <div class="list-editor" id="listServants" data-list="servants"></div>
+        <div class="list-actions">
+          <button type="button" class="md-btn md-btn-text" data-add="servants" data-i18n="ap.btn.add">Добавить</button>
+          <button type="button" class="md-btn md-btn-text" data-clear="servants" data-i18n="ap.btn.clear">Очистить</button>
+        </div>
+      </div>
+
+      <div class="list-group">
+        <span class="md-label-medium list-group__label" data-i18n="ap.list.removed">Вычеркнуты</span>
+        <div class="list-editor" id="listRemoved" data-list="removed"></div>
+        <div class="list-actions">
+          <button type="button" class="md-btn md-btn-text" data-add="removed" data-i18n="ap.btn.add">Добавить</button>
+          <button type="button" class="md-btn md-btn-text" data-clear="removed" data-i18n="ap.btn.clear">Очистить</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="md-formsection">
+      <div class="md-formsection__head">
+        <h2 class="md-formsection__title" data-i18n="ap.sender.heading">Данные отправителя</h2>
+        <p class="md-formsection__hint" data-i18n="ap.sender.shared_hint">Общие данные: те же во всех модулях Circuit Workspace.</p>
+      </div>
+
+      <div id="senderFields">
+        <div class="md-field">
+          <input id="senderName" type="text" placeholder=" ">
+          <label for="senderName" data-i18n="ap.sender.name">Имя и фамилия</label>
+        </div>
+        <div class="md-field">
+          <input id="senderCode" type="text" placeholder=" ">
+          <label for="senderCode" data-i18n="ap.sender.code">Код района</label>
+        </div>
+        <div class="md-field">
+          <textarea id="senderAddress" rows="2" placeholder=" "></textarea>
+          <label for="senderAddress" data-i18n="ap.sender.address">Адрес</label>
+        </div>
+        <div class="md-field">
+          <input id="senderPhone1" type="text" placeholder=" ">
+          <label for="senderPhone1" data-i18n="ap.sender.phone1">Телефон</label>
+        </div>
+        <div class="md-field">
+          <input id="senderPhone2" type="text" placeholder=" ">
+          <label for="senderPhone2" data-i18n="ap.sender.phone2">Второй телефон</label>
+        </div>
+        <div class="md-field">
+          <input id="senderEmail" type="text" placeholder=" ">
+          <label for="senderEmail" data-i18n="ap.sender.email">Эл. почта</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="md-formsection">
+      <div class="md-field md-field-select">
+        <label for="docLanguage" data-i18n="ap.doc.language">Язык письма</label>
+        <select id="docLanguage"></select>
+      </div>
       <p class="md-body-small hint" data-i18n="ap.doc.language_hint">Язык печатного письма. От языка интерфейса не зависит.</p>
-    </div>
+    </section>
 
-    <button type="button" class="md-btn md-btn-filled md-btn-full print-btn" id="printBtn" data-i18n="common.print">Печать</button>
-    <p class="md-body-small save-status" id="saveStatus"></p>
   </aside>
 
   <main class="preview">

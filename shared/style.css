@@ -684,3 +684,728 @@ body.cw-root {
 .md-gap-sm { gap: 8px; }
 .md-gap-md { gap: 16px; }
 .md-grid-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   РАЗДЕЛЫ 4–6 — слой оболочки и компонентов (фаза 1 дизайн-системы)
+   ───────────────────────────────────────────────────────────────────────────
+   Перенесено из docs/design-system/proposed/cw-ui.css. Проект и обоснование
+   каждого решения — docs/design-system/, живые макеты — preview/index.html.
+
+   ДОБАВЛЕНО, А НЕ ИЗМЕНЕНО: ни одна строка разделов 1–3 не тронута. Новые
+   классы на момент переноса не использует ни один модуль, кроме оговорённого
+   ниже.
+
+   ДВА ПРАВИЛА ЗДЕСЬ ВЛИЯЮТ НА СУЩЕСТВУЮЩУЮ РАЗМЕТКУ — намеренно:
+     1. :focus-visible — единый фокус вместо трёх разных по модулям.
+     2. :disabled у .md-btn / .md-icon-btn / .md-chip — раньше недоступная
+        кнопка выглядела как обычная.
+
+   ПРЕФИКС. Новые компоненты названы .md-*, хотя .md-shell и .md-savestatus
+   компонентами Material Design не являются. Причина: в проекте уже два
+   словаря (.cw-* фирменный, .md-* рабочий), и третий сделал бы поиск по коду
+   хуже. Последовательность важнее точности термина.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ 4. НЕДОСТАЮЩИЕ ТОКЕНЫ ═════════════════════════════════════════════ */
+
+:root {
+  /* --- 4.1 Шкала отступов -------------------------------------------------
+     Сейчас в модулях: 4,6,7,8,10,12,14,16,18,20,22,24,26 px вперемешку.
+     Шаг MD3 — 4px. Шесть ступеней закрывают все реальные случаи. */
+  --cw-space-1: 4px;
+  --cw-space-2: 8px;
+  --cw-space-3: 12px;
+  --cw-space-4: 16px;
+  --cw-space-5: 24px;
+  --cw-space-6: 32px;
+  --cw-space-7: 48px;
+  --cw-space-8: 64px;
+
+  /* --- 4.2 Геометрия оболочки ---------------------------------------------
+     Клиндарий уже меряет --topbar-h из живого DOM (ensureCalendarViewStyles).
+     Общий токен даёт ему постоянное значение и убирает необходимость мерить. */
+  --cw-topbar-h: 64px;
+  --cw-sidebar-w: 264px;
+  --cw-rail-w: 80px;
+  --cw-content-max: 1280px;
+  --cw-reading-max: 76ch;
+
+  /* --- 4.3 Плотность ------------------------------------------------------
+     Один переключатель на модуль: comfortable (по умолчанию) / compact.
+     Нужен Конгрессам (таблица программы) и Школе (списки студентов). */
+  --cw-row-h: 48px;
+  --cw-cell-pad-y: 12px;
+  --cw-cell-pad-x: 16px;
+  --cw-control-h: 40px;
+
+  /* --- 4.4 Слои (z-index) -------------------------------------------------
+     Сейчас: 10 (топбар Конгрессов), 10 (.md-topbar), 20 (.md-fab),
+     2000 (.cw-home-fab) — вразнобой и без общей карты. */
+  --cw-z-base: 0;
+  --cw-z-sticky: 10;
+  --cw-z-topbar: 20;
+  --cw-z-drawer: 30;
+  --cw-z-fab: 40;
+  --cw-z-modal: 50;
+  --cw-z-toast: 60;
+
+  /* --- 4.5 Фокус ----------------------------------------------------------
+     Сейчас три разных: outline 2px currentColor (.cw-home-btn),
+     3px --cw-lavender (хаб), 2px --md-primary (Конгрессы). */
+  --cw-focus-w: 3px;
+  --cw-focus-color: var(--md-primary);
+  --cw-focus-offset: 2px;
+
+  /* --- 4.6 Акцент модуля --------------------------------------------------
+     Дефолт = фирменный фиолет хаба. Перекрывается по [data-module]. */
+  --cw-module: var(--md-primary);
+  --cw-module-container: var(--md-primary-container);
+  --cw-module-on-container: var(--md-on-primary-container);
+  --cw-module-edge: var(--cw-teal);
+}
+
+/* --- 4.7 Палитра модулей ---------------------------------------------------
+   Значения НЕ выдуманы: это средний и краевой стопы градиента bgGrad
+   из shared/brand/<module>-icon-source.svg. Плитка хаба, иконка модуля
+   и шапка модуля начинают говорить одним цветом.
+
+   Тёмная тема — светлый тон акцента (контраст к тёмной поверхности),
+   светлая тема — насыщенный тон (контраст к белой). */
+
+[data-module="congress-project"] {          /* bgGrad 45% #2f4bb0 → 100% #1a6a9e */
+  --cw-module: #adc6ff;
+  --cw-module-container: #234695;
+  --cw-module-on-container: #d8e2ff;
+  --cw-module-edge: #7fd0f5;
+}
+[data-module="circuit-planner"] {           /* bgGrad 45% #4a3ab5 → 100% #12706f */
+  --cw-module: #c0c1ff;
+  --cw-module-container: #3f3d9c;
+  --cw-module-on-container: #e2dfff;
+  --cw-module-edge: #4be0d0;
+}
+[data-module="pioneer-school"] {            /* bgGrad 45% #6a45c9 → 100% #9c3f9e */
+  --cw-module: #cebdff;
+  --cw-module-container: #5127af;
+  --cw-module-on-container: #e8ddff;
+  --cw-module-edge: #ffa9f0;
+}
+[data-module="appointments"] {              /* bgGrad 45% #7b3fd0 → 100% #2fb3a5 */
+  --cw-module: #d5bbff;
+  --cw-module-container: #5b2ba6;
+  --cw-module-on-container: #eddcff;
+  --cw-module-edge: #4be0d0;
+}
+
+[data-theme="light"][data-module="congress-project"],
+[data-theme="light"] [data-module="congress-project"] {
+  --cw-module: #2f4bb0; --cw-module-container: #d8e2ff;
+  --cw-module-on-container: #00174b; --cw-module-edge: #1a6a9e;
+}
+[data-theme="light"][data-module="circuit-planner"],
+[data-theme="light"] [data-module="circuit-planner"] {
+  --cw-module: #4a3ab5; --cw-module-container: #e2dfff;
+  --cw-module-on-container: #150070; --cw-module-edge: #12706f;
+}
+[data-theme="light"][data-module="pioneer-school"],
+[data-theme="light"] [data-module="pioneer-school"] {
+  --cw-module: #6a45c9; --cw-module-container: #e8ddff;
+  --cw-module-on-container: #21005d; --cw-module-edge: #9c3f9e;
+}
+[data-theme="light"][data-module="appointments"],
+[data-theme="light"] [data-module="appointments"] {
+  --cw-module: #7b3fd0; --cw-module-container: #eddcff;
+  --cw-module-on-container: #290055; --cw-module-edge: #2fb3a5;
+}
+
+/* --- 4.8 Компактный режим ------------------------------------------------- */
+[data-density="compact"] {
+  --cw-row-h: 36px;
+  --cw-cell-pad-y: 6px;
+  --cw-cell-pad-x: 10px;
+  --cw-control-h: 32px;
+}
+
+/* --- 4.9 Единый фокус ----------------------------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: var(--cw-focus-w) solid var(--cw-focus-color);
+  outline-offset: var(--cw-focus-offset);
+}
+
+
+/* ═══ 5. КОМПОНЕНТЫ ОБОЛОЧКИ ════════════════════════════════════════════ */
+
+/* --- 5.1 AppShell ---------------------------------------------------------
+   Одна сетка на все модули. Сейчас их четыре разных:
+     Конгрессы   — header + grid(290px, 1fr)
+     Клиндарий   — aside + main>header
+     Школа       — div.app-shell > aside + main > section.route > header
+     Назначения  — header + div.app
+   Здесь: шапка всегда сверху и на всю ширину, навигация под ней.
+   Так кнопка возврата в хаб живёт в одном месте во всех модулях. */
+.md-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+  font-family: var(--md-font-family);
+}
+.md-shell__body {
+  display: grid;
+  grid-template-columns: var(--cw-sidebar-w) minmax(0, 1fr);
+  min-height: 0;
+}
+.md-shell__body--rail { grid-template-columns: var(--cw-rail-w) minmax(0, 1fr); }
+.md-shell__body--full { grid-template-columns: minmax(0, 1fr); }
+
+@media (max-width: 900px) {
+  .md-shell__body { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* --- 5.2 ModuleTopbar -----------------------------------------------------
+   Слоты слева направо: [возврат] [иконка+название+версия] … [действия] [язык] [тема]
+   Дорожка снизу — единственный след «платы» внутри модуля: тонкий градиент
+   от акцента модуля, визуальный след того, от какой плитки хаба пришёл. */
+.md-topbar-v2 {
+  position: sticky;
+  top: 0;
+  z-index: var(--cw-z-topbar);
+  display: flex;
+  align-items: center;
+  gap: var(--cw-space-3);
+  height: var(--cw-topbar-h);
+  padding: 0 var(--cw-space-4);
+  background: var(--md-surface-container-low);
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+.md-topbar-v2::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--cw-module) 0%,
+    var(--cw-module-edge) 55%,
+    transparent 100%);
+  opacity: 0.9;
+}
+.md-topbar-v2__lead { display: flex; align-items: center; gap: var(--cw-space-2); min-width: 0; }
+.md-topbar-v2__mark {
+  width: 32px; height: 32px; flex: 0 0 auto;
+  border-radius: var(--md-radius-sm);
+  display: grid; place-items: center;
+  background: var(--cw-module-container);
+  color: var(--cw-module-on-container);
+}
+.md-topbar-v2__titles { min-width: 0; }
+.md-topbar-v2__title {
+  font: 500 16px/22px var(--md-font-family); letter-spacing: 0.15px;
+  margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.md-topbar-v2__sub {
+  font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant); margin: 0;
+  display: flex; align-items: center; gap: var(--cw-space-2);
+}
+.md-topbar-v2__spacer { flex: 1 1 auto; }
+.md-topbar-v2__actions { display: flex; align-items: center; gap: var(--cw-space-1); flex: 0 0 auto; }
+
+@media (max-width: 600px) {
+  .md-topbar-v2 { padding: 0 var(--cw-space-2); gap: var(--cw-space-2); }
+  .md-topbar-v2__sub { display: none; }
+}
+@media print {
+  .md-topbar-v2 { display: none !important; }
+}
+
+/* --- 5.3 SideNav ---------------------------------------------------------- */
+.md-sidenav {
+  background: var(--md-surface-container-low);
+  border-right: 1px solid var(--md-outline-variant);
+  padding: var(--cw-space-3) var(--cw-space-2);
+  overflow: auto;
+  position: sticky;
+  top: var(--cw-topbar-h);
+  height: calc(100vh - var(--cw-topbar-h));
+}
+.md-sidenav__group {
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--md-on-surface-variant);
+  padding: var(--cw-space-4) var(--cw-space-4) var(--cw-space-2);
+}
+.md-sidenav__item {
+  display: flex; align-items: center; gap: var(--cw-space-3);
+  height: 48px; padding: 0 var(--cw-space-4);
+  border-radius: var(--md-radius-full);
+  border: 0; background: transparent; width: 100%;
+  color: var(--md-on-surface-variant);
+  font: 500 14px/20px var(--md-font-family); letter-spacing: 0.1px;
+  text-align: left; cursor: pointer; text-decoration: none;
+}
+.md-sidenav__item:hover { background: var(--md-surface-container-high); }
+.md-sidenav__item.active {
+  background: var(--cw-module-container);
+  color: var(--cw-module-on-container);
+}
+.md-sidenav__badge {
+  margin-left: auto;
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  padding: 1px 8px; border-radius: var(--md-radius-full);
+  background: var(--md-surface-container-highest);
+  color: var(--md-on-surface-variant);
+}
+.md-sidenav__item.active .md-sidenav__badge { background: rgba(0,0,0,0.18); color: inherit; }
+
+@media (max-width: 900px) {
+  .md-sidenav { display: none; }
+}
+
+/* --- 5.4 PageContainer + PageHeader --------------------------------------- */
+.md-page {
+  padding: var(--cw-space-5) var(--cw-space-5) var(--cw-space-8);
+  max-width: var(--cw-content-max);
+  margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+.md-page--narrow { max-width: 880px; }
+.md-page__header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--cw-space-4); flex-wrap: wrap;
+  margin-bottom: var(--cw-space-4);
+}
+.md-page__title { font: 400 24px/32px var(--md-font-family); margin: 0; }
+.md-page__lede {
+  font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px;
+  color: var(--md-on-surface-variant); margin: var(--cw-space-1) 0 0;
+  max-width: var(--cw-reading-max);
+}
+@media (max-width: 600px) {
+  .md-page { padding: var(--cw-space-4) var(--cw-space-3) var(--cw-space-8); }
+}
+
+/* --- 5.5 Toolbar + FilterBar ----------------------------------------------
+   Toolbar — действия над содержимым. FilterBar — сужение содержимого.
+   Разделены намеренно: сейчас в Конгрессах они смешаны в .top-actions. */
+.md-toolbar {
+  display: flex; align-items: center; gap: var(--cw-space-2);
+  flex-wrap: wrap;
+  padding: var(--cw-space-3) 0;
+}
+.md-toolbar__spacer { flex: 1 1 auto; }
+.md-toolbar--sticky {
+  position: sticky; top: var(--cw-topbar-h); z-index: var(--cw-z-sticky);
+  background: var(--md-surface-container);
+  padding: var(--cw-space-3) 0;
+}
+.md-filterbar {
+  display: flex; align-items: center; gap: var(--cw-space-2);
+  flex-wrap: wrap;
+  padding: var(--cw-space-3);
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  margin-bottom: var(--cw-space-4);
+}
+.md-search {
+  display: flex; align-items: center; gap: var(--cw-space-2);
+  height: var(--cw-control-h); padding: 0 var(--cw-space-3);
+  border-radius: var(--md-radius-full);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+  min-width: 200px; flex: 1 1 220px; max-width: 360px;
+}
+.md-search input {
+  border: 0; background: transparent; color: var(--md-on-surface);
+  font: 400 14px/20px var(--md-font-family); width: 100%; outline: none;
+}
+
+/* --- 5.6 DataTable --------------------------------------------------------
+   Дополняет .md-table: липкая шапка, плотность, числовые колонки,
+   выделенная строка, горизонтальная прокрутка с тенями-подсказками. */
+.md-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  background: var(--md-surface);
+}
+.md-table th, .md-table td {
+  padding: var(--cw-cell-pad-y) var(--cw-cell-pad-x);
+}
+.md-table--sticky th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--md-surface-container-low);
+}
+.md-table .num, .md-table .u-num {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.md-table tr.is-selected td {
+  background: var(--md-surface-container-high);
+  box-shadow: inset 3px 0 0 var(--cw-module);
+}
+.md-table__rowactions { display: flex; gap: var(--cw-space-1); justify-content: flex-end; }
+
+/* Мобильный: таблица превращается в список карточек.
+   Разметку не меняем — заголовки берутся из data-label у <td>. */
+@media (max-width: 720px) {
+  .md-table--cards, .md-table--cards tbody, .md-table--cards tr, .md-table--cards td { display: block; width: 100%; }
+  .md-table--cards thead { display: none; }
+  .md-table--cards tr {
+    border: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-radius-md);
+    margin-bottom: var(--cw-space-2);
+    padding: var(--cw-space-2);
+    background: var(--md-surface-container-low);
+  }
+  .md-table--cards td { border: 0; display: flex; justify-content: space-between; gap: var(--cw-space-3); padding: var(--cw-space-1) var(--cw-space-2); }
+  .md-table--cards td::before {
+    content: attr(data-label);
+    font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px;
+    color: var(--md-on-surface-variant);
+    flex: 0 0 40%;
+  }
+}
+
+/* --- 5.6a Поля со статичной подписью ---------------------------------------
+   Плавающая подпись работает через :placeholder-shown. Он неприменим к
+   <select> (для него это состояние спецификацией не определено) и всегда
+   ложен для input[type="date"] — у такого поля всегда есть видимое
+   содержимое. В обоих случаях подпись обязана стоять сверху статично,
+   иначе она наложится на значение.
+   .md-field-select — частный случай для <select>, .md-field-static — общий. */
+.md-field-static { height: auto; }
+.md-field-static label {
+  position: static; display: block; background: none;
+  font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.md-field-static input, .md-field-static select { height: 40px; padding: 0 12px; }
+.md-field-static textarea { padding: 10px 12px; min-height: 72px; }
+
+/* --- 5.7 FormSection ------------------------------------------------------ */
+.md-formsection {
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  padding: var(--cw-space-5);
+  margin-bottom: var(--cw-space-4);
+}
+.md-formsection__head { margin-bottom: var(--cw-space-4); }
+.md-formsection__title { font: 500 16px/24px var(--md-font-family); letter-spacing: 0.15px; margin: 0; }
+.md-formsection__hint {
+  font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant); margin: var(--cw-space-1) 0 0;
+}
+.md-formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cw-space-4); }
+.md-formgrid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.md-formgrid .span-2 { grid-column: 1 / -1; }
+
+/* Вырез под плавающей подписью закрашивается под поверхность поля. Внутри
+   .md-formsection поверхность другая, чем у страницы, — без этого правила
+   вокруг подписи виден кусок чужого фона. */
+.md-formsection .md-field label { background: var(--md-surface-container-low); }
+
+@media (max-width: 720px) {
+  .md-formgrid, .md-formgrid--3 { grid-template-columns: minmax(0, 1fr); }
+  .md-formsection { padding: var(--cw-space-4); }
+}
+
+/* --- 5.8 EmptyState (расширяет .md-empty) --------------------------------- */
+.md-emptystate {
+  display: grid; place-items: center; text-align: center;
+  gap: var(--cw-space-3);
+  padding: var(--cw-space-8) var(--cw-space-5);
+  border: 1px dashed var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  background: var(--md-surface-container-low);
+}
+.md-emptystate__icon {
+  width: 56px; height: 56px; border-radius: var(--md-radius-lg);
+  display: grid; place-items: center;
+  background: var(--cw-module-container); color: var(--cw-module-on-container);
+}
+.md-emptystate__title { font: 500 16px/24px var(--md-font-family); margin: 0; }
+.md-emptystate__text {
+  font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px;
+  color: var(--md-on-surface-variant); margin: 0; max-width: 46ch;
+}
+
+/* --- 5.9 Loading: skeleton + progress ------------------------------------- */
+.md-skeleton {
+  background: linear-gradient(90deg,
+    var(--md-surface-container-high) 25%,
+    var(--md-surface-container-highest) 37%,
+    var(--md-surface-container-high) 63%);
+  background-size: 400% 100%;
+  animation: md-shimmer 1.4s ease infinite;
+  border-radius: var(--md-radius-xs);
+  height: 16px;
+}
+.md-skeleton--line { margin-bottom: var(--cw-space-2); }
+.md-skeleton--title { height: 24px; width: 40%; }
+.md-skeleton--row { height: var(--cw-row-h); border-radius: var(--md-radius-sm); margin-bottom: var(--cw-space-1); }
+@keyframes md-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+.md-progress {
+  height: 4px; width: 100%; overflow: hidden;
+  background: var(--md-surface-container-highest);
+  border-radius: var(--md-radius-full);
+}
+.md-progress__bar {
+  height: 100%; width: 40%;
+  background: var(--cw-module);
+  border-radius: inherit;
+  animation: md-indeterminate 1.6s var(--md-ease-standard) infinite;
+}
+@keyframes md-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .md-skeleton, .md-progress__bar { animation: none; }
+}
+
+/* --- 5.10 Banner (встроенное предупреждение) ------------------------------
+   Отличается от снекбара: снекбар — временный и о действии,
+   баннер — постоянный и о состоянии данных. */
+.md-banner {
+  display: flex; align-items: flex-start; gap: var(--cw-space-3);
+  padding: var(--cw-space-3) var(--cw-space-4);
+  border-radius: var(--md-radius-md);
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+  color: var(--md-on-surface);
+  font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px;
+  margin-bottom: var(--cw-space-4);
+}
+.md-banner__icon { flex: 0 0 auto; margin-top: 1px; }
+.md-banner__body { flex: 1 1 auto; min-width: 0; }
+.md-banner__title { font: 500 14px/20px var(--md-font-family); margin: 0 0 2px; }
+.md-banner__actions { display: flex; gap: var(--cw-space-2); flex: 0 0 auto; }
+.md-banner--error   { border-color: var(--status-critical);  background: var(--status-critical-bg);  color: var(--status-critical); }
+.md-banner--warn    { border-color: var(--status-important); background: var(--status-important-bg); color: var(--status-important); }
+.md-banner--success { border-color: var(--status-success);   background: var(--status-success-bg);   color: var(--status-success); }
+.md-banner--info    { border-color: var(--cw-module);        background: var(--cw-module-container); color: var(--cw-module-on-container); }
+
+/* --- 5.11 SaveStatus -------------------------------------------------------
+   Единый индикатор автосохранения. Сейчас свой в Конгрессах (.save-status)
+   и свой в Назначениях — с разной разметкой и разными цветами. */
+.md-savestatus {
+  display: inline-flex; align-items: center; gap: var(--cw-space-2);
+  font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant);
+  white-space: nowrap;
+}
+.md-savestatus::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--status-success); flex: 0 0 auto;
+}
+.md-savestatus[data-state="saving"]::before { background: var(--status-important); }
+.md-savestatus[data-state="dirty"]::before   { background: var(--status-important); }
+.md-savestatus[data-state="error"]::before   { background: var(--status-critical); }
+
+/* --- 5.12 SegmentedControl ------------------------------------------------- */
+.md-segmented {
+  display: inline-flex;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--md-radius-full);
+  overflow: hidden;
+  height: var(--cw-control-h);
+}
+.md-segmented button {
+  border: 0; background: transparent;
+  color: var(--md-on-surface-variant);
+  font: 500 14px/20px var(--md-font-family); letter-spacing: 0.1px;
+  padding: 0 var(--cw-space-4); cursor: pointer;
+  display: inline-flex; align-items: center; gap: var(--cw-space-2);
+}
+.md-segmented button + button { border-left: 1px solid var(--md-outline); }
+.md-segmented button.active {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+
+/* --- 5.13 Stepper (визард анкеты Школы) ----------------------------------- */
+.md-stepper { display: flex; align-items: center; gap: var(--cw-space-2); flex-wrap: wrap; margin-bottom: var(--cw-space-5); }
+.md-stepper__step { display: inline-flex; align-items: center; gap: var(--cw-space-2); }
+.md-stepper__dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+  font: 500 12px/16px var(--md-font-family);
+  flex: 0 0 auto;
+}
+.md-stepper__step.done .md-stepper__dot   { background: var(--status-success-bg); color: var(--status-success); }
+.md-stepper__step.active .md-stepper__dot { background: var(--cw-module); color: var(--md-on-primary); }
+.md-stepper__label { font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px; color: var(--md-on-surface-variant); }
+.md-stepper__step.active .md-stepper__label { color: var(--md-on-surface); }
+.md-stepper__line { width: 24px; height: 1px; background: var(--md-outline-variant); }
+@media (max-width: 600px) {
+  .md-stepper__label { display: none; }
+  .md-stepper__line { width: 12px; }
+}
+
+/* --- 5.14 ResponsivePanel (боковая панель → шторка на мобильном) ---------- */
+.md-sheet {
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  padding: var(--cw-space-4);
+}
+@media (max-width: 900px) {
+  .md-sheet--drawer {
+    position: fixed; inset: auto 0 0 0;
+    z-index: var(--cw-z-drawer);
+    max-height: 82vh; overflow: auto;
+    border-radius: var(--md-radius-xl) var(--md-radius-xl) 0 0;
+    box-shadow: var(--md-elevation-3);
+    transform: translateY(100%);
+    transition: transform var(--md-dur-medium) var(--md-ease-standard);
+  }
+  .md-sheet--drawer.open { transform: translateY(0); }
+  .md-sheet__grabber {
+    width: 32px; height: 4px; border-radius: var(--md-radius-full);
+    background: var(--md-outline-variant);
+    margin: 0 auto var(--cw-space-3);
+  }
+}
+
+/* --- 5.15 Нижняя навигация модуля ------------------------------------------
+   Дополняет .md-nav-bottom: показывать только на узких экранах,
+   и только там, где у модуля больше трёх разделов. */
+.md-bottomnav {
+  display: none;
+  position: sticky; bottom: 0; z-index: var(--cw-z-sticky);
+  background: var(--md-surface-container);
+  border-top: 1px solid var(--md-outline-variant);
+  padding: var(--cw-space-2) var(--cw-space-1);
+  justify-content: space-around;
+}
+.md-bottomnav__item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 0; background: transparent; padding: var(--cw-space-1) var(--cw-space-2);
+  color: var(--md-on-surface-variant); cursor: pointer;
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  text-decoration: none;
+}
+.md-bottomnav__ind {
+  width: 56px; height: 28px; border-radius: var(--md-radius-full);
+  display: grid; place-items: center;
+}
+.md-bottomnav__item.active .md-bottomnav__ind {
+  background: var(--cw-module-container); color: var(--cw-module-on-container);
+}
+.md-bottomnav__item.active { color: var(--md-on-surface); }
+@media (max-width: 900px) {
+  .md-bottomnav { display: flex; }
+}
+@media print {
+  .md-bottomnav { display: none !important; }
+}
+
+/* --- 5.16 Утилиты ---------------------------------------------------------- */
+.u-stack   { display: grid; gap: var(--cw-space-4); }
+.u-stack-2 { display: grid; gap: var(--cw-space-2); }
+.u-row     { display: flex; align-items: center; gap: var(--cw-space-2); flex-wrap: wrap; }
+.u-spacer  { flex: 1 1 auto; }
+.u-muted   { color: var(--md-on-surface-variant); }
+.u-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.u-print-only { display: none; }
+@media print {
+  .u-print-only { display: block; }
+  .u-no-print { display: none !important; }
+}
+
+
+/* ═══ 6. НЕДОСТАЮЩИЕ ЭЛЕМЕНТЫ УПРАВЛЕНИЯ ════════════════════════════════ */
+
+/* --- 6.1 Недоступное состояние --------------------------------------------
+   Сейчас не определено нигде: disabled-кнопка выглядит как обычная.
+   MD3: 38% непрозрачности содержимого, 12% — подложки. */
+.md-btn:disabled, .md-icon-btn:disabled, .md-chip:disabled,
+.md-btn[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.md-btn-filled:disabled, .md-btn-tonal:disabled {
+  background: var(--md-on-surface);
+  color: var(--md-surface);
+  opacity: 0.12;
+}
+.md-field input:disabled, .md-field select:disabled, .md-field textarea:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  background: var(--md-surface-container-low);
+}
+
+/* --- 6.2 Переключатель (Switch) -------------------------------------------
+   Нужен Клиндарию (флаги S-302 / письмо), Школе (условные поля анкеты),
+   Назначениям (плотный режим). Сейчас каждый рисует свой. */
+.md-switch { display: inline-flex; align-items: center; gap: var(--cw-space-3); cursor: pointer; }
+.md-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.md-switch__track {
+  width: 52px; height: 32px; flex: 0 0 auto;
+  border-radius: var(--md-radius-full);
+  background: var(--md-surface-container-highest);
+  border: 2px solid var(--md-outline);
+  position: relative;
+  transition: background var(--md-dur-short) var(--md-ease-standard),
+              border-color var(--md-dur-short) var(--md-ease-standard);
+}
+.md-switch__thumb {
+  position: absolute; top: 50%; left: 6px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--md-outline);
+  transform: translateY(-50%);
+  transition: all var(--md-dur-short) var(--md-ease-standard);
+}
+.md-switch input:checked + .md-switch__track {
+  background: var(--cw-module);
+  border-color: var(--cw-module);
+}
+.md-switch input:checked + .md-switch__track .md-switch__thumb {
+  left: 26px; width: 24px; height: 24px;
+  background: var(--md-on-primary);
+}
+.md-switch input:focus-visible + .md-switch__track {
+  outline: var(--cw-focus-w) solid var(--cw-focus-color);
+  outline-offset: var(--cw-focus-offset);
+}
+.md-switch input:disabled + .md-switch__track { opacity: 0.38; }
+.md-switch__label { font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px; }
+
+/* --- 6.3 Чекбокс и радио ---------------------------------------------------
+   Нативные, но перекрашенные под палитру. Полная перерисовка не нужна:
+   accent-color поддерживается везде, где работает PWA. */
+.md-check, .md-radio {
+  display: inline-flex; align-items: center; gap: var(--cw-space-3);
+  font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px;
+  cursor: pointer; min-height: 40px;
+}
+.md-check input, .md-radio input {
+  width: 18px; height: 18px; flex: 0 0 auto;
+  accent-color: var(--cw-module);
+  cursor: pointer;
+}
+.md-check input:disabled, .md-radio input:disabled { cursor: not-allowed; opacity: 0.38; }
+
+/* --- 6.4 Кнопка с индикатором загрузки ------------------------------------ */
+.md-btn[data-loading="true"] { pointer-events: none; position: relative; color: transparent; }
+.md-btn[data-loading="true"]::after {
+  content: ""; position: absolute; width: 16px; height: 16px;
+  border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%;
+  animation: md-spin 0.7s linear infinite;
+  color: var(--md-on-primary);
+}
+.md-btn-outlined[data-loading="true"]::after,
+.md-btn-text[data-loading="true"]::after { color: var(--md-primary); }
+@keyframes md-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .md-btn[data-loading="true"]::after { animation: none; }
+}

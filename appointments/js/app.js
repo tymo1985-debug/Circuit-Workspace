@@ -84,10 +84,13 @@
         var el = $('#saveStatus');
         var time = new Date().toLocaleTimeString(self.CWI18n ? self.CWI18n.getLang() : 'ru',
           { hour: '2-digit', minute: '2-digit' });
-        if (el) el.textContent = t('ap.saved_at', { time: time });
+        /* data-state красит точку .md-savestatus: зелёная при успехе,
+           красная при ошибке. Текст без состояния оставлял бы точку
+           всегда зелёной, в том числе на неудавшемся сохранении. */
+        if (el) { el.textContent = t('ap.saved_at', { time: time }); el.dataset.state = 'saved'; }
       } catch (e) {
         var s = $('#saveStatus');
-        if (s) s.textContent = t('ap.save_failed');
+        if (s) { s.textContent = t('ap.save_failed'); s.dataset.state = 'error'; }
       }
     }, 400);
   }
@@ -127,6 +130,7 @@
 
       var remove = document.createElement('button');
       remove.type = 'button';
+      remove.className = 'md-icon-btn';
       remove.textContent = '−';
       remove.title = t('ap.btn.remove_row');
       remove.setAttribute('aria-label', t('ap.btn.remove_row'));
