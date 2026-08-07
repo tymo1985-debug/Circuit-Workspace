@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.60.1',
+      version: '9.61.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1250,7 +1250,24 @@
         document.documentElement.style.setProperty('--ui-font-scale', String(Number(value) / 100));
         if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = value;
       },
-      applyTheme() { document.documentElement.setAttribute('data-theme', App.state.app.settings.theme || 'light'); if (App.els.themeSelect) App.els.themeSelect.value = App.state.app.settings.theme || 'light'; },
+      applyTheme() {
+        // Тема — общая настройка приложения (shared/theme.js), а не модуля.
+        // Прежний выбор пользователя переносится один раз через adopt():
+        // он пишет только если общего ключа ещё нет, поэтому не затирает
+        // тему, выбранную в хабе или другом модуле.
+        if (window.CWTheme) {
+          const legacy = App.state.app.settings.theme;
+          if (legacy === 'light' || legacy === 'dark') window.CWTheme.adopt(legacy);
+          App.state.app.settings.theme = window.CWTheme.get();
+          if (App.els.themeSelect && !App.els.themeSelect.dataset.cwThemeBound) {
+            window.CWTheme.mountSelect(App.els.themeSelect);
+            App.els.themeSelect.dataset.cwThemeBound = '1';
+          }
+          return;
+        }
+        document.documentElement.setAttribute('data-theme', App.state.app.settings.theme || 'light');
+        if (App.els.themeSelect) App.els.themeSelect.value = App.state.app.settings.theme || 'light';
+      },
       applyLayout() { document.documentElement.setAttribute('data-layout', App.state.app.settings.layoutPreset || 'classic'); if (App.els.calendarLayout) App.els.calendarLayout.classList.remove('team-hidden'); },
       buildMonthGrid(month, year) {
         const monthStart = new Date(year, month, 1); const monthEnd = new Date(year, month + 1, 0); const gridStart = App.utils.startOfWeek(monthStart); const gridEnd = App.utils.addDays(App.utils.startOfWeek(monthEnd), 41 - App.utils.daysDiff(App.utils.startOfWeek(monthEnd), gridStart)); const weeks = []; let cursor = new Date(gridStart); while (cursor <= gridEnd) { const days = []; for (let i = 0; i < 7; i += 1) { const date = App.utils.addDays(cursor, i); days.push({ date, iso: App.utils.iso(date), day: date.getDate(), month: date.getMonth(), inMonth: date.getMonth() === month, isWeekend: date.getDay() === 0 || date.getDay() === 6, isToday: App.utils.iso(date) === App.utils.iso(new Date()) }); } weeks.push({ id: App.utils.weekIdForDate(cursor), start: new Date(cursor), number: App.utils.weekNumber(cursor), days }); cursor = App.utils.addDays(cursor, 7); }
@@ -3131,8 +3148,16 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.eventColorFilter?.addEventListener('change', (e) => { App.state.eventColorFilter = e.target.value; App.ui.renderEvents(); });
       App.els.eventVisitFilter?.addEventListener('change', (e) => { App.state.eventVisitFilter = e.target.value; App.ui.renderEvents(); });
       App.els.deleteAllEventsBtn?.addEventListener('click', () => App.actions.deleteAllEventTemplates());
-      App.els.themeBtn?.addEventListener('click', () => { App.state.app.settings.theme = App.state.app.settings.theme === 'dark' ? 'light' : 'dark'; App.store.save(); App.ui.renderAll(); });
-      App.els.themeSelect?.addEventListener('change', (e) => { App.state.app.settings.theme = e.target.value; App.store.save(); App.ui.renderAll(); });
+      App.els.themeBtn?.addEventListener('click', () => {
+        if (window.CWTheme) { App.state.app.settings.theme = window.CWTheme.toggle(); App.store.save(); return; }
+        App.state.app.settings.theme = App.state.app.settings.theme === 'dark' ? 'light' : 'dark';
+        App.store.save(); App.ui.renderAll();
+      });
+      App.els.themeSelect?.addEventListener('change', (e) => {
+        App.state.app.settings.theme = e.target.value;
+        App.store.save();
+        if (!window.CWTheme) App.ui.renderAll();
+      });
       App.els.accentSelect?.addEventListener('change', (e) => { App.state.app.settings.accentColor = e.target.value; App.store.save(); App.ui.applyAccent(); });
       App.els.fontSizeSelect?.addEventListener('change', (e) => { App.state.app.settings.fontSize = e.target.value; App.store.save(); App.ui.applyFontSize(); });
       App.els.languageSelect?.addEventListener('change', (e) => { App.i18nBridge.choose(e.target.value); });

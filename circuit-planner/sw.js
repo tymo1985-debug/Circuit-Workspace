@@ -23,6 +23,7 @@ const APP_SHELL_URLS = [
   // т.к. index.html ссылается на ../shared/style.css.
   '../shared/style.css',
   '../shared/nav.js',
+  '../shared/theme.js',
   '../shared/backup.js',
   // Локализация: скрипты синхронные и в <head>, без них офлайн-запуск
   // модуля упал бы на CWI18n undefined ещё до отрисовки.

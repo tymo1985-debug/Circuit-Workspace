@@ -359,8 +359,9 @@ body.cw-root {
   --md-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Светлая тема — на случай, если модуль её поддерживает
-   (Клиндарий имеет собственный переключатель data-theme). */
+/* Светлая тема. Атрибут data-theme на <html> выставляет shared/theme.js —
+   всегда разрешённым значением 'light' или 'dark', никогда 'auto'.
+   Поэтому 'dark' отдельного блока не требует: он попадает в :root выше. */
 [data-theme="light"] {
   --md-primary: #6944c8;
   --md-on-primary: #ffffff;
@@ -410,6 +411,39 @@ body.cw-root {
   --status-success: #206b4b;
   --status-success-bg: #b7f0d2;
 }
+
+/* Фирменный слой в светлой теме.
+   Блок --md-* выше покрывает модули, но хаб построен на --cw-* (15 переменных),
+   и без этих значений он остался бы тёмным при светлой теме приложения.
+   Мотив платы сохраняется: те же роли, те же имена, только светлые тона.
+   Акценты сдвинуты в сторону насыщенности — лаванда #c9a3ff на белом
+   нечитаема, поэтому в светлой теме её роль играет более плотный тон. */
+[data-theme="light"] {
+  --cw-bg:        #f6f3fd;
+  --cw-bg-raised: #ffffff;
+  --cw-surface:   #ffffff;
+  --cw-surface-2: #f1ecfb;
+  --cw-line:      #d7cdef;
+  --cw-line-soft: #e9e3f8;
+
+  --cw-text:      #1a1230;
+  --cw-text-dim:  #4b4069;
+  --cw-muted:     #6f6493;
+
+  --cw-violet:     #6a45c9;
+  --cw-violet-dim: #5433ab;
+  --cw-lavender:   #7b52d8;
+  --cw-indigo:     #2a3f8f;
+  --cw-magenta:    #8f3ec0;
+  --cw-teal:       #1c8478;
+  --cw-teal-dim:   #12706f;
+  --cw-amber:      #8a6100;
+  --cw-red:        #b3261e;
+
+  --cw-shadow:    0 8px 30px rgba(45, 28, 92, 0.12);
+  --cw-shadow-sm: 0 2px 10px rgba(45, 28, 92, 0.08);
+}
+
 
 /* --- Типографическая шкала MD3 --- */
 .md-display-large  { font: 400 57px/64px var(--md-font-family); letter-spacing: -0.25px; margin: 0; }
