@@ -309,8 +309,57 @@
   }
 
   /** Рисует один раздел (для Алексея — includePastoral=true, для Лидии — false). */
-  function drawFormPage(doc, state, i18n, title, includePastoral, style, fieldPrefix, interactive) {
-    const t = i18n.t.bind(i18n);
+  // Каждый визит начинается во ВТОРНИК, служение — со среды. Поэтому дату для дня
+  // недели не отсчитываем «первый день визита = среда», а ищем в периоде визита
+  // реальную календарную дату с нужным днём недели: это верно и при сдвиге визита,
+  // и для предгруппы (которая начинается с четверга).
+  const WEEKDAY_KEY_TO_INDEX = {
+    weekdaySun: 0, weekdayMon: 1, weekdayTue: 2, weekdayWed: 3,
+    weekdayThu: 4, weekdayFri: 5, weekdaySat: 6,
+  };
+
+  function weekdayKeyForLabel(i18n, label) {
+    if (!label) return null;
+    const normalized = String(label).trim().toLowerCase();
+    return Object.keys(WEEKDAY_KEY_TO_INDEX).find((key) => {
+      const translated = i18n.t(key);
+      return translated && String(translated).trim().toLowerCase() === normalized;
+    }) || null;
+  }
+
+  function dayHeaderText(state, i18n, day) {
+    const label = day.label || '';
+    const key = weekdayKeyForLabel(i18n, label);
+    if (!key || !state.visitStart) return label;
+    const start = new Date(state.visitStart);
+    const end = state.visitEnd ? new Date(state.visitEnd) : null;
+    if (Number.isNaN(start.getTime())) return label;
+    const target = WEEKDAY_KEY_TO_INDEX[key];
+    const cursor = new Date(start);
+    // Ограничиваем поиск двумя неделями — визит заведомо короче, а так цикл
+    // не уйдёт в бесконечность на повреждённых датах.
+    for (let i = 0; i < 14; i += 1) {
+      if (end && cursor > end) break;
+      if (cursor.getDay() === target) {
+        return `${label}, ${String(cursor.getDate()).padStart(2, '0')}.${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return label;
+  }
+
+  // По пятницам с утра напарник фиксирован: у Алексея — Лидия, у Лидии — Алексей.
+  // Подставляется только если ячейка пуста, чтобы не затирать ручную правку.
+  function defaultPartnerFor(state, i18n, day, row, fieldPrefix) {
+    if (!fieldPrefix) return '';
+    if (row.session !== 'before') return '';
+    if (weekdayKeyForLabel(i18n, day.label) !== 'weekdayFri') return '';
+    if (fieldPrefix === 'alex') return i18n.t('partnerNameLydia') || '';
+    if (fieldPrefix === 'lydia') return i18n.t('partnerNameAlex') || '';
+    return '';
+  }
+
+  function drawFormPage(doc, state, i18n, title, includePastoral, style, fieldPrefix, interactive) {    const t = i18n.t.bind(i18n);
     let y = style.margin + 10;
 
     drawPageChrome(doc);
@@ -337,6 +386,18 @@
     doc.setFont(FONT_NAME, 'normal');
     doc.text(typeKey ? t(typeKey) : '', style.margin + doc.getTextWidth(t('pdfVisitTypeLabel')) + 14, y);
     y += style.sectionGap;
+
+    // Название собрания/группы — чтобы формуляр был самодостаточным и было сразу
+    // видно, к кому он относится, без сверки с письмом или календарём.
+    if (state.congregationName) {
+      doc.setFont(FONT_NAME, 'bold');
+      doc.setFontSize(style.typeFontSize);
+      doc.setTextColor(...NAVY);
+      doc.text(String(state.congregationName), style.margin, y);
+      doc.setTextColor(...TEXT_DARK);
+      doc.setFont(FONT_NAME, 'normal');
+      y += style.sectionGap;
+    }
 
     // Расписание встреч
     y = sectionHeading(doc, y, t('pdfMeetingsSchedule'), style);
@@ -403,10 +464,10 @@
         doc.setFont(FONT_NAME, 'bold');
         doc.setFontSize(style.dayFontSize);
         doc.setTextColor(...ACCENT);
-        doc.text(day.label || '', style.margin, y);
+        doc.text(dayHeaderText(state, i18n, day), style.margin, y);
         doc.setTextColor(...TEXT_DARK);
         y += style.dayGap;
-        const body = day.rows.map((r) => [r.time || '', r.place || '', r.partner || '', r.kind || '']);
+        const body = day.rows.map((r) => [r.time || '', r.place || '', r.partner || defaultPartnerFor(state, i18n, day, r, fieldPrefix), r.kind || '']);
         const timeOptionsForRow = (data) => {
           const row = day.rows[data.row.index];
           if (row && row.session === 'before') return BEFORE_LUNCH_TIME_OPTIONS;

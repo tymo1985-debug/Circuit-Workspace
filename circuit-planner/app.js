@@ -27,7 +27,7 @@
       serviceTableTime: 'Время', serviceTablePlace: 'Место проведения встречи', serviceTablePartner: 'С кем (имя/тел.)', serviceTableKind: 'Вид служения',
       pastoralName: 'Имя', pastoralDay: 'День', pastoralTime: 'Время', pastoralReason: 'Причина пастырского посещения',
       mealDay: 'День', mealTime: 'Время', mealPlace: 'Место', mealHost: 'Кто принимает', mealPhone: 'Телефон', mealNote: 'Примечание',
-      pdfPageForAlex: 'Формуляр для Алексея', pdfPageForLydia: 'Формуляр для Лидии', pdfVisitTypeLabel: 'Тип посещения:',
+      pdfPageForAlex: 'Формуляр для Алексея', pdfPageForLydia: 'Формуляр для Лидии', partnerNameAlex: 'Алексей', partnerNameLydia: 'Лидия', pdfVisitTypeLabel: 'Тип посещения:',
       pdfMeetingsSchedule: 'Расписание встреч', pdfServicePlan: 'План служения', pdfPastoralVisits: 'Пастырские посещения', pdfMeals: 'Обеды', pdfNotes: 'Дополнительные заметки',
       pdfManualLinesTitle: 'Для заметок вручную', pdfGeneratedOn: 'Документ сформирован',
     },
@@ -39,7 +39,7 @@
       serviceTableTime: 'Час', serviceTablePlace: 'Місце проведення зустрічі', serviceTablePartner: 'З ким (ім\u2019я/тел.)', serviceTableKind: 'Вид служіння',
       pastoralName: "Ім'я", pastoralDay: 'День', pastoralTime: 'Час', pastoralReason: 'Причина пастирського відвідування',
       mealDay: 'День', mealTime: 'Час', mealPlace: 'Місце', mealHost: 'Хто приймає', mealPhone: 'Телефон', mealNote: 'Примітка',
-      pdfPageForAlex: 'Формуляр для Олексія', pdfPageForLydia: 'Формуляр для Лідії', pdfVisitTypeLabel: 'Тип відвідування:',
+      pdfPageForAlex: 'Формуляр для Олексія', pdfPageForLydia: 'Формуляр для Лідії', partnerNameAlex: 'Олексій', partnerNameLydia: 'Лідія', pdfVisitTypeLabel: 'Тип відвідування:',
       pdfMeetingsSchedule: 'Розклад зустрічей', pdfServicePlan: 'План служіння', pdfPastoralVisits: 'Пастирські відвідування', pdfMeals: 'Обіди', pdfNotes: 'Додаткові нотатки',
       pdfManualLinesTitle: 'Для нотаток вручну', pdfGeneratedOn: 'Документ сформовано',
     },
@@ -51,7 +51,7 @@
       serviceTableTime: 'Time', serviceTablePlace: 'Meeting place', serviceTablePartner: 'With whom (name/phone)', serviceTableKind: 'Type of ministry',
       pastoralName: 'Name', pastoralDay: 'Day', pastoralTime: 'Time', pastoralReason: 'Reason for shepherding call',
       mealDay: 'Day', mealTime: 'Time', mealPlace: 'Place', mealHost: 'Host', mealPhone: 'Phone', mealNote: 'Note',
-      pdfPageForAlex: "Alexei's form", pdfPageForLydia: "Lydia's form", pdfVisitTypeLabel: 'Visit type:',
+      pdfPageForAlex: "Alexei's form", pdfPageForLydia: "Lydia's form", partnerNameAlex: 'Alexei', partnerNameLydia: 'Lydia', pdfVisitTypeLabel: 'Visit type:',
       pdfMeetingsSchedule: 'Meeting schedule', pdfServicePlan: 'Field service plan', pdfPastoralVisits: 'Shepherding calls', pdfMeals: 'Meals', pdfNotes: 'Additional notes',
       pdfManualLinesTitle: 'For handwritten notes', pdfGeneratedOn: 'Document generated on',
     },
@@ -63,7 +63,7 @@
       serviceTableTime: 'Godzina', serviceTablePlace: 'Miejsce spotkania', serviceTablePartner: 'Z kim (imi\u0119/tel.)', serviceTableKind: 'Rodzaj słu\u017cby',
       pastoralName: 'Imię', pastoralDay: 'Dzień', pastoralTime: 'Godzina', pastoralReason: 'Powód odwiedzin pasterskich',
       mealDay: 'Dzień', mealTime: 'Godzina', mealPlace: 'Miejsce', mealHost: 'Kto przyjmuje', mealPhone: 'Telefon', mealNote: 'Uwaga',
-      pdfPageForAlex: 'Formularz dla Aleksieja', pdfPageForLydia: 'Formularz dla Lidii', pdfVisitTypeLabel: 'Rodzaj odwiedzin:',
+      pdfPageForAlex: 'Formularz dla Aleksieja', pdfPageForLydia: 'Formularz dla Lidii', partnerNameAlex: 'Aleksiej', partnerNameLydia: 'Lidia', pdfVisitTypeLabel: 'Rodzaj odwiedzin:',
       pdfMeetingsSchedule: 'Harmonogram spotkań', pdfServicePlan: 'Plan służby', pdfPastoralVisits: 'Odwiedziny pasterskie', pdfMeals: 'Posiłki', pdfNotes: 'Dodatkowe uwagi',
       pdfManualLinesTitle: 'Na notatki odręczne', pdfGeneratedOn: 'Dokument utworzono',
     },
@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.62.0',
+      version: '9.63.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2396,7 +2396,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const suffix = this.letterTypeSuffix(event?.visitType);
         const typeLabel = parts.type[suffix];
         const name = entry.title || event?.name || '';
-        const fmt = (iso) => { const d = App.utils.parseLocalDate(iso); return d ? d.toLocaleDateString(lang, { day: '2-digit', month: 'long', year: 'numeric' }) : ''; };
+        const fmt = (iso) => { const d = App.utils.parseLocalDate(iso); return d ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}` : ''; };
         return `${parts.prefix} ${typeLabel} ${name} ${parts.from} ${fmt(entry.start)} ${parts.to} ${fmt(entry.end)}`.replace(/\s+/g, ' ').trim();
       },
       getLetterTemplateFor(visitType) {
@@ -2537,6 +2537,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const saved = entry.visitForm;
         const defaultLang = event?.formLanguage || App.shared.docLang() || 'ru';
         const state = saved ? JSON.parse(JSON.stringify(saved)) : { visitType: visitTypeMap[event?.visitType] || 'meeting', language: defaultLang, meetings: [], servicePlan: [], pastoralVisits: [], meals: [], notes: '' };
+        // Нужны формуляру: название собрания/группы в шапке PDF и период визита,
+        // из которого считаются даты для каждого дня недели (визит стартует во вторник).
+        state.congregationName = entry.title || event?.name || '';
+        state.visitStart = entry.start || '';
+        state.visitEnd = entry.end || '';
         if (!state.language) state.language = defaultLang; // older saved forms predating this field
         this.vpDefaultsForType(state, state.visitType);
         this.retranslateVisitFormWeekdays(null, state.language); // fixes any day names left over in the wrong language from before this feature existed, or from an interface-language fallback used previously
