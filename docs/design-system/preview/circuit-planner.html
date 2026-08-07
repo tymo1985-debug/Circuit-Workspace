@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Клиндарий — концепт</title>
+<link rel="stylesheet" href="../../../shared/style.css">
+<link rel="stylesheet" href="../proposed/cw-ui.css">
+<link rel="stylesheet" href="preview.css">
+<style>
+  /* Календарь — единственный компонент, уникальный для этого модуля.
+     Здесь показан как предложение; в живом коде он живёт в
+     инжектируемом блоке <style id="calendarViewStyles">. */
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; background: var(--md-outline-variant); border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); overflow: hidden; }
+  .cal__dow { background: var(--md-surface-container-low); padding: 8px; text-align: center; font: 500 11px/16px var(--md-font-family); letter-spacing: .5px; color: var(--md-on-surface-variant); text-transform: uppercase; }
+  .cal__day { background: var(--md-surface); min-height: 92px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .cal__day--out { background: var(--md-surface-container-lowest); opacity: .5; }
+  .cal__day--today .cal__num { background: var(--cw-module); color: var(--md-on-primary); border-radius: 999px; }
+  .cal__num { font: 500 12px/20px var(--md-font-family); width: 20px; height: 20px; text-align: center; }
+  .cal__ev { border-radius: 6px; padding: 3px 6px; font: 500 11px/14px var(--md-font-family); border-left: 3px solid; cursor: pointer; }
+  .cal__ev--normal    { background: var(--status-normal-bg);    color: var(--status-normal);    border-color: var(--md-outline); }
+  .cal__ev--important { background: var(--status-important-bg); color: var(--status-important); border-color: var(--status-important); }
+  .cal__ev--critical  { background: var(--status-critical-bg);  color: var(--status-critical);  border-color: var(--status-critical); }
+  .cal__flags { display: flex; gap: 3px; margin-top: auto; }
+  .cal__flag { width: 6px; height: 6px; border-radius: 50%; }
+  @media (max-width: 720px) { .cal__day { min-height: 62px; } .cal__ev { font-size: 0; padding: 3px; height: 8px; } }
+</style>
+</head>
+<body class="pv">
+
+<div class="pv-bar">
+  <div>
+    <p class="pv-bar__title">Клиндарий — концепт</p>
+    <p class="pv-bar__sub">circuit-planner · календарь служебного года, форма S-302, письма</p>
+  </div>
+  <span class="pv-bar__spacer"></span>
+  <a href="index.html">← Все макеты</a>
+  <button class="pv-toggle" id="themeBtn"><span class="md-icon md-icon-sm">light_mode</span> Светлая тема</button>
+</div>
+
+<div class="pv-wrap">
+
+<p class="pv-note">
+  <b>Самый рискованный модуль для переделки.</b> CSS календаря живёт в инжектируемом
+  блоке <code>&lt;style id="calendarViewStyles"&gt;</code>, построен на <code>!important</code>
+  и меряет <code>--topbar-h</code> / <code>--calendar-side-top</code> из живого DOM.
+  Любая правка сетки календаря должна идти <b>внутрь этого блока</b>, а не в общий слой.
+  <br><br>
+  <b>Что предлагается:</b> унифицировать только оболочку — шапку, боковую панель,
+  диалоги, поля. Сам календарь остаётся собственным компонентом модуля, но его цвета
+  переводятся на <code>--status-*</code> (они уже существуют и взяты из модели данных
+  этого же модуля: <code>normal / important / critical</code>).
+  <br><br>
+  <b>Не трогать:</b> ключ <code>service-year-planner-v9-4-2</code>, встроенный выбор
+  цвета акцента (перезаписывать выбор пользователя нельзя — менять можно только
+  значение по умолчанию для новых), PIN-слой.
+</p>
+
+<h2 class="pv-h2">Календарь служебного года</h2>
+<div class="pv-frame pv-frame--tall">
+  <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Рабочее состояние — месяц + боковая панель дня</div>
+  <div class="pv-frame__body">
+    <div class="md-shell" data-module="circuit-planner">
+      <header class="md-topbar-v2">
+        <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+        <div class="md-topbar-v2__lead">
+          <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">calendar_month</span></div>
+          <div class="md-topbar-v2__titles">
+            <p class="md-topbar-v2__title">Клиндарий</p>
+            <p class="md-topbar-v2__sub"><span>v9.60.1</span><span>Служебный год 2026/27</span></p>
+          </div>
+        </div>
+        <span class="md-topbar-v2__spacer"></span>
+        <div class="md-topbar-v2__actions">
+          <button class="md-icon-btn"><span class="md-icon">search</span></button>
+          <button class="md-icon-btn"><span class="md-icon">notifications</span></button>
+          <button class="md-icon-btn"><span class="md-icon">settings</span></button>
+        </div>
+      </header>
+
+      <div class="md-shell__body">
+        <nav class="md-sidenav">
+          <a class="md-sidenav__item active" href="#"><span class="md-icon md-icon-sm">calendar_month</span> Календарь</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">group</span> Собрания <span class="md-sidenav__badge">18</span></a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">settings</span> Настройки</a>
+          <div class="md-sidenav__group">Неделя 14–20 сент.</div>
+          <div style="padding:0 12px">
+            <div class="md-card md-card-outlined" style="padding:12px">
+              <div class="md-body-small u-muted" style="margin-bottom:8px">Признаки недели</div>
+              <label class="md-check" style="min-height:32px"><input type="checkbox" checked> Письмо отправлено</label>
+              <label class="md-check" style="min-height:32px"><input type="checkbox"> Форма S-302</label>
+              <div class="u-row" style="margin-top:10px">
+                <span class="md-status md-status-important">Важная</span>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div>
+          <div class="md-page">
+            <div class="md-toolbar" style="padding-top:0">
+              <button class="md-icon-btn"><span class="md-icon">chevron_right</span></button>
+              <span class="md-title-large">Сентябрь 2026</span>
+              <button class="md-icon-btn"><span class="md-icon">chevron_right</span></button>
+              <span class="md-toolbar__spacer"></span>
+              <div class="md-segmented">
+                <button class="active">Месяц</button>
+                <button>Два месяца</button>
+                <button>Список</button>
+              </div>
+              <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">add</span> Посещение</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start">
+              <div class="cal">
+                <div class="cal__dow">Пн</div><div class="cal__dow">Вт</div><div class="cal__dow">Ср</div>
+                <div class="cal__dow">Чт</div><div class="cal__dow">Пт</div><div class="cal__dow">Сб</div><div class="cal__dow">Вс</div>
+
+                <div class="cal__day cal__day--out"><span class="cal__num">31</span></div>
+                <div class="cal__day"><span class="cal__num">1</span></div>
+                <div class="cal__day"><span class="cal__num">2</span><div class="cal__ev cal__ev--normal">Центральное</div></div>
+                <div class="cal__day"><span class="cal__num">3</span></div>
+                <div class="cal__day"><span class="cal__num">4</span></div>
+                <div class="cal__day"><span class="cal__num">5</span></div>
+                <div class="cal__day"><span class="cal__num">6</span></div>
+
+                <div class="cal__day"><span class="cal__num">7</span></div>
+                <div class="cal__day"><span class="cal__num">8</span><div class="cal__ev cal__ev--important">Северное</div><div class="cal__flags"><span class="cal__flag" style="background:var(--status-success)"></span></div></div>
+                <div class="cal__day"><span class="cal__num">9</span></div>
+                <div class="cal__day"><span class="cal__num">10</span></div>
+                <div class="cal__day"><span class="cal__num">11</span></div>
+                <div class="cal__day"><span class="cal__num">12</span></div>
+                <div class="cal__day"><span class="cal__num">13</span></div>
+
+                <div class="cal__day cal__day--today"><span class="cal__num">14</span><div class="cal__ev cal__ev--critical">Западное</div><div class="cal__flags"><span class="cal__flag" style="background:var(--status-important)"></span><span class="cal__flag" style="background:var(--md-outline)"></span></div></div>
+                <div class="cal__day"><span class="cal__num">15</span></div>
+                <div class="cal__day"><span class="cal__num">16</span><div class="cal__ev cal__ev--normal">Южное</div></div>
+                <div class="cal__day"><span class="cal__num">17</span></div>
+                <div class="cal__day"><span class="cal__num">18</span></div>
+                <div class="cal__day"><span class="cal__num">19</span></div>
+                <div class="cal__day"><span class="cal__num">20</span></div>
+              </div>
+
+              <div class="md-sheet">
+                <div class="u-row" style="margin-bottom:14px">
+                  <span class="md-title-medium">14 сентября</span>
+                  <span class="u-spacer"></span>
+                  <button class="md-icon-btn"><span class="md-icon md-icon-sm">close</span></button>
+                </div>
+                <div class="md-card md-card-outlined" style="margin-bottom:14px">
+                  <div class="u-row" style="margin-bottom:6px">
+                    <span class="md-title-small">Западное собрание</span>
+                    <span class="u-spacer"></span>
+                    <span class="md-status md-status-critical">Критично</span>
+                  </div>
+                  <p class="md-body-small u-muted" style="margin:0 0 10px">Ср 19:00 · ул. Зелёная, 14</p>
+                  <div class="u-row">
+                    <span class="md-chip" style="height:26px;font-size:12px"><span class="md-icon md-icon-sm">mail</span> Письмо</span>
+                    <span class="md-chip selected" style="height:26px;font-size:12px"><span class="md-icon md-icon-sm">description</span> S-302</span>
+                  </div>
+                </div>
+                <div class="u-stack-2">
+                  <button class="md-btn md-btn-filled md-btn-full"><span class="md-icon md-icon-sm">description</span> Формуляр визита</button>
+                  <button class="md-btn md-btn-outlined md-btn-full"><span class="md-icon md-icon-sm">mail</span> Письмо собранию</button>
+                  <button class="md-btn md-btn-text md-btn-full"><span class="md-icon md-icon-sm">edit</span> Редактировать</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">Форма визита и служебные состояния</h2>
+<div class="pv-cols pv-cols--2">
+  <div class="pv-frame">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Формуляр визита — открытая форма</div>
+    <div class="pv-frame__body" data-module="circuit-planner" style="background:var(--md-surface-container);padding:20px;max-height:520px;overflow:auto">
+      <div class="md-formsection">
+        <div class="md-formsection__head">
+          <h3 class="md-formsection__title">Встречи</h3>
+          <p class="md-formsection__hint">Разбиение колонок в PDF — 70/30 для «С кем» и «Вид служения». Менять нельзя: под это свёрстан бланк.</p>
+        </div>
+        <div class="md-formgrid">
+          <div class="md-field md-field-select"><label>День</label><select><option>Понедельник</option><option>Вторник</option></select></div>
+          <div class="md-field"><input id="c1" placeholder=" " value="09:00"><label for="c1">Время</label></div>
+          <div class="md-field span-2"><input id="c2" placeholder=" " value="Брат Ковальчук"><label for="c2">С кем</label></div>
+          <div class="md-field span-2"><input id="c3" placeholder=" " value="Проповедь по домам"><label for="c3">Вид служения</label></div>
+        </div>
+      </div>
+      <div class="md-banner md-banner--info">
+        <span class="md-icon md-icon-sm md-banner__icon">description</span>
+        <div class="md-banner__body"><div>Язык формуляра берётся из настройки документа, а не из языка интерфейса.</div></div>
+      </div>
+      <div class="md-toolbar">
+        <span class="md-savestatus" data-state="dirty">Есть несохранённые изменения</span>
+        <span class="md-toolbar__spacer"></span>
+        <button class="md-btn md-btn-text">Отмена</button>
+        <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">download</span> Собрать PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="pv-state" data-module="circuit-planner" style="margin-bottom:16px">
+      <p class="pv-state__cap">Пустой месяц</p>
+      <div class="md-emptystate">
+        <div class="md-emptystate__icon"><span class="md-icon md-icon-lg">calendar_month</span></div>
+        <p class="md-emptystate__title">В сентябре посещений нет</p>
+        <p class="md-emptystate__text">Добавьте собрание в справочник, чтобы планировать визиты.</p>
+        <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">add</span> Добавить собрание</button>
+      </div>
+    </div>
+
+    <div class="pv-state" data-module="circuit-planner" style="margin-bottom:16px">
+      <p class="pv-state__cap">Сборка PDF — загрузка</p>
+      <div class="md-progress" style="margin-bottom:12px"><div class="md-progress__bar"></div></div>
+      <p class="md-body-small u-muted" style="margin:0">Встраивание шрифтов Aptos, 1.2 МБ… Первая сборка занимает несколько секунд.</p>
+    </div>
+
+    <div class="pv-state" data-module="circuit-planner">
+      <p class="pv-state__cap">Ошибка</p>
+      <div class="md-banner md-banner--error" style="margin:0">
+        <span class="md-icon md-icon-sm md-banner__icon">close</span>
+        <div class="md-banner__body">
+          <p class="md-banner__title">Форма S-302 не заполнена</p>
+          <div>В шаблоне отсутствует поле для номера собрания. Проверьте карточку собрания.</div>
+        </div>
+        <div class="md-banner__actions"><button class="md-btn md-btn-text">Открыть</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">Мобильный вид</h2>
+<p class="pv-h2__sub">Панель дня становится шторкой снизу — модуль уже имеет нижнюю навигацию, и она сохраняется.</p>
+<div class="pv-cols">
+  <div class="pv-frame pv-frame--phone">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Мобильный — месяц</div>
+    <div class="pv-frame__body">
+      <div class="md-shell" data-module="circuit-planner" style="min-height:600px">
+        <header class="md-topbar-v2">
+          <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+          <div class="md-topbar-v2__lead"><div class="md-topbar-v2__titles"><p class="md-topbar-v2__title">Сентябрь</p></div></div>
+          <span class="md-topbar-v2__spacer"></span>
+          <button class="md-icon-btn"><span class="md-icon">search</span></button>
+        </header>
+        <div class="md-page" style="padding:12px">
+          <div class="cal" style="font-size:11px">
+            <div class="cal__dow">П</div><div class="cal__dow">В</div><div class="cal__dow">С</div><div class="cal__dow">Ч</div><div class="cal__dow">П</div><div class="cal__dow">С</div><div class="cal__dow">В</div>
+            <div class="cal__day cal__day--out"><span class="cal__num">31</span></div>
+            <div class="cal__day"><span class="cal__num">1</span></div>
+            <div class="cal__day"><span class="cal__num">2</span><div class="cal__ev cal__ev--normal">·</div></div>
+            <div class="cal__day"><span class="cal__num">3</span></div>
+            <div class="cal__day"><span class="cal__num">4</span></div>
+            <div class="cal__day"><span class="cal__num">5</span></div>
+            <div class="cal__day"><span class="cal__num">6</span></div>
+            <div class="cal__day"><span class="cal__num">7</span></div>
+            <div class="cal__day"><span class="cal__num">8</span><div class="cal__ev cal__ev--important">·</div></div>
+            <div class="cal__day"><span class="cal__num">9</span></div>
+            <div class="cal__day"><span class="cal__num">10</span></div>
+            <div class="cal__day"><span class="cal__num">11</span></div>
+            <div class="cal__day"><span class="cal__num">12</span></div>
+            <div class="cal__day"><span class="cal__num">13</span></div>
+            <div class="cal__day cal__day--today"><span class="cal__num">14</span><div class="cal__ev cal__ev--critical">·</div></div>
+            <div class="cal__day"><span class="cal__num">15</span></div>
+            <div class="cal__day"><span class="cal__num">16</span><div class="cal__ev cal__ev--normal">·</div></div>
+            <div class="cal__day"><span class="cal__num">17</span></div>
+            <div class="cal__day"><span class="cal__num">18</span></div>
+            <div class="cal__day"><span class="cal__num">19</span></div>
+            <div class="cal__day"><span class="cal__num">20</span></div>
+          </div>
+        </div>
+        <nav class="md-bottomnav">
+          <a class="md-bottomnav__item active" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">calendar_month</span></span>Календарь</a>
+          <a class="md-bottomnav__item" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">group</span></span>Собрания</a>
+          <a class="md-bottomnav__item" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">settings</span></span>Настройки</a>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="pv-frame pv-frame--phone">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Мобильный — шторка дня</div>
+    <div class="pv-frame__body">
+      <div class="md-shell" data-module="circuit-planner" style="min-height:600px;position:relative">
+        <header class="md-topbar-v2">
+          <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+          <div class="md-topbar-v2__lead"><div class="md-topbar-v2__titles"><p class="md-topbar-v2__title">Сентябрь</p></div></div>
+        </header>
+        <div style="padding:12px;opacity:.3">
+          <div class="md-skeleton md-skeleton--row"></div>
+          <div class="md-skeleton md-skeleton--row"></div>
+          <div class="md-skeleton md-skeleton--row"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.32)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:var(--md-surface-container-low);border-radius:28px 28px 0 0;padding:16px;box-shadow:var(--md-elevation-3)">
+          <div style="width:32px;height:4px;border-radius:999px;background:var(--md-outline-variant);margin:0 auto 14px"></div>
+          <div class="u-row" style="margin-bottom:12px">
+            <span class="md-title-medium">14 сентября</span>
+            <span class="u-spacer"></span>
+            <span class="md-status md-status-critical">Критично</span>
+          </div>
+          <p class="md-body-small u-muted" style="margin:0 0 14px">Западное собрание · Ср 19:00</p>
+          <div class="u-stack-2">
+            <button class="md-btn md-btn-filled md-btn-full"><span class="md-icon md-icon-sm">description</span> Формуляр визита</button>
+            <button class="md-btn md-btn-outlined md-btn-full"><span class="md-icon md-icon-sm">mail</span> Письмо</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = el.getAttribute('data-theme') === 'dark';
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.innerHTML = dark
+      ? '<span class="md-icon md-icon-sm">dark_mode</span> Тёмная тема'
+      : '<span class="md-icon md-icon-sm">light_mode</span> Светлая тема';
+  });
+</script>
+</body>
+</html>

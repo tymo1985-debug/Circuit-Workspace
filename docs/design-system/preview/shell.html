@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Оболочка модуля — Circuit Workspace Design System</title>
+<link rel="stylesheet" href="../../../shared/style.css">
+<link rel="stylesheet" href="../proposed/cw-ui.css">
+<link rel="stylesheet" href="preview.css">
+</head>
+<body class="pv">
+
+<div class="pv-bar">
+  <div>
+    <p class="pv-bar__title">Универсальная оболочка модуля</p>
+    <p class="pv-bar__sub">AppShell · ModuleTopbar · SideNav · PageContainer · Toolbar</p>
+  </div>
+  <span class="pv-bar__spacer"></span>
+  <a href="index.html">← Все макеты</a>
+  <button class="pv-toggle" id="themeBtn"><span class="md-icon md-icon-sm">light_mode</span> Светлая тема</button>
+</div>
+
+<div class="pv-wrap">
+
+<p class="pv-note">
+  Одна и та же оболочка во всех четырёх модулях. Меняется только <b>акцент</b>
+  (<code>data-module</code>) и <b>наполнение рабочей области</b>. Кнопка возврата в хаб всегда
+  в одном месте — крайняя слева в шапке, как сейчас делает <code>shared/nav.js</code>.
+  Тонкая цветная дорожка под шапкой — след плитки, с которой пришёл пользователь:
+  единственный элемент «платы», перенесённый из хаба внутрь модуля.
+</p>
+
+<h2 class="pv-h2">1. Анатомия шапки</h2>
+<p class="pv-h2__sub">Слоты фиксированы. Модуль наполняет только зону действий — всё остальное общее.</p>
+
+<div class="pv-frame">
+  <div class="pv-frame__cap"><span class="pv-frame__dot"></span> ModuleTopbar — 64px, sticky</div>
+  <div class="pv-frame__body" data-module="congress-project">
+    <header class="md-topbar-v2">
+      <a class="cw-home-btn" href="#" title="На главную"><span class="md-icon">arrow_back</span></a>
+      <div class="md-topbar-v2__lead">
+        <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">event</span></div>
+        <div class="md-topbar-v2__titles">
+          <p class="md-topbar-v2__title">Конгрессы</p>
+          <p class="md-topbar-v2__sub">
+            <span>v4.20.0</span>
+            <span class="md-savestatus" data-state="saved">Сохранено 14:22</span>
+          </p>
+        </div>
+      </div>
+      <span class="md-topbar-v2__spacer"></span>
+      <div class="md-topbar-v2__actions">
+        <button class="md-icon-btn" title="Печать"><span class="md-icon">print</span></button>
+        <button class="md-icon-btn" title="Уведомления"><span class="md-icon">notifications</span></button>
+        <button class="md-icon-btn" title="Настройки"><span class="md-icon">settings</span></button>
+        <button class="md-icon-btn" title="Ещё"><span class="md-icon">more_vert</span></button>
+      </div>
+    </header>
+    <div style="padding:16px 20px;font:400 13px/20px var(--md-font-family);color:var(--md-on-surface-variant)">
+      ← возврат в хаб &nbsp;·&nbsp; знак и название модуля &nbsp;·&nbsp; версия и статус сохранения
+      &nbsp;·&nbsp; действия справа &nbsp;·&nbsp; цветная дорожка = акцент модуля
+    </div>
+  </div>
+</div>
+
+<div class="pv-cols pv-cols--2">
+  <div class="pv-frame">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Клиндарий</div>
+    <div class="pv-frame__body" data-module="circuit-planner">
+      <header class="md-topbar-v2">
+        <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+        <div class="md-topbar-v2__lead">
+          <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">calendar_month</span></div>
+          <div class="md-topbar-v2__titles">
+            <p class="md-topbar-v2__title">Клиндарий</p>
+            <p class="md-topbar-v2__sub"><span>v9.60.1</span></p>
+          </div>
+        </div>
+        <span class="md-topbar-v2__spacer"></span>
+        <div class="md-topbar-v2__actions">
+          <button class="md-icon-btn"><span class="md-icon">search</span></button>
+          <button class="md-icon-btn"><span class="md-icon">settings</span></button>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  <div class="pv-frame">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Школа пионеров</div>
+    <div class="pv-frame__body" data-module="pioneer-school">
+      <header class="md-topbar-v2">
+        <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+        <div class="md-topbar-v2__lead">
+          <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">school</span></div>
+          <div class="md-topbar-v2__titles">
+            <p class="md-topbar-v2__title">Школа пионеров</p>
+            <p class="md-topbar-v2__sub"><span>v1.6.0</span></p>
+          </div>
+        </div>
+        <span class="md-topbar-v2__spacer"></span>
+        <div class="md-topbar-v2__actions">
+          <button class="md-icon-btn"><span class="md-icon">download</span></button>
+          <button class="md-icon-btn"><span class="md-icon">settings</span></button>
+        </div>
+      </header>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">2. Рабочее состояние — полная оболочка</h2>
+<p class="pv-h2__sub">Шапка на всю ширину, под ней боковая навигация и рабочая область. Панель фильтров отделена от панели действий.</p>
+
+<div class="pv-frame pv-frame--tall">
+  <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Desktop ≥ 900px</div>
+  <div class="pv-frame__body">
+    <div class="md-shell" data-module="pioneer-school">
+      <header class="md-topbar-v2">
+        <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+        <div class="md-topbar-v2__lead">
+          <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">school</span></div>
+          <div class="md-topbar-v2__titles">
+            <p class="md-topbar-v2__title">Школа пионеров</p>
+            <p class="md-topbar-v2__sub"><span>v1.6.0</span><span class="md-savestatus">Сохранено</span></p>
+          </div>
+        </div>
+        <span class="md-topbar-v2__spacer"></span>
+        <div class="md-topbar-v2__actions">
+          <button class="md-icon-btn"><span class="md-icon">settings</span></button>
+          <button class="md-icon-btn"><span class="md-icon">more_vert</span></button>
+        </div>
+      </header>
+
+      <div class="md-shell__body">
+        <nav class="md-sidenav">
+          <div class="md-sidenav__group">Школа</div>
+          <a class="md-sidenav__item active" href="#"><span class="md-icon md-icon-sm">apps</span> Обзор</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">group</span> Учащиеся <span class="md-sidenav__badge">24</span></a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">calendar_month</span> Расписание</a>
+          <div class="md-sidenav__group">Документы</div>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">description</span> Анкета</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">mail</span> Назначения</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">download</span> Резервная копия</a>
+        </nav>
+
+        <div>
+          <div class="md-page">
+            <div class="md-page__header">
+              <div>
+                <h1 class="md-page__title">Учащиеся</h1>
+                <p class="md-page__lede">Список участников школы. Изменения сохраняются автоматически.</p>
+              </div>
+              <div class="u-row">
+                <button class="md-btn md-btn-outlined"><span class="md-icon md-icon-sm">upload</span> Импорт</button>
+                <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">add</span> Добавить</button>
+              </div>
+            </div>
+
+            <div class="md-filterbar">
+              <div class="md-search"><span class="md-icon md-icon-sm">search</span><input placeholder="Поиск по имени"></div>
+              <button class="md-chip selected">Все</button>
+              <button class="md-chip">Активные</button>
+              <button class="md-chip">Заочно</button>
+              <span class="u-spacer"></span>
+              <div class="md-segmented">
+                <button class="active">Обычный</button>
+                <button>Плотный</button>
+              </div>
+            </div>
+
+            <div class="md-table-wrap">
+              <table class="md-table md-table--sticky md-table--cards">
+                <thead><tr><th>Имя</th><th>Собрание</th><th>Форма</th><th>Статус</th><th style="text-align:right">Действия</th></tr></thead>
+                <tbody>
+                  <tr class="is-selected">
+                    <td data-label="Имя">Андрей Ковальчук</td><td data-label="Собрание">Центральное</td>
+                    <td data-label="Форма">Очно</td>
+                    <td data-label="Статус"><span class="md-status md-status-success">Принят</span></td>
+                    <td data-label="Действия"><div class="md-table__rowactions">
+                      <button class="md-icon-btn"><span class="md-icon md-icon-sm">edit</span></button>
+                      <button class="md-icon-btn"><span class="md-icon md-icon-sm">description</span></button>
+                    </div></td>
+                  </tr>
+                  <tr>
+                    <td data-label="Имя">Мария Левченко</td><td data-label="Собрание">Северное</td>
+                    <td data-label="Форма">Заочно</td>
+                    <td data-label="Статус"><span class="md-status md-status-important">Ждёт анкету</span></td>
+                    <td data-label="Действия"><div class="md-table__rowactions">
+                      <button class="md-icon-btn"><span class="md-icon md-icon-sm">edit</span></button>
+                      <button class="md-icon-btn"><span class="md-icon md-icon-sm">description</span></button>
+                    </div></td>
+                  </tr>
+                  <tr>
+                    <td data-label="Имя">Пётр Гнатюк</td><td data-label="Собрание">Западное</td>
+                    <td data-label="Форма">Очно</td>
+                    <td data-label="Статус"><span class="md-status md-status-normal">Черновик</span></td>
+                    <td data-label="Действия"><div class="md-table__rowactions">
+                      <button class="md-icon-btn"><span class="md-icon md-icon-sm">edit</span></button>
+                      <button class="md-icon-btn"><span class="md-icon md-icon-sm">delete</span></button>
+                    </div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">3. Служебные состояния</h2>
+<p class="pv-h2__sub">Пустой экран, загрузка, ошибка, несохранённые изменения — одинаково выглядят во всех модулях.</p>
+
+<div class="pv-states">
+  <div class="pv-state" data-module="congress-project">
+    <p class="pv-state__cap">Пустое состояние</p>
+    <div class="md-emptystate">
+      <div class="md-emptystate__icon"><span class="md-icon md-icon-lg">event</span></div>
+      <p class="md-emptystate__title">Пока нет ни одного конгресса</p>
+      <p class="md-emptystate__text">Создайте серию, чтобы начать планирование программы.</p>
+      <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">add</span> Создать серию</button>
+    </div>
+  </div>
+
+  <div class="pv-state" data-module="congress-project">
+    <p class="pv-state__cap">Загрузка</p>
+    <div class="md-progress" style="margin-bottom:16px"><div class="md-progress__bar"></div></div>
+    <div class="md-skeleton md-skeleton--title md-skeleton--line"></div>
+    <div class="md-skeleton md-skeleton--row"></div>
+    <div class="md-skeleton md-skeleton--row"></div>
+    <div class="md-skeleton md-skeleton--row" style="opacity:.6"></div>
+  </div>
+
+  <div class="pv-state" data-module="congress-project">
+    <p class="pv-state__cap">Ошибка и предупреждения</p>
+    <div class="md-banner md-banner--error">
+      <span class="md-icon md-icon-sm md-banner__icon">close</span>
+      <div class="md-banner__body">
+        <p class="md-banner__title">Не удалось сохранить</p>
+        <div>Хранилище браузера переполнено. Освободите место и повторите.</div>
+      </div>
+      <div class="md-banner__actions"><button class="md-btn md-btn-text">Повторить</button></div>
+    </div>
+    <div class="md-banner md-banner--warn">
+      <span class="md-icon md-icon-sm md-banner__icon">notifications</span>
+      <div class="md-banner__body"><div>У трёх задач не назначен участник.</div></div>
+    </div>
+    <div class="md-banner md-banner--info" style="margin-bottom:0">
+      <span class="md-icon md-icon-sm md-banner__icon">check</span>
+      <div class="md-banner__body"><div>Доступна новая версия модуля.</div></div>
+      <div class="md-banner__actions"><button class="md-btn md-btn-text">Обновить</button></div>
+    </div>
+  </div>
+
+  <div class="pv-state" data-module="congress-project">
+    <p class="pv-state__cap">Статус сохранения</p>
+    <div class="u-stack-2">
+      <span class="md-savestatus" data-state="saved">Сохранено 14:22</span>
+      <span class="md-savestatus" data-state="saving">Сохранение…</span>
+      <span class="md-savestatus" data-state="dirty">Есть несохранённые изменения</span>
+      <span class="md-savestatus" data-state="error">Ошибка сохранения</span>
+    </div>
+    <div style="margin-top:20px">
+      <span class="md-snackbar"><span class="md-icon md-icon-sm">check</span> Письмо сохранено <button class="md-btn md-btn-text" style="height:auto;padding:0 4px">Отменить</button></span>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">4. Узкий экран</h2>
+<p class="pv-h2__sub">Боковая навигация уходит в нижнюю панель, таблица становится списком карточек, панели редактирования — шторками снизу.</p>
+
+<div class="pv-cols">
+  <div class="pv-frame pv-frame--phone">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Мобильный — список</div>
+    <div class="pv-frame__body">
+      <div class="md-shell" data-module="pioneer-school" style="min-height:620px">
+        <header class="md-topbar-v2">
+          <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+          <div class="md-topbar-v2__lead">
+            <div class="md-topbar-v2__titles"><p class="md-topbar-v2__title">Учащиеся</p></div>
+          </div>
+          <span class="md-topbar-v2__spacer"></span>
+          <button class="md-icon-btn"><span class="md-icon">search</span></button>
+          <button class="md-icon-btn"><span class="md-icon">more_vert</span></button>
+        </header>
+        <div class="md-shell__body md-shell__body--full">
+          <div>
+            <div class="md-page" style="padding:16px 12px 8px">
+              <div class="u-row" style="margin-bottom:12px">
+                <button class="md-chip selected">Все</button>
+                <button class="md-chip">Активные</button>
+                <button class="md-chip"><span class="md-icon md-icon-sm">filter_list</span></button>
+              </div>
+              <table class="md-table md-table--cards">
+                <thead><tr><th>Имя</th><th>Собрание</th><th>Статус</th></tr></thead>
+                <tbody>
+                  <tr><td data-label="Имя">Андрей Ковальчук</td><td data-label="Собрание">Центральное</td><td data-label="Статус"><span class="md-status md-status-success">Принят</span></td></tr>
+                  <tr><td data-label="Имя">Мария Левченко</td><td data-label="Собрание">Северное</td><td data-label="Статус"><span class="md-status md-status-important">Ждёт анкету</span></td></tr>
+                  <tr><td data-label="Имя">Пётр Гнатюк</td><td data-label="Собрание">Западное</td><td data-label="Статус"><span class="md-status md-status-normal">Черновик</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <nav class="md-bottomnav">
+              <a class="md-bottomnav__item active" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">group</span></span>Учащиеся</a>
+              <a class="md-bottomnav__item" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">calendar_month</span></span>Расписание</a>
+              <a class="md-bottomnav__item" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">description</span></span>Документы</a>
+              <a class="md-bottomnav__item" href="#"><span class="md-bottomnav__ind"><span class="md-icon md-icon-sm">settings</span></span>Ещё</a>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pv-frame pv-frame--phone">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Мобильный — шторка редактирования</div>
+    <div class="pv-frame__body">
+      <div class="md-shell" data-module="pioneer-school" style="min-height:620px;position:relative">
+        <header class="md-topbar-v2">
+          <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+          <div class="md-topbar-v2__lead"><div class="md-topbar-v2__titles"><p class="md-topbar-v2__title">Учащиеся</p></div></div>
+        </header>
+        <div style="padding:16px 12px;opacity:.35">
+          <div class="md-skeleton md-skeleton--row"></div>
+          <div class="md-skeleton md-skeleton--row"></div>
+          <div class="md-skeleton md-skeleton--row"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.32)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:var(--md-surface-container-low);border-radius:28px 28px 0 0;padding:16px;box-shadow:var(--md-elevation-3)">
+          <div class="md-sheet__grabber" style="width:32px;height:4px;border-radius:999px;background:var(--md-outline-variant);margin:0 auto 14px"></div>
+          <h3 class="md-formsection__title" style="margin-bottom:16px">Мария Левченко</h3>
+          <div class="u-stack">
+            <div class="md-field"><input id="pv-n" placeholder=" " value="Мария Левченко"><label for="pv-n">Имя и фамилия</label></div>
+            <div class="md-field md-field-select"><label>Собрание</label><select><option>Северное</option></select></div>
+            <div class="u-row">
+              <button class="md-btn md-btn-text">Отмена</button>
+              <span class="u-spacer"></span>
+              <button class="md-btn md-btn-filled">Сохранить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = el.getAttribute('data-theme') === 'dark';
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.innerHTML = dark
+      ? '<span class="md-icon md-icon-sm">dark_mode</span> Тёмная тема'
+      : '<span class="md-icon md-icon-sm">light_mode</span> Светлая тема';
+  });
+</script>
+</body>
+</html>

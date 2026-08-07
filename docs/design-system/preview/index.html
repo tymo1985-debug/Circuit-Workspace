@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuit Workspace — дизайн-система, макеты</title>
+<link rel="stylesheet" href="../../../shared/style.css">
+<link rel="stylesheet" href="../proposed/cw-ui.css">
+<link rel="stylesheet" href="preview.css">
+</head>
+<body class="pv">
+
+<div class="pv-bar">
+  <div>
+    <p class="pv-bar__title">Circuit Workspace — дизайн-система</p>
+    <p class="pv-bar__sub">Макеты. Открываются как обычные файлы, без сервера.</p>
+  </div>
+  <span class="pv-bar__spacer"></span>
+  <button class="pv-toggle" id="themeBtn"><span class="md-icon md-icon-sm">light_mode</span> Светлая тема</button>
+</div>
+
+<div class="pv-wrap">
+
+<p class="pv-note">
+  Все макеты подключают <b>настоящий</b> <code>shared/style.css</code> из монорепо и
+  черновой слой <code>proposed/cw-ui.css</code>. Это значит: цвета, шрифты и радиусы,
+  которые вы видите, — реальные значения проекта, а не картинка.
+  Ни один макет не подключён к рабочим страницам приложения и ничего в нём не меняет.
+  <br><br>
+  Каждая страница переключается между тёмной и светлой темой кнопкой справа вверху —
+  <b>это ключевая проверка</b>, потому что главное расхождение сегодня именно в теме:
+  хаб тёмный, три модуля из четырёх жёстко светлые.
+</p>
+
+<h2 class="pv-h2">Основы</h2>
+<div class="pv-index">
+  <a class="pv-index__card" href="tokens.html">
+    <div class="pv-index__mark"><span class="md-icon">apps</span></div>
+    <p class="pv-index__title">Токены</p>
+    <p class="pv-index__text">Поверхности, акценты, типографика, скругления, отступы, плотность. Что есть и что предлагается добавить.</p>
+  </a>
+  <a class="pv-index__card" href="components.html">
+    <div class="pv-index__mark"><span class="md-icon">edit</span></div>
+    <p class="pv-index__title">Компоненты</p>
+    <p class="pv-index__text">Кнопки, поля, переключатели, таблицы, сообщения, пустые состояния, диалоги. Со всеми состояниями — они кликабельны.</p>
+  </a>
+  <a class="pv-index__card" href="shell.html">
+    <div class="pv-index__mark"><span class="md-icon">menu</span></div>
+    <p class="pv-index__title">Оболочка модуля</p>
+    <p class="pv-index__text">Единый шаблон: шапка, возврат в хаб, навигация, рабочая область, состояния загрузки и ошибок, узкий экран.</p>
+  </a>
+</div>
+
+<h2 class="pv-h2">Модули</h2>
+<div class="pv-index">
+  <a class="pv-index__card" href="congress-project.html" data-module="congress-project">
+    <div class="pv-index__mark"><span class="md-icon">event</span></div>
+    <p class="pv-index__title">Конгрессы</p>
+    <p class="pv-index__text">Таблица программы, письма, печатный план. Разделение фильтров и действий, липкая шапка таблицы, плотный режим.</p>
+  </a>
+  <a class="pv-index__card" href="circuit-planner.html" data-module="circuit-planner">
+    <div class="pv-index__mark"><span class="md-icon">calendar_month</span></div>
+    <p class="pv-index__title">Клиндарий</p>
+    <p class="pv-index__text">Календарь служебного года, формуляр визита, S-302. Самый рискованный модуль — календарь остаётся своим.</p>
+  </a>
+  <a class="pv-index__card" href="pioneer-school.html" data-module="pioneer-school">
+    <div class="pv-index__mark"><span class="md-icon">school</span></div>
+    <p class="pv-index__title">Школа пионеров</p>
+    <p class="pv-index__text">13 разделов группируются по смыслу, анкета становится визардом, сайдбар перестаёт быть жёстко тёмным.</p>
+  </a>
+  <a class="pv-index__card" href="appointments.html" data-module="appointments">
+    <div class="pv-index__mark"><span class="md-icon">mail</span></div>
+    <p class="pv-index__title">Назначения</p>
+    <p class="pv-index__text">Редактор и живой лист письма. Структура удачна и сохраняется — добавляется масштаб и контроль страниц.</p>
+  </a>
+</div>
+
+<h2 class="pv-h2">Документы</h2>
+<p class="pv-h2__sub">Текстовая часть дизайн-проекта лежит рядом, в <code>docs/design-system/</code>.</p>
+<div class="pv-index">
+  <a class="pv-index__card" href="../01-audit.md"><p class="pv-index__title">01 · Аудит</p><p class="pv-index__text">Что измерено в коде и где расходится.</p></a>
+  <a class="pv-index__card" href="../02-direction.md"><p class="pv-index__title">02 · Направление</p><p class="pv-index__text">Куда ведём дизайн и почему именно так.</p></a>
+  <a class="pv-index__card" href="../03-system.md"><p class="pv-index__title">03 · Дизайн-система</p><p class="pv-index__text">Токены, правила, поведение.</p></a>
+  <a class="pv-index__card" href="../04-shell.md"><p class="pv-index__title">04 · Оболочка</p><p class="pv-index__text">Универсальный шаблон модуля.</p></a>
+  <a class="pv-index__card" href="../05-components.md"><p class="pv-index__title">05 · Компоненты</p><p class="pv-index__text">Список общей библиотеки.</p></a>
+  <a class="pv-index__card" href="../07-integration.md"><p class="pv-index__title">07 · План внедрения</p><p class="pv-index__text">Порядок, риски, запреты.</p></a>
+</div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = el.getAttribute('data-theme') === 'dark';
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.innerHTML = dark
+      ? '<span class="md-icon md-icon-sm">dark_mode</span> Тёмная тема'
+      : '<span class="md-icon md-icon-sm">light_mode</span> Светлая тема';
+  });
+</script>
+</body>
+</html>

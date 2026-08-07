@@ -1,0 +1,154 @@
+/* Circuit Workspace — стили ВИТРИНЫ макетов.
+   Только для страниц в docs/design-system/preview/.
+   В приложение не переносятся: здесь рамки, подписи и сетка демонстрации,
+   а не компоненты продукта. */
+
+body.pv {
+  margin: 0;
+  background: var(--md-surface-dim);
+  color: var(--md-on-surface);
+  font-family: var(--md-font-family);
+}
+
+/* --- Шапка витрины --------------------------------------------------- */
+.pv-bar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 20px;
+  background: var(--md-surface-container-lowest);
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+.pv-bar__title { font: 500 16px/24px var(--md-font-family); margin: 0; }
+.pv-bar__sub { font: 400 12px/16px var(--md-font-family); color: var(--md-on-surface-variant); margin: 0; }
+.pv-bar__spacer { flex: 1 1 auto; }
+.pv-bar a { color: var(--md-primary); font: 500 13px/20px var(--md-font-family); text-decoration: none; }
+.pv-bar a:hover { text-decoration: underline; }
+
+.pv-toggle {
+  height: 32px; padding: 0 14px;
+  border: 1px solid var(--md-outline); border-radius: 999px;
+  background: transparent; color: var(--md-on-surface-variant);
+  font: 500 12px/16px var(--md-font-family); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.pv-toggle:hover { background: var(--md-surface-container); }
+
+/* --- Раскладка витрины ------------------------------------------------ */
+.pv-wrap { padding: 24px 20px 80px; max-width: 1500px; margin: 0 auto; }
+
+.pv-note {
+  border-left: 3px solid var(--md-primary);
+  background: var(--md-surface-container-low);
+  padding: 12px 16px; border-radius: 0 8px 8px 0;
+  font: 400 14px/22px var(--md-font-family);
+  color: var(--md-on-surface-variant);
+  margin: 0 0 24px; max-width: 90ch;
+}
+.pv-note b, .pv-note strong { color: var(--md-on-surface); }
+.pv-note code {
+  font: 400 13px/20px ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--md-surface-container-high); padding: 1px 5px; border-radius: 4px;
+}
+
+.pv-h2 {
+  font: 400 22px/28px var(--md-font-family);
+  margin: 40px 0 4px; padding-top: 20px;
+  border-top: 1px solid var(--md-outline-variant);
+}
+.pv-h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.pv-h2__sub { font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); margin: 0 0 20px; max-width: 88ch; }
+
+/* --- Рамка макета ----------------------------------------------------- */
+.pv-frame {
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--md-surface-container);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+  margin-bottom: 12px;
+}
+.pv-frame__cap {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--md-surface-container-highest);
+  border-bottom: 1px solid var(--md-outline-variant);
+  font: 500 12px/16px var(--md-font-family); letter-spacing: 0.5px;
+  color: var(--md-on-surface-variant);
+}
+.pv-frame__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--md-outline); }
+.pv-frame__body { position: relative; }
+.pv-frame--phone { max-width: 400px; }
+.pv-frame--phone .pv-frame__body { height: 620px; overflow: auto; }
+.pv-frame--tall .pv-frame__body { max-height: 720px; overflow: auto; }
+
+.pv-cols { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+.pv-cols--2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+
+/* Внутри рамки шелл не должен растягиваться на весь экран */
+.pv-frame .md-shell { min-height: 0; }
+.pv-frame .md-sidenav { position: static; height: auto; min-height: 340px; }
+.pv-frame .md-topbar-v2 { position: static; }
+.pv-frame .md-toolbar--sticky { position: static; }
+
+/* --- Демонстрация токенов --------------------------------------------- */
+.pv-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.pv-swatch {
+  border: 1px solid var(--md-outline-variant); border-radius: 12px; overflow: hidden;
+  background: var(--md-surface-container-low);
+}
+.pv-swatch__chip { height: 64px; }
+.pv-swatch__meta { padding: 8px 10px; }
+.pv-swatch__name { font: 500 12px/16px var(--md-font-family); margin: 0; }
+.pv-swatch__val {
+  font: 400 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--md-on-surface-variant); margin: 2px 0 0;
+}
+
+.pv-scale { display: grid; gap: 10px; }
+.pv-scale__row { display: flex; align-items: baseline; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--md-outline-variant); }
+.pv-scale__tag {
+  flex: 0 0 160px;
+  font: 400 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--md-on-surface-variant);
+}
+
+.pv-spec { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.pv-spec__box { background: var(--md-primary-container); border-radius: 4px; height: 24px; }
+.pv-spec__tag { font: 400 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--md-on-surface-variant); }
+
+/* --- Демонстрация состояний ------------------------------------------- */
+.pv-states { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.pv-state {
+  border: 1px solid var(--md-outline-variant); border-radius: 12px;
+  padding: 16px; background: var(--md-surface-container-low);
+}
+.pv-state__cap {
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--md-on-surface-variant);
+  margin: 0 0 12px;
+}
+
+.pv-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+}
+.pv-tag--new { background: var(--status-success-bg); color: var(--status-success); }
+.pv-tag--risk { background: var(--status-important-bg); color: var(--status-important); }
+
+/* --- Индекс макетов ---------------------------------------------------- */
+.pv-index { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pv-index__card {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--md-outline-variant); border-radius: 16px;
+  padding: 20px; background: var(--md-surface-container-low);
+  transition: border-color .15s ease, transform .15s ease;
+}
+.pv-index__card:hover { border-color: var(--md-primary); transform: translateY(-2px); }
+.pv-index__mark {
+  width: 40px; height: 40px; border-radius: 10px; margin-bottom: 14px;
+  display: grid; place-items: center;
+  background: var(--cw-module-container); color: var(--cw-module-on-container);
+}
+.pv-index__title { font: 500 16px/24px var(--md-font-family); margin: 0 0 4px; }
+.pv-index__text { font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); margin: 0; }

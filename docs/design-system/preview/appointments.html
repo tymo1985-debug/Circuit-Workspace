@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Назначения — концепт</title>
+<link rel="stylesheet" href="../../../shared/style.css">
+<link rel="stylesheet" href="../proposed/cw-ui.css">
+<link rel="stylesheet" href="preview.css">
+</head>
+<body class="pv">
+
+<div class="pv-bar">
+  <div>
+    <p class="pv-bar__title">Назначения — концепт</p>
+    <p class="pv-bar__sub">appointments · письмо о назначении и вычёркивании, печать</p>
+  </div>
+  <span class="pv-bar__spacer"></span>
+  <a href="index.html">← Все макеты</a>
+  <button class="pv-toggle" id="themeBtn"><span class="md-icon md-icon-sm">light_mode</span> Светлая тема</button>
+</div>
+
+<div class="pv-wrap">
+
+<p class="pv-note">
+  <b>Самый простой и самый готовый модуль.</b> Один экран, одна задача: заполнить поля слева —
+  увидеть письмо справа. Структура «редактор + живой предпросмотр» удачна и сохраняется целиком.
+  <br><br>
+  <b>Что меняется:</b> предпросмотр получает явную рамку листа и масштаб, чтобы было видно
+  разбиение на страницы <i>до</i> печати (сейчас это выясняется только в системном диалоге —
+  идея уже записана в <code>IDEAS.md</code>). Списки братьев переходят на общий компонент строки
+  с кнопками-иконками вместо самописного <code>.list-row</code>.
+  <br><br>
+  <b>Особенность:</b> у модуля <b>нет</b> PDF-экспорта — печать идёт через штатный
+  <code>window.print()</code>. Значит, «бумага» здесь — это сам предпросмотр, и его вёрстка
+  напрямую влияет на результат печати. Трогать осторожно.
+</p>
+
+<h2 class="pv-h2">Рабочий экран</h2>
+<div class="pv-frame pv-frame--tall">
+  <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Редактор слева, живой лист справа</div>
+  <div class="pv-frame__body">
+    <div class="md-shell" data-module="appointments">
+      <header class="md-topbar-v2">
+        <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+        <div class="md-topbar-v2__lead">
+          <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">mail</span></div>
+          <div class="md-topbar-v2__titles">
+            <p class="md-topbar-v2__title">Назначения</p>
+            <p class="md-topbar-v2__sub"><span>v5.1.0</span><span class="md-savestatus">Сохранено 15:07</span></p>
+          </div>
+        </div>
+        <span class="md-topbar-v2__spacer"></span>
+        <div class="md-topbar-v2__actions">
+          <button class="md-icon-btn"><span class="md-icon">settings</span></button>
+          <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">print</span> Печать</button>
+        </div>
+      </header>
+
+      <div class="md-shell__body md-shell__body--full">
+        <div class="md-page" style="max-width:none">
+          <div style="display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;align-items:start">
+
+            <div>
+              <div class="md-formsection">
+                <div class="md-formsection__head">
+                  <h3 class="md-formsection__title">Собрание и дата</h3>
+                </div>
+                <div class="md-formgrid">
+                  <div class="md-field span-2"><input id="a1" placeholder=" " value="Центральное, Львов"><label for="a1">Собрание</label></div>
+                  <div class="md-field"><input id="a2" placeholder=" " value="06.08.2026"><label for="a2">Дата письма</label></div>
+                  <div class="md-field md-field-select"><label>Язык письма</label><select><option>Украинский</option><option>Русский</option><option>Немецкий</option></select></div>
+                </div>
+              </div>
+
+              <div class="md-formsection">
+                <div class="md-formsection__head">
+                  <h3 class="md-formsection__title">Назначаемые старейшины</h3>
+                  <p class="md-formsection__hint">Порядок в списке = порядок в письме.</p>
+                </div>
+                <div class="u-stack-2">
+                  <div class="md-card md-card-outlined u-row" style="padding:8px 8px 8px 14px">
+                    <span style="flex:1 1 auto">Андрей Ковальчук</span>
+                    <button class="md-icon-btn"><span class="md-icon md-icon-sm">edit</span></button>
+                    <button class="md-icon-btn"><span class="md-icon md-icon-sm">delete</span></button>
+                  </div>
+                  <div class="md-card md-card-outlined u-row" style="padding:8px 8px 8px 14px">
+                    <span style="flex:1 1 auto">Пётр Гнатюк</span>
+                    <button class="md-icon-btn"><span class="md-icon md-icon-sm">edit</span></button>
+                    <button class="md-icon-btn"><span class="md-icon md-icon-sm">delete</span></button>
+                  </div>
+                  <button class="md-btn md-btn-outlined md-btn-full"><span class="md-icon md-icon-sm">add</span> Добавить брата</button>
+                </div>
+              </div>
+
+              <div class="md-formsection" style="margin-bottom:0">
+                <div class="md-formsection__head">
+                  <h3 class="md-formsection__title">Служебные помощники</h3>
+                </div>
+                <div class="md-emptystate" style="padding:24px">
+                  <p class="md-emptystate__text" style="margin:0">Никого не добавлено — раздел не попадёт в письмо.</p>
+                  <button class="md-btn md-btn-text"><span class="md-icon md-icon-sm">add</span> Добавить</button>
+                </div>
+                <label class="md-switch" style="margin-top:16px">
+                  <input type="checkbox"><span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                  <span class="md-switch__label">Плотный режим — уместить в одну страницу</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="md-sheet" style="padding:0;overflow:hidden">
+              <div class="md-toolbar" style="padding:12px 16px;border-bottom:1px solid var(--md-outline-variant)">
+                <span class="md-title-small">Предпросмотр</span>
+                <span class="md-toolbar__spacer"></span>
+                <span class="md-body-small u-muted">1 страница A4</span>
+                <div class="md-segmented" style="height:32px">
+                  <button class="active">75%</button>
+                  <button>100%</button>
+                </div>
+              </div>
+              <div style="background:var(--md-surface-dim);padding:20px;max-height:520px;overflow:auto">
+                <div style="background:#fff;color:#000;padding:44px 48px;box-shadow:0 8px 28px rgba(0,0,0,.24);font:400 13px/1.55 Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto">
+                  <p style="text-align:right;margin:0 0 22px">Львів, 6 серпня 2026</p>
+                  <p style="margin:0 0 16px"><b>Збору «Центральний», Львів</b></p>
+                  <p style="margin:0 0 16px">Дорогі брати і сестри,</p>
+                  <p style="margin:0 0 16px">раді повідомити, що наступні брати призначені старійшинами:</p>
+                  <p style="margin:0 0 6px">— Андрій Ковальчук</p>
+                  <p style="margin:0 0 16px">— Петро Гнатюк</p>
+                  <p style="margin:0 0 16px">Просимо оголосити це на найближчому службовому зібранні.</p>
+                  <p style="margin:0">З теплими вітаннями,<br>районний наглядач</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">Служебные состояния и мобильный вид</h2>
+<div class="pv-cols">
+  <div class="pv-state" data-module="appointments">
+    <p class="pv-state__cap">Пустой старт</p>
+    <div class="md-emptystate">
+      <div class="md-emptystate__icon"><span class="md-icon md-icon-lg">mail</span></div>
+      <p class="md-emptystate__title">Письмо ещё не заполнено</p>
+      <p class="md-emptystate__text">Укажите собрание и добавьте хотя бы одного брата — предпросмотр появится сразу.</p>
+      <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">add</span> Начать</button>
+    </div>
+  </div>
+
+  <div class="pv-state" data-module="appointments">
+    <p class="pv-state__cap">Предупреждение о переполнении</p>
+    <div class="md-banner md-banner--warn" style="margin:0 0 16px">
+      <span class="md-icon md-icon-sm md-banner__icon">print</span>
+      <div class="md-banner__body">
+        <p class="md-banner__title">Письмо не помещается на одну страницу</p>
+        <div>При 11 братьях текст переходит на вторую страницу. Включите плотный режим.</div>
+      </div>
+      <div class="md-banner__actions"><button class="md-btn md-btn-text">Включить</button></div>
+    </div>
+    <div class="md-banner md-banner--info" style="margin:0">
+      <span class="md-icon md-icon-sm md-banner__icon">description</span>
+      <div class="md-banner__body"><div>Язык письма — украинский. Интерфейс остаётся на языке хаба.</div></div>
+    </div>
+  </div>
+
+  <div class="pv-frame pv-frame--phone">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Мобильный — редактор и лист по вкладкам</div>
+    <div class="pv-frame__body">
+      <div class="md-shell" data-module="appointments" style="min-height:600px">
+        <header class="md-topbar-v2">
+          <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+          <div class="md-topbar-v2__lead"><div class="md-topbar-v2__titles"><p class="md-topbar-v2__title">Назначения</p></div></div>
+          <span class="md-topbar-v2__spacer"></span>
+          <button class="md-icon-btn"><span class="md-icon">print</span></button>
+        </header>
+        <div class="md-page" style="padding:12px">
+          <div class="md-segmented" style="width:100%;margin-bottom:16px">
+            <button class="active" style="flex:1">Редактор</button>
+            <button style="flex:1">Письмо</button>
+          </div>
+          <div class="md-field" style="margin-bottom:16px"><input id="m1" placeholder=" " value="Центральное, Львов"><label for="m1">Собрание</label></div>
+          <div class="md-card md-card-outlined u-row" style="padding:8px 8px 8px 14px;margin-bottom:8px">
+            <span style="flex:1 1 auto">Андрей Ковальчук</span>
+            <button class="md-icon-btn"><span class="md-icon md-icon-sm">delete</span></button>
+          </div>
+          <div class="md-card md-card-outlined u-row" style="padding:8px 8px 8px 14px;margin-bottom:12px">
+            <span style="flex:1 1 auto">Пётр Гнатюк</span>
+            <button class="md-icon-btn"><span class="md-icon md-icon-sm">delete</span></button>
+          </div>
+          <button class="md-btn md-btn-outlined md-btn-full"><span class="md-icon md-icon-sm">add</span> Добавить брата</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = el.getAttribute('data-theme') === 'dark';
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.innerHTML = dark
+      ? '<span class="md-icon md-icon-sm">dark_mode</span> Тёмная тема'
+      : '<span class="md-icon md-icon-sm">light_mode</span> Светлая тема';
+  });
+</script>
+</body>
+</html>

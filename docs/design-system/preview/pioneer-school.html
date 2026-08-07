@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Школа пионеров — концепт</title>
+<link rel="stylesheet" href="../../../shared/style.css">
+<link rel="stylesheet" href="../proposed/cw-ui.css">
+<link rel="stylesheet" href="preview.css">
+</head>
+<body class="pv">
+
+<div class="pv-bar">
+  <div>
+    <p class="pv-bar__title">Школа пионеров — концепт</p>
+    <p class="pv-bar__sub">pioneer-school · 13 разделов, анкета, формуляры, экспорт</p>
+  </div>
+  <span class="pv-bar__spacer"></span>
+  <a href="index.html">← Все макеты</a>
+  <button class="pv-toggle" id="themeBtn"><span class="md-icon md-icon-sm">light_mode</span> Светлая тема</button>
+</div>
+
+<div class="pv-wrap">
+
+<p class="pv-note">
+  <b>Главная проблема модуля — плоский список из 13 разделов</b> в боковом меню без группировки:
+  обзор, анкета, назначение, регистрация, замены, учащиеся, учебники, расписание, практика,
+  разбор, после школы, жестовый язык, резервная копия. Найти нужный можно только перечитав всё.
+  Предлагается сгруппировать по смыслу: <b>Школа</b> (кто и когда), <b>Документы</b> (что печатаем),
+  <b>Данные</b> (импорт, экспорт, копия).
+  <br><br>
+  <b>Второй момент:</b> сейчас сайдбар жёстко тёмный (<code>--sidebar-bg: #221947</code>) внутри
+  светлого модуля — гибрид, который не следует ни одной теме. В общей системе он становится
+  обычной поверхностью и работает в обеих темах.
+  <br><br>
+  <b>Не трогать:</b> <code>register.html</code> и структуру вопросов
+  (<code>registrationSchema.js</code>) — они описаны в двух местах и правятся только вместе;
+  экспорт PDF завязан на подмножество шрифта (<code>_sanitizeForFont</code>).
+</p>
+
+<h2 class="pv-h2">Обзор школы</h2>
+<div class="pv-frame pv-frame--tall">
+  <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Сгруппированная навигация + сводка</div>
+  <div class="pv-frame__body">
+    <div class="md-shell" data-module="pioneer-school">
+      <header class="md-topbar-v2">
+        <a class="cw-home-btn" href="#"><span class="md-icon">arrow_back</span></a>
+        <div class="md-topbar-v2__lead">
+          <div class="md-topbar-v2__mark"><span class="md-icon md-icon-sm">school</span></div>
+          <div class="md-topbar-v2__titles">
+            <p class="md-topbar-v2__title">Школа пионеров</p>
+            <p class="md-topbar-v2__sub"><span>v1.6.0</span><span class="md-savestatus">Сохранено</span></p>
+          </div>
+        </div>
+        <span class="md-topbar-v2__spacer"></span>
+        <div class="md-topbar-v2__actions">
+          <button class="md-icon-btn"><span class="md-icon">print</span></button>
+          <button class="md-icon-btn"><span class="md-icon">settings</span></button>
+        </div>
+      </header>
+
+      <div class="md-shell__body">
+        <nav class="md-sidenav">
+          <div class="md-sidenav__group">Школа</div>
+          <a class="md-sidenav__item active" href="#"><span class="md-icon md-icon-sm">apps</span> Обзор</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">group</span> Учащиеся <span class="md-sidenav__badge">24</span></a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">calendar_month</span> Расписание</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">person</span> Замены <span class="md-sidenav__badge">2</span></a>
+
+          <div class="md-sidenav__group">Занятия</div>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">edit</span> Практика</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">check</span> Разбор</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">event</span> После школы</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">group</span> Жестовый язык</a>
+
+          <div class="md-sidenav__group">Документы</div>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">description</span> Анкета</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">mail</span> Назначение</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">description</span> Регистрация</a>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">description</span> Учебники</a>
+
+          <div class="md-sidenav__group">Данные</div>
+          <a class="md-sidenav__item" href="#"><span class="md-icon md-icon-sm">download</span> Резервная копия</a>
+        </nav>
+
+        <div>
+          <div class="md-page">
+            <div class="md-page__header">
+              <div>
+                <h1 class="md-page__title">Обзор</h1>
+                <p class="md-page__lede">Школа пионерского служения, поток сентябрь 2026.</p>
+              </div>
+              <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">download</span> Экспорт</button>
+            </div>
+
+            <div class="md-grid-tiles" style="margin-bottom:24px">
+              <div class="md-card md-card-outlined">
+                <div class="md-body-small u-muted">Учащихся</div>
+                <div class="md-headline-small" style="margin:4px 0">24</div>
+                <div class="md-body-small u-muted">из них 6 заочно</div>
+              </div>
+              <div class="md-card md-card-outlined">
+                <div class="md-body-small u-muted">Анкет получено</div>
+                <div class="md-headline-small" style="margin:4px 0">18</div>
+                <span class="md-status md-status-important">6 ожидается</span>
+              </div>
+              <div class="md-card md-card-outlined">
+                <div class="md-body-small u-muted">Занятий пройдено</div>
+                <div class="md-headline-small" style="margin:4px 0">7 / 20</div>
+                <div class="md-progress" style="margin-top:8px"><div class="md-progress__bar" style="width:35%;animation:none"></div></div>
+              </div>
+              <div class="md-card md-card-outlined">
+                <div class="md-body-small u-muted">Замен на неделе</div>
+                <div class="md-headline-small" style="margin:4px 0">2</div>
+                <div class="md-body-small u-muted">оба подтверждены</div>
+              </div>
+            </div>
+
+            <h2 class="md-title-medium" style="margin-bottom:12px">Ближайшие занятия</h2>
+            <div class="md-table-wrap">
+              <table class="md-table md-table--cards">
+                <thead><tr><th style="width:64px" class="u-num">№</th><th>Тема</th><th style="width:180px">Преподаватель</th><th style="width:130px">Дата</th><th style="width:140px">Статус</th></tr></thead>
+                <tbody>
+                  <tr><td data-label="№" class="u-num">8</td><td data-label="Тема">Личное изучение</td><td data-label="Преподаватель">А. Ковальчук</td><td data-label="Дата">14.09</td><td data-label="Статус"><span class="md-status md-status-success">Готово</span></td></tr>
+                  <tr><td data-label="№" class="u-num">9</td><td data-label="Тема">Подготовка к собранию</td><td data-label="Преподаватель">М. Левченко</td><td data-label="Дата">15.09</td><td data-label="Статус"><span class="md-status md-status-important">Нужна замена</span></td></tr>
+                  <tr><td data-label="№" class="u-num">10</td><td data-label="Тема">Практическое занятие</td><td data-label="Преподаватель" class="u-muted">не назначен</td><td data-label="Дата">16.09</td><td data-label="Статус"><span class="md-status md-status-normal">Черновик</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">Анкета — визард с шагами</h2>
+<p class="pv-h2__sub">Длинная форма разбивается на шаги вместо одной простыни. Прогресс всегда виден, условные поля появляются по переключателю.</p>
+
+<div class="pv-frame">
+  <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Анкета — открытая форма, шаг 2 из 4</div>
+  <div class="pv-frame__body" data-module="pioneer-school" style="background:var(--md-surface-container);padding:24px">
+    <div style="max-width:820px;margin:0 auto">
+      <div class="md-stepper">
+        <div class="md-stepper__step done"><span class="md-stepper__dot"><span class="md-icon md-icon-sm">check</span></span><span class="md-stepper__label">Личные данные</span></div>
+        <span class="md-stepper__line"></span>
+        <div class="md-stepper__step active"><span class="md-stepper__dot">2</span><span class="md-stepper__label">Служение</span></div>
+        <span class="md-stepper__line"></span>
+        <div class="md-stepper__step"><span class="md-stepper__dot">3</span><span class="md-stepper__label">Здоровье</span></div>
+        <span class="md-stepper__line"></span>
+        <div class="md-stepper__step"><span class="md-stepper__dot">4</span><span class="md-stepper__label">Проверка</span></div>
+      </div>
+
+      <div class="md-formsection">
+        <div class="md-formsection__head">
+          <h3 class="md-formsection__title">Служение</h3>
+          <p class="md-formsection__hint">Эти данные попадут в интерактивный PDF. Поля заполняемые — учащийся сможет дописать текст в просмотрщике.</p>
+        </div>
+        <div class="md-formgrid">
+          <div class="md-field"><input id="p1" placeholder=" " value="Март 2019"><label for="p1">Начало пионерского служения</label></div>
+          <div class="md-field md-field-select"><label>Форма участия</label><select><option>Очно</option><option>Заочно</option></select></div>
+          <div class="md-field span-2"><input id="p2" placeholder=" " value="Центральное собрание, Львов"><label for="p2">Собрание</label></div>
+        </div>
+        <div class="u-stack-2" style="margin-top:20px">
+          <label class="md-switch">
+            <input type="checkbox" checked><span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+            <span class="md-switch__label">Нужен переводчик жестового языка</span>
+          </label>
+          <div class="md-field" style="margin-top:8px"><input id="p3" placeholder=" "><label for="p3">Язык жестов — уточнение</label></div>
+        </div>
+      </div>
+
+      <div class="md-toolbar">
+        <button class="md-btn md-btn-text">Назад</button>
+        <span class="md-toolbar__spacer"></span>
+        <span class="md-savestatus" data-state="saving">Сохранение…</span>
+        <button class="md-btn md-btn-filled">Далее</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="pv-h2">Плотная таблица, импорт и служебные состояния</h2>
+<div class="pv-cols pv-cols--2">
+  <div class="pv-frame">
+    <div class="pv-frame__cap"><span class="pv-frame__dot"></span> Учащиеся — плотный режим, 24 записи</div>
+    <div class="pv-frame__body" data-module="pioneer-school" data-density="compact" style="background:var(--md-surface-container);padding:16px;max-height:440px;overflow:auto">
+      <div class="md-filterbar" style="margin-bottom:12px">
+        <div class="md-search"><span class="md-icon md-icon-sm">search</span><input placeholder="Поиск"></div>
+        <button class="md-chip selected">Все</button>
+        <button class="md-chip">Заочно</button>
+      </div>
+      <div class="md-table-wrap">
+        <table class="md-table md-table--sticky">
+          <thead><tr><th>Имя</th><th>Собрание</th><th>Форма</th><th>Анкета</th></tr></thead>
+          <tbody>
+            <tr><td>Андрей Ковальчук</td><td>Центральное</td><td>Очно</td><td><span class="md-status md-status-success">Есть</span></td></tr>
+            <tr><td>Мария Левченко</td><td>Северное</td><td>Заочно</td><td><span class="md-status md-status-important">Нет</span></td></tr>
+            <tr><td>Пётр Гнатюк</td><td>Западное</td><td>Очно</td><td><span class="md-status md-status-success">Есть</span></td></tr>
+            <tr><td>Ольга Мельник</td><td>Южное</td><td>Очно</td><td><span class="md-status md-status-success">Есть</span></td></tr>
+            <tr><td>Игорь Панчук</td><td>Центральное</td><td>Заочно</td><td><span class="md-status md-status-important">Нет</span></td></tr>
+            <tr><td>Анна Дмитрук</td><td>Северное</td><td>Очно</td><td><span class="md-status md-status-success">Есть</span></td></tr>
+            <tr><td>Василий Романюк</td><td>Восточное</td><td>Очно</td><td><span class="md-status md-status-success">Есть</span></td></tr>
+            <tr><td>София Кравец</td><td>Западное</td><td>Заочно</td><td><span class="md-status md-status-normal">Черновик</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="pv-state" data-module="pioneer-school" style="margin-bottom:16px">
+      <p class="pv-state__cap">Импорт PDF — загрузка</p>
+      <div class="md-progress" style="margin-bottom:12px"><div class="md-progress__bar"></div></div>
+      <p class="md-body-small u-muted" style="margin:0 0 12px">Разбор линий разметки, страница 2 из 5…</p>
+      <div class="md-skeleton md-skeleton--row"></div>
+      <div class="md-skeleton md-skeleton--row"></div>
+    </div>
+
+    <div class="pv-state" data-module="pioneer-school" style="margin-bottom:16px">
+      <p class="pv-state__cap">Предупреждение экспорта</p>
+      <div class="md-banner md-banner--warn" style="margin:0">
+        <span class="md-icon md-icon-sm md-banner__icon">notifications</span>
+        <div class="md-banner__body">
+          <p class="md-banner__title">Символы вне шрифта</p>
+          <div>В поле «Заметка» есть знаки, которых нет в подмножестве DejaVu. В PDF строка оборвалась бы без предупреждения.</div>
+        </div>
+        <div class="md-banner__actions"><button class="md-btn md-btn-text">Показать</button></div>
+      </div>
+    </div>
+
+    <div class="pv-state" data-module="pioneer-school">
+      <p class="pv-state__cap">Пустое расписание</p>
+      <div class="md-emptystate">
+        <div class="md-emptystate__icon"><span class="md-icon md-icon-lg">calendar_month</span></div>
+        <p class="md-emptystate__title">Расписание не составлено</p>
+        <p class="md-emptystate__text">Загрузите готовый набор уроков или добавьте занятия вручную.</p>
+        <div class="u-row" style="justify-content:center">
+          <button class="md-btn md-btn-filled"><span class="md-icon md-icon-sm">add</span> Добавить</button>
+          <button class="md-btn md-btn-outlined"><span class="md-icon md-icon-sm">upload</span> Загрузить набор</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = el.getAttribute('data-theme') === 'dark';
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.innerHTML = dark
+      ? '<span class="md-icon md-icon-sm">dark_mode</span> Тёмная тема'
+      : '<span class="md-icon md-icon-sm">light_mode</span> Светлая тема';
+  });
+</script>
+</body>
+</html>

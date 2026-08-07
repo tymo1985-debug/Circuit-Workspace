@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Токены — Circuit Workspace Design System</title>
+<link rel="stylesheet" href="../../../shared/style.css">
+<link rel="stylesheet" href="../proposed/cw-ui.css">
+<link rel="stylesheet" href="preview.css">
+</head>
+<body class="pv">
+
+<div class="pv-bar">
+  <div>
+    <p class="pv-bar__title">Дизайн-токены</p>
+    <p class="pv-bar__sub">Живая витрина: цвета читаются из настоящего shared/style.css</p>
+  </div>
+  <span class="pv-bar__spacer"></span>
+  <a href="index.html">← Все макеты</a>
+  <button class="pv-toggle" id="themeBtn"><span class="md-icon md-icon-sm">light_mode</span> Светлая тема</button>
+</div>
+
+<div class="pv-wrap">
+
+<p class="pv-note">
+  Всё, что ниже, — <b>уже существует</b> в <code>shared/style.css</code>, кроме блоков,
+  помеченных <span class="pv-tag pv-tag--new">новое</span>. Дизайн-система не начинается
+  с нуля: у проекта есть полная MD3-палитра от сид-цвета <code>#6a45c9</code> и обе темы.
+  Проблема не в токенах, а в том, что модули их применяют по-разному.
+</p>
+
+<h2 class="pv-h2">Роли поверхностей</h2>
+<p class="pv-h2__sub">Иерархия «выше = светлее» в тёмной теме и «выше = белее» в светлой. Тень почти не используется — глубину даёт поверхность.</p>
+<div class="pv-swatches">
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-surface-dim)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Фон приложения</p><p class="pv-swatch__val">--md-surface-dim</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-surface-container)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Рабочая область</p><p class="pv-swatch__val">--md-surface-container</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-surface-container-low)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Карточка, шапка</p><p class="pv-swatch__val">--md-surface-container-low</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-surface-container-high)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Диалог, выделение</p><p class="pv-swatch__val">--md-surface-container-high</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-surface)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Таблица</p><p class="pv-swatch__val">--md-surface</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-outline-variant)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Разделитель</p><p class="pv-swatch__val">--md-outline-variant</p></div></div>
+</div>
+
+<h2 class="pv-h2">Акценты и семантика</h2>
+<div class="pv-swatches">
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-primary)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Основное действие</p><p class="pv-swatch__val">--md-primary</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-secondary-container)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Выбранное состояние</p><p class="pv-swatch__val">--md-secondary-container</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--md-tertiary)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Фирменная бирюза</p><p class="pv-swatch__val">--md-tertiary</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--status-success-bg)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Успех</p><p class="pv-swatch__val">--status-success-bg</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--status-important-bg)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Внимание</p><p class="pv-swatch__val">--status-important-bg</p></div></div>
+  <div class="pv-swatch"><div class="pv-swatch__chip" style="background:var(--status-critical-bg)"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Критично / ошибка</p><p class="pv-swatch__val">--status-critical-bg</p></div></div>
+</div>
+
+<h2 class="pv-h2">Акцент модуля <span class="pv-tag pv-tag--new">новое</span></h2>
+<p class="pv-h2__sub">
+  Не выдуманные цвета: средний и краевой стопы градиента <code>bgGrad</code> из
+  <code>shared/brand/&lt;module&gt;-icon-source.svg</code>. Плитка хаба, иконка приложения
+  и шапка модуля начинают говорить одним цветом. Переключается атрибутом <code>data-module</code>.
+</p>
+<div class="pv-swatches">
+  <div class="pv-swatch" data-module="congress-project"><div class="pv-swatch__chip" style="background:linear-gradient(120deg,var(--cw-module),var(--cw-module-edge))"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Конгрессы</p><p class="pv-swatch__val">#2f4bb0 → #1a6a9e</p></div></div>
+  <div class="pv-swatch" data-module="circuit-planner"><div class="pv-swatch__chip" style="background:linear-gradient(120deg,var(--cw-module),var(--cw-module-edge))"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Клиндарий</p><p class="pv-swatch__val">#4a3ab5 → #12706f</p></div></div>
+  <div class="pv-swatch" data-module="pioneer-school"><div class="pv-swatch__chip" style="background:linear-gradient(120deg,var(--cw-module),var(--cw-module-edge))"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Школа пионеров</p><p class="pv-swatch__val">#6a45c9 → #9c3f9e</p></div></div>
+  <div class="pv-swatch" data-module="appointments"><div class="pv-swatch__chip" style="background:linear-gradient(120deg,var(--cw-module),var(--cw-module-edge))"></div><div class="pv-swatch__meta"><p class="pv-swatch__name">Назначения</p><p class="pv-swatch__val">#7b3fd0 → #2fb3a5</p></div></div>
+</div>
+
+<h2 class="pv-h2">Типографика</h2>
+<p class="pv-h2__sub">Шкала MD3, шрифт Roboto (локальный, латиница + кириллица, начертания 400/500). Никаких 600/700/800 — их в файле шрифта просто нет.</p>
+<div class="pv-scale">
+  <div class="pv-scale__row"><span class="pv-scale__tag">.md-headline-small</span><span class="md-headline-small">Заголовок экрана</span></div>
+  <div class="pv-scale__row"><span class="pv-scale__tag">.md-title-large</span><span class="md-title-large">Заголовок раздела</span></div>
+  <div class="pv-scale__row"><span class="pv-scale__tag">.md-title-medium</span><span class="md-title-medium">Заголовок карточки</span></div>
+  <div class="pv-scale__row"><span class="pv-scale__tag">.md-body-medium</span><span class="md-body-medium">Основной текст интерфейса, 14/20 — рабочая плотность таблиц и форм</span></div>
+  <div class="pv-scale__row"><span class="pv-scale__tag">.md-label-large</span><span class="md-label-large">Подпись кнопки</span></div>
+  <div class="pv-scale__row"><span class="pv-scale__tag">.md-body-small</span><span class="md-body-small u-muted">Вспомогательная подпись, версия, время сохранения</span></div>
+</div>
+
+<h2 class="pv-h2">Скругления</h2>
+<p class="pv-h2__sub">Две шкалы сосуществуют намеренно: <code>--cw-radius-*</code> — фирменная (хаб, плитки), <code>--md-radius-*</code> — рабочая (модули). Смешивать в одном компоненте нельзя.</p>
+<div class="u-row" style="gap:16px;align-items:flex-end">
+  <div><div style="width:72px;height:56px;background:var(--md-primary-container);border-radius:var(--md-radius-xs)"></div><p class="pv-spec__tag">xs 4px — поля</p></div>
+  <div><div style="width:72px;height:56px;background:var(--md-primary-container);border-radius:var(--md-radius-sm)"></div><p class="pv-spec__tag">sm 8px — чипы</p></div>
+  <div><div style="width:72px;height:56px;background:var(--md-primary-container);border-radius:var(--md-radius-md)"></div><p class="pv-spec__tag">md 12px — таблицы</p></div>
+  <div><div style="width:72px;height:56px;background:var(--md-primary-container);border-radius:var(--md-radius-lg)"></div><p class="pv-spec__tag">lg 16px — карточки</p></div>
+  <div><div style="width:72px;height:56px;background:var(--md-primary-container);border-radius:var(--md-radius-xl)"></div><p class="pv-spec__tag">xl 28px — диалоги</p></div>
+  <div><div style="width:72px;height:56px;background:var(--md-primary-container);border-radius:var(--md-radius-full)"></div><p class="pv-spec__tag">full — кнопки</p></div>
+</div>
+
+<h2 class="pv-h2">Отступы <span class="pv-tag pv-tag--new">новое</span></h2>
+<p class="pv-h2__sub">Сейчас в модулях встречаются 4, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26 px вперемешку. Шаг MD3 — 4px, восьми ступеней достаточно.</p>
+<div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-1)"></div><span class="pv-spec__tag">--cw-space-1 · 4px — внутри строки</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-2)"></div><span class="pv-spec__tag">--cw-space-2 · 8px — между кнопками</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-3)"></div><span class="pv-spec__tag">--cw-space-3 · 12px — ячейка таблицы</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-4)"></div><span class="pv-spec__tag">--cw-space-4 · 16px — между блоками</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-5)"></div><span class="pv-spec__tag">--cw-space-5 · 24px — внутри карточки</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-6)"></div><span class="pv-spec__tag">--cw-space-6 · 32px — между секциями</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-7)"></div><span class="pv-spec__tag">--cw-space-7 · 48px — пустое состояние</span></div>
+  <div class="pv-spec"><div class="pv-spec__box" style="width:var(--cw-space-8)"></div><span class="pv-spec__tag">--cw-space-8 · 64px — низ страницы</span></div>
+</div>
+
+<h2 class="pv-h2">Плотность <span class="pv-tag pv-tag--new">новое</span></h2>
+<p class="pv-h2__sub">Один атрибут <code>data-density="compact"</code> ужимает строки таблиц и высоту контролов. Нужен Конгрессам (программа на 40 строк) и Школе (список учащихся).</p>
+<div class="pv-cols pv-cols--2">
+  <div>
+    <p class="pv-state__cap">Обычная — 48px</p>
+    <div class="md-table-wrap"><table class="md-table">
+      <thead><tr><th>Время</th><th>Задание</th><th>Участник</th></tr></thead>
+      <tbody><tr><td>09:40</td><td>Вступление</td><td>А. Ковальчук</td></tr>
+      <tr><td>10:05</td><td>Символ</td><td>М. Левченко</td></tr></tbody>
+    </table></div>
+  </div>
+  <div data-density="compact">
+    <p class="pv-state__cap">Плотная — 36px</p>
+    <div class="md-table-wrap"><table class="md-table">
+      <thead><tr><th>Время</th><th>Задание</th><th>Участник</th></tr></thead>
+      <tbody><tr><td>09:40</td><td>Вступление</td><td>А. Ковальчук</td></tr>
+      <tr><td>10:05</td><td>Символ</td><td>М. Левченко</td></tr>
+      <tr><td>10:30</td><td>Обсуждение</td><td>П. Гнатюк</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = el.getAttribute('data-theme') === 'dark';
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+    btn.innerHTML = dark
+      ? '<span class="md-icon md-icon-sm">dark_mode</span> Тёмная тема'
+      : '<span class="md-icon md-icon-sm">light_mode</span> Светлая тема';
+  });
+</script>
+</body>
+</html>
