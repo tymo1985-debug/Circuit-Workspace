@@ -2,7 +2,7 @@
 // Имя кэша привязано к версии модуля: при выпуске новой версии достаточно
 // поднять APP_VERSION, и вернувшийся пользователь получит свежую оболочку,
 // а не бесконечно закэшированную старую.
-const APP_VERSION='4.22.0';
+const APP_VERSION='4.23.0';
 const CACHE='congress-pwa-v'+APP_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
 // активация этого SW стирала офлайн-кэши хаба и остальных модулей.
@@ -13,7 +13,8 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
 '../shared/theme.js','../shared/backup.js',
 '../shared/fonts/roboto-latin-400-normal.woff2','../shared/fonts/roboto-latin-500-normal.woff2',
 '../shared/fonts/roboto-cyrillic-400-normal.woff2','../shared/fonts/roboto-cyrillic-500-normal.woff2',
-'./js/main.js','./js/state.js','./js/render.js','./js/tasks.js','./js/congress.js','./js/directories.js',
+'./js/main.js',
+'./js/topbar-menu.js','./js/state.js','./js/render.js','./js/tasks.js','./js/congress.js','./js/directories.js',
 './js/letters.js','./js/plan.js','./js/plan-fit.js','./js/printing.js','./js/template-editor.js','./js/backup.js',
 './js/utils.js','./js/dom.js','./js/icons.js','./js/i18n.js',
 // Локализация: словарь модуля и общий слой хаба. Без них офлайн-запуск

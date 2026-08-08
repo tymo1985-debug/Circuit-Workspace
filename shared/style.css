@@ -920,6 +920,54 @@ body.cw-root {
   .md-topbar-v2 { display: none !important; }
 }
 
+/* --- 5.2a Меню переполнения шапки ------------------------------------------
+   Шестой слот ModuleTopbar (см. docs/design-system/04-shell.md): когда
+   действий модуля больше четырёх, они уходят под одну кнопку, а не
+   растягивают шапку в две строки.
+   Поведение (открытие, клик мимо, Esc, стрелки) — на стороне модуля:
+   компонент пока нужен одному модулю, и выносить логику в общий слой
+   рано (правило второго применения). Здесь только внешний вид. */
+.md-menu { position: relative; display: inline-flex; }
+.md-menu__panel {
+  position: absolute; top: calc(100% + var(--cw-space-2)); right: 0;
+  z-index: var(--cw-z-drawer);
+  min-width: 248px; max-width: 320px;
+  padding: var(--cw-space-2);
+  background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  box-shadow: var(--md-elevation-2);
+  display: grid; gap: 2px;
+}
+.md-menu__panel[hidden] { display: none; }
+.md-menu__group {
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--md-on-surface-variant);
+  padding: var(--cw-space-3) var(--cw-space-3) var(--cw-space-1);
+}
+.md-menu__group:first-child { padding-top: var(--cw-space-1); }
+.md-menu__item {
+  display: flex; align-items: center; gap: var(--cw-space-3);
+  width: 100%; min-height: 44px; padding: 0 var(--cw-space-3);
+  border: 0; border-radius: var(--md-radius-sm);
+  background: transparent; color: var(--md-on-surface);
+  font: 400 14px/20px var(--md-font-family); letter-spacing: 0.25px;
+  text-align: left; cursor: pointer;
+}
+.md-menu__item:hover { background: var(--md-surface-container-highest); }
+.md-menu__item[hidden] { display: none; }
+.md-menu__item .icon,
+.md-menu__item svg { flex: 0 0 auto; width: 18px; height: 18px; }
+.md-menu__sep { height: 1px; background: var(--md-outline-variant); margin: var(--cw-space-1) var(--cw-space-2); }
+
+@media (max-width: 600px) {
+  /* На узком экране меню разворачивается почти во всю ширину: панель
+     в 248px, прижатая к правому краю, обрезалась бы. */
+  .md-menu__panel { right: calc(-1 * var(--cw-space-2)); min-width: min(88vw, 320px); }
+}
+@media print { .md-menu { display: none !important; } }
+
 /* --- 5.3 SideNav ---------------------------------------------------------- */
 .md-sidenav {
   background: var(--md-surface-container-low);
