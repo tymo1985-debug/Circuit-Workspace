@@ -13,17 +13,31 @@
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="../shared/style.css">
 </head>
-<body>
+<!-- data-module включает акцент модуля (--cw-module). Значение совпадает
+     с data-module плитки хаба и с градиентом иконки в shared/brand. -->
+<body data-module="pioneer-school">
+
+<!-- Единая шапка модуля. Раньше её не было вообще: название и версия жили
+     в сайдбаре, из-за чего кнопка возврата в хаб оказывалась не там, где
+     во всех остальных модулях. Теперь shared/nav.js ставит её в
+     .md-topbar-v2__lead — то же место, что в Назначениях. -->
+<header class="md-topbar-v2">
+  <div class="md-topbar-v2__lead">
+    <div class="md-topbar-v2__mark" aria-hidden="true"><span class="md-icon md-icon-sm">school</span></div>
+    <div class="md-topbar-v2__titles">
+      <p class="md-topbar-v2__title" data-i18n="ps.ui.shkola_pionerskogo_sluzheniya">Школа пионерского служения</p>
+      <p class="md-topbar-v2__sub"><span id="version-sub">S-255-U</span></p>
+    </div>
+  </div>
+  <span class="md-topbar-v2__spacer"></span>
+  <div class="md-topbar-v2__actions">
+    <label class="sr-only" for="ui-language" data-i18n="ps.ui.interface_language">Язык интерфейса</label>
+    <select id="ui-language"></select>
+  </div>
+</header>
 
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand">
-      <div data-i18n="ps.ui.shps" class="brand-mark">ШПС</div>
-      <div class="brand-text">
-        <div data-i18n="ps.ui.shkola_pionerskogo_sluzheniya" class="brand-title">Школа пионерского служения</div>
-        <div class="brand-sub" id="version-sub">S-255-U</div>
-      </div>
-    </div>
 
     <nav class="nav">
       <div data-i18n="ps.ui.do_shkoly" class="nav-group-label">До школы</div>
@@ -48,11 +62,6 @@
       <button data-i18n="ps.ui.rezervnaya_kopiya" class="nav-item" data-route="backup">Резервная копия</button>
     </nav>
 
-    <div class="sidebar-lang">
-      <label class="sr-only" for="ui-language" data-i18n="ps.ui.interface_language">Язык интерфейса</label>
-      <select id="ui-language"></select>
-    </div>
-
     <div data-i18n="ps.ui.osnovano_tolko_na_s" class="sidebar-footer">Основано только на S-255-U (июнь 2025)</div>
   </aside>
 
@@ -76,7 +85,7 @@
         <ul class="fact-list" id="location-requirements"></ul>
         <h3 data-i18n="ps.ui.predlagaemye_mesta">Предлагаемые места</h3>
         <div id="locations-list"></div>
-        <button data-i18n="ps.ui.dobavit_mesto" class="btn-secondary" id="add-location-btn">+ Добавить место</button>
+        <button data-i18n="ps.ui.dobavit_mesto" class="md-btn md-btn-outlined" id="add-location-btn">+ Добавить место</button>
       </div>
       <div class="panel">
         <h3 data-i18n="ps.ui.daty_nedostupnosti_prepodavatelya">Даты недоступности преподавателя</h3>
@@ -87,7 +96,7 @@
         <ul class="fact-list" id="substitute-requirements"></ul>
         <p data-i18n="ps.ui.spisok_kandidatov_vedetsya_na" class="hint">Список кандидатов ведётся на экране «Заместители» (упорядочен по предпочтению).</p>
       </div>
-      <button data-i18n="ps.ui.sohranit_anketu" class="btn-primary" id="save-anketa-btn">Сохранить анкету</button>
+      <button data-i18n="ps.ui.sohranit_anketu" class="md-btn md-btn-filled" id="save-anketa-btn">Сохранить анкету</button>
     </section>
 
     <section id="route-assignment" class="route hidden">
@@ -104,7 +113,7 @@
         <label class="checkbox-label"><input type="checkbox" id="a-teacherB-branch"><span data-i18n="ps.ui.prepodavatel_b_naznachen_filialom">Преподаватель Б назначен филиалом</span></label>
       </div>
       <p class="hint" id="second-teacher-note"></p>
-      <button data-i18n="ps.ui.sohranit" class="btn-primary" id="save-assignment-btn">Сохранить</button>
+      <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-assignment-btn">Сохранить</button>
     </section>
 
     <section id="route-registration" class="route hidden">
@@ -126,8 +135,8 @@
         <label><span data-i18n="ps.ui.dopolnitelnyy_tekst_ili_instrukcii">Дополнительный текст или инструкции (необязательно)</span><textarea id="reg-cfg-extra" rows="3" placeholder="Например: занятия начинаются в 9:00, обед организован на месте." data-i18n-placeholder="ps.ph.naprimer_zanyatiya_nachinayutsya_v"></textarea>
         </label>
         <div class="btn-row">
-          <button data-i18n="ps.ui.sohranit_nastroyki" class="btn-primary" id="save-reg-config-btn">Сохранить настройки</button>
-          <button data-i18n="ps.ui.sgenerirovat_pdf_anketu" class="btn-primary" id="generate-interactive-pdf-btn">Сгенерировать PDF-анкету</button>
+          <button data-i18n="ps.ui.sohranit_nastroyki" class="md-btn md-btn-filled" id="save-reg-config-btn">Сохранить настройки</button>
+          <button data-i18n="ps.ui.sgenerirovat_pdf_anketu" class="md-btn md-btn-filled" id="generate-interactive-pdf-btn">Сгенерировать PDF-анкету</button>
         </div>
         <p class="hint" id="pdf-form-status"></p>
       </div>
@@ -136,8 +145,8 @@
         <summary data-i18n="ps.ui.drugie_sposoby_sbora_otvetov" style="cursor:pointer;font-family:var(--font-display);font-size:15.5px;font-weight:600;">Другие способы сбора ответов</summary>
         <p data-i18n="ps.ui.interaktivnaya_pdf_anketa_osnovnoy" class="hint" style="margin-top:10px;">Интерактивная PDF-анкета — основной способ. Дополнительно доступны:</p>
         <div class="btn-row">
-          <a data-i18n="ps.ui.onlayn_formulyar_veb_stranica" class="btn-secondary" id="open-registration-form-link" href="register.html" target="_blank" style="text-decoration:none;display:inline-block;">Онлайн-формуляр (веб-страница)</a>
-          <button data-i18n="ps.ui.pdf_blank_dlya_pechati" class="btn-secondary" id="download-reg-blank-pdf">PDF-бланк для печати от руки</button>
+          <a data-i18n="ps.ui.onlayn_formulyar_veb_stranica" class="md-btn md-btn-outlined" id="open-registration-form-link" href="register.html" target="_blank" style="text-decoration:none;display:inline-block;">Онлайн-формуляр (веб-страница)</a>
+          <button data-i18n="ps.ui.pdf_blank_dlya_pechati" class="md-btn md-btn-outlined" id="download-reg-blank-pdf">PDF-бланк для печати от руки</button>
         </div>
       </details>
 
@@ -163,18 +172,18 @@
           </label>
         </div>
         <label><span data-i18n="ps.ui.dopolnitelnye_svedeniya">Дополнительные сведения</span><textarea id="reg-notes" rows="2"></textarea></label>
-        <button data-i18n="ps.ui.dobavit_registraciyu" class="btn-primary" id="add-registration-btn">Добавить регистрацию</button>
+        <button data-i18n="ps.ui.dobavit_registraciyu" class="md-btn md-btn-filled" id="add-registration-btn">Добавить регистрацию</button>
       </div>
 
       <div class="panel">
         <div class="panel-header-row">
           <h3 data-i18n="ps.ui.spisok_registraciy">Список регистраций</h3>
           <div class="btn-row">
-            <button data-i18n="ps.ui.eksport_pdf" class="btn-secondary" id="export-reg-pdf">Экспорт PDF</button>
-            <button data-i18n="ps.ui.eksport_csv" class="btn-secondary" id="export-reg-csv">Экспорт CSV</button>
+            <button data-i18n="ps.ui.eksport_pdf" class="md-btn md-btn-outlined" id="export-reg-pdf">Экспорт PDF</button>
+            <button data-i18n="ps.ui.eksport_csv" class="md-btn md-btn-outlined" id="export-reg-csv">Экспорт CSV</button>
           </div>
         </div>
-        <table class="data-table" id="registrations-table">
+        <table class="md-table" id="registrations-table">
           <thead><tr><th data-i18n="ps.ui.familiya_imya">Фамилия Имя</th><th data-i18n="ps.ui.kontakty">Контакты</th><th data-i18n="ps.ui.prisutstvie">Присутствие</th><th data-i18n="ps.ui.transport_nochleg">Транспорт/ночлег</th><th data-i18n="ps.ui.uchebnik">Учебник</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
@@ -193,7 +202,7 @@
           <label><span data-i18n="ps.ui.poryadok_predpochteniya">Порядок предпочтения</span><input type="number" id="s-rank" min="1"></label>
           <label><span data-i18n="ps.ui.utverzhden_filialom">Утверждён филиалом</span><select id="s-approved"><option data-i18n="ps.ui.net" value="false">Нет</option><option data-i18n="ps.ui.da" value="true">Да</option></select></label>
         </div>
-        <button data-i18n="ps.ui.dobavit_zamestitelya" class="btn-primary" id="add-substitute-btn">Добавить заместителя</button>
+        <button data-i18n="ps.ui.dobavit_zamestitelya" class="md-btn md-btn-filled" id="add-substitute-btn">Добавить заместителя</button>
       </div>
       <div id="substitutes-list"></div>
       <div class="panel">
@@ -211,17 +220,17 @@
       <div class="panel">
         <h3 data-i18n="ps.ui.dobavit_uchaschegosya">Добавить учащегося</h3>
         <div class="form-grid" id="student-form-fields"></div>
-        <button data-i18n="ps.ui.dobavit_uchaschegosya" class="btn-primary" id="add-student-btn">Добавить учащегося</button>
+        <button data-i18n="ps.ui.dobavit_uchaschegosya" class="md-btn md-btn-filled" id="add-student-btn">Добавить учащегося</button>
       </div>
 
       <div class="panel">
         <h3 data-i18n="ps.ui.klassy">Классы</h3>
         <div class="inline-form">
           <input type="text" id="class-name" placeholder="Название класса, например «Класс 1 — Прага»" data-i18n-placeholder="ps.ph.nazvanie_klassa_naprimer_klass">
-          <button data-i18n="ps.ui.dobavit_klass" class="btn-secondary" id="add-class-btn">+ Добавить класс</button>
+          <button data-i18n="ps.ui.dobavit_klass" class="md-btn md-btn-outlined" id="add-class-btn">+ Добавить класс</button>
         </div>
         <div id="classes-list"></div>
-        <button data-i18n="ps.ui.ravnomerno_raspredelit_po_klassam" class="btn-secondary" id="auto-distribute-btn">Равномерно распределить по классам</button>
+        <button data-i18n="ps.ui.ravnomerno_raspredelit_po_klassam" class="md-btn md-btn-outlined" id="auto-distribute-btn">Равномерно распределить по классам</button>
       </div>
 
       <details class="panel">
@@ -238,7 +247,7 @@
           </label>
           <label id="new-col-options-wrap" class="hidden"><span data-i18n="ps.ui.varianty_cherez_zapyatuyu">Варианты (через запятую)</span><input type="text" id="new-col-options" placeholder="Да, Нет" data-i18n-placeholder="ps.ph.da_net"></label>
         </div>
-        <button data-i18n="ps.ui.dobavit_stolbec" class="btn-secondary" id="add-column-btn">+ Добавить столбец</button>
+        <button data-i18n="ps.ui.dobavit_stolbec" class="md-btn md-btn-outlined" id="add-column-btn">+ Добавить столбец</button>
       </details>
 
       <details class="panel">
@@ -246,7 +255,7 @@
         <p data-i18n="ps.ui.zagruzite_pdf_s_tablicey" class="hint" style="margin-top:10px;">Загрузите PDF с таблицей учащихся — приложение попробует автоматически распознать строки и столбцы. Перед добавлением в базу вы сможете проверить и поправить результат.</p>
         <div class="inline-form">
           <input type="file" id="pdf-import-input" accept="application/pdf">
-          <button data-i18n="ps.ui.razobrat_pdf" class="btn-secondary" id="pdf-import-parse-btn">Разобрать PDF</button>
+          <button data-i18n="ps.ui.razobrat_pdf" class="md-btn md-btn-outlined" id="pdf-import-parse-btn">Разобрать PDF</button>
         </div>
         <p class="hint" id="pdf-import-status"></p>
       </details>
@@ -255,12 +264,12 @@
         <div class="panel-header-row">
           <h3 data-i18n="ps.ui.spisok_uchaschihsya">Список учащихся</h3>
           <div class="btn-row">
-            <button data-i18n="ps.ui.eksport" class="btn-secondary" id="open-export-picker-btn">Экспорт…</button>
-            <button data-i18n="ps.ui.formulyary_vseh_pdf" class="btn-secondary" id="export-all-formulaires-btn">Формуляры всех (PDF)</button>
+            <button data-i18n="ps.ui.eksport" class="md-btn md-btn-outlined" id="open-export-picker-btn">Экспорт…</button>
+            <button data-i18n="ps.ui.formulyary_vseh_pdf" class="md-btn md-btn-outlined" id="export-all-formulaires-btn">Формуляры всех (PDF)</button>
           </div>
         </div>
         <div style="overflow-x:auto;">
-          <table class="data-table" id="students-table">
+          <table class="md-table" id="students-table">
             <thead><tr id="students-table-head"></tr></thead>
             <tbody></tbody>
           </table>
@@ -288,9 +297,9 @@
         <ul class="fact-list" id="textbook-reminders"></ul>
       </div>
       <div class="btn-row">
-        <button data-i18n="ps.ui.sohranit" class="btn-primary" id="save-textbooks-btn">Сохранить</button>
-        <button data-i18n="ps.ui.eksport_pdf" class="btn-secondary" id="export-textbooks-pdf">Экспорт PDF</button>
-        <button data-i18n="ps.ui.eksport_csv" class="btn-secondary" id="export-textbooks-csv">Экспорт CSV</button>
+        <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-textbooks-btn">Сохранить</button>
+        <button data-i18n="ps.ui.eksport_pdf" class="md-btn md-btn-outlined" id="export-textbooks-pdf">Экспорт PDF</button>
+        <button data-i18n="ps.ui.eksport_csv" class="md-btn md-btn-outlined" id="export-textbooks-csv">Экспорт CSV</button>
       </div>
     </section>
 
@@ -335,7 +344,7 @@
         <div class="inline-form">
           <input type="text" id="na-name" placeholder="Имя пионера" data-i18n-placeholder="ps.ph.imya_pionera">
           <input type="text" id="na-reason" placeholder="Причина" data-i18n-placeholder="ps.ph.prichina">
-          <button data-i18n="ps.ui.dobavit" class="btn-secondary" id="add-na-btn">+ Добавить</button>
+          <button data-i18n="ps.ui.dobavit" class="md-btn md-btn-outlined" id="add-na-btn">+ Добавить</button>
         </div>
         <ul id="na-list" class="simple-list"></ul>
       </div>
@@ -344,7 +353,7 @@
         <div class="inline-form">
           <input type="text" id="ao-name" placeholder="Имя пионера" data-i18n-placeholder="ps.ph.imya_pionera">
           <input type="text" id="ao-congregation" placeholder="Собрание" data-i18n-placeholder="ps.ph.sobranie">
-          <button data-i18n="ps.ui.dobavit" class="btn-secondary" id="add-ao-btn">+ Добавить</button>
+          <button data-i18n="ps.ui.dobavit" class="md-btn md-btn-outlined" id="add-ao-btn">+ Добавить</button>
         </div>
         <ul id="ao-list" class="simple-list"></ul>
       </div>
@@ -352,8 +361,8 @@
         <p class="hint" id="expenses-note"></p>
       </div>
       <div class="btn-row">
-        <button data-i18n="ps.ui.sohranit" class="btn-primary" id="save-s253-btn">Сохранить</button>
-        <button data-i18n="ps.ui.eksport_pdf" class="btn-secondary" id="export-s253-pdf">Экспорт PDF</button>
+        <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-s253-btn">Сохранить</button>
+        <button data-i18n="ps.ui.eksport_pdf" class="md-btn md-btn-outlined" id="export-s253-pdf">Экспорт PDF</button>
       </div>
     </section>
 
@@ -373,7 +382,7 @@
         <h3 data-i18n="ps.ui.materialy_chek_list">Материалы — чек-лист</h3>
         <div id="sl-checklist"></div>
       </div>
-      <button data-i18n="ps.ui.sohranit" class="btn-primary" id="save-sl-btn">Сохранить</button>
+      <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-sl-btn">Сохранить</button>
     </section>
 
     <section id="route-backup" class="route hidden">
@@ -384,7 +393,7 @@
       <div class="panel">
         <p data-i18n="ps.ui.rekomenduetsya_delat_rezervnuyu_kopiyu">Рекомендуется делать резервную копию перед началом Школы и после заполнения S-253.</p>
         <div class="btn-row">
-          <button data-i18n="ps.ui.skachat_rezervnuyu_kopiyu_json" class="btn-primary" id="export-backup-btn">Скачать резервную копию (JSON)</button>
+          <button data-i18n="ps.ui.skachat_rezervnuyu_kopiyu_json" class="md-btn md-btn-filled" id="export-backup-btn">Скачать резервную копию (JSON)</button>
         </div>
       </div>
       <div class="panel">

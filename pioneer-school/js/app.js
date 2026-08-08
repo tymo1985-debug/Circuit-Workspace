@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 
 let LESSONS_SEED = null;
 
@@ -123,7 +123,7 @@ function renderLocationsList(locations) {
   el.innerHTML = locations.map((l, i) => `
     <div class="list-row">
       <span>${esc(l.hallName)} ${l.hallNumber ? '(' + esc(l.hallNumber) + ')' : ''}</span>
-      <button class="btn-text remove-location" data-index="${i}">${T('ps.app.udalit')}</button>
+      <button class="md-btn md-btn-text remove-location" data-index="${i}">${T('ps.app.udalit')}</button>
     </div>`).join('');
   $all('.remove-location', el).forEach((btn) => {
     btn.onclick = async () => {
@@ -258,8 +258,8 @@ function renderRegistrationsTable(list) {
       <td>${esc(T('ps.app.reg_transport', { car: Registration.YES_NO_LABELS[r.transport] || '—', lodging: Registration.YES_NO_LABELS[r.lodging] || '—' }))}</td>
       <td>${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
       <td>
-        ${r.convertedToStudentId ? '' : `<button class="btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--accent);">${T('ps.app.v_uchaschiesya')}</button>`}
-        <button class="btn-text remove-reg" data-id="${esc(r.id)}">${T('ps.app.udalit')}</button>
+        ${r.convertedToStudentId ? '' : `<button class="md-btn md-btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--accent);">${T('ps.app.v_uchaschiesya')}</button>`}
+        <button class="md-btn md-btn-text remove-reg" data-id="${esc(r.id)}">${T('ps.app.udalit')}</button>
       </td>
     </tr>`).join('');
 
@@ -315,13 +315,13 @@ async function renderSubstitutes() {
 function renderSubstitutesList(list) {
   const el = $('#substitutes-list');
   if (!list.length) { el.innerHTML = `<p class="hint">${T('ps.app.zamestiteli_poka_ne_dobavleny')}</p>`; return; }
-  el.innerHTML = `<div class="panel"><table class="data-table"><thead><tr><th>#</th><th>${T('ps.ui.imya')}</th><th>${T('ps.ui.vozrast')}</th><th>${T('ps.app.utverzhden')}</th><th></th></tr></thead><tbody>
+  el.innerHTML = `<div class="panel"><table class="md-table"><thead><tr><th>#</th><th>${T('ps.ui.imya')}</th><th>${T('ps.ui.vozrast')}</th><th>${T('ps.app.utverzhden')}</th><th></th></tr></thead><tbody>
     ${list.map((s) => `<tr>
       <td>${esc(s.rank ?? '—')}</td>
       <td>${esc(s.fullName)}${s.age >= 80 ? ' <span class="badge-warn">80+</span>' : ''}</td>
       <td>${esc(s.age ?? '—')}</td>
       <td>${s.approvedByBranch ? T('ps.ui.da') : T('ps.ui.net')}</td>
-      <td><button class="btn-text remove-sub" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button></td>
+      <td><button class="md-btn md-btn-text remove-sub" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
   $all('.remove-sub', el).forEach((btn) => {
@@ -480,7 +480,7 @@ function renderColumnsManager(columns) {
     <div class="column-row">
       <input type="text" class="col-rename" data-key="${esc(c.key)}" value="${esc(Students.label(c))}">
       <span class="column-type-badge">${esc({ text: T('ps.app.tekst'), textarea: T('ps.app.dlinnyy_tekst'), select: T('ps.app.spisok') }[c.type] || c.type)}</span>
-      ${c.protected ? `<span class="column-protected-badge">${T('ps.app.sistemnyy')}</span>` : `<button class="btn-text col-remove" data-key="${esc(c.key)}">${T('ps.app.udalit')}</button>`}
+      ${c.protected ? `<span class="column-protected-badge">${T('ps.app.sistemnyy')}</span>` : `<button class="md-btn md-btn-text col-remove" data-key="${esc(c.key)}">${T('ps.app.udalit')}</button>`}
     </div>`).join('');
 
   $all('.col-rename', el).forEach((input) => {
@@ -530,8 +530,8 @@ function renderStudentsTable(students, classes, columns) {
       ${cells}
       <td><select class="row-class-select" data-id="${esc(s.id)}">${classOptions}</select></td>
       <td>
-        <button class="btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.app.formulyar')}</button>
-        <button class="btn-text remove-student" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button>
+        <button class="md-btn md-btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.app.formulyar')}</button>
+        <button class="md-btn md-btn-text remove-student" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button>
       </td>
     </tr>`;
   }).join('');
@@ -640,7 +640,7 @@ function renderImportModal(existingColumns, resultPanelHtml) {
       <select class="import-mapping-select" data-idx="${i}" style="width:100%;font-size:11px;border:none;border-top:1px solid var(--line);">
         ${mappingOptions(mappings[i])}
       </select>
-      <button class="btn-text import-remove-col" data-idx="${i}" style="font-size:10px;">${T('ps.app.udalit_stolbec')}</button>
+      <button class="md-btn md-btn-text import-remove-col" data-idx="${i}" style="font-size:10px;">${T('ps.app.udalit_stolbec')}</button>
     </th>`).join('') + '<th class="col-remove-cell"></th>';
 
   const bodyRows = rows.map((row, rIdx) => `
@@ -649,7 +649,7 @@ function renderImportModal(existingColumns, resultPanelHtml) {
         const isAnomaly = anomalies && anomalies[rIdx] && anomalies[rIdx][cIdx];
         return `<td class="${isAnomaly ? 'import-anomaly-cell' : ''}" ${isAnomaly ? `title="${T('ps.app.pohozhe_na_skleyku_dvuh')}"` : ''}><div contenteditable="true" class="import-cell" data-row="${rIdx}" data-col="${cIdx}">${esc(row[cIdx] || '')}</div></td>`;
       }).join('')}
-      <td class="row-remove-cell"><button class="btn-text import-remove-row" data-idx="${rIdx}">✕</button></td>
+      <td class="row-remove-cell"><button class="md-btn md-btn-text import-remove-row" data-idx="${rIdx}">✕</button></td>
     </tr>`).join('');
 
   const hasNameMapping = currentMappingHasNameFields();
@@ -667,13 +667,13 @@ function renderImportModal(existingColumns, resultPanelHtml) {
       </table>
     </div>
     <div class="btn-row">
-      <button class="btn-secondary" id="import-add-row">${T('ps.app.stroka')}</button>
-      <button class="btn-secondary" id="import-add-col">${T('ps.app.stolbec')}</button>
+      <button class="md-btn md-btn-outlined" id="import-add-row">${T('ps.app.stroka')}</button>
+      <button class="md-btn md-btn-outlined" id="import-add-col">${T('ps.app.stolbec')}</button>
     </div>
     ${resultPanelHtml || ''}
     <div class="modal-close-row">
-      <button class="btn-secondary" id="import-cancel-btn">${resultPanelHtml ? T('ps.app.zakryt') : T('ps.app.otmena')}</button>
-      ${resultPanelHtml ? '' : `<button class="btn-primary" id="import-confirm-btn" ${hasNameMapping ? '' : 'disabled'}>${T('ps.app.import_btn', { n: rows.length })}</button>`}
+      <button class="md-btn md-btn-outlined" id="import-cancel-btn">${resultPanelHtml ? T('ps.app.zakryt') : T('ps.app.otmena')}</button>
+      ${resultPanelHtml ? '' : `<button class="md-btn md-btn-filled" id="import-confirm-btn" ${hasNameMapping ? '' : 'disabled'}>${T('ps.app.import_btn', { n: rows.length })}</button>`}
     </div>
   `);
 
@@ -793,12 +793,12 @@ async function openExportPicker() {
         </label>`).join('')}
     </div>
     <div class="btn-row">
-      <button class="btn-primary" id="export-do-pdf">${T('ps.app.skachat_pdf_spisok')}</button>
-      <button class="btn-primary" id="export-do-xlsx">${T('ps.app.skachat_excel_xlsx')}</button>
-      <button class="btn-secondary" id="export-do-csv">${T('ps.app.skachat_csv')}</button>
+      <button class="md-btn md-btn-filled" id="export-do-pdf">${T('ps.app.skachat_pdf_spisok')}</button>
+      <button class="md-btn md-btn-filled" id="export-do-xlsx">${T('ps.app.skachat_excel_xlsx')}</button>
+      <button class="md-btn md-btn-outlined" id="export-do-csv">${T('ps.app.skachat_csv')}</button>
     </div>
     <p class="hint">${T('ps.app.fayl_xlsx_otkryvaetsya_v')}</p>
-    <div class="modal-close-row"><button class="btn-secondary" id="export-close-btn">${T('ps.app.zakryt')}</button></div>
+    <div class="modal-close-row"><button class="md-btn md-btn-outlined" id="export-close-btn">${T('ps.app.zakryt')}</button></div>
   `);
 
   const getSelectedColumns = async () => {

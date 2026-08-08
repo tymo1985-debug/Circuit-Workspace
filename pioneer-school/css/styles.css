@@ -5,11 +5,13 @@
   --panel-bg: var(--md-surface-container-lowest);
   --ink: var(--md-on-surface);
   --ink-soft: var(--md-on-surface-variant);
-  /* Тёмный сайдбар — узнаваемая черта модуля, сохраняем,
-     но в фирменных фиолетовых тонах вместо зелёно-серых. */
-  --sidebar-bg: #221947;
-  --sidebar-ink: #f1eefb;
-  --sidebar-ink-soft: #8c7fb5;
+  /* Сайдбар следует теме приложения. Раньше здесь стоял жёсткий #221947:
+     тёмная панель внутри светлого модуля не подчинялась ни одной теме и
+     оставалась тёмной даже когда всё остальное светлело. Узнаваемость
+     модуля теперь несёт акцент (--cw-module из data-module), а не заливка. */
+  --sidebar-bg: var(--md-surface-container-low);
+  --sidebar-ink: var(--md-on-surface);
+  --sidebar-ink-soft: var(--md-on-surface-variant);
   --accent: var(--md-primary);
   --accent-soft: var(--md-secondary-container);
   --line: var(--md-outline-variant);
@@ -40,18 +42,35 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 
 /* ---------- SIDEBAR ---------- */
+/* Сайдбар живёт под общей шапкой модуля, поэтому липнет не к верху окна,
+   а к нижней кромке шапки. Высота считается от той же величины —
+   --cw-topbar-h из общего слоя, не хардкод. */
 .sidebar {
-  width: 260px;
+  width: var(--cw-sidebar-w);
   flex-shrink: 0;
   background: var(--sidebar-bg);
   color: var(--sidebar-ink);
+  border-right: 1px solid var(--md-outline-variant);
   display: flex;
   flex-direction: column;
-  padding: 24px 18px;
+  padding: var(--cw-space-3) var(--cw-space-3) var(--cw-space-4);
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: var(--cw-topbar-h);
+  height: calc(100vh - var(--cw-topbar-h));
   overflow-y: auto;
+}
+
+/* Ниже 900px сайдбар перестаёт быть колонкой и становится обычным блоком
+   над содержимым: 260px из 360px ширины телефона под навигацию отдать нельзя. */
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .sidebar {
+    width: auto; position: static; height: auto;
+    border-right: 0; border-bottom: 1px solid var(--md-outline-variant);
+  }
+  .nav { flex-direction: row; flex-wrap: wrap; gap: var(--cw-space-1); }
+  .nav-group-label { width: 100%; margin: var(--cw-space-2) var(--cw-space-1) 2px; }
+  .sidebar-footer { display: none; }
 }
 
 .brand {
@@ -66,12 +85,12 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   height: 42px;
   border-radius: 50%;
   background: var(--accent);
-  color: #211505;
+  color: var(--md-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 14px;
   letter-spacing: 0.5px;
   flex-shrink: 0;
@@ -79,7 +98,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .brand-title {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 15px;
   line-height: 1.25;
 }
@@ -111,33 +130,36 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 .nav-item {
   background: transparent;
   border: none;
-  color: var(--sidebar-ink);
+  color: var(--md-on-surface-variant);
   text-align: left;
-  padding: 9px 12px;
-  border-radius: 8px;
+  padding: 0 var(--cw-space-4);
+  height: 40px;
+  border-radius: var(--md-radius-full);
   cursor: pointer;
-  font-size: 13.5px;
-  transition: background 0.15s ease;
+  font: 500 14px/20px var(--font-body);
+  letter-spacing: 0.1px;
+  transition: background var(--md-dur-short) var(--md-ease-standard);
 }
-.nav-item:hover { background: rgba(255,255,255,0.06); }
+.nav-item:hover { background: var(--md-surface-container-high); }
 .nav-item.active {
-  background: var(--accent);
-  color: #211505;
-  font-weight: 600;
+  background: var(--cw-module-container);
+  color: var(--cw-module-on-container);
+  font-weight: 500;
 }
 
 .sidebar-footer {
   font-size: 10.5px;
   color: var(--sidebar-ink-soft);
   padding: 10px 8px 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--md-outline-variant);
   margin-top: 16px;
 }
 
 /* ---------- CONTENT ---------- */
 .content {
   flex: 1;
-  padding: 36px 44px 80px;
+  min-width: 0;
+  padding: var(--cw-space-5) var(--cw-space-5) var(--cw-space-8);
   max-width: 980px;
 }
 
@@ -148,7 +170,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 .route-header h1 {
   font-family: var(--font-display);
   font-size: 26px;
-  font-weight: 600;
+  font-weight: 500;
   margin: 0 0 4px;
 }
 
@@ -215,7 +237,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 .stat-value {
   font-family: var(--font-display);
   font-size: 26px;
-  font-weight: 600;
+  font-weight: 500;
   margin: 6px 0 2px;
 }
 .stat-sub { font-size: 12.5px; color: var(--ink-soft); }
@@ -239,7 +261,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #FCFBF7;
+  background: var(--md-surface-container-lowest);
   color: var(--ink);
 }
 
@@ -250,36 +272,14 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   font-size: 13px !important;
 }
 
-.btn-primary, .btn-secondary, .btn-text {
-  cursor: pointer;
-  border-radius: 7px;
-  font-weight: 600;
-  border: none;
-}
-.btn-primary {
-  background: var(--md-primary);
-  color: var(--md-on-primary);
-  padding: 10px 24px;
-  border-radius: var(--md-radius-full);
-  font: 500 14px/20px var(--md-font-family);
-  letter-spacing: 0.1px;
-}
-.btn-secondary {
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
-  padding: 10px 24px;
-  border-radius: var(--md-radius-full);
-  font: 500 14px/20px var(--md-font-family);
-  letter-spacing: 0.1px;
-}
-.btn-text {
-  background: transparent;
-  color: var(--md-error);
-  padding: 6px 12px;
-  border-radius: var(--md-radius-full);
-  font: 500 14px/20px var(--md-font-family);
-  letter-spacing: 0.1px;
-}
+
+/* Кнопки и таблицы данных переехали в общий слой: .md-btn (5 видов) и
+   .md-table. Прежние .btn-primary/.btn-secondary/.btn-text/.data-table
+   удалены — они дублировали общие компоненты один в один.
+   .share-btn остаётся: это ссылка <a>, которой нужен только сброс
+   подчёркивания поверх .md-btn.
+   .editable-table НЕ переведена намеренно: это редактируемая сетка
+   предпросмотра импорта с contenteditable-ячейками, а не таблица данных. */
 
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 
@@ -296,27 +296,10 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 }
 .list-row:last-child { border-bottom: none; }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.data-table th {
-  text-align: left;
-  font: 500 12px/16px var(--md-font-family);
-  letter-spacing: 0.5px;
-  color: var(--md-on-surface-variant);
-  border-bottom: 1px solid var(--md-outline-variant);
-  padding: 12px 8px;
-}
-.data-table td {
-  padding: 12px 8px;
-  border-bottom: 1px solid var(--md-outline-variant);
-}
 
 .badge-warn {
   background: var(--warn);
-  color: white;
+  color: var(--md-on-error);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 10px;
@@ -331,7 +314,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .result-number {
   font-family: var(--font-display);
   font-size: 44px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--accent);
 }
 .result-label { color: var(--ink-soft); font-size: 14px; }
@@ -346,9 +329,9 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 }
 .lesson-number {
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 500;
   background: var(--accent-soft);
-  color: #4A3418;
+  color: var(--md-on-secondary-container);
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 13px;
@@ -363,7 +346,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   margin-top: 8px;
   border-radius: 0 6px 6px 0;
 }
-.media-label { font-size: 13px; font-weight: 600; }
+.media-label { font-size: 13px; font-weight: 500; }
 .media-cue { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 
 .simple-list { padding-left: 18px; font-size: 13.5px; }
@@ -399,9 +382,9 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .pill-option input { position: absolute; opacity: 0; width: 0; height: 0; }
 .pill-option span {
   display: inline-block; padding: 9px 18px; border: 1px solid var(--line); border-radius: 20px;
-  font-size: 13.5px; cursor: pointer; background: #FCFBF7; color: var(--ink-soft); transition: all .15s ease;
+  font-size: 13.5px; cursor: pointer; background: var(--md-surface-container-lowest); color: var(--ink-soft); transition: all .15s ease;
 }
-.pill-option input:checked + span { background: var(--accent); border-color: var(--accent); color: #211505; font-weight: 600; }
+.pill-option input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--md-on-primary); font-weight: 500; }
 .pill-option input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .conditional {
@@ -413,17 +396,17 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
 .check-card {
   display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line);
-  border-radius: 8px; background: #FCFBF7; font-size: 13.5px; cursor: pointer;
+  border-radius: 8px; background: var(--md-surface-container-lowest); font-size: 13.5px; cursor: pointer;
 }
 .check-card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .check-card input { accent-color: var(--accent); }
 
 .closing-note { background: var(--panel-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); }
 .closing-note p { margin: 0 0 12px; }
-.closing-note .deadline-line, .closing-note .method-line { color: var(--ink); font-weight: 600; }
+.closing-note .deadline-line, .closing-note .method-line { color: var(--ink); font-weight: 500; }
 .placeholder-empty { color: var(--warn); font-style: italic; font-weight: 400; }
 
-.success-banner { display: none; background: #233A2C; color: #E9F2EC; padding: 16px 20px; border-radius: var(--radius); font-size: 14px; }
+.success-banner { display: none; background: var(--status-success-bg); color: var(--status-success); border: 1px solid var(--status-success); padding: 16px 20px; border-radius: var(--radius); font-size: 14px; }
 .success-banner.show { display: block; }
 
 .required-mark { color: var(--warn); }
@@ -432,7 +415,9 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .share-btn { text-decoration: none; }
 
 @media print {
-  .org-panel, .btn-row, .share-row, .sidebar { display: none !important; }
+  /* .md-topbar-v2 скрывается и общим слоем, но правило печати модуля
+     должно быть самодостаточным и не зависеть от общего файла. */
+  .md-topbar-v2, .org-panel, .btn-row, .share-row, .sidebar { display: none !important; }
   body { background: #fff; }
   fieldset, .panel { break-inside: avoid; border-color: #999; }
 }
@@ -464,7 +449,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .column-protected-badge {
   font-size: 10px;
   background: var(--accent-soft);
-  color: #4A3418;
+  color: var(--md-on-secondary-container);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -504,20 +489,20 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .editable-table [contenteditable] {
   padding: 6px 8px; outline: none; min-height: 20px; white-space: pre-wrap;
 }
-.editable-table [contenteditable]:focus { background: #FFF9EC; }
+.editable-table [contenteditable]:focus { background: var(--md-primary-container); }
 .editable-table .row-remove-cell, .editable-table .col-remove-cell { text-align: center; background: var(--bg); }
-.editable-table .import-anomaly-cell { background: #FBE9D9; }
-.editable-table .import-anomaly-cell [contenteditable]:focus { background: #FFF3E4; }
+.editable-table .import-anomaly-cell { background: var(--status-important-bg); }
+.editable-table .import-anomaly-cell [contenteditable]:focus { background: var(--md-primary-container); }
 
 /* --- Переключатель языка интерфейса в сайдбаре (js/i18n.js) ---
    Язык документов (PDF-анкета, формуляры, экспорт) намеренно не зависит от
    этого выбора — это свойство бумаги, а не оболочки. */
-.sidebar-lang{padding:8px 12px}
-.sidebar-lang select{
-  width:100%;height:34px;padding:0 8px;border-radius:8px;
-  border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);
-  color:inherit;font:inherit;font-size:13px;cursor:pointer;
+/* Выбор языка переехал из сайдбара в шапку модуля (.md-topbar-v2__actions).
+   Прежний .sidebar-lang удалён вместе с хардкодом option{color:#1b1b1f;
+   background:#fff} — он не подчинялся теме. */
+#ui-language{
+  height:32px;padding:0 10px;border-radius:var(--md-radius-full);
+  border:1px solid var(--md-outline-variant);background:var(--md-surface);
+  color:var(--md-on-surface);font:500 12px/16px var(--md-font-family);cursor:pointer;
 }
-.sidebar-lang select option{color:#1b1b1f;background:#fff}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-@media print{.sidebar-lang{display:none!important}}

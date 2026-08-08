@@ -156,8 +156,8 @@
     </div>
 
     <div class="btn-row">
-      <button type="submit" class="btn-primary">Отправить формуляр</button>
-      <button type="button" class="btn-secondary" id="pdf-btn">Скачать формуляр (PDF)</button>
+      <button type="submit" class="md-btn md-btn-filled">Отправить формуляр</button>
+      <button type="button" class="md-btn md-btn-outlined" id="pdf-btn">Скачать формуляр (PDF)</button>
     </div>
   </form>
 </div>
@@ -295,9 +295,9 @@ Email: ${record.email || '-'}
     const waHref = `https://wa.me/${waNumber.replace('+', '')}?text=${encodeURIComponent(summary)}`;
 
     shareRow.innerHTML = `
-      <a class="btn-primary share-btn" href="${mailtoHref}">Отправить по email</a>
-      ${waNumber ? `<a class="btn-secondary share-btn" href="${waHref}" target="_blank" rel="noopener">Отправить в WhatsApp</a>` : ''}
-      <button type="button" class="btn-secondary share-btn" id="pdf-after-submit">Скачать PDF</button>
+      <a class="md-btn md-btn-filled md-btn-tonal" href="${mailtoHref}">Отправить по email</a>
+      ${waNumber ? `<a class="md-btn md-btn-outlined md-btn-tonal" href="${waHref}" target="_blank" rel="noopener">Отправить в WhatsApp</a>` : ''}
+      <button type="button" class="md-btn md-btn-outlined md-btn-tonal" id="pdf-after-submit">Скачать PDF</button>
     `;
     // Письмо и WhatsApp отправляют только текст — PDF пользователь прикладывает
     // сам, поэтому кнопка выгрузки остаётся доступной и после отправки.
