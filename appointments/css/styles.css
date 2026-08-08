@@ -88,7 +88,8 @@ body {
 .list-row input:focus { outline: none; border: 2px solid var(--md-primary); padding: 0 11px; }
 .list-actions { display: flex; gap: var(--cw-space-1); margin-top: var(--cw-space-2); }
 
-#senderFields.locked { opacity: 0.55; pointer-events: none; }
+/* Класс .locked удалён в фазе 7: его не ставит ни модуль, ни shared/sender.js.
+   Общие данные отправителя редактируются напрямую, блокировки нет. */
 
 .preview { min-width: 0; }
 

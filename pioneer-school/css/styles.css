@@ -1,3 +1,7 @@
+
+/* Удалено в фазе 7 (уборка после миграции): .brand, .brand-mark, .brand-text,
+   .brand-title, .brand-sub — бренд переехал в общую шапку модуля;
+   .check-row, .share-btn — не встречались ни в разметке, ни в JS. */
 :root {
   /* Мост на общие MD3-токены (shared/style.css). Имена переменных
      сохранены без изменений — на них ссылается ~500 правил ниже. */
@@ -71,43 +75,6 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   .nav { flex-direction: row; flex-wrap: wrap; gap: var(--cw-space-1); }
   .nav-group-label { width: 100%; margin: var(--cw-space-2) var(--cw-space-1) 2px; }
   .sidebar-footer { display: none; }
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-}
-
-.brand-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--md-on-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-}
-
-.brand-title {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 15px;
-  line-height: 1.25;
-}
-
-.brand-sub {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--sidebar-ink-soft);
-  margin-top: 2px;
 }
 
 .nav {
@@ -412,12 +379,14 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .required-mark { color: var(--warn); }
 
 .share-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-.share-btn { text-decoration: none; }
 
 @media print {
   /* .md-topbar-v2 скрывается и общим слоем, но правило печати модуля
      должно быть самодостаточным и не зависеть от общего файла. */
-  .md-topbar-v2, .org-panel, .btn-row, .share-row, .sidebar { display: none !important; }
+  /* .org-panel удалён из списка: такого класса нет ни в разметке, ни в JS —
+     призрак от прежней вёрстки. Правило печати не должно ссылаться на
+     несуществующие селекторы: это уже трижды скрывало реальные ошибки. */
+  .md-topbar-v2, .btn-row, .share-row, .sidebar { display: none !important; }
   body { background: #fff; }
   fieldset, .panel { break-inside: avoid; border-color: #999; }
 }
