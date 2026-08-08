@@ -16,8 +16,8 @@
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--md-font-family);overflow-x:hidden} body{display:flex}
   body::before{content:'';position:fixed;left:0;top:0;bottom:0;width:280px;background:linear-gradient(180deg,var(--accent),var(--accent2));z-index:0}
   h1,h2,h3,h4,p{margin:0} .brand h1{font-size:20px;margin-bottom:6px}
-  .app{display:grid;grid-template-columns:280px 1fr;width:100%;min-height:100vh;min-height:100dvh;position:relative;z-index:1}
-  .sidebar{background:linear-gradient(180deg,var(--accent),var(--accent2));color:#fff;padding:24px 18px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:18px}
+  .app{display:grid;grid-template-columns:280px 1fr;width:100%;min-height:calc(100vh - var(--cw-topbar-h));min-height:calc(100dvh - var(--cw-topbar-h));position:relative;z-index:1}
+  .sidebar{background:linear-gradient(180deg,var(--accent),var(--accent2));color:#fff;padding:24px 18px;min-height:calc(100vh - var(--cw-topbar-h));min-height:calc(100dvh - var(--cw-topbar-h));display:flex;flex-direction:column;gap:18px}
   .brand{display:flex;gap:12px;align-items:center}.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:700;overflow:hidden}.menu{display:grid;gap:8px}
   .nav-btn{appearance:none;border:0;background:transparent;color:#eef7f1;padding:12px 14px;border-radius:14px;text-align:left;font-size:15px;cursor:pointer;display:flex;gap:10px;align-items:center}.nav-btn.active,.nav-btn:hover{background:rgba(255,255,255,.12)}
   .summary{margin-top:auto;padding:14px;border-radius:16px;background:rgba(255,255,255,.1);font-size:14px}.summary strong{display:block;margin-bottom:8px}
@@ -105,7 +105,7 @@
   #calendarLayoutPresetSelect{display:none !important}
   @media (max-width:767px){body::before{display:none!important}}
  @media (max-width:1200px){body::before{display:none!important}}
- @media print{body::before,.sidebar,.topbar,.calendar-side,.bottom-nav,.mobile-overlay,.toast-wrap,.editor,.modal{display:none !important}.app{grid-template-columns:1fr !important}.main{padding:0 !important}.calendar-shell,.md-card{box-shadow:none !important;border:1px solid #ccc !important}}
+ @media print{body::before,.md-topbar-v2,.sidebar,.topbar,.calendar-side,.bottom-nav,.mobile-overlay,.toast-wrap,.editor,.modal{display:none !important}.app{grid-template-columns:1fr !important}.main{padding:0 !important}.calendar-shell,.md-card{box-shadow:none !important;border:1px solid #ccc !important}}
  
  /* v9.5.2 cleanup: no team panel, reliable menu, side details panel, dynamic accent */
  .app.menu-open .sidebar{left:0 !important;z-index:2500 !important;pointer-events:auto !important}
@@ -226,8 +226,16 @@ body::before{display:none !important}
 .sy-period-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top}
 .sy-period-bar:hover{box-shadow:0 2px 8px rgba(0,0,0,.14), inset 0 0 0 1px var(--bar-color)}
 .sy-bar-more{position:absolute;right:4px;bottom:0;z-index:5;border:0;background:transparent;color:var(--muted);font-size:9px;cursor:pointer;padding:0}
-@supports not (background: color-mix(in srgb, red 20%, white)){.sy-period-bar{background:#dff1d7}}
+@supports not (background: color-mix(in srgb, red 20%, white)){.sy-period-bar{background:var(--status-success-bg)}}
 @media (max-width:680px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
+
+    /* --- Общая шапка модуля (дизайн-система) ---------------------------
+       Логотип Клиндария — цветной SVG, поэтому подложке маркера фон не нужен:
+       она бы спорила с собственными цветами знака. */
+    .md-topbar-v2__mark{background:transparent}
+    .md-topbar-v2__mark > svg{width:26px;height:26px}
+    /* Экранный заголовок (.topbar) остаётся внутри .main и продолжает
+       работать как раньше — measureTopbarHeight() меряет именно его. */
 </style>
 <link rel="stylesheet" href="../shared/style.css">
 <!-- Общий слой локализации. Подключается синхронно и ДО app.js (он с defer),
@@ -240,11 +248,32 @@ body::before{display:none !important}
 <script src="../shared/doclang.js"></script>
 <script src="i18n/dict.js"></script>
 </head>
-<body class="cw-has-bottom-nav">
+<!-- data-module включает акцент модуля (--cw-module): индиго #4a3ab5 →
+     бирюза #12706f из градиента иконки circuit-planner. Пользовательский
+     выбор цвета (--accent/--accent2) НЕ трогаем: он остаётся собственной
+     настройкой модуля и красит сайдбар как прежде. -->
+<body class="cw-has-bottom-nav" data-module="circuit-planner">
+  <!-- Общая шапка модуля. У Клиндария её не было: название жило в сайдбаре,
+       а .topbar внутри .main — это строка заголовка ЭКРАНА, а не шапка
+       приложения. Обе сохранены и делят роли: .md-topbar-v2 отвечает за
+       принадлежность к Circuit Workspace (возврат в хаб, версия), .topbar —
+       за заголовок текущего экрана.
+       ВАЖНО: App.ui.measureTopbarHeight() меряет именно .topbar и кладёт
+       результат в --topbar-h, от которого зависит липкая боковая панель
+       календаря. Селектор там менять нельзя. -->
+  <header class="md-topbar-v2">
+    <div class="md-topbar-v2__lead">
+      <div class="md-topbar-v2__mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="150" y="96" width="26" height="76" rx="13" fill="#e6dcff"/><rect x="336" y="96" width="26" height="76" rx="13" fill="#e6dcff"/><rect x="120" y="140" width="272" height="256" rx="32" fill="#f1eefb"/><rect x="120" y="140" width="272" height="72" rx="32" fill="#3d2470"/><rect x="120" y="180" width="272" height="32" fill="#3d2470"/><circle cx="160" cy="252" r="10" fill="#c9a3ff"/><circle cx="200" cy="252" r="10" fill="#c9a3ff"/><circle cx="240" cy="252" r="10" fill="#c9a3ff"/><circle cx="160" cy="292" r="10" fill="#c9a3ff"/><path d="M204 318 L244 358 L316 274" fill="none" stroke="#4be0d0" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="md-topbar-v2__titles">
+        <p class="md-topbar-v2__title" data-i18n="module.circuit-planner.title">Клиндарий</p>
+        <p class="md-topbar-v2__sub"><span id="cwModuleVersion"></span></p>
+      </div>
+    </div>
+    <span class="md-topbar-v2__spacer"></span>
+  </header>
   <div class="app" id="appRoot">
     <div class="mobile-overlay" id="mobileOverlay" hidden></div>
     <aside class="sidebar">
-      <div class="brand"><div class="logo"><svg width="40" height="40" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="150" y="96" width="26" height="76" rx="13" fill="#e6dcff"/><rect x="336" y="96" width="26" height="76" rx="13" fill="#e6dcff"/><rect x="120" y="140" width="272" height="256" rx="32" fill="#f1eefb"/><rect x="120" y="140" width="272" height="72" rx="32" fill="#3d2470"/><rect x="120" y="180" width="272" height="32" fill="#3d2470"/><circle cx="160" cy="252" r="10" fill="#c9a3ff"/><circle cx="200" cy="252" r="10" fill="#c9a3ff"/><circle cx="240" cy="252" r="10" fill="#c9a3ff"/><circle cx="160" cy="292" r="10" fill="#c9a3ff"/><path d="M204 318 L244 358 L316 274" fill="none" stroke="#4be0d0" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h1 data-i18n="module.circuit-planner.title">Клиндарий</h1><p>Circuit Workspace</p></div></div>
       <nav class="menu" id="desktopNav"></nav>
       <div class="summary"><strong data-i18n="cp.quick_status">Быстрый статус</strong><div id="sideStatus" class="small"></div></div>
     </aside>

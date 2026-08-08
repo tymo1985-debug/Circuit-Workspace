@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.63.0',
+      version: '9.64.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1062,6 +1062,9 @@
         const brandH1 = q('.brand h1'); if (brandH1) brandH1.textContent = App.utils.t('appTitle');
         const brandP = q('.brand p'); if (brandP) brandP.textContent = `v${App.config.version} • Circuit Workspace`;
         const versionBadge = q('.version-badge'); if (versionBadge) versionBadge.textContent = `${App.utils.t('version')}: v${App.config.version}`;
+        // Версия в общей шапке модуля — короткая, как в остальных модулях
+        // Circuit Workspace. Бейдж выше остаётся: он часть экрана календаря.
+        const cwVersion = q('#cwModuleVersion'); if (cwVersion) cwVersion.textContent = `v${App.config.version}`;
         // Keep the tab title in sync with the single source of truth instead of hardcoding it in index.html.
         document.title = `${App.utils.t('appTitle')} v${App.config.version}`;
         if (App.els.themeBtn) App.els.themeBtn.textContent = App.utils.t('theme');
