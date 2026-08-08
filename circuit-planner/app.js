@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.64.1',
+      version: '9.64.2',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2062,6 +2062,12 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       measureTopbarHeight() {
         const topbar = document.querySelector('.topbar');
         if (topbar && topbar.offsetHeight) document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+        // Общая шапка модуля: от её реальной высоты зависит, откуда начинается
+        // выезжающая шторка меню. Держать здесь 64px из общего слоя нельзя —
+        // высота меняется от языка и размера шрифта, и шторка либо залезала бы
+        // под шапку, либо оставляла щель.
+        const cwBar = document.querySelector('.md-topbar-v2');
+        if (cwBar && cwBar.offsetHeight) document.documentElement.style.setProperty('--cw-topbar-h', `${cwBar.offsetHeight}px`);
         // Only trust this at (near) the top of the page — calendar-shell isn't sticky, so its
         // on-screen position only reflects the true natural gap when we haven't scrolled away from it.
         if (window.scrollY <= 4) {

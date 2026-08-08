@@ -232,11 +232,7 @@ body::before{display:none !important}
 .sy-period-bar:hover{box-shadow:0 2px 8px rgba(0,0,0,.14), inset 0 0 0 1px var(--bar-color)}
 .sy-bar-more{position:absolute;right:4px;bottom:0;z-index:5;border:0;background:transparent;color:var(--muted);font-size:9px;cursor:pointer;padding:0}
 @supports not (background: color-mix(in srgb, red 20%, white)){.sy-period-bar{background:var(--status-success-bg)}
-    @media (max-width:900px){
-      .md-topbar-v2{position:static;z-index:auto}
-      /* Шапка не должна оставаться над выезжающим сайдбаром даже случайно */
-      .app.menu-open ~ .md-topbar-v2,.app.menu-open .md-topbar-v2{z-index:auto}
-    }}
+}
 @media (max-width:680px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
 
     /* --- Общая шапка модуля (дизайн-система) ---------------------------
@@ -246,6 +242,32 @@ body::before{display:none !important}
     .md-topbar-v2__mark > svg{width:26px;height:26px}
     /* Экранный заголовок (.topbar) остаётся внутри .main и продолжает
        работать как раньше — measureTopbarHeight() меряет именно его. */
+
+    /* --- Выезжающее меню и общая шапка ----------------------------------
+       Ниже 1200px сайдбар модуля превращается в шторку position:fixed
+       с top:0 — то есть уезжает ПОД липкую шапку, и её верх (первый пункт
+       меню) становится недоступен. Порог 1200px взят не с потолка: это
+       собственный порог модуля, в нём объявлены .sidebar{position:fixed}
+       и .app{grid-template-columns:1fr}.
+
+       Лечим не отключением липкости (шапка нужна и на телефоне), а тем,
+       что шторка и её затемнение начинаются ПОД шапкой. Кнопка возврата
+       в хаб при открытом меню остаётся доступной — это и правильно. */
+    @media (max-width:1200px){
+      .sidebar{
+        top:var(--cw-topbar-h) !important;
+        height:calc(100dvh - var(--cw-topbar-h)) !important;
+        max-height:calc(100dvh - var(--cw-topbar-h)) !important;
+      }
+      .mobile-overlay{top:var(--cw-topbar-h) !important}
+    }
+    /* Класс menu-open ставится только когда шторка реально открыта.
+       Правило продублировано без media на случай, если инжектируемый
+       calendarViewStyles включит шторку вне этого диапазона. */
+    .app.menu-open .sidebar{
+      top:var(--cw-topbar-h) !important;
+      height:calc(100dvh - var(--cw-topbar-h)) !important;
+    }
 </style>
 <link rel="stylesheet" href="../shared/style.css">
 <!-- Общий слой локализации. Подключается синхронно и ДО app.js (он с defer),
