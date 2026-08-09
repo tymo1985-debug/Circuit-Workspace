@@ -67,15 +67,15 @@
         <input type="text" id="firstName" name="firstName" required autocomplete="given-name">
       </div>
       <div class="field">
-        <label for="address"><span data-doc-i18n="doc.ps.reg.field.address">Почтовый адрес проживания</span> <span class="required-mark">*</span></label>
+        <label for="address"><span data-doc-i18n="doc.ps.reg.field.address">Адрес проживания</span> <span class="required-mark">*</span></label>
         <input type="text" id="address" name="address" required autocomplete="street-address">
       </div>
       <div class="field">
-        <label for="email"><span data-doc-i18n="doc.ps.reg.field.email">Адрес электронной почты</span> <span class="required-mark">*</span></label>
+        <label for="email"><span data-doc-i18n="doc.ps.reg.field.email">Email</span> <span class="required-mark">*</span></label>
         <input type="email" id="email" name="email" required autocomplete="email">
       </div>
       <div class="field">
-        <label for="phone"><span data-doc-i18n="doc.ps.reg.field.phone">Номер мобильного телефона</span> <span class="required-mark">*</span></label>
+        <label for="phone"><span data-doc-i18n="doc.ps.reg.field.phone">Телефон (WhatsApp)</span> <span class="required-mark">*</span></label>
         <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="+000 00 000 00 00">
         <span class="hint" data-doc-i18n="doc.ps.reg.hint.phone">Желательно указать номер, привязанный к WhatsApp — так с вами будет проще связаться.</span>
       </div>
@@ -91,7 +91,7 @@
         </div>
       </div>
       <div class="conditional" id="attend-reason-block">
-        <label for="attend-reason" data-doc-i18n="doc.ps.reg.field.attendReason">Пожалуйста, укажите причину</label>
+        <label for="attend-reason" data-doc-i18n="doc.ps.reg.field.attendReason">Если нет — укажите причину</label>
         <textarea id="attend-reason" name="attendReason" rows="2"></textarea>
       </div>
     </fieldset>
@@ -99,7 +99,7 @@
     <fieldset>
       <legend data-doc-i18n="doc.ps.reg.section.transport">3. Транспорт</legend>
       <div class="field">
-        <span class="group-label" data-doc-i18n="doc.ps.reg.field.transport">Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до места проведения школы?</span>
+        <span class="group-label" data-doc-i18n="doc.ps.reg.field.transport">Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до Школы?</span>
         <div class="radio-row">
           <label class="pill-option"><input type="radio" name="transport" value="yes"><span data-doc-i18n="doc.ps.reg.opt.yes">Да</span></label>
           <label class="pill-option"><input type="radio" name="transport" value="no"><span data-doc-i18n="doc.ps.reg.opt.no">Нет</span></label>
@@ -139,7 +139,7 @@
       <div class="field" style="margin-top:6px;">
         <span class="group-label" data-doc-i18n="doc.ps.reg.field.format">Формат учебника (можно выбрать несколько)</span>
         <div class="format-grid">
-          <label class="check-card"><input type="checkbox" name="format" value="print"> <span data-doc-i18n="doc.ps.reg.opt.format.print">Печатный экземпляр</span></label>
+          <label class="check-card"><input type="checkbox" name="format" value="print"> <span data-doc-i18n="doc.ps.reg.opt.format.print">Печатный</span></label>
           <label class="check-card"><input type="checkbox" name="format" value="jwpub"> <span data-doc-i18n="doc.ps.reg.opt.format.jwpub">Электронный JWPub</span></label>
           <label class="check-card"><input type="checkbox" name="format" value="pdf"> PDF</label>
           <label class="check-card"><input type="checkbox" name="format" value="epub"> EPUB</label>

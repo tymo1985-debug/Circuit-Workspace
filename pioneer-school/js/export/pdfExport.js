@@ -354,11 +354,38 @@ const PdfExport = {
     return y + 22;
   },
 
-  _label(doc, x, y, text, size = 11) {
+  // Подпись. `maxWidth` — ширина, после которой текст переносится на
+  // следующую строку.
+  //
+  // ЗАЧЕМ ПЕРЕНОС. Без него jsPDF рисует строку одной линией и молча уводит
+  // хвост за правое поле — бумага обрезает. Вопрос про автомобиль вылезал на
+  // 16 пунктов уже по-русски (531 при 515 доступных); в немецком и польском
+  // те же вопросы длиннее ещё на четверть. Соседний _labelLine умеет
+  // ужиматься с 09.08.2026, _label — не умел.
+  //
+  // @returns {number} y последней нарисованной строки: если подпись заняла
+  //   две строки, вызывающий код должен знать об этом, иначе следующий
+  //   элемент ляжет поверх.
+  _label(doc, x, y, text, size = 11, maxWidth = 0) {
     doc.setFont('DejaVuSans');
     doc.setFontSize(size);
     doc.setTextColor(20);
-    doc.text(this._sanitizeForFont(text), x, y);
+    const safe = this._sanitizeForFont(text);
+    if (!maxWidth) {
+      doc.text(safe, x, y);
+      return y;
+    }
+    const lines = doc.splitTextToSize(safe, maxWidth);
+    doc.text(lines, x, y);
+    return y + (lines.length - 1) * (size + 3);
+  },
+
+  // Двоеточие после подписи дорисовывается здесь, а не хранится в словаре:
+  // переводчику достаётся чистая подпись без пунктуации, одинаковая для
+  // бумаги и онлайн-анкеты. Пустую строку не трогаем — «:» в одиночестве
+  // выглядел бы как опечатка.
+  _withColon(text) {
+    return text ? text + ':' : text;
   },
 
   _answerLine(doc, x, y, width) {
@@ -375,8 +402,9 @@ const PdfExport = {
   // подпись шире, линия сдвигается вправо и на столько же укорачивается, не
   // вылезая за правое поле. На русском раскладка не меняется ни на пункт.
   _labelLine(doc, x, y, text, lineX, lineWidth, size = 11) {
-    this._label(doc, x, y, text, size);
-    const start = Math.max(lineX, x + doc.getTextWidth(this._sanitizeForFont(text)) + 8);
+    const label = this._withColon(text);
+    this._label(doc, x, y, label, size);
+    const start = Math.max(lineX, x + doc.getTextWidth(this._sanitizeForFont(label)) + 8);
     const end = lineX + lineWidth;
     if (end > start + 20) this._answerLine(doc, start, y + 2, end - start);
   },
@@ -397,6 +425,11 @@ const PdfExport = {
       this._checkbox(doc, x, y, item.label, size);
       cursor = x + width;
     }
+    // Правый край последнего элемента: тому, кто дорисовывает линию для
+    // ответа следом за рядом («Другой: ______»), нужно знать, где ряд
+    // реально кончился. С жёсткой координатой линия заходила под подпись —
+    // «Другой:» дотягивался до 506, а линия начиналась с 475.
+    this._lastCheckboxRowEnd = cursor;
     return y;
   },
 
@@ -424,60 +457,66 @@ const PdfExport = {
 
     // 1. Личные данные
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.personal'));
-    this._labelLine(doc, 40, y, D('doc.ps.blank.lastName'), 100, 200);
-    this._labelLine(doc, 320, y, D('doc.ps.blank.firstName'), 360, 195);
+    this._labelLine(doc, 40, y, D('doc.ps.reg.field.lastName'), 100, 200);
+    this._labelLine(doc, 320, y, D('doc.ps.reg.field.firstName'), 360, 195);
     y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.blank.address'), 155, 400);
+    this._labelLine(doc, 40, y, D('doc.ps.reg.field.address'), 155, 400);
     y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.blank.email'), 90, 220);
-    this._labelLine(doc, 330, y, D('doc.ps.blank.phone'), 445, 110);
+    this._labelLine(doc, 40, y, D('doc.ps.reg.field.email'), 90, 220);
+    this._labelLine(doc, 330, y, D('doc.ps.reg.field.phone'), 445, 110);
     y += 34;
 
     // 2. Участие
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.attendance'));
-    this._label(doc, 40, y, D('doc.ps.reg.field.attending'));
+    y = this._label(doc, 40, y, D('doc.ps.reg.field.attending'), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 22;
-    this._labelLine(doc, 40, y, D('doc.ps.blank.if_no_reason'), 210, 345);
+    this._labelLine(doc, 40, y, D('doc.ps.reg.field.attendReason'), 210, 345);
     y += 34;
 
     // 3. Транспорт
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.transport'));
-    this._label(doc, 40, y, D('doc.ps.blank.transport'));
+    y = this._label(doc, 40, y, D('doc.ps.reg.field.transport'), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 34;
 
     // 4. Проживание
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.lodging'));
-    this._label(doc, 40, y, D('doc.ps.reg.field.lodging'));
+    y = this._label(doc, 40, y, D('doc.ps.reg.field.lodging'), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 34;
 
     // 5. Учебник
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.textbook'));
-    this._label(doc, 40, y, D('doc.ps.blank.language'));
+    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.language')), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [
       { x: 40, label: opt('language', 'ru') }, { x: 140, label: opt('language', 'uk') },
       { x: 250, label: opt('language', 'pl') }, { x: 340, label: opt('language', 'de') },
-      { x: 430, label: D('doc.ps.blank.other_colon') }
+      { x: 430, label: this._withColon(D('doc.ps.reg.opt.lang.other')) }
     ]);
-    this._answerLine(doc, 475, y + 2, 80);
+    // Линия начинается после подписи ряда, а не с жёсткой координаты.
+    // ОГРАНИЧЕНИЕ: если перевод подписи длинный (немецкое «Andere Sprache:»
+    // дотягивается до 553), места на строке не остаётся и линия не рисуется
+    // вовсе — это лучше, чем линия поверх букв, но поле для ответа при этом
+    // пропадает. Всплывёт, когда придут переводы; отмечено в TODO.md.
+    const otherStart = Math.max(475, (this._lastCheckboxRowEnd || 0) - 12);
+    if (555 > otherStart + 20) this._answerLine(doc, otherStart, y + 2, 555 - otherStart);
     y += 26;
-    this._label(doc, 40, y, D('doc.ps.blank.format'));
+    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.format')), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [
-      { x: 40, label: D('doc.ps.blank.format.print') }, { x: 150, label: 'JWPub' },
+      { x: 40, label: D('doc.ps.reg.opt.format.print') }, { x: 150, label: 'JWPub' },
       { x: 250, label: 'PDF' }, { x: 340, label: 'EPUB' }
     ]);
     y += 34;
 
     // 6. Дополнительные сведения
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.extra'));
-    this._label(doc, 40, y, D('doc.ps.blank.notes'), 10.5);
+    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.notes')), 10.5, 515);
     y += 20;
     for (let i = 0; i < 3; i++) { this._answerLine(doc, 40, y, 515); y += 22; }
     y += 6;
