@@ -163,6 +163,9 @@
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr;
+  /* См. пояснение в shared/style.css: снимает min-content-минимум неявной
+     колонки, иначе широкий потомок растянет оболочку шире экрана. */
+  grid-template-columns: minmax(0, 1fr);
   background: var(--md-surface-container);
   color: var(--md-on-surface);
   font-family: var(--md-font-family);

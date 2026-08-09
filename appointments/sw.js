@@ -5,7 +5,7 @@
 // Внутри хаба это стирало бы офлайн-кэши остальных модулей: Cache Storage
 // общий на весь origin. Здесь, как и в остальных модулях, удаляются строго
 // свои кэши по префиксу.
-const APP_VERSION = '5.3.2';
+const APP_VERSION = '5.3.3';
 const CACHE_PREFIX = 'appointments-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 

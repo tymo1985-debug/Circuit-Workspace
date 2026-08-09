@@ -870,6 +870,12 @@ body.cw-root {
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr;
+  /* Неявная колонка сетки имеет минимум `min-content`: широкий потомок
+     (таблица, длинная строка, канвас) растянул бы всю оболочку шире экрана
+     и включил горизонтальный скролл документа. `minmax(0, 1fr)` снимает
+     этот минимум — потомки обязаны ужиматься сами. Профилактика: на текущей
+     раскладке ни один модуль этот предел не пробивает. */
+  grid-template-columns: minmax(0, 1fr);
   background: var(--md-surface-container);
   color: var(--md-on-surface);
   font-family: var(--md-font-family);
