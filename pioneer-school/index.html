@@ -131,7 +131,12 @@
           <label><span data-i18n="ps.ui.telefon">Телефон</span><input type="text" id="reg-cfg-phone" placeholder="+000 00 000 00 00"></label>
           <label><span data-i18n="ps.ui.whatsapp_esli_otlichaetsya">WhatsApp (если отличается)</span><input type="text" id="reg-cfg-whatsapp" placeholder="+000 00 000 00 00"></label>
           <label><span data-i18n="ps.ui.nazvanie_mesto_shkoly_zagolovok">Название/место школы (заголовок анкеты)</span><input type="text" id="reg-cfg-title"></label>
+          <!-- Язык ДОКУМЕНТА: анкеты, бланка, писем. Не связан с языком
+               интерфейса в шапке — секретарь может работать по-русски и
+               рассылать польские анкеты. -->
+          <label><span data-i18n="ps.ui.document_language">Язык анкеты и бланков</span><select id="doc-language"></select></label>
         </div>
+        <p class="hint" id="doc-language-hint"></p>
         <label><span data-i18n="ps.ui.dopolnitelnyy_tekst_ili_instrukcii">Дополнительный текст или инструкции (необязательно)</span><textarea id="reg-cfg-extra" rows="3" placeholder="Например: занятия начинаются в 9:00, обед организован на месте." data-i18n-placeholder="ps.ph.naprimer_zanyatiya_nachinayutsya_v"></textarea>
         </label>
         <div class="btn-row">
@@ -420,9 +425,12 @@
      доступен уже на этапе объявления констант (DEFAULT_COLUMNS и т.п.). -->
 <script src="../shared/version.js"></script>
 <script src="../shared/i18n.js"></script>
+<script src="../shared/doclang.js"></script>
 <script src="../shared/i18n/common.js"></script>
 <script src="i18n/dict.js"></script>
+<script src="i18n/doc.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/doclang.js"></script>
 <script src="js/db.js"></script>
 <script src="js/utils/dateUtils.js"></script>
 <script src="js/utils/validators.js"></script>

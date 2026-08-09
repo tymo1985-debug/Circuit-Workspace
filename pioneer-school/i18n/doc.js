@@ -1,0 +1,246 @@
+/**
+ * Circuit Workspace — pioneer-school/i18n/doc.js
+ * Словарь ДОКУМЕНТОВ Школы пионеров: анкета пионера, печатный бланк,
+ * интерактивный PDF, формуляры учащихся, списки, заказ учебников, S-253, CSV.
+ *
+ * ПОЧЕМУ ОТДЕЛЬНЫЙ ФАЙЛ, А НЕ dict.js. Во-первых, это другой язык: язык
+ * документа (shared/doclang.js) не связан с языком интерфейса — секретарь
+ * может работать в польском интерфейсе и печатать украинские анкеты.
+ * Во-вторых, register.html — публичная страница, которую открывает сам пионер
+ * по ссылке; ей нужны эти двадцать строк, а не 140 КБ админского словаря.
+ *
+ * ЯЗЫКИ. Заполнен только `ru` — русская колонка совпадает с прежними
+ * захардкоженными строками байт в байт. Остальные языки СОЗНАТЕЛЬНО пусты:
+ * тексты пишет носитель языка, не Claude. Пока перевода нет, CWI18n.t()
+ * молча отдаёт русский вариант (fallback), то есть документ остаётся
+ * читаемым, а не превращается в набор ключей.
+ *
+ * КАК ДОБАВИТЬ ЯЗЫК:
+ *   1. заполнить соответствующий блок ниже (ключи скопировать из `ru`);
+ *   2. добавить код языка в PS_DOC_LANGS_READY внизу файла — иначе
+ *      переключатель продолжит помечать его как «пока по-русски».
+ * Логику при этом трогать не нужно нигде.
+ *
+ * ДУБЛИ, КОТОРЫЕ ВИДНЫ И ОСТАВЛЕНЫ НАМЕРЕННО. Печатный бланк
+ * (doc.ps.blank.*) формулирует часть вопросов короче, чем онлайн-анкета
+ * (doc.ps.reg.*): «Адрес проживания» против «Почтовый адрес проживания»,
+ * «Телефон (WhatsApp)» против «Номер мобильного телефона». Свести их в один
+ * ключ значило бы переписать русский текст готовых бумаг — этого здесь не
+ * делается. Кандидат на согласование ТЕКСТОВ (не кода) отдельной задачей.
+ */
+(function (global) {
+  'use strict';
+
+  if (!global.CWI18n) {
+    console.error('pioneer-school/i18n/doc.js подключён раньше shared/i18n.js');
+    return;
+  }
+
+  global.CWI18n.register({ ru: {
+    /* ---- Онлайн-анкета и интерактивный PDF: разделы ---- */
+    'doc.ps.reg.section.personal': '1. Личные данные',
+    'doc.ps.reg.section.attendance': '2. Участие в школе',
+    'doc.ps.reg.section.transport': '3. Транспорт',
+    'doc.ps.reg.section.lodging': '4. Проживание',
+    'doc.ps.reg.section.textbook': '5. Учебник для школы',
+    'doc.ps.reg.section.extra': '6. Дополнительные сведения',
+
+    /* ---- Онлайн-анкета: поля ---- */
+    'doc.ps.reg.field.lastName': 'Фамилия',
+    'doc.ps.reg.field.firstName': 'Имя',
+    'doc.ps.reg.field.address': 'Почтовый адрес проживания',
+    'doc.ps.reg.field.email': 'Адрес электронной почты',
+    'doc.ps.reg.field.phone': 'Номер мобильного телефона',
+    'doc.ps.reg.field.attending': 'Будете ли вы присутствовать на Школе пионерского служения?',
+    'doc.ps.reg.field.attendReason': 'Пожалуйста, укажите причину',
+    'doc.ps.reg.field.transport': 'Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до места проведения школы?',
+    'doc.ps.reg.field.lodging': 'Нуждаетесь ли вы в месте для ночлега?',
+    'doc.ps.reg.field.language': 'Язык учебника',
+    'doc.ps.reg.field.languageOther': 'Укажите необходимый язык',
+    'doc.ps.reg.field.format': 'Формат учебника (можно выбрать несколько)',
+    'doc.ps.reg.field.notes': 'Аллергии, особенности питания, состояние здоровья, другие важные замечания',
+    'doc.ps.reg.hint.phone': 'Желательно указать номер, привязанный к WhatsApp — так с вами будет проще связаться.',
+
+    /* ---- Подписи вариантов. ЗНАЧЕНИЯ (yes/no/ru/print/…) не переводятся
+           никогда: они лежат в IndexedDB и ездят в резервных копиях. ---- */
+    'doc.ps.reg.opt.yes': 'Да',
+    'doc.ps.reg.opt.no': 'Нет',
+    'doc.ps.reg.opt.lang.ru': 'Русский',
+    'doc.ps.reg.opt.lang.uk': 'Украинский',
+    'doc.ps.reg.opt.lang.pl': 'Польский',
+    'doc.ps.reg.opt.lang.de': 'Немецкий',
+    'doc.ps.reg.opt.lang.other': 'Другой',
+    'doc.ps.reg.opt.lang.other_lower': 'другой',
+    'doc.ps.reg.opt.format.print': 'Печатный экземпляр',
+    'doc.ps.reg.opt.format.jwpub': 'Электронный JWPub',
+    'doc.ps.reg.opt.format.pdf': 'PDF',
+    'doc.ps.reg.opt.format.epub': 'EPUB',
+
+    /* ---- Общая обвязка анкеты ---- */
+    'doc.ps.reg.title': 'Формуляр регистрации — Школа пионерского служения',
+    'doc.ps.reg.title_page': 'Формуляр для Школы пионерского служения',
+    'doc.ps.reg.closing': 'Пожалуйста, заполните и отправьте этот формуляр как можно скорее. Это поможет своевременно подготовить всё необходимое для проведения школы. Благодарим за сотрудничество!',
+    'doc.ps.reg.cond_hint': '(только если выше выбрано «{option}»)',
+    'doc.ps.reg.ask_elder': 'уточните у районного старейшины',
+
+    /* ---- Интерактивный PDF (pdfFormExport) ---- */
+    'doc.ps.pdf.lead': 'Заполните поля прямо в этом PDF, сохраните файл и отправьте его обратно (см. контакты в конце документа).',
+    'doc.ps.pdf.deadline': 'Отправить заполненный формуляр не позднее: {date}',
+    'doc.ps.pdf.send_where': 'Куда отправлять заполненный файл:',
+    'doc.ps.pdf.contact.email': 'Эл. почта',
+    'doc.ps.pdf.contact.phone': 'Телефон',
+    'doc.ps.pdf.contact.whatsapp': 'WhatsApp',
+    'doc.ps.pdf.contact_none': '- уточните у районного старейшины',
+    'doc.ps.pdf.contact_line': '- {label}: {value}',
+
+    /* ---- Печатный бланк (pdfExport.downloadRegistrationBlankForm) ---- */
+    'doc.ps.blank.lead': 'Пожалуйста, заполните и передайте районному старейшине как можно скорее.',
+    'doc.ps.blank.lastName': 'Фамилия:',
+    'doc.ps.blank.firstName': 'Имя:',
+    'doc.ps.blank.address': 'Адрес проживания:',
+    'doc.ps.blank.email': 'Email:',
+    'doc.ps.blank.phone': 'Телефон (WhatsApp):',
+    'doc.ps.blank.if_no_reason': 'Если нет — укажите причину:',
+    'doc.ps.blank.transport': 'Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до Школы?',
+    'doc.ps.blank.language': 'Язык учебника:',
+    'doc.ps.blank.other_colon': 'Другой:',
+    'doc.ps.blank.format': 'Формат учебника (можно выбрать несколько):',
+    'doc.ps.blank.format.print': 'Печатный',
+    'doc.ps.blank.notes': 'Аллергии, особенности питания, состояние здоровья, другие важные замечания:',
+    'doc.ps.blank.deadline': 'Заполненный формуляр необходимо отправить не позднее: {date}',
+    'doc.ps.blank.send_how': 'Способ отправки:',
+    'doc.ps.blank.send_email': '- на адрес электронной почты: {value}',
+    'doc.ps.blank.send_whatsapp': '- через WhatsApp: {value}',
+
+    /* ---- Заполненный формуляр одной регистрации ---- */
+    'doc.ps.rec.filled_at': 'Дата заполнения',
+    'doc.ps.rec.lastName': 'Фамилия',
+    'doc.ps.rec.firstName': 'Имя',
+    'doc.ps.rec.address': 'Адрес проживания',
+    'doc.ps.rec.email': 'Email',
+    'doc.ps.rec.phone': 'Телефон',
+    'doc.ps.rec.attending': 'Смогу присутствовать на Школе',
+    'doc.ps.rec.reason': 'Причина',
+    'doc.ps.rec.transport': 'Могу приехать на своём транспорте',
+    'doc.ps.rec.lodging': 'Нужен ночлег',
+    'doc.ps.rec.language': 'Язык учебника',
+    'doc.ps.rec.format': 'Формат учебника',
+    'doc.ps.rec.notes': 'Дополнительные сведения',
+    'doc.ps.rec.deadline': 'Срок сдачи формуляра',
+    'doc.ps.rec.to_email': 'Отправить на email',
+    'doc.ps.rec.to_whatsapp': 'Отправить в WhatsApp',
+
+    /* ---- Списки и формуляры учащихся ---- */
+    'doc.ps.list.students_title': 'Список учащихся — Школа пионерского служения',
+    'doc.ps.list.class': 'Класс',
+    'doc.ps.list.no_class': 'без класса',
+    'doc.ps.form.student_title': 'Формуляр учащегося: {name}',
+    'doc.ps.form.no_name': 'Без имени',
+
+    /* ---- Заказ учебников ---- */
+    'doc.ps.order.title': 'Заказ учебников — Школа пионерского служения',
+    'doc.ps.order.requested': 'Запрошено учащимися',
+    'doc.ps.order.in_stock': 'Уже в наличии',
+    'doc.ps.order.to_order_full': 'К заказу (запрошено + 5 - в наличии)',
+    'doc.ps.order.to_order': 'К заказу',
+    'doc.ps.order.received': 'Получено',
+    'doc.ps.order.recounted': 'Пересчитано при получении',
+    'doc.ps.order.other_langs': 'Иноязычные заявки:',
+    'doc.ps.order.braille': 'Заявки Брайль/спецформат (оформляются через S-59):',
+    'doc.ps.yes_short': 'да',
+    'doc.ps.no_short': 'нет',
+
+    /* ---- Сводка регистраций ---- */
+    'doc.ps.regs.title': 'Регистрации учащихся — Школа пионерского служения',
+    'doc.ps.regs.phone': 'тел',
+    'doc.ps.regs.email': 'email',
+    'doc.ps.regs.attending': 'присутствие',
+    'doc.ps.regs.reason': 'причина',
+    'doc.ps.regs.car': 'авто',
+    'doc.ps.regs.lodging': 'ночлег',
+    'doc.ps.regs.language': 'язык',
+    'doc.ps.regs.format': 'формат',
+
+    /* ---- S-253 ---- */
+    'doc.ps.s253.title': 'S-253 — Прошедшие обучение в Школе пионерского служения',
+    'doc.ps.s253.page1': 'Страница 1 — из «Списка», но НЕ прошли обучение в этом районе в этом году:',
+    'doc.ps.s253.page2': 'Страница 2 — прошли обучение, но НЕ были в «Списке»:',
+    'doc.ps.s253.no_comment': 'без комментария',
+
+    /* ---- CSV / XLSX ---- */
+    'doc.ps.csv.sheet_students': 'Учащиеся',
+    'doc.ps.csv.metric': 'Показатель',
+    'doc.ps.csv.value': 'Значение',
+    'doc.ps.csv.lastName': 'Фамилия',
+    'doc.ps.csv.firstName': 'Имя',
+    'doc.ps.csv.phone': 'Телефон',
+    'doc.ps.csv.email': 'Email',
+    'doc.ps.csv.address': 'Адрес',
+    'doc.ps.csv.attending': 'Присутствие',
+    'doc.ps.csv.reason': 'Причина отсутствия',
+    'doc.ps.csv.transport': 'Транспорт',
+    'doc.ps.csv.lodging': 'Ночлег',
+    'doc.ps.csv.language': 'Язык',
+    'doc.ps.csv.languageOther': 'Другой язык',
+    'doc.ps.csv.format': 'Формат учебника',
+    'doc.ps.csv.notes': 'Доп. сведения',
+    'doc.ps.csv.submittedAt': 'Дата отправки',
+
+    /* ---- Публичная страница register.html ---- */
+    'doc.ps.page.title': 'Регистрация — Школа пионерского служения',
+    'doc.ps.page.eyebrow': 'Регистрация учащегося',
+    'doc.ps.page.lead': 'Пожалуйста, заполните все поля как можно точнее — это поможет организаторам вовремя подготовить всё необходимое для Школы.',
+    'doc.ps.page.success': 'Спасибо! Формуляр заполнен и сохранён на этом устройстве. Пожалуйста, дополнительно отправьте копию районному старейшине — кнопки ниже откроют готовое письмо или сообщение WhatsApp с вашими данными.',
+    'doc.ps.page.choose_lang': 'Выберите язык',
+    'doc.ps.page.notes': 'Дополнительные сведения (например, аллергии, особенности питания, состояние здоровья, другие важные замечания)',
+    'doc.ps.page.deadline_label': 'Заполненный формуляр необходимо отправить не позднее:',
+    'doc.ps.page.send_how': 'Способ отправки:',
+    'doc.ps.page.by_email': 'на адрес электронной почты:',
+    'doc.ps.page.by_whatsapp': 'через WhatsApp:',
+    'doc.ps.page.submit': 'Отправить формуляр',
+    'doc.ps.page.download_pdf': 'Скачать формуляр (PDF)',
+    'doc.ps.page.download_pdf_short': 'Скачать PDF',
+    'doc.ps.page.send_by_email': 'Отправить по email',
+    'doc.ps.page.send_by_whatsapp': 'Отправить в WhatsApp',
+
+    /* ---- Текст письма/сообщения, который уходит старейшине ---- */
+    'doc.ps.mail.subject': 'Регистрация — Школа пионерского служения',
+    'doc.ps.sum.title': 'Регистрация на Школу пионерского служения',
+    'doc.ps.sum.fullname': 'Фамилия Имя',
+    'doc.ps.sum.address': 'Адрес',
+    'doc.ps.sum.email': 'Email',
+    'doc.ps.sum.phone': 'Телефон',
+    'doc.ps.sum.attending': 'Присутствие',
+    'doc.ps.sum.reason': 'причина',
+    'doc.ps.sum.transport': 'Транспорт',
+    'doc.ps.sum.lodging': 'Ночлег',
+    'doc.ps.sum.language': 'Язык учебника',
+    'doc.ps.sum.format': 'Формат учебника',
+    'doc.ps.sum.notes': 'Доп. сведения',
+  } });
+
+  /* ------------------------------------------------------------------
+     ЖДУТ НОСИТЕЛЯ ЯЗЫКА.
+     Блоки ниже пусты намеренно. Заполнять — копией ключей из `ru` выше;
+     подписи вариантов (Да/Нет, Русский/Украинский/…) и названия разделов
+     обязательно согласовать с тем, как эти документы называются в
+     соответствующем языке на практике, а не переводить дословно.
+
+     ВНИМАНИЕ ПРИ ЗАПОЛНЕНИИ pl/de: ł ż ą ę ś ć ń ź ä ö ü ß проходят в PDF
+     только начиная с версии шрифта, собранной scripts/build-pdf-font-subset.mjs
+     (586 глифов). Если бланк печатает дефисы вместо букв — значит,
+     dejavu-sans-subset.js откатился на старую сборку.
+     ------------------------------------------------------------------ */
+  global.CWI18n.register({ uk: {} });
+  global.CWI18n.register({ en: {} });
+  global.CWI18n.register({ pl: {} });
+  global.CWI18n.register({ de: {} });
+
+  /**
+   * Языки, для которых документные строки РЕАЛЬНО переведены. Переключатель
+   * языка документа помечает остальные как «пока по-русски» — иначе выбор
+   * «Polski» молча отдавал бы русскую анкету, и это выглядело бы как баг.
+   * Добавляя переводы выше — добавить код и сюда.
+   */
+  global.PS_DOC_LANGS_READY = ['ru'];
+})(typeof self !== 'undefined' ? self : this);

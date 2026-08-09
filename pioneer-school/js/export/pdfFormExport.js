@@ -22,11 +22,11 @@ const PdfFormExport = {
     return bytes;
   },
 
+  // Дата в языке ДОКУМЕНТА: анкета на польском с русским «12 марта 2026 г.»
+  // выглядит как недоделка.
   _fmtDate(iso) {
     if (!iso) return null;
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+    return (typeof PSDocLang !== 'undefined') ? PSDocLang.date(iso) : String(iso);
   },
 
   async generate(config, schema) {
@@ -86,13 +86,13 @@ const PdfFormExport = {
 
   _drawHeader(state, config) {
     const contentWidth = this.PAGE_W - this.MARGIN * 2;
-    const title = config.title || 'Формуляр регистрации — Школа пионерского служения';
+    const title = config.title || D('doc.ps.reg.title');
     this._wrapLines(state, title, 17, contentWidth).forEach((line) => {
       this._text(state, line, { size: 17 });
       state.y -= 21;
     });
     state.y -= 4;
-    this._wrapLines(state, 'Заполните поля прямо в этом PDF, сохраните файл и отправьте его обратно (см. контакты в конце документа).', 10.5, contentWidth)
+    this._wrapLines(state, D('doc.ps.pdf.lead'), 10.5, contentWidth)
       .forEach((line) => { this._text(state, line, { size: 10.5, color: 0.42 }); state.y -= 13; });
     state.y -= 10;
 
@@ -131,7 +131,7 @@ const PdfFormExport = {
     let label = field.label || '';
     if (field.showIf) {
       const parentLabel = window.RegistrationSchema.labelForValue(field.showIf.field, field.showIf.equals);
-      label = `${label} (только если выше выбрано «${parentLabel}»)`;
+      label = `${label} ${D('doc.ps.reg.cond_hint', { option: parentLabel })}`;
     }
     if (field.required) label += ' *';
 
@@ -211,7 +211,11 @@ const PdfFormExport = {
       }
 
       if (field.type === 'radio') {
-        radioGroup.addOptionToPage(opt.label, state.page, {
+        // Экспортное значение радиокнопки — КЛЮЧ ('yes'), а не подпись ('Да').
+        // Раньше сюда шла подпись, и в польской анкете в самом PDF сохранялось
+        // бы «Tak»: значение документа начинало зависеть от языка документа.
+        // Ключи опций не переводятся нигде — здесь то же правило.
+        radioGroup.addOptionToPage(opt.value, state.page, {
           x, y: state.y - 2, width: box, height: box,
           borderWidth: 0.7, borderColor: state.rgb(0.62, 0.6, 0.55),
           backgroundColor: state.rgb(0.99, 0.985, 0.97)
@@ -258,26 +262,26 @@ const PdfFormExport = {
     });
     state.y -= 8;
 
-    const deadline = this._fmtDate(config.deadline) || 'уточните у районного старейшины';
+    const deadline = this._fmtDate(config.deadline) || D('doc.ps.reg.ask_elder');
     this._ensureSpace(state, 80);
-    this._text(state, `Отправить заполненный формуляр не позднее: ${deadline}`, { size: 11 });
+    this._text(state, D('doc.ps.pdf.deadline', { date: deadline }), { size: 11 });
     state.y -= 18;
-    this._text(state, 'Куда отправлять заполненный файл:', { size: 11 });
+    this._text(state, D('doc.ps.pdf.send_where'), { size: 11 });
     state.y -= 15;
 
     const contacts = [
-      ['Эл. почта', config.email],
-      ['Телефон', config.phone],
-      ['WhatsApp', config.whatsapp || config.phone]
+      [D('doc.ps.pdf.contact.email'), config.email],
+      [D('doc.ps.pdf.contact.phone'), config.phone],
+      [D('doc.ps.pdf.contact.whatsapp'), config.whatsapp || config.phone]
     ].filter(([, v]) => v && String(v).trim());
 
     if (!contacts.length) {
-      this._text(state, '- уточните у районного старейшины', { x: this.MARGIN + 10, size: 10.5, color: 0.35 });
+      this._text(state, D('doc.ps.pdf.contact_none'), { x: this.MARGIN + 10, size: 10.5, color: 0.35 });
       state.y -= 14;
     } else {
       contacts.forEach(([label, value]) => {
         this._ensureSpace(state, 16);
-        this._text(state, `- ${label}: ${value}`, { x: this.MARGIN + 10, size: 10.5, color: 0.2 });
+        this._text(state, D('doc.ps.pdf.contact_line', { label, value }), { x: this.MARGIN + 10, size: 10.5, color: 0.2 });
         state.y -= 14;
       });
     }

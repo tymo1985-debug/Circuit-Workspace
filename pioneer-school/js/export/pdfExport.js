@@ -118,15 +118,15 @@ const PdfExport = {
   async downloadStudentList(students, columns, classesById) {
     const cols = columns && columns.length ? columns : await Students.getColumns();
     const lines = students.map((s) => {
-      const cls = classesById[s.classId] ? classesById[s.classId].name : 'без класса';
+      const cls = classesById[s.classId] ? classesById[s.classId].name : D('doc.ps.list.no_class');
       const parts = cols.map((c) => {
         const raw = (s.values || {})[c.key];
         const label = this._formatValue(c, raw);
         return `${c.label}: ${label || '—'}`;
       });
-      return `${parts.join(' · ')} · Класс: ${cls}`;
+      return `${parts.join(' · ')} · ${D('doc.ps.list.class')}: ${cls}`;
     });
-    const doc = await this.buildDocument('Список учащихся — Школа пионерского служения', lines);
+    const doc = await this.buildDocument(D('doc.ps.list.students_title'), lines);
     doc.save('students-list.pdf');
   },
 
@@ -143,13 +143,13 @@ const PdfExport = {
   // Используется как для скачивания по одному студенту, так и как «страница» в общем PDF.
   _renderStudentFormulaire(doc, student, columns, classLabel, startY, pageHeight, marginX) {
     let y = startY;
-    const fullName = `${(student.values || {}).lastName || ''} ${(student.values || {}).firstName || ''}`.trim() || 'Без имени';
-    const titleImg = this._canvasLineToImage(`Формуляр учащегося: ${fullName}`, { fontSize: 15, bold: true, width: 500 });
+    const fullName = `${(student.values || {}).lastName || ''} ${(student.values || {}).firstName || ''}`.trim() || D('doc.ps.form.no_name');
+    const titleImg = this._canvasLineToImage(D('doc.ps.form.student_title', { name: fullName }), { fontSize: 15, bold: true, width: 500 });
     doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height, undefined, IMG_COMPRESSION);
     y += titleImg.height + 10;
 
     if (classLabel) {
-      const clsImg = this._canvasLineToImage(`Класс: ${classLabel}`, { fontSize: 11, width: 500 });
+      const clsImg = this._canvasLineToImage(`${D('doc.ps.list.class')}: ${classLabel}`, { fontSize: 11, width: 500 });
       doc.addImage(clsImg.dataUrl, 'PNG', marginX, y, clsImg.width, clsImg.height, undefined, IMG_COMPRESSION);
       y += clsImg.height + 8;
     }
@@ -193,66 +193,65 @@ const PdfExport = {
   },
 
   // ——— Формуляр регистрации (register.html) ———
-  // Публичная страница формуляра не грузит всё приложение, поэтому метки берём
-  // из Registration, если он подключён, и подстраховываемся локальными копиями.
-  _regLabels() {
-    const R = window.Registration || {};
-    return {
-      yesNo: R.YES_NO_LABELS || { yes: 'Да', no: 'Нет' },
-      language: R.LANGUAGE_LABELS || { ru: 'Русский', uk: 'Украинский', pl: 'Польский', de: 'Немецкий', other: 'Другой' },
-      format: R.FORMAT_LABELS || { print: 'Печатный экземпляр', jwpub: 'Электронный JWPub', pdf: 'PDF', epub: 'EPUB' }
-    };
+  // Подписи вариантов берём из схемы анкеты: она уже на языке ДОКУМЕНТА и
+  // является единственным источником. Раньше здесь лежала третья копия тех же
+  // справочников (Registration.*_LABELS плюс локальный запасной вариант),
+  // и жила она языком интерфейса — то есть польская анкета получала русские
+  // «Да/Нет», даже когда всё остальное было переведено.
+  _optLabel(fieldKey, value) {
+    const S = window.RegistrationSchema;
+    if (!S || value === undefined || value === null || value === '') return '';
+    return S.labelForValue(fieldKey, value) || '';
   },
 
-  _formatDateRu(value) {
-    if (!value) return '';
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return String(value);
-    return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+  // Дата в языке документа: у польского и немецкого формуляра русское
+  // «12 марта 2026 г.» выглядело бы опечаткой.
+  _formatDocDate(value) {
+    return (typeof PSDocLang !== 'undefined') ? PSDocLang.date(value) : String(value || '');
   },
 
   buildRegistrationLines(record, config = {}) {
-    const L = this._regLabels();
+    const row = (key, value) => `${D('doc.ps.rec.' + key)}: ${value || '—'}`;
     const language = record.language === 'other'
-      ? (record.languageOther || 'другой')
-      : (L.language[record.language] || record.language || '');
-    const formats = (record.format || []).map((f) => L.format[f] || f).join(', ');
+      ? (record.languageOther || D('doc.ps.reg.opt.lang.other_lower'))
+      : (this._optLabel('language', record.language) || record.language || '');
+    const formats = (record.format || []).map((f) => this._optLabel('format', f) || f).join(', ');
 
     const lines = [
-      `Дата заполнения: ${this._formatDateRu(record.submittedAt || new Date().toISOString())}`,
+      row('filled_at', this._formatDocDate(record.submittedAt || new Date().toISOString())),
       '',
-      `Фамилия: ${record.lastName || '—'}`,
-      `Имя: ${record.firstName || '—'}`,
-      `Адрес проживания: ${record.address || '—'}`,
-      `Email: ${record.email || '—'}`,
-      `Телефон: ${record.phone || '—'}`,
+      row('lastName', record.lastName),
+      row('firstName', record.firstName),
+      row('address', record.address),
+      row('email', record.email),
+      row('phone', record.phone),
       '',
-      `Смогу присутствовать на Школе: ${L.yesNo[record.attending] || '—'}`
+      row('attending', this._optLabel('attending', record.attending))
     ];
-    if (record.attending === 'no') lines.push(`Причина: ${record.attendReason || '—'}`);
+    if (record.attending === 'no') lines.push(row('reason', record.attendReason));
     lines.push(
-      `Могу приехать на своём транспорте: ${L.yesNo[record.transport] || '—'}`,
-      `Нужен ночлег: ${L.yesNo[record.lodging] || '—'}`,
+      row('transport', this._optLabel('transport', record.transport)),
+      row('lodging', this._optLabel('lodging', record.lodging)),
       '',
-      `Язык учебника: ${language || '—'}`,
-      `Формат учебника: ${formats || '—'}`,
+      row('language', language),
+      row('format', formats),
       '',
-      `Дополнительные сведения: ${record.notes || '—'}`
+      row('notes', record.notes)
     );
 
     // Напоминание о сроке и адресате печатаем в самом формуляре: бумажную копию
     // часто заполняют заранее и отправляют позже, уже без открытой страницы.
     const footer = [];
-    if (config.deadline) footer.push(`Срок сдачи формуляра: ${this._formatDateRu(config.deadline)}`);
-    if (config.email) footer.push(`Отправить на email: ${config.email}`);
-    if (config.whatsapp) footer.push(`Отправить в WhatsApp: ${config.whatsapp}`);
+    if (config.deadline) footer.push(row('deadline', this._formatDocDate(config.deadline)));
+    if (config.email) footer.push(row('to_email', config.email));
+    if (config.whatsapp) footer.push(row('to_whatsapp', config.whatsapp));
     if (footer.length) lines.push('', '— — —', ...footer);
 
     return lines;
   },
 
   async downloadRegistrationFormulaire(record, config = {}) {
-    const title = config.title || 'Формуляр для Школы пионерского служения';
+    const title = config.title || D('doc.ps.reg.title_page');
     const doc = await this.buildDocument(title, this.buildRegistrationLines(record, config));
     const namePart = `${record.lastName || ''}-${record.firstName || ''}`
       .trim()
@@ -262,34 +261,36 @@ const PdfExport = {
   },
 
   async downloadTextbookOrder(order) {
+    const yn = (flag) => (flag ? D('doc.ps.yes_short') : D('doc.ps.no_short'));
     const lines = [
-      `Запрошено учащимися: ${order.requestedByStudents || 0}`,
-      `Уже в наличии: ${order.alreadyInStock || 0}`,
-      `К заказу (запрошено + 5 − в наличии): ${order.orderQuantity ?? Textbooks.calcOrderQuantity(order)}`,
-      `Получено: ${order.received ? 'да' : 'нет'}`,
-      `Пересчитано при получении: ${order.recountedOnReceipt ? 'да' : 'нет'}`,
+      `${D('doc.ps.order.requested')}: ${order.requestedByStudents || 0}`,
+      `${D('doc.ps.order.in_stock')}: ${order.alreadyInStock || 0}`,
+      `${D('doc.ps.order.to_order_full')}: ${order.orderQuantity ?? Textbooks.calcOrderQuantity(order)}`,
+      `${D('doc.ps.order.received')}: ${yn(order.received)}`,
+      `${D('doc.ps.order.recounted')}: ${yn(order.recountedOnReceipt)}`,
       '',
-      'Иноязычные заявки:',
+      D('doc.ps.order.other_langs'),
       ...(order.otherLanguageRequests || []).map((r) => `  ${r.language}: ${r.qty}`),
       '',
-      'Заявки Брайль/спецформат (оформляются через S-59):',
+      D('doc.ps.order.braille'),
       ...(order.brailleRequests || []).map((r) => `  ${r.studentName || r.studentId}: ${r.format}`)
     ];
-    const doc = await this.buildDocument('Заказ учебников — Школа пионерского служения', lines);
+    const doc = await this.buildDocument(D('doc.ps.order.title'), lines);
     doc.save('textbook-order.pdf');
   },
 
   async downloadRegistrations(registrations) {
     const lines = registrations.map((r) => {
-      const attending = Registration.YES_NO_LABELS[r.attending] || '—';
-      const reason = r.attending === 'no' && r.attendReason ? ` (причина: ${r.attendReason})` : '';
-      const lang = Registration.LANGUAGE_LABELS[r.language] || r.language || '—';
-      const formats = (r.format || []).map((f) => Registration.FORMAT_LABELS[f] || f).join(', ');
-      return `${r.lastName} ${r.firstName} — тел: ${r.phone || '—'} — email: ${r.email || '—'} — ` +
-        `присутствие: ${attending}${reason} — авто: ${Registration.YES_NO_LABELS[r.transport] || '—'} — ` +
-        `ночлег: ${Registration.YES_NO_LABELS[r.lodging] || '—'} — язык: ${lang}${formats ? ' — формат: ' + formats : ''}`;
+      const attending = this._optLabel('attending', r.attending) || '—';
+      const reason = r.attending === 'no' && r.attendReason ? ` (${D('doc.ps.regs.reason')}: ${r.attendReason})` : '';
+      const lang = this._optLabel('language', r.language) || r.language || '—';
+      const formats = (r.format || []).map((f) => this._optLabel('format', f) || f).join(', ');
+      return `${r.lastName} ${r.firstName} — ${D('doc.ps.regs.phone')}: ${r.phone || '—'} — ${D('doc.ps.regs.email')}: ${r.email || '—'} — ` +
+        `${D('doc.ps.regs.attending')}: ${attending}${reason} — ${D('doc.ps.regs.car')}: ${this._optLabel('transport', r.transport) || '—'} — ` +
+        `${D('doc.ps.regs.lodging')}: ${this._optLabel('lodging', r.lodging) || '—'} — ${D('doc.ps.regs.language')}: ${lang}` +
+        `${formats ? ' — ' + D('doc.ps.regs.format') + ': ' + formats : ''}`;
     });
-    const doc = await this.buildDocument('Регистрации учащихся — Школа пионерского служения', lines);
+    const doc = await this.buildDocument(D('doc.ps.regs.title'), lines);
     doc.save('registrations.pdf');
   },
 
@@ -314,14 +315,24 @@ const PdfExport = {
     this._cyrillicFontLoaded = true;
   },
 
-  // Шрифт бланка урезан (см. js/export/fonts/dejavu-sans-subset.js) до Latin +
-  // кириллицы + базовой пунктуации. Любой символ ВНЕ этого набора (например,
-  // «·», emoji, стрелки) не отрисуется — и, что важнее, jsPDF при этом обрежет
-  // ВЕСЬ текстовый вызов начиная с этого символа, без ошибки и без предупреждения
-  // (проверено на практике). Эта функция подстраховывает: заменяет неизвестные
-  // символы на «-», чтобы одна забытая точка/тире не «съедала» остаток строки.
+  // Шрифт бланка урезан (см. js/export/fonts/dejavu-sans-subset.js) до ASCII +
+  // Latin-1 Supplement + Latin Extended-A + всей кириллицы + пунктуации. Любой
+  // символ ВНЕ этого набора (например, «·», emoji, стрелки) не отрисуется — и,
+  // что важнее, jsPDF при этом обрежет ВЕСЬ текстовый вызов начиная с этого
+  // символа, без ошибки и без предупреждения (проверено на практике). Эта
+  // функция подстраховывает: заменяет неизвестные символы на «-», чтобы одна
+  // забытая точка/тире не «съедала» остаток строки.
+  //
+  // ДИАПАЗОНЫ ЗДЕСЬ И В ШРИФТЕ ДОЛЖНЫ СОВПАДАТЬ. До подключения языка документа
+  // whitelist был `\x20-\x7E`, три знака и кириллица — то есть ł ż ą ä ö ü ß
+  // превращались в дефисы ещё до шрифта, и польский бланк печатался как
+  // «Szko-a». Расширяя набор глифов скриптом scripts/build-pdf-font-subset.mjs,
+  // править и эту строку; скрипт предупреждает, если они разошлись.
+  //   \u00A0-\u017F — Latin-1 Supplement + Latin Extended-A (de/pl/en)
+  //   \u0400-\u04FF — кириллица целиком (ru + uk)
+  //   \u2013\u2014\u2018-\u201E\u2026\u2116 — тире, кавычки, многоточие, №
   _sanitizeForFont(str) {
-    return String(str ?? '').replace(/[^\x20-\x7E\u00A0\u00AB\u00BB\u2013\u2014\u2018-\u201E\u2026\u0400-\u04FF]/g, '-');
+    return String(str ?? '').replace(/[^\x20-\x7E\u00A0-\u017F\u0400-\u04FF\u2013\u2014\u2018-\u201E\u2026\u2116]/g, '-');
   },
 
   _checkbox(doc, x, y, label, size = 9) {
@@ -355,6 +366,40 @@ const PdfExport = {
     doc.line(x, y, x + width, y);
   },
 
+  // Подпись и линия для ответа рядом с ней.
+  //
+  // ЗАЧЕМ НЕ ПРОСТО ДВА ВЫЗОВА. Координаты линий в бланке подобраны на глаз под
+  // русские подписи: «Фамилия:» кончается раньше x=100, поэтому линия начинается
+  // со 100. В немецком и польском те же подписи длиннее, и линия прошла бы прямо
+  // по буквам. Поэтому заданная координата — МИНИМУМ, а не точное место: если
+  // подпись шире, линия сдвигается вправо и на столько же укорачивается, не
+  // вылезая за правое поле. На русском раскладка не меняется ни на пункт.
+  _labelLine(doc, x, y, text, lineX, lineWidth, size = 11) {
+    this._label(doc, x, y, text, size);
+    const start = Math.max(lineX, x + doc.getTextWidth(this._sanitizeForFont(text)) + 8);
+    const end = lineX + lineWidth;
+    if (end > start + 20) this._answerLine(doc, start, y + 2, end - start);
+  },
+
+  // Ряд чекбоксов с подписями. `x` каждого элемента — тоже минимум: элементы
+  // текут слева направо, и длинная подпись сдвигает следующий, а не оказывается
+  // под ним. Если ряд перестаёт помещаться по ширине, он переносится.
+  // @returns {number} новый y
+  _checkboxRow(doc, y, items, size = 9) {
+    const RIGHT = 555;
+    let cursor = 0;
+    for (const item of items) {
+      doc.setFont('DejaVuSans');
+      doc.setFontSize(11);
+      const width = size + 4 + doc.getTextWidth(this._sanitizeForFont(item.label)) + 18;
+      let x = Math.max(item.x, cursor);
+      if (x + width > RIGHT && cursor > 0) { y += 20; x = items[0].x; }
+      this._checkbox(doc, x, y, item.label, size);
+      cursor = x + width;
+    }
+    return y;
+  },
+
   async downloadRegistrationBlankForm(config) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -363,67 +408,76 @@ const PdfExport = {
     const pageHeight = doc.internal.pageSize.getHeight();
     let y = 50;
 
+    const opt = (field, value) => this._optLabel(field, value);
+    const yes = opt('attending', 'yes');
+    const no = opt('attending', 'no');
+
     doc.setFont('DejaVuSans');
     doc.setFontSize(18);
     doc.setTextColor(20);
-    doc.text(this._sanitizeForFont(config.title || 'Формуляр регистрации — Школа пионерского служения'), 40, y, { maxWidth: pageWidth - 80 });
+    doc.text(this._sanitizeForFont(config.title || D('doc.ps.reg.title')), 40, y, { maxWidth: pageWidth - 80 });
     y += 22;
     doc.setFontSize(11);
     doc.setTextColor(90);
-    doc.text('Пожалуйста, заполните и передайте районному старейшине как можно скорее.', 40, y);
+    doc.text(this._sanitizeForFont(D('doc.ps.blank.lead')), 40, y, { maxWidth: pageWidth - 80 });
     y += 26;
 
     // 1. Личные данные
-    y = this._sectionTitle(doc, y, '1. Личные данные');
-    this._label(doc, 40, y, 'Фамилия:'); this._answerLine(doc, 100, y + 2, 200);
-    this._label(doc, 320, y, 'Имя:'); this._answerLine(doc, 360, y + 2, 195);
+    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.personal'));
+    this._labelLine(doc, 40, y, D('doc.ps.blank.lastName'), 100, 200);
+    this._labelLine(doc, 320, y, D('doc.ps.blank.firstName'), 360, 195);
     y += 26;
-    this._label(doc, 40, y, 'Адрес проживания:'); this._answerLine(doc, 155, y + 2, 400);
+    this._labelLine(doc, 40, y, D('doc.ps.blank.address'), 155, 400);
     y += 26;
-    this._label(doc, 40, y, 'Email:'); this._answerLine(doc, 90, y + 2, 220);
-    this._label(doc, 330, y, 'Телефон (WhatsApp):'); this._answerLine(doc, 445, y + 2, 110);
+    this._labelLine(doc, 40, y, D('doc.ps.blank.email'), 90, 220);
+    this._labelLine(doc, 330, y, D('doc.ps.blank.phone'), 445, 110);
     y += 34;
 
     // 2. Участие
-    y = this._sectionTitle(doc, y, '2. Участие в школе');
-    this._label(doc, 40, y, 'Будете ли вы присутствовать на Школе пионерского служения?');
+    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.attendance'));
+    this._label(doc, 40, y, D('doc.ps.reg.field.attending'));
     y += 20;
-    this._checkbox(doc, 40, y, 'Да'); this._checkbox(doc, 140, y, 'Нет');
+    y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 22;
-    this._label(doc, 40, y, 'Если нет — укажите причину:'); this._answerLine(doc, 210, y + 2, 345);
+    this._labelLine(doc, 40, y, D('doc.ps.blank.if_no_reason'), 210, 345);
     y += 34;
 
     // 3. Транспорт
-    y = this._sectionTitle(doc, y, '3. Транспорт');
-    this._label(doc, 40, y, 'Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до Школы?');
+    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.transport'));
+    this._label(doc, 40, y, D('doc.ps.blank.transport'));
     y += 20;
-    this._checkbox(doc, 40, y, 'Да'); this._checkbox(doc, 140, y, 'Нет');
+    y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 34;
 
     // 4. Проживание
-    y = this._sectionTitle(doc, y, '4. Проживание');
-    this._label(doc, 40, y, 'Нуждаетесь ли вы в месте для ночлега?');
+    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.lodging'));
+    this._label(doc, 40, y, D('doc.ps.reg.field.lodging'));
     y += 20;
-    this._checkbox(doc, 40, y, 'Да'); this._checkbox(doc, 140, y, 'Нет');
+    y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 34;
 
     // 5. Учебник
-    y = this._sectionTitle(doc, y, '5. Учебник для школы');
-    this._label(doc, 40, y, 'Язык учебника:');
+    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.textbook'));
+    this._label(doc, 40, y, D('doc.ps.blank.language'));
     y += 20;
-    this._checkbox(doc, 40, y, 'Русский'); this._checkbox(doc, 140, y, 'Украинский');
-    this._checkbox(doc, 250, y, 'Польский'); this._checkbox(doc, 340, y, 'Немецкий');
-    this._checkbox(doc, 430, y, 'Другой:'); this._answerLine(doc, 475, y + 2, 80);
+    y = this._checkboxRow(doc, y, [
+      { x: 40, label: opt('language', 'ru') }, { x: 140, label: opt('language', 'uk') },
+      { x: 250, label: opt('language', 'pl') }, { x: 340, label: opt('language', 'de') },
+      { x: 430, label: D('doc.ps.blank.other_colon') }
+    ]);
+    this._answerLine(doc, 475, y + 2, 80);
     y += 26;
-    this._label(doc, 40, y, 'Формат учебника (можно выбрать несколько):');
+    this._label(doc, 40, y, D('doc.ps.blank.format'));
     y += 20;
-    this._checkbox(doc, 40, y, 'Печатный'); this._checkbox(doc, 150, y, 'JWPub');
-    this._checkbox(doc, 250, y, 'PDF'); this._checkbox(doc, 340, y, 'EPUB');
+    y = this._checkboxRow(doc, y, [
+      { x: 40, label: D('doc.ps.blank.format.print') }, { x: 150, label: 'JWPub' },
+      { x: 250, label: 'PDF' }, { x: 340, label: 'EPUB' }
+    ]);
     y += 34;
 
     // 6. Дополнительные сведения
-    y = this._sectionTitle(doc, y, '6. Дополнительные сведения');
-    this._label(doc, 40, y, 'Аллергии, особенности питания, состояние здоровья, другие важные замечания:', 10.5);
+    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.extra'));
+    this._label(doc, 40, y, D('doc.ps.blank.notes'), 10.5);
     y += 20;
     for (let i = 0; i < 3; i++) { this._answerLine(doc, 40, y, 515); y += 22; }
     y += 6;
@@ -436,31 +490,31 @@ const PdfExport = {
     doc.setFont('DejaVuSans');
     doc.setFontSize(10.5);
     doc.setTextColor(70);
-    const closing = 'Пожалуйста, заполните и отправьте этот формуляр как можно скорее. Это поможет своевременно подготовить всё необходимое для проведения школы. Благодарим за сотрудничество!';
-    const closingLines = doc.splitTextToSize(this._sanitizeForFont(closing), 515);
+    const closingLines = doc.splitTextToSize(this._sanitizeForFont(D('doc.ps.reg.closing')), 515);
     doc.text(closingLines, 40, y);
     y += closingLines.length * 13 + 10;
 
-    const deadline = config.deadline ? new Date(config.deadline).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }) : 'уточните у районного старейшины';
+    const askElder = D('doc.ps.reg.ask_elder');
+    const deadline = config.deadline ? this._formatDocDate(config.deadline) : askElder;
     doc.setTextColor(20);
-    doc.text(this._sanitizeForFont(`Заполненный формуляр необходимо отправить не позднее: ${deadline}`), 40, y);
+    doc.text(this._sanitizeForFont(D('doc.ps.blank.deadline', { date: deadline })), 40, y);
     y += 16;
-    doc.text('Способ отправки:', 40, y); y += 14;
-    doc.text(this._sanitizeForFont(`- на адрес электронной почты: ${config.email || 'уточните у районного старейшины'}`), 50, y); y += 14;
-    doc.text(this._sanitizeForFont(`- через WhatsApp: ${config.whatsapp || 'уточните у районного старейшины'}`), 50, y);
+    doc.text(this._sanitizeForFont(D('doc.ps.blank.send_how')), 40, y); y += 14;
+    doc.text(this._sanitizeForFont(D('doc.ps.blank.send_email', { value: config.email || askElder })), 50, y); y += 14;
+    doc.text(this._sanitizeForFont(D('doc.ps.blank.send_whatsapp', { value: config.whatsapp || askElder })), 50, y);
 
     doc.save('registration-blank-form.pdf');
   },
 
   async downloadS253(data) {
     const lines = [
-      'Страница 1 — из «Списка», но НЕ прошли обучение в этом районе в этом году:',
-      ...(data.notAttendedFromList || []).map((s) => `  ${s.name} — ${s.reason || 'без комментария'}`),
+      D('doc.ps.s253.page1'),
+      ...(data.notAttendedFromList || []).map((s) => `  ${s.name} — ${s.reason || D('doc.ps.s253.no_comment')}`),
       '',
-      'Страница 2 — прошли обучение, но НЕ были в «Списке»:',
+      D('doc.ps.s253.page2'),
       ...(data.attendedNotOnList || []).map((s) => `  ${s.name} — ${s.congregation || ''}`)
     ];
-    const doc = await this.buildDocument('S-253 — Прошедшие обучение в Школе пионерского служения', lines);
+    const doc = await this.buildDocument(D('doc.ps.s253.title'), lines);
     doc.save('s253-report.pdf');
   }
 };

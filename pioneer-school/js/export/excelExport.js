@@ -42,7 +42,7 @@ const ExcelExport = {
   },
 
   _buildStudentAoa(students, columns, classesById) {
-    const headers = [...columns.map((c) => c.label), 'Класс'];
+    const headers = [...columns.map((c) => c.label), D('doc.ps.list.class')];
     const rows = students.map((s) => [
       ...columns.map((c) => this._formatValue(c, (s.values || {})[c.key])),
       classesById && classesById[s.classId] ? classesById[s.classId].name : ''
@@ -66,21 +66,32 @@ const ExcelExport = {
     const { headers, rows } = this._buildStudentAoa(students, columns, classesById);
     const ws = window.XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, 'Учащиеся');
+    window.XLSX.utils.book_append_sheet(wb, ws, D('doc.ps.csv.sheet_students'));
     window.XLSX.writeFile(wb, 'students.xlsx');
   },
 
+  // Подписи вариантов — из схемы анкеты, то есть на языке ДОКУМЕНТА.
+  // Выгрузка уходит в письме или в общую таблицу, её язык не должен зависеть
+  // от того, на каком языке в этот момент открыто приложение.
+  _optLabel(fieldKey, value) {
+    const S = window.RegistrationSchema;
+    if (!S || value === undefined || value === null || value === '') return '';
+    return S.labelForValue(fieldKey, value) || '';
+  },
+
   downloadRegistrations(registrations) {
-    const headers = ['Фамилия', 'Имя', 'Телефон', 'Email', 'Адрес', 'Присутствие', 'Причина отсутствия', 'Транспорт', 'Ночлег', 'Язык', 'Другой язык', 'Формат учебника', 'Доп. сведения', 'Дата отправки'];
+    const headers = ['lastName', 'firstName', 'phone', 'email', 'address', 'attending', 'reason',
+      'transport', 'lodging', 'language', 'languageOther', 'format', 'notes', 'submittedAt']
+      .map((k) => D('doc.ps.csv.' + k));
     const rows = registrations.map((r) => [
       r.lastName, r.firstName, r.phone, r.email, r.address,
-      Registration.YES_NO_LABELS[r.attending] || r.attending || '',
+      this._optLabel('attending', r.attending) || r.attending || '',
       r.attendReason || '',
-      Registration.YES_NO_LABELS[r.transport] || r.transport || '',
-      Registration.YES_NO_LABELS[r.lodging] || r.lodging || '',
-      Registration.LANGUAGE_LABELS[r.language] || r.language || '',
+      this._optLabel('transport', r.transport) || r.transport || '',
+      this._optLabel('lodging', r.lodging) || r.lodging || '',
+      this._optLabel('language', r.language) || r.language || '',
       r.languageOther || '',
-      (r.format || []).map((f) => Registration.FORMAT_LABELS[f] || f).join('; '),
+      (r.format || []).map((f) => this._optLabel('format', f) || f).join('; '),
       r.notes || '',
       r.submittedAt || ''
     ]);
@@ -88,12 +99,12 @@ const ExcelExport = {
   },
 
   downloadTextbookOrder(order) {
-    const headers = ['Показатель', 'Значение'];
+    const headers = [D('doc.ps.csv.metric'), D('doc.ps.csv.value')];
     const rows = [
-      ['Запрошено учащимися', order.requestedByStudents || 0],
-      ['Уже в наличии', order.alreadyInStock || 0],
-      ['К заказу', order.orderQuantity ?? Textbooks.calcOrderQuantity(order)],
-      ['Получено', order.received ? 'да' : 'нет']
+      [D('doc.ps.order.requested'), order.requestedByStudents || 0],
+      [D('doc.ps.order.in_stock'), order.alreadyInStock || 0],
+      [D('doc.ps.order.to_order'), order.orderQuantity ?? Textbooks.calcOrderQuantity(order)],
+      [D('doc.ps.order.received'), order.received ? D('doc.ps.yes_short') : D('doc.ps.no_short')]
     ];
     this._download('textbook-order.csv', this.toCsv(headers, rows));
   }

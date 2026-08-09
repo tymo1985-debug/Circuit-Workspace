@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.9.0';
 
 let LESSONS_SEED = null;
 
@@ -173,6 +173,24 @@ async function renderRegistration() {
   $('#reg-cfg-whatsapp').value = cfg.whatsapp || '';
   $('#reg-cfg-title').value = cfg.title || '';
   $('#reg-cfg-extra').value = cfg.extraInstructions || '';
+
+  // Язык документа. Меняется здесь, а не в шапке: это свойство рассылаемых
+  // бумаг, а не оболочки. Ссылка на онлайн-анкету получает тот же язык
+  // параметром ?lang= — иначе пионер увидел бы форму на языке своего браузера.
+  const docLangSelect = $('#doc-language');
+  PSDocLang.fillSelect(docLangSelect);
+  const renderDocLangHint = () => {
+    const lang = PSDocLang.get();
+    const url = new URL('register.html', location.href);
+    url.searchParams.set('lang', lang);
+    $('#doc-language-hint').textContent = T('ps.ui.doc_lang_hint', { link: url.href });
+  };
+  renderDocLangHint();
+  docLangSelect.onchange = () => {
+    PSDocLang.set(docLangSelect.value, { scope: 'module' });
+    PSDocLang.fillSelect(docLangSelect);
+    renderDocLangHint();
+  };
 
   const collectConfig = () => ({
     deadline: $('#reg-cfg-deadline').value,
@@ -1107,6 +1125,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // Язык поднимаем ДО первого showRoute(): экраны строятся в JS, и язык должен
   // быть известен раньше первой отрисовки. Перерисовку при смене языка делает
   // тот же showRoute — статическую разметку переводит CWI18n.apply().
+  // Язык ДОКУМЕНТА поднимаем рядом с языком интерфейса, но независимо: у него
+  // своё хранилище и свой жизненный цикл. allowUrlOverride здесь намеренно
+  // выключен — параметр ?lang= работает только на публичной register.html,
+  // чтобы случайная ссылка не поменяла язык рассылаемых бумаг.
+  PSDocLang.init();
+
   PSI18n.init(() => {
     const current = $all('.route').find((el) => !el.classList.contains('hidden'));
     if (current) showRoute(current.id.replace('route-', ''));

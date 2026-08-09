@@ -8,9 +8,23 @@
 //     данные дважды.
 
 const Registration = {
-  LANGUAGE_LABELS: { ru: T('ps.ui.russkiy'), uk: T('ps.ui.ukrainskiy'), pl: T('ps.ui.polskiy'), de: T('ps.ui.nemeckiy'), other: T('ps.ui.drugoy') },
-  FORMAT_LABELS: { print: T('ps.reg.pechatnyy_ekzemplyar'), jwpub: T('ps.reg.elektronnyy_jwpub'), pdf: 'PDF', epub: 'EPUB' },
-  YES_NO_LABELS: { yes: T('ps.ui.da'), no: T('ps.ui.net') },
+  // Подписи справочников для ИНТЕРФЕЙСА приложения (таблица регистраций).
+  // Документы (PDF, CSV, письмо пионеру) берут свои подписи из схемы анкеты
+  // по языку ДОКУМЕНТА — см. registrationSchema.labelForValue().
+  //
+  // ГЕТТЕРЫ, А НЕ ОБЫЧНЫЕ ПОЛЯ: раньше это были статические объекты, и T()
+  // вычислялся один раз при загрузке скрипта. Язык, выбранный позже, до этих
+  // подписей уже не доходил — таблица регистраций оставалась на языке первой
+  // загрузки. Та же ловушка, что со справочными требованиями в anketa.js.
+  get LANGUAGE_LABELS() {
+    return { ru: T('ps.ui.russkiy'), uk: T('ps.ui.ukrainskiy'), pl: T('ps.ui.polskiy'), de: T('ps.ui.nemeckiy'), other: T('ps.ui.drugoy') };
+  },
+  get FORMAT_LABELS() {
+    return { print: T('ps.reg.pechatnyy_ekzemplyar'), jwpub: T('ps.reg.elektronnyy_jwpub'), pdf: 'PDF', epub: 'EPUB' };
+  },
+  get YES_NO_LABELS() {
+    return { yes: T('ps.ui.da'), no: T('ps.ui.net') };
+  },
 
   async getConfig() {
     return DB.getMeta('registrationConfig', {
