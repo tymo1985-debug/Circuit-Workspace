@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.65.0',
+      version: '9.65.1',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1073,9 +1073,10 @@
         this.localizeColorOptions();
         const brandH1 = q('.brand h1'); if (brandH1) brandH1.textContent = App.utils.t('appTitle');
         const brandP = q('.brand p'); if (brandP) brandP.textContent = `v${App.config.version} • Circuit Workspace`;
-        const versionBadge = q('.version-badge'); if (versionBadge) versionBadge.textContent = `${App.utils.t('version')}: v${App.config.version}`;
+        // Бейдж версии из шапки экрана убран: та же версия уже показана в общей
+        // шапке модуля (#cwModuleVersion) строкой выше — дублировалась дважды.
         // Версия в общей шапке модуля — короткая, как в остальных модулях
-        // Circuit Workspace. Бейдж выше остаётся: он часть экрана календаря.
+        // Circuit Workspace. Это теперь единственное место, где она показана.
         const cwVersion = q('#cwModuleVersion'); if (cwVersion) cwVersion.textContent = `v${App.config.version}`;
         // Keep the tab title in sync with the single source of truth instead of hardcoding it in index.html.
         document.title = `${App.utils.t('appTitle')} v${App.config.version}`;
@@ -1373,7 +1374,6 @@
           .topbar{display:grid !important;grid-template-columns:minmax(160px,1fr) auto !important;align-items:start !important;gap:12px !important;margin-bottom:10px !important;padding:8px 0 8px !important;position:sticky;top:0;z-index:1200;background:var(--bg)}
           .topbar h2{font-size:1.55rem !important;line-height:1.12 !important;margin-top:4px !important}
           .topbar p{display:none !important}
-          .version-badge{font-size:.78rem !important;padding:5px 9px !important}
           .mobile-menu-btn{display:inline-flex !important;padding:10px 14px !important;border-radius:18px !important;white-space:nowrap !important}
           .sidebar{position:fixed !important;left:calc(-1 * var(--sidebar-width) - 20px) !important;top:0 !important;bottom:0 !important;width:var(--sidebar-width) !important;z-index:2500 !important;transition:left .22s ease !important;box-shadow:0 20px 60px rgba(0,0,0,.24);display:flex !important;pointer-events:auto !important}
           .app.menu-open .sidebar{left:0 !important}

@@ -27,8 +27,19 @@
     .sidebar .small{color:rgba(255,255,255,.82)}
     .sidebar .summary strong{color:#fff}.summary strong{display:block;margin-bottom:8px}
   .main{padding:28px;min-width:0}.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.topbar h2{margin:0;font-size:28px}.topbar p{margin:6px 0 0;color:var(--muted)}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .topbar-title-row{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 auto}
-  .topbar-title-block{min-width:0;flex:1 1 auto}
+  /* Единая левая кромка. Кнопка «Меню» — постоянный элемент (с v9.5.2 боковое
+     меню выдвижное на всех ширинах), поэтому она занимает первую колонку
+     первой строки, заголовок встаёт рядом с ней, а карточка и подзаголовок
+     тянутся на обе колонки — вровень с календарём под шапкой.
+     `display:contents` у блока заголовка нужен, чтобы его дети попали
+     в эту же сетку, не меняя разметку. */
+  .topbar-title-row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:14px;row-gap:10px;min-width:0;flex:1 1 auto}
+  .topbar-title-row .mobile-menu-btn{grid-column:1;grid-row:1}
+  .topbar-title-block{display:contents}
+  .topbar-title-block>*{margin:0;min-width:0}
+  .topbar-title-block>h2{grid-column:2;grid-row:1}
+  .topbar-title-block>#nextVisitPill{grid-column:1 / -1}
+  .topbar-title-block>p{grid-column:1 / -1}
   select,input,textarea{font:inherit}
   button,.md-btn,.md-chip,.icon-btn,.nav-btn,.bottom-nav-btn,.week-item,.side-item,.event-bar,.pdf-option,a.md-btn,label.md-btn,input,select,textarea{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   
@@ -60,7 +71,7 @@
      письма/S-302) уже лежали в entry/event, но не показывались — карточка их
      выводит. Высота блока меняется, поэтому measureTopbarHeight() обязан
      отрабатывать после каждой перерисовки (см. renderNextVisitCard). */
-  #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;max-width:520px;margin:8px 0 2px;padding:12px 14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-lg);color:var(--text);font:inherit;cursor:pointer}
+  #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;max-width:520px;padding:12px 14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-lg);color:var(--text);font:inherit;cursor:pointer}
   .nv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--accent);color:#fff;font-size:13px;font-weight:600}
   .nv-type{display:inline-flex;padding:4px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
@@ -337,7 +348,6 @@ body::before{display:none !important}
         <div class="topbar-title-row">
           <button class="md-btn md-btn-outlined md-state-layer mobile-menu-btn" id="mobileMenuToggleBtn" type="button" aria-label="Открыть меню" data-i18n-aria-label="cp.a_open_menu" aria-expanded="false"><span data-i18n="cp.menu_btn">☰ Меню</span></button>
           <div class="topbar-title-block">
-            <div data-i18n="cp.version_label" class="version-badge">Версия: …</div>
             <h2 data-i18n="cp.screen_calendar" id="screenTitle">Календарь</h2>
             <button id="nextVisitPill" class="md-state-layer" type="button" data-i18n-aria-label="cp.next_visit" aria-label="Следующий визит"><span class="nv-head"><span class="nv-countdown" id="nextVisitPillDate"></span><span class="nv-type" id="nextVisitPillType"></span></span><span class="nv-name" id="nextVisitPillName"></span><span class="nv-dates" id="nextVisitPillRange"></span><span class="nv-flags"><span class="nv-flag" id="nextVisitPillLetter"></span><span class="nv-flag" id="nextVisitPillS302"></span></span></button>
             <p id="screenSubtitle"></p>
