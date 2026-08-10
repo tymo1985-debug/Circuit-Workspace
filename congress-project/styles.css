@@ -934,3 +934,40 @@ dialog {
     display: none
   }
 }
+
+/* ── Общие задания серии ─────────────────────────────────────────────────── */
+/* Маркер в строке таблицы: иконка со счётчиком конгрессов. Число важнее самой
+   иконки — оно сразу говорит, сколько программ затронет правка. */
+.link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--cw-radius-sm);
+  background: color-mix(in srgb, var(--cw-violet) 16%, transparent);
+  color: var(--cw-lavender);
+  font-size: .78rem;
+  line-height: 1.6;
+  vertical-align: 1px;
+}
+.link-badge .icon { width: 13px; height: 13px; }
+
+.link-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--cw-radius-sm);
+  background: color-mix(in srgb, var(--cw-violet) 14%, transparent);
+}
+.link-banner[hidden] { display: none; }
+.link-banner-icon { flex: none; color: var(--cw-lavender); line-height: 0; }
+.link-banner-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.link-banner-text b { color: var(--cw-lavender); font-weight: 600; font-size: .9rem; }
+.link-banner-text span { color: var(--cw-text-dim); font-size: .82rem; }
+
+/* Подпись у полей, которые остаются своими у каждого конгресса связки. */
+.own-hint { margin-left: 6px; color: var(--cw-muted); font-size: .78rem; font-weight: 400; }
+.own-hint[hidden] { display: none; }
