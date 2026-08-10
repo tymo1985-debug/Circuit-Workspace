@@ -55,7 +55,23 @@
   .day-cell{position:relative;min-height:112px;padding:8px 8px 8px 10px;border-right:1px solid var(--cal-grid-line)}.day-cell:last-child{border-right:0}.day-cell.inactive{background:var(--cal-inactive-bg)}.day-cell.weekend{background:var(--cal-weekend-bg)}.day-cell.inactive.weekend{background:rgba(20,83,45,.04)}.day-cell.today .day-num{background:var(--accent);color:#fff}.day-num{display:inline-flex;min-width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;font-size:13px}.day-month{color:var(--muted);font-size:11px;margin-left:2px}
   .event-bar{position:absolute;min-height:18px;border-radius:999px;color:#fff;padding:2px 10px;display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 5px rgba(0,0,0,.08);cursor:pointer;border:0}.event-bar::before{content:'';width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.92);flex:0 0 auto}
   .calendar-side{display:grid;gap:18px}.side-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-lg);box-shadow:var(--shadow);padding:18px}.side-card h4{margin:0 0 10px;font-size:18px}.side-list{display:grid;gap:8px}.side-item{padding:10px 12px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);text-align:left;cursor:pointer}.side-item strong{display:block;margin-bottom:4px}.side-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(216,226,219,.72)}.side-row:last-child{border-bottom:0}.side-label{color:var(--muted);font-size:12px}.side-value{font-weight:600}
-  #nextVisitPill{background:var(--accent);color:#fff;border-color:var(--accent)}
+  /* Карточка ближайшего визита в шапке календаря. Раньше это был однострочный
+     чип: название + дата начала. Данные (диапазон, тип посещения, статусы
+     письма/S-302) уже лежали в entry/event, но не показывались — карточка их
+     выводит. Высота блока меняется, поэтому measureTopbarHeight() обязан
+     отрабатывать после каждой перерисовки (см. renderNextVisitCard). */
+  #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;max-width:520px;margin:8px 0 2px;padding:12px 14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-lg);color:var(--text);font:inherit;cursor:pointer}
+  .nv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--accent);color:#fff;font-size:13px;font-weight:600}
+  .nv-type{display:inline-flex;padding:4px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .nv-type:empty{display:none}
+  .nv-name{font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+  .nv-dates{font-size:13px;color:var(--muted)}
+  .nv-flags{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .nv-flag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:10px;border:1px solid var(--line);font-size:12px}
+  .nv-flag:empty{display:none}
+  .nv-flag.is-pending{border-color:rgba(var(--danger-rgb),.45);background:rgba(var(--danger-rgb),.07)}
+  .nv-flag.is-done{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08)}
   .toolbar-more{position:relative}
   .toolbar-more summary{list-style:none;cursor:pointer}
   .toolbar-more summary::-webkit-details-marker{display:none}
@@ -63,6 +79,12 @@
   .toolbar-more-panel .md-chip-full{width:100%;text-align:left}
   #calendarSideTitle{scroll-margin-top:46px}
   .more-actions{margin-top:2px}.more-actions summary{cursor:pointer;list-style:none;padding:10px 14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-size:14px;text-align:center}.more-actions summary::-webkit-details-marker{display:none}.more-actions[open] summary{margin-bottom:2px}
+  /* .md-btn из shared/style.css имеет жёсткое height:40px — длинная подпись
+     переносилась на вторую строку и обрезалась («Сформировать S-302»). Здесь
+     высота отпускается локально; общий слой не трогаем, чтобы не задеть
+     остальные модули. */
+  .more-actions .actions-grid{display:grid;gap:8px;margin-top:8px}
+  .more-actions .actions-grid .md-btn{height:auto;min-height:44px;padding:8px 18px;justify-content:flex-start;text-align:left;line-height:1.3;white-space:normal}
   .editor-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.editor-title{margin:0;font-size:16px}.editor-sub{color:var(--muted);font-size:12px;margin-top:4px}.editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.editor-grid label{display:grid;gap:6px;font-size:12px;color:var(--muted)}.editor-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.editor-meta{margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;font-size:12px;color:var(--muted)}
   .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--surface);border:1px solid var(--line);border-radius:var(--md-radius-xl);box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--muted);font-size:13px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--line);border-radius:18px;padding:14px;background:var(--surface2);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(20,83,45,.50)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--line);color:var(--muted);font-size:13px}
   .toast-wrap{position:fixed;top:18px;right:18px;display:grid;gap:10px;z-index:1600}.version-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
@@ -317,7 +339,7 @@ body::before{display:none !important}
           <div class="topbar-title-block">
             <div data-i18n="cp.version_label" class="version-badge">Версия: …</div>
             <h2 data-i18n="cp.screen_calendar" id="screenTitle">Календарь</h2>
-            <button id="nextVisitPill" class="md-chip md-state-layer" type="button" style="display:none;margin:6px 0;font-size:14px;padding:7px 14px;max-width:100%;align-items:center;gap:6px"><span id="nextVisitPillName" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0"></span><span id="nextVisitPillDate" style="white-space:nowrap;flex-shrink:0"></span></button>
+            <button id="nextVisitPill" class="md-state-layer" type="button" data-i18n-aria-label="cp.next_visit" aria-label="Следующий визит"><span class="nv-head"><span class="nv-countdown" id="nextVisitPillDate"></span><span class="nv-type" id="nextVisitPillType"></span></span><span class="nv-name" id="nextVisitPillName"></span><span class="nv-dates" id="nextVisitPillRange"></span><span class="nv-flags"><span class="nv-flag" id="nextVisitPillLetter"></span><span class="nv-flag" id="nextVisitPillS302"></span></span></button>
             <p id="screenSubtitle"></p>
           </div>
         </div>

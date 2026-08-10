@@ -91,6 +91,8 @@
     'cp.not_a_visit': 'Не визит (обычная запись)',
     'cp.no_visit_type': '⚠️ Без типа визита',
     'cp.visit_form_btn': '📋 Формуляр визита',
+    'cp.more_actions': 'Ещё действия',
+    'cp.make_s302': '📋 Сформировать S-302',
     'cp.meetings_schedule': 'Расписание встреч',
     'cp.pastoral_visits': 'Пастырские посещения',
     'cp.meals': 'Обеды',
@@ -593,6 +595,9 @@
     'cp.not_a_visit': 'Не візит (звичайний запис)',
     'cp.no_visit_type': '⚠️ Без типу візиту',
     'cp.visit_form_btn': '📋 Формуляр візиту',
+    // TODO(native): полная фраза ждёт носителя, пока — слово из cp.more_btn.
+    'cp.more_actions': 'Ще',
+    'cp.make_s302': '📋 S-302',
     'cp.meetings_schedule': 'Розклад зустрічей',
     'cp.pastoral_visits': 'Пастирські відвідування',
     'cp.meals': 'Обіди',
@@ -1095,6 +1100,9 @@
     'cp.not_a_visit': 'Not a visit (ordinary entry)',
     'cp.no_visit_type': '⚠️ No visit type',
     'cp.visit_form_btn': '📋 Visit form',
+    // TODO(native): full phrase awaits a native speaker; word taken from cp.more_btn.
+    'cp.more_actions': 'More',
+    'cp.make_s302': '📋 S-302',
     'cp.meetings_schedule': 'Meeting schedule',
     'cp.pastoral_visits': 'Shepherding visits',
     'cp.meals': 'Meals',
@@ -1597,6 +1605,9 @@
     'cp.not_a_visit': 'Nie wizyta (zwykły wpis)',
     'cp.no_visit_type': '⚠️ Bez typu wizyty',
     'cp.visit_form_btn': '📋 Formularz wizyty',
+    // TODO(native): pełna fraza czeka na native speakera; słowo z cp.more_btn.
+    'cp.more_actions': 'Więcej',
+    'cp.make_s302': '📋 S-302',
     'cp.meetings_schedule': 'Harmonogram zebrań',
     'cp.pastoral_visits': 'Odwiedziny pasterskie',
     'cp.meals': 'Posiłki',

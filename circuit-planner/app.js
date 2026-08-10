@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.64.2',
+      version: '9.65.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -340,6 +340,18 @@
       escapeAttr(str) { return App.utils.escapeHtml(str); },
       prettyDate(date) { const d = new Date(date); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleDateString(this.lang(), { day:'2-digit', month:'short' }); },
       prettyDateLong(date) { const d = new Date(date); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleDateString(this.lang(), { day:'2-digit', month:'long', year:'numeric' }); },
+      // Короткая дата с годом: нужна как правая граница диапазона («29 сент. — 4 окт. 2026»),
+      // где год указывается один раз, в конце.
+      prettyDateYear(date) { const d = new Date(date); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleDateString(this.lang(), { day:'2-digit', month:'short', year:'numeric' }); },
+      // Подпись типа посещения. Та же логика уже продублирована в четырёх местах
+      // app.js (renderCalendarDetails и др.) — новый код берёт её отсюда,
+      // старые копии подлежат замене отдельной задачей на рефакторинг.
+      visitTypeLabel(visitType) {
+        if (visitType === 'congregation') return this.t('visit_type_congregation');
+        if (visitType === 'group') return this.t('visit_type_group');
+        if (visitType === 'pregroup') return this.t('visit_type_pregroup');
+        return '';
+      },
       countdownText(dateIso, unit = 'days') {
         const target = this.parseLocalDate(dateIso); if (!target) return '—';
         const now = new Date();
@@ -988,7 +1000,7 @@
     ui: {
       cacheElements() {
         [
-          'appRoot','desktopNav','toastWrap','offlineBanner','sideStatus','screenTitle','screenSubtitle','nextVisitPill','nextVisitPillName','nextVisitPillDate',
+          'appRoot','desktopNav','toastWrap','offlineBanner','sideStatus','screenTitle','screenSubtitle','nextVisitPill','nextVisitPillName','nextVisitPillDate','nextVisitPillType','nextVisitPillRange','nextVisitPillLetter','nextVisitPillS302',
           'eventEditorModal','eventEditorCloseBtn',
           'monthLabel','calendarRangeLabel','calendarGrid','prevMonthBtn','todayMonthBtn','nextMonthBtn',
           'calendarYearSelect','calendarLayoutPresetSelect','layoutPresetSelect','calendarEditor','editorTitle',
@@ -1755,7 +1767,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const pastResultRow = pastResult ? `<div class="side-row"><div class="side-label">${App.utils.t('last_visit_result')} (${App.utils.prettyDate(pastResult.end)})</div><div class="side-value">${App.utils.escapeHtml(pastResult.resultNote)}</div></div>` : '';
         const hasContact = event && (event.contactName || event.contactPhone || event.contactEmail || event.contactNote);
         const contactBlock = hasContact ? `<div class="send-control" style="margin-top:10px"><div class="send-control-title" style="margin-bottom:8px">${App.utils.t('contact_info')}</div>${event.contactName ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_name')}</div><div class="side-value">${App.utils.escapeHtml(event.contactName)}</div></div>` : ''}${event.contactPhone ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_phone')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="tel:${App.utils.escapeAttr(event.contactPhone.replace(/[^+\d]/g, ''))}">${App.utils.escapeHtml(event.contactPhone)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactPhone)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactEmail ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_email')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="mailto:${App.utils.escapeAttr(event.contactEmail)}">${App.utils.escapeHtml(event.contactEmail)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactEmail)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactNote ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_note')}</div><div class="side-value">${App.utils.escapeHtml(event.contactNote)}</div></div>` : ''}</div>` : '';
-        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ Ещё действия</summary><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">📋 Формуляр визита</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">📋 Сформировать S-302</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
+        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ ${App.utils.t('more_actions')}</summary><div class="actions-grid">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">${App.utils.t('visit_form_btn')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">${App.utils.t('make_s302')}</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
         const editBtn = document.getElementById('detailEditBtn'); if (editBtn) editBtn.addEventListener('click', () => App.actions.openCalendarEditorForItem(itemData.id));
         const icsBtn = document.getElementById('detailIcsBtn'); if (icsBtn) icsBtn.addEventListener('click', () => App.actions.exportSingleEventIcs(itemData.id));
         document.getElementById('detailShareBtn')?.addEventListener('click', () => App.ui.shareWeekText(itemData, event));
@@ -2104,14 +2116,26 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           .filter(({ event, start, entry }) => event?.visitType && start && App.utils.parseLocalDate(entry.end) >= today)
           .sort((a, b) => a.start - b.start)[0];
         if (!upcoming) { pill.style.display = 'none'; pill.dataset.entryId = ''; finish(); return; }
-        const { entry } = upcoming;
-        pill.style.display = 'inline-flex';
+        const { entry, event } = upcoming;
+        pill.style.display = 'flex';
         pill.dataset.entryId = entry.id;
-        const nameEl = App.els.nextVisitPillName;
-        const dateEl = App.els.nextVisitPillDate;
-        if (nameEl) nameEl.textContent = `🎯 ${entry.title || upcoming.event.name}`;
-        if (dateEl) dateEl.textContent = ` — ${App.utils.prettyDate(entry.start)}`;
-        pill.title = `${entry.title || upcoming.event.name}: ${App.utils.prettyDateLong(entry.start)} — ${App.utils.prettyDateLong(entry.end)}`;
+        const setText = (el, text) => { if (el) el.textContent = text; };
+        const flags = entry.flags || {};
+        // Статусы только отображаются: переключать их можно в блоке «Контроль
+        // отправки» внутри детали визита, дублировать интерактив здесь не нужно.
+        const flagText = (labelKey, done) => `${App.utils.t(labelKey)} · ${App.utils.t(done ? 'sent_done' : 'needs_sending')}`;
+        const setFlag = (el, labelKey, done) => {
+          if (!el) return;
+          el.textContent = flagText(labelKey, done);
+          el.className = `nv-flag ${done ? 'is-done' : 'is-pending'}`;
+        };
+        setText(App.els.nextVisitPillDate, `🎯 ${App.utils.countdownText(entry.start, 'days')}`);
+        setText(App.els.nextVisitPillType, App.utils.visitTypeLabel(event?.visitType));
+        setText(App.els.nextVisitPillName, entry.title || event?.name || '');
+        setText(App.els.nextVisitPillRange, `${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDateYear(entry.end)}`);
+        setFlag(App.els.nextVisitPillLetter, 'letter_short', !!flags.letter);
+        setFlag(App.els.nextVisitPillS302, 's302_short', !!flags.f302);
+        pill.title = `${entry.title || event?.name || ''}: ${App.utils.prettyDateLong(entry.start)} — ${App.utils.prettyDateLong(entry.end)}`;
         finish();
       },
       checkAutoBackupReminder() {
