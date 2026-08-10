@@ -40,6 +40,7 @@ const SHELL_FILES = [
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
+  './icon-maskable-512.png',
 ];
 
 // Точный набор URL оболочки хаба. Раньше сопоставление шло через

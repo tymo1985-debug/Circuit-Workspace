@@ -15,7 +15,15 @@
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "description": "Единая точка входа к инструментам районного служения: календарь посещений, программы конгрессов, школа пионеров и назначения."
 }

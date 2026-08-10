@@ -43,6 +43,7 @@ const APP_SHELL_URLS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png',
   // CDN libs: precache so PDF export works offline even before the second visit
   // (on the very first load the SW doesn't control the page yet, so runtime
   // caching alone would miss them).

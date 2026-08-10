@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.65.2',
+      version: '9.65.3',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -343,9 +343,15 @@
       // Короткая дата с годом: нужна как правая граница диапазона («29 сент. — 4 окт. 2026»),
       // где год указывается один раз, в конце.
       prettyDateYear(date) { const d = new Date(date); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleDateString(this.lang(), { day:'2-digit', month:'short', year:'numeric' }); },
-      // Подпись типа посещения. Та же логика уже продублирована в четырёх местах
-      // app.js (renderCalendarDetails и др.) — новый код берёт её отсюда,
-      // старые копии подлежат замене отдельной задачей на рефакторинг.
+      // Подпись типа посещения для интерфейса — с прописной буквы: используется
+      // как самостоятельное значение в ячейке таблицы, в боковой панели и в
+      // «пилюле» карточки. Три локальные копии этой логики слиты сюда 10.08.2026.
+      //
+      // НЕ путать с подписью в подзаголовке модалки письма (см. showLetterModal):
+      // там берётся отдельный набор ключей `visit_congregation`/`visit_group`/
+      // `visit_pregroup` — те же слова со СТРОЧНОЙ буквы, потому что стоят внутри
+      // предложения в скобках, и вход там другой (суффикс шаблона письма, а не
+      // event.visitType). Это не дубль, сливать сюда нельзя.
       visitTypeLabel(visitType) {
         if (visitType === 'congregation') return this.t('visit_type_congregation');
         if (visitType === 'group') return this.t('visit_type_group');
@@ -972,7 +978,6 @@
         };
         const overview = () => { const byMonth = new Map(); items.forEach((it)=>{ const k=`${it.startDate.getFullYear()}-${String(it.startDate.getMonth()+1).padStart(2,'0')}`; if(!byMonth.has(k)) byMonth.set(k,[]); byMonth.get(k).push(it); }); return `<table><thead><tr><th>${esc(App.utils.t('service_year'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('notes_count'))}</th></tr></thead><tbody>${Array.from(byMonth.entries()).map(([k,list])=>{ const [y,m]=k.split('-').map(Number); return `<tr><td>${esc(App.utils.monthName(m-1))} ${y}</td><td>${list.length}</td><td>${list.filter((x)=>x.note).length}</td></tr>`; }).join('')}</tbody></table>${agenda()}`; };
         const visitsSchedule = () => {
-          const visitLabel = (vt) => vt === 'congregation' ? App.utils.t('visit_type_congregation') : vt === 'group' ? App.utils.t('visit_type_group') : vt === 'pregroup' ? App.utils.t('visit_type_pregroup') : '';
           const rows = (App.state.app.entries || []).map((entry) => ({ entry, event: App.data.getEventById(entry.eventId) }))
             .filter(({ entry, event }) => {
               if (!event?.visitType) return false;
@@ -980,7 +985,7 @@
               return es && ee && App.utils.overlaps(es, ee, App.utils.parseLocalDate(range.start), App.utils.parseLocalDate(range.end));
             })
             .sort((a, b) => String(a.entry.start).localeCompare(String(b.entry.start)));
-          return rows.length ? `<table><thead><tr><th>№</th><th>${esc(App.utils.t('range_start'))}</th><th>${esc(App.utils.t('range_end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('visit_type'))}</th><th>S-302</th><th>${esc(App.utils.t('letter_short'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${rows.map(({ entry, event }, i) => `<tr><td>${i + 1}</td><td>${esc(App.utils.prettyDateLong(entry.start))}</td><td>${esc(App.utils.prettyDateLong(entry.end))}</td><td><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${esc(entry.title || event.name)}</td><td>${esc(visitLabel(event.visitType))}</td><td>${entry.flags?.f302 ? '✓' : '—'}</td><td>${entry.flags?.letter ? '✓' : '—'}</td><td>${esc(entry.note || '')}</td></tr>`).join('')}</tbody></table>` : `<div class="md-empty">${esc(App.utils.t('no_events_month'))}</div>`;
+          return rows.length ? `<table><thead><tr><th>№</th><th>${esc(App.utils.t('range_start'))}</th><th>${esc(App.utils.t('range_end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('visit_type'))}</th><th>S-302</th><th>${esc(App.utils.t('letter_short'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${rows.map(({ entry, event }, i) => `<tr><td>${i + 1}</td><td>${esc(App.utils.prettyDateLong(entry.start))}</td><td>${esc(App.utils.prettyDateLong(entry.end))}</td><td><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${esc(entry.title || event.name)}</td><td>${esc(App.utils.visitTypeLabel(event.visitType))}</td><td>${entry.flags?.f302 ? '✓' : '—'}</td><td>${entry.flags?.letter ? '✓' : '—'}</td><td>${esc(entry.note || '')}</td></tr>`).join('')}</tbody></table>` : `<div class="md-empty">${esc(App.utils.t('no_events_month'))}</div>`;
         };
         const body = (type === 'month-grid' || type === 'custom-range-calendar') ? calendar() : type === 'year-overview' ? overview() : type === 'visits-schedule' ? visitsSchedule() : agenda();
         const label = `${App.utils.prettyDateLong(App.utils.parseLocalDate(range.start))} — ${App.utils.prettyDateLong(App.utils.parseLocalDate(range.end))}`;
@@ -1225,8 +1230,16 @@
         setTimeout(apply, 150);
       },
       renderScreenHeader() {
-        const map = { calendar:['screen_calendar','subtitle_calendar'], weeks:['screen_weeks','subtitle_weeks'], events:['screen_events','subtitle_events'], notes:['screen_notes','subtitle_notes'], settings:['screen_settings','subtitle_settings'] };
-        const [titleKey, subKey] = map[App.state.selectedScreen] || ['appTitle','subtitle_calendar']; if (App.els.screenTitle) App.els.screenTitle.textContent = App.utils.t(titleKey); if (App.els.screenSubtitle) App.els.screenSubtitle.textContent = App.utils.t(subKey);
+        // Подзаголовок экрана здесь больше не вычисляется. Элемент #screenSubtitle
+        // (<p> внутри .topbar) скрыт правилом `.topbar p{display:none !important}`
+        // из инжектируемого блока calendarViewStyles — текст считался, переводился
+        // и записывался, но пользователь не видел его ни разу.
+        // Разметка и ключи subtitle_* оставлены намеренно: если подзаголовок решат
+        // показывать, вернуть строку и снять правило. Учесть, что высота шапки
+        // меряется из живого DOM (measureTopbarHeight) и лишняя строка сдвинет
+        // раскладку календаря — такую правку нужно проверять в браузере.
+        const map = { calendar:'screen_calendar', weeks:'screen_weeks', events:'screen_events', notes:'screen_notes', settings:'screen_settings' };
+        const titleKey = map[App.state.selectedScreen] || 'appTitle'; if (App.els.screenTitle) App.els.screenTitle.textContent = App.utils.t(titleKey);
       },
       renderStatus() {
         const years = Object.keys(App.state.app.serviceYears).length; const notes = Object.values(App.state.app.serviceYears).reduce((sum, sy) => sum + Object.values(sy.weeks || {}).filter((w) => w.note).length, 0);
@@ -1755,8 +1768,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.calendarSideCountdown) App.els.calendarSideCountdown.textContent = App.utils.countdownText(itemData.start, App.state.countdownUnit || 'days');
         if (App.els.countdownUnitSelect) App.els.countdownUnitSelect.value = App.state.countdownUnit || 'days';
         const addressHtml = event?.address ? `<a href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.escapeHtml(event.address)}</a>` : App.utils.escapeHtml(App.utils.t('no_address'));
-        const visitLabel = (visitType) => visitType === 'congregation' ? App.utils.t('visit_type_congregation') : visitType === 'group' ? App.utils.t('visit_type_group') : visitType === 'pregroup' ? App.utils.t('visit_type_pregroup') : '';
-        const visitTypeRow = event?.visitType ? `<div class="side-row"><div class="side-label">${App.utils.t('visit_type')}</div><div class="side-value">${App.utils.escapeHtml(visitLabel(event.visitType))} ${this.flagBadgesHtml(itemData.flags)}</div></div>` : '';
+        const visitTypeRow = event?.visitType ? `<div class="side-row"><div class="side-label">${App.utils.t('visit_type')}</div><div class="side-value">${App.utils.escapeHtml(App.utils.visitTypeLabel(event.visitType))} ${this.flagBadgesHtml(itemData.flags)}</div></div>` : '';
         const sendControls = event?.visitType ? this.flagTogglesHtml(itemData.source, itemData.refId, itemData.flags) : '';
         // Last visit's results for this event (from past entries), shown for context.
         const today0 = new Date(); today0.setHours(0,0,0,0);
@@ -3131,7 +3143,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.els.eventColorFilter.setAttribute('aria-label', App.utils.t('event_group_filter'));
         }
         if (App.els.eventVisitFilter) App.els.eventVisitFilter.value = visitFilter;
-        const visitLabel = (visitType) => visitType === 'congregation' ? App.utils.t('visit_type_congregation') : visitType === 'group' ? App.utils.t('visit_type_group') : visitType === 'pregroup' ? App.utils.t('visit_type_pregroup') : '';
         const visibleEvents = allEvents.filter((event) => {
           const haystack = [event.name, event.address, event.schedule, App.utils.colorName(event.color)].join(' ').toLowerCase();
           const queryMatch = !query || haystack.includes(query);
@@ -3155,7 +3166,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             </div>
             <div style="display:grid;gap:8px;justify-items:end">
               <span class="pill"><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${App.utils.escapeHtml(App.utils.colorName(event.color))}</span>
-              ${event.visitType ? `<span class="pill">${App.utils.escapeHtml(visitLabel(event.visitType))}</span>` : `<span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fde68a">⚠️ ${App.utils.escapeHtml(App.utils.t('visit_type_none'))}</span>`}
+              ${event.visitType ? `<span class="pill">${App.utils.escapeHtml(App.utils.visitTypeLabel(event.visitType))}</span>` : `<span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fde68a">⚠️ ${App.utils.escapeHtml(App.utils.t('visit_type_none'))}</span>`}
             </div>
           </div>`).join('') || `<div class="md-empty">${query || App.state.eventColorFilter !== 'all' ? App.utils.t('no_events_found') : App.utils.t('no_events_month')}</div>`;
         document.querySelectorAll('[data-edit-event]').forEach((btn) => btn.addEventListener('click', () => {
