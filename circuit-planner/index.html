@@ -303,6 +303,12 @@ body::before{display:none !important}
     }
 </style>
 <link rel="stylesheet" href="../shared/style.css">
+<!-- Реестр версий хаба (self.CW_VERSION / self.CW_MODULES). Подключается ПЕРВЫМ
+     среди общих скриптов: его читает ../shared/backup.js, записывая версии
+     хаба и модуля в метаданные резервной копии. Без него бэкап из Клиндария
+     уходил с пустыми версиями. Собственную версию модуль по-прежнему берёт
+     из App.config.version — здесь дублирования нет. -->
+<script src="../shared/version.js"></script>
 <!-- Общий слой локализации. Подключается синхронно и ДО app.js (он с defer),
      чтобы мост App.i18nBridge застал CWI18n готовым. -->
 <script src="../shared/i18n.js"></script>

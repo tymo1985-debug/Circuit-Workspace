@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.16.5';
+self.CW_VERSION = '0.16.6';
 
 /**
  * Реестр модулей хаба.
@@ -36,7 +36,7 @@ self.CW_VERSION = '0.16.5';
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
   'congress-project': { title: 'Конгрессы',       version: '4.25.0' },
-  'circuit-planner':  { title: 'Клиндарий',       version: '9.65.1' },
+  'circuit-planner':  { title: 'Клиндарий',       version: '9.65.2' },
   'pioneer-school':   { title: 'Школа пионеров',  version: '1.9.2'  },
   'appointments':     { title: 'Назначения',      version: '5.3.3'  },
 };

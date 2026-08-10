@@ -24,6 +24,9 @@ const APP_SHELL_URLS = [
   '../shared/style.css',
   '../shared/nav.js',
   '../shared/theme.js',
+  // Реестр версий: backup.js читает из него CW_VERSION/CW_MODULES. Без
+  // прекэша офлайн-бэкап терял бы версии в метаданных.
+  '../shared/version.js',
   '../shared/backup.js',
   // Локализация: скрипты синхронные и в <head>, без них офлайн-запуск
   // модуля упал бы на CWI18n undefined ещё до отрисовки.
