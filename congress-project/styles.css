@@ -971,3 +971,23 @@ dialog {
 /* Подпись у полей, которые остаются своими у каждого конгресса связки. */
 .own-hint { margin-left: 6px; color: var(--cw-muted); font-size: .78rem; font-weight: 400; }
 .own-hint[hidden] { display: none; }
+
+/* Диалог связывания заданий уже существующей серии. */
+.ls-base { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
+.ls-base > span { flex: none; color: var(--cw-text-dim); font-size: .85rem; }
+.ls-base select { flex: 1; }
+.ls-rows { max-height: 46vh; overflow: auto; }
+.ls-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--cw-line-soft); }
+.ls-row > input { flex: none; margin-top: 3px; }
+.ls-off { opacity: .55; }
+.ls-body { flex: 1; min-width: 0; }
+.ls-title { font-size: .92rem; }
+.ls-meta { margin-top: 2px; }
+.ls-vals { margin-top: 2px; color: var(--cw-text-dim); font-size: .8rem; }
+.ls-align { display: flex; gap: 6px; align-items: center; margin-top: 6px; color: var(--cw-text-dim); font-size: .8rem; }
+.ls-tag { display: inline-block; padding: 1px 7px; border-radius: var(--cw-radius-sm); font-size: .78rem; }
+.ls-tag.ok { background: color-mix(in srgb, var(--cw-teal) 18%, transparent); color: var(--cw-teal); }
+.ls-tag.warn { background: color-mix(in srgb, var(--cw-amber) 18%, transparent); color: var(--cw-amber); }
+.ls-tag.mute { background: color-mix(in srgb, var(--cw-muted) 16%, transparent); color: var(--cw-muted); }
+.ls-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cw-line-soft); }
+.ls-foot-actions { display: flex; gap: 8px; }

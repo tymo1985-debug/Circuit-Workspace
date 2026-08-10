@@ -82,6 +82,64 @@ export function propagateStatus(src){if(!src||!src.linkId)return 0;if(!isAssignm
 // «Музика» не проходят подтверждение и не получают писем.
 export function canLink(t){return !!t&&!isSection(t)&&!noAssignmentNeeded(t)}
 
+// ── Сопоставление заданий внутри серии ───────────────────────────────────────
+// Для конгрессов, скопированных до появления режима «Копия с общими заданиями».
+// Сопоставляем по номеру и теме, а не по позиции в списке: порядок мог
+// измениться, а номер сам по себе повторяется в разных разделах программы.
+function normKey(v){return String(v==null?"":v).toLowerCase().replace(/ё/g,"е").replace(/\s+/g," ").trim()}
+function taskKey(t){return normKey(t.number)+"|"+normKey(t.title)}
+
+// Какие поля разошлись между опорным заданием и найденной парой. Возвращаем
+// имена полей, а не «данные различаются»: выбирать вслепую нельзя.
+// Номер и тему сравниваем по той же нормализации, по какой искали пару: иначе
+// разный регистр в теме и находит пару, и тут же объявляет её расхождением.
+const LINK_LOOSE_FIELDS=["number","title"];
+export function linkDiffFields(a,b){return LINK_SHARED_FIELDS.filter(f=>{let x=a[f]==null?"":a[f],y=b[f]==null?"":b[f];return LINK_LOOSE_FIELDS.indexOf(f)>=0?normKey(x)!==normKey(y):JSON.stringify(x)!==JSON.stringify(y)})}
+
+// Разбор серии: что с чем совпало, что разошлось, чего не хватает.
+// Строка = задание опорного конгресса + найденные пары + приговор:
+//   linked    — уже в связке, трогать нечего
+//   none      — пары нет ни в одном другом конгрессе
+//   ambiguous — в каком-то конгрессе таких заданий больше одного
+//   same      — пары найдены и данные совпадают
+//   diff      — пары найдены, но часть полей разошлась
+export function matchSeriesTasks(seriesId,baseId){
+  let all=(store.st.congresses||[]).filter(c=>c.seriesId===seriesId);
+  let base=all.find(c=>c.id===baseId)||all[0];
+  if(!base||all.length<2)return{base:base||null,congresses:all,rows:[]};
+  let others=all.filter(c=>c.id!==base.id);
+  let baseDup={};base.tasks.forEach(t=>{if(canLink(t))baseDup[taskKey(t)]=(baseDup[taskKey(t)]||0)+1});
+  let rows=[];
+  base.tasks.forEach(t=>{
+    if(!canLink(t))return;
+    let key=taskKey(t),matches=[],missing=[],ambiguous=baseDup[key]>1;
+    others.forEach(o=>{
+      let cand=(o.tasks||[]).filter(x=>canLink(x)&&taskKey(x)===key);
+      if(cand.length===1)matches.push({congress:o,task:cand[0]});
+      else if(cand.length>1)ambiguous=true;
+      else missing.push(o);
+    });
+    let diff=[];matches.forEach(m=>{linkDiffFields(t,m.task).forEach(f=>{if(diff.indexOf(f)<0)diff.push(f)})});
+    let state=t.linkId?"linked":ambiguous?"ambiguous":!matches.length?"none":diff.length?"diff":"same";
+    rows.push({task:t,matches:matches,missing:missing,diff:diff,state:state,total:all.length,found:matches.length+1});
+  });
+  return{base:base,congresses:all,rows:rows};
+}
+
+// Применение: связываем выбранные строки. Если у найденной пары уже есть связка
+// (конгресс связан с третьим), входим в неё, а не заводим новую.
+export function applySeriesLinks(rows){
+  let n=0;
+  rows.forEach(r=>{
+    let existing=r.matches.map(m=>m.task.linkId).find(Boolean)||r.task.linkId||id();
+    r.task.linkId=existing;r.matches.forEach(m=>{m.task.linkId=existing});
+    if(r.align)propagateTask(r.task);
+    n++;
+  });
+  if(n)save();
+  return n;
+}
+
 export function unlinkTask(t){if(t)t.linkId=null;cleanupLinks()}
 
 // Связка из одного участника смысла не имеет (второй конгресс удалили, задание
