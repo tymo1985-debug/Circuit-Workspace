@@ -2,7 +2,7 @@
 // Имя кэша привязано к версии модуля: при выпуске новой версии достаточно
 // поднять APP_VERSION, и вернувшийся пользователь получит свежую оболочку,
 // а не бесконечно закэшированную старую.
-const APP_VERSION='4.26.1';
+const APP_VERSION='4.27.0';
 const CACHE='congress-pwa-v'+APP_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
 // активация этого SW стирала офлайн-кэши хаба и остальных модулей.
@@ -21,11 +21,19 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
 // остался бы без переводов, а js/i18n.js — без CWI18n.
 './i18n/dict.js','../shared/i18n.js',
   '../shared/sender.js',
-  '../shared/doclang.js','../shared/i18n/common.js','../shared/version.js'];
+  '../shared/doclang.js','../shared/i18n/common.js','../shared/version.js',
+  '../shared/update.js'];
 
 self.addEventListener('install',e=>e.waitUntil(
-  caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())
+  caches.open(CACHE).then(c=>c.addAll(ASSETS))
 ));
+
+// Досрочная активация — только по явной просьбе пользователя (кнопка
+// «Обновить» из shared/update.js). skipWaiting() на установке убран
+// намеренно: он подменял ассеты под уже открытой страницей.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('activate',e=>e.waitUntil(
   caches.keys()

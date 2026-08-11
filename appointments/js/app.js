@@ -425,9 +425,8 @@
     renderSenderPanel();
     renderLetter();
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
-    }
+    // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).
+    if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js' });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

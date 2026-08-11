@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.10.0';
 
 let LESSONS_SEED = null;
 
@@ -1138,9 +1138,10 @@ window.addEventListener('DOMContentLoaded', () => {
   $all('.nav-item').forEach((btn) => btn.addEventListener('click', () => showRoute(btn.dataset.route)));
   initBackup();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW registration failed', e));
-  }
+  // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).
+  // Раньше модуль просто регистрировал worker и не следил за обновлениями
+  // вовсе: пользователь мог неделями работать на старой оболочке.
+  if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js' });
 
   // Реакция на смену #hash: раньше кнопки «Назад»/«Вперёд» в браузере меняли
   // адрес, но экран не переключался — приложение выглядело зависшим.

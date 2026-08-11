@@ -69,6 +69,20 @@
       'hub.footer': 'Circuit Workspace · единая точка входа поверх независимых модулей',
       'hub.language_label': 'Язык интерфейса',
       'hub.version_label': 'Версия хаба',
+      'hub.update_label': 'Проверить обновления',
+
+      /* Обновление приложения (shared/update.js).
+         Ключи заведены только для ru и en. Это НЕ забывчивость: t() при
+         отсутствии ключа берёт запасной язык FALLBACK='ru', поэтому в uk/pl/de
+         строки показываются по-русски и видно, что перевода ещё нет. Машинный
+         перевод сюда не кладём — ждём носителей (записано в TODO.md). */
+      'update.available': 'Доступна новая версия приложения.',
+      'update.apply': 'Обновить',
+      'update.later': 'Позже',
+      'update.checking': 'Проверяю обновления…',
+      'update.current': 'Установлена последняя версия.',
+      'update.others': 'Модули обновлены — изменения появятся при следующем открытии.',
+      'update.offline': 'Нет соединения — проверить обновления не удалось.',
 
       'module.congress-project.title': 'Конгрессы',
       'module.congress-project.desc': 'Программа конгрессов, распределение заданий и генерация писем участникам в PDF.',
@@ -181,6 +195,15 @@
       'hub.footer': 'Circuit Workspace · one entry point above independent modules',
       'hub.language_label': 'Interface language',
       'hub.version_label': 'Hub version',
+      'hub.update_label': 'Check for updates',
+
+      'update.available': 'A new version of the app is available.',
+      'update.apply': 'Update',
+      'update.later': 'Later',
+      'update.checking': 'Checking for updates…',
+      'update.current': 'You are on the latest version.',
+      'update.others': 'Modules updated — changes appear the next time you open them.',
+      'update.offline': 'No connection — could not check for updates.',
 
       'module.congress-project.title': 'Conventions',
       'module.congress-project.desc': 'Convention programme, task assignments and participant letters as PDF.',

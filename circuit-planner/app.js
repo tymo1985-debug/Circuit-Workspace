@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.65.3',
+      version: '9.66.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -3701,29 +3701,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.ui.renderAll();
         } catch (err) { console.error('Cross-tab sync failed', err); }
       });
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', async () => {
-          try {
-            const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
-            try { await reg.update(); } catch (_) {}
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-              if (refreshing) return;
-              refreshing = true;
-              window.location.reload();
-            });
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              if (!newWorker) return;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  try { reg.waiting?.postMessage({ type: 'SKIP_WAITING' }); } catch (_) {}
-                }
-              });
-            });
-          } catch (_) {}
-        });
-      }
+      // Регистрация SW и обновления — в общем слое (shared/update.js). Здесь
+      // раньше жила собственная копия этой логики, и она перезагружала страницу
+      // молча и немедленно: обновление могло прилететь посреди заполнения
+      // формуляра визита. Теперь решение за пользователем — полоса внизу экрана.
+      if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: './sw.js' });
     }
   };
 

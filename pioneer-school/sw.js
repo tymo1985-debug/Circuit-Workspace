@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.10.0';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -23,6 +23,7 @@ const ASSETS = [
   // Локализация: общий слой + словарь модуля. Без них офлайн-запуск падал бы
   // на T is not defined — T() зовут ещё на этапе объявления констант.
   '../shared/version.js',
+  '../shared/update.js',
   '../shared/i18n.js',
   '../shared/i18n/common.js',
   '../shared/doclang.js',
@@ -86,8 +87,14 @@ self.addEventListener('install', (event) => {
         if (res && res.ok) await cache.put(url, res.clone());
       } catch (_) { /* нет сети на момент установки — подхватится в рантайме */ }
     }));
-    await self.skipWaiting();
   })());
+});
+
+// Досрочная активация — только по явной просьбе пользователя (кнопка
+// «Обновить» из shared/update.js). skipWaiting() на установке убран
+// намеренно: он подменял ассеты под уже открытой страницей.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

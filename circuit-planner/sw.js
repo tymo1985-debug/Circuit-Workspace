@@ -1,11 +1,30 @@
-// Service Worker for Service Year Planner
-// Auto-update app shell without manual VERSION bumps.
-// index.html / app.js / manifest / sw.js -> network-first
+// Клиндарий — service worker модуля.
+// index.html / app.js / manifest / sw.js -> offline-first с фоновой ревалидацией
 // images/fonts -> cache-first
 // everything else -> stale-while-revalidate
+//
+// ВЕРСИОНИРОВАНИЕ КЭША — не украшение, а единственное, что делает выпуск
+// доставленным. До 11.08.2026 имена кэшей были константами ('syp-static',
+// 'syp-runtime') и не менялись никогда. Записи в них перезаписывались только
+// при повторном запуске install, а он запускается только когда сам sw.js
+// изменился побайтово. Выпуск, тронувший app.js и не тронувший sw.js
+// (коммиты a9805e1, 2abe68a), до пользователя не доезжал вовсе: в кэше
+// оставался старый app.js рядом с новой разметкой, обработчики висели на
+// несуществующих элементах, кнопки нажимались вхолостую.
+//
+// Версия берётся из общего реестра (shared/version.js), как в SW хаба.
+// Побочный, но важный эффект: при проверке обновления браузер сверяет не
+// только сам sw.js, но и импортированные им скрипты — значит любой выпуск,
+// поднимающий версию модуля в CW_MODULES, сам инвалидирует этот кэш.
+importScripts('../shared/version.js');
 
-const CACHE_STATIC = 'syp-static';
-const CACHE_RUNTIME = 'syp-runtime';
+const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['circuit-planner']
+  ? self.CW_MODULES['circuit-planner'].version
+  : '0');
+const STATIC_PREFIX = 'syp-static-v';
+const RUNTIME_PREFIX = 'syp-runtime-v';
+const CACHE_STATIC = STATIC_PREFIX + APP_VERSION;
+const CACHE_RUNTIME = RUNTIME_PREFIX + APP_VERSION;
 const APP_SHELL_URLS = [
   './',
   './?source=pwa',
@@ -28,6 +47,9 @@ const APP_SHELL_URLS = [
   // прекэша офлайн-бэкап терял бы версии в метаданных.
   '../shared/version.js',
   '../shared/backup.js',
+  // Общий слой обновления: без прекэша офлайн-запуск терял бы полосу
+  // «Доступна новая версия».
+  '../shared/update.js',
   // Локализация: скрипты синхронные и в <head>, без них офлайн-запуск
   // модуля упал бы на CWI18n undefined ещё до отрисовки.
   '../shared/i18n.js','../shared/sender.js',
@@ -67,22 +89,34 @@ self.addEventListener('install', (event) => {
         // Ignore missing assets to keep install robust.
       }
     }
-    self.skipWaiting();
+    // skipWaiting() здесь больше нет: новый worker останавливается в
+    // состоянии waiting, и открытая страница продолжает жить на том наборе
+    // файлов, с которым запустилась. Активацию запрашивает пользователь
+    // кнопкой «Обновить» (shared/update.js) — иначе перезагрузка могла
+    // прилететь посреди заполнения формуляра визита.
   })());
+});
+
+// Единственный способ активировать этот worker досрочно. Раньше Клиндарий
+// слал это сообщение, но обработчика не существовало ни в одном SW проекта —
+// код был мёртвым.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    // Cache Storage общий на origin: удаляем строго свои кэши по префиксам,
+    // иначе активация этого SW стирала бы офлайн-кэши хаба и других модулей.
+    // 'syp-static'/'syp-runtime' без суффикса версии — кэши до 9.66.0;
+    // их нужно снести, иначе они останутся лежать мёртвым грузом навсегда.
     const keys = await caches.keys();
+    const mine = (key) => key.startsWith(STATIC_PREFIX) || key.startsWith(RUNTIME_PREFIX)
+      || key === 'syp-static' || key === 'syp-runtime'
+      || key.startsWith('static-') || key.startsWith('runtime-') || key.startsWith('syp-v');
     await Promise.all(
-      keys.map((key) => {
-        const isCurrent = key === CACHE_STATIC || key === CACHE_RUNTIME;
-        const isLegacy = key.startsWith('static-') || key.startsWith('runtime-') || key.startsWith('syp-v');
-        if (!isCurrent && isLegacy) {
-          return caches.delete(key);
-        }
-        return Promise.resolve(false);
-      })
+      keys.filter((key) => mine(key) && key !== CACHE_STATIC && key !== CACHE_RUNTIME)
+        .map((key) => caches.delete(key))
     );
 
     if ('navigationPreload' in self.registration) {
@@ -94,6 +128,25 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim();
   })());
 });
+
+// Чтение строго из собственных кэшей.
+//
+// Раньше здесь стоял глобальный caches.match(), который перебирает ВСЕ кэши
+// origin в порядке их создания. Это давало два скрытых отказа. Первый: свежая
+// копия, положенная фоновой ревалидацией в CACHE_RUNTIME, никогда не читалась —
+// CACHE_RUNTIME создаётся позже CACHE_STATIC, и устаревшая копия из статики
+// выигрывала всегда. Второй: общие файлы (../shared/style.css и др.) лежат ещё
+// и в кэше хаба под тем же URL, и модуль мог получить чужую копию.
+//
+// Порядок здесь осознанный: сначала runtime (там лежит самое свежее, что
+// принесла ревалидация), затем static (прекэш установки).
+async function matchOwn(request) {
+  const runtime = await caches.open(CACHE_RUNTIME);
+  const fromRuntime = await runtime.match(request);
+  if (fromRuntime) return fromRuntime;
+  const stat = await caches.open(CACHE_STATIC);
+  return stat.match(request);
+}
 
 function isNavigationRequest(request) {
   return request.mode === 'navigate' || (
@@ -124,7 +177,7 @@ function isAppShellRequest(request) {
 }
 
 async function cacheFirst(request) {
-  const cached = await caches.match(request);
+  const cached = await matchOwn(request);
 
   // Revalidate in the background even on a cache hit, so replacing an icon/font
   // file (without also touching sw.js) eventually reaches returning users
@@ -163,11 +216,11 @@ async function networkFirst(request, fallbackUrl = './index.html') {
     }
     return res;
   } catch (_) {
-    const cached = await caches.match(request);
+    const cached = await matchOwn(request);
     if (cached) return cached;
 
     const fallback = fallbackUrl
-      ? (await caches.match(fallbackUrl)) || (await caches.match('./'))
+      ? (await matchOwn(fallbackUrl)) || (await matchOwn('./'))
       : null;
 
     return fallback || Response.error();
@@ -175,7 +228,7 @@ async function networkFirst(request, fallbackUrl = './index.html') {
 }
 
 async function staleWhileRevalidate(request) {
-  const cached = await caches.match(request);
+  const cached = await matchOwn(request);
   const fetchPromise = fetch(request)
     .then(async (res) => {
       if (res && res.ok) {
@@ -199,7 +252,7 @@ async function staleWhileRevalidate(request) {
 // falls through to the network (via networkFirst's own fallback chain) on the very
 // first visit, before anything has been cached yet.
 async function offlineFirst(request, fallbackUrl) {
-  const cached = await caches.match(request);
+  const cached = await matchOwn(request);
   if (cached) {
     fetch(request, { cache: 'no-cache' })
       .then(async (res) => {
@@ -223,7 +276,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isNavigationRequest(request)) {
     event.respondWith((async () => {
-      const cached = (await caches.match(request)) || (await caches.match('./index.html')) || (await caches.match('./'));
+      const cached = (await matchOwn(request)) || (await matchOwn('./index.html')) || (await matchOwn('./'));
       if (cached) {
         fetch(request, { cache: 'no-cache' })
           .then(async (res) => { if (res && res.ok) { const cache = await caches.open(CACHE_RUNTIME); try { await cache.put(request, res.clone()); } catch (_) {} } })

@@ -133,6 +133,44 @@
     color: var(--cw-muted);
   }
 
+  /* --- Кнопка проверки обновлений ------------------------------------
+     Заменяет Shift+Cmd+R и обход всех модулей по очереди: GitHub Pages —
+     один origin, поэтому со страницы хаба видны регистрации service worker'ов
+     всех четырёх модулей, и одна кнопка форсирует проверку каждому.
+     Геометрия совпадает с .cw-lang__select (высота 32, скругление 999),
+     чтобы блок инструментов читался одной линией. */
+  .cw-update-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 14px 0 10px;
+    border: 1px solid var(--cw-line);
+    border-radius: 999px;
+    background: var(--cw-surface);
+    color: var(--cw-text);
+    font: 500 12px/16px var(--md-font-family);
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+  .cw-update-btn:hover { border-color: var(--cw-violet-dim); }
+  .cw-update-btn:focus-visible { outline: 3px solid var(--cw-lavender); outline-offset: 2px; }
+  .cw-update-btn[disabled] { opacity: .6; cursor: progress; }
+  .cw-update-btn__icon { width: 16px; height: 16px; color: var(--cw-muted); }
+  /* Вращение только на время проверки. prefers-reduced-motion уважаем:
+     статичная иконка + заблокированная кнопка сами по себе показывают,
+     что идёт работа. */
+  .cw-update-btn[disabled] .cw-update-btn__icon { animation: cw-spin 1s linear infinite; }
+  @keyframes cw-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .cw-update-btn[disabled] .cw-update-btn__icon { animation: none; }
+  }
+  /* На узком экране подпись прячется — остаётся круглая иконка. */
+  @media (max-width: 560px) {
+    .cw-update-btn { padding: 0 8px; }
+    .cw-update-btn__label { display: none; }
+  }
+
   /* --- Плата модулей: шина-коннектор + плитки ---
      Каждая плитка "запитана" от общей шины сверху: горизонтальная линия
      соединяет три контактные площадки (pad), от каждой вниз идёт дорожка
@@ -391,6 +429,10 @@
           <select class="cw-lang__select" id="hubTheme" data-i18n-title="common.theme"></select>
           <svg class="cw-lang__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </span>
+        <button type="button" class="cw-update-btn" id="hubUpdateBtn" data-i18n-title="hub.update_label" data-i18n-aria-label="hub.update_label">
+          <svg class="cw-update-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
+          <span class="cw-update-btn__label" data-i18n="hub.update_label">Проверить обновления</span>
+        </button>
         <span class="cw-version cw-mono" id="hubVersion" data-i18n-title="hub.version_label">v…</span>
       </div>
     </div>
@@ -519,6 +561,7 @@
 </footer>
 
 <script src="shared/version.js"></script>
+<script src="shared/update.js"></script>
 <script>
   // Версия хаба — единственный источник: shared/version.js. Никогда не хардкодим
   // номер версии в разметке, чтобы он не мог "отстать" при очередном обновлении.
@@ -688,11 +731,46 @@
     CWI18n.onChange(renderRows);
   })();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(function (e) {
-      console.warn('SW registration failed', e);
+  // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js),
+  // тот же, что используют все четыре модуля.
+  CWUpdate.init({ swUrl: 'service-worker.js' });
+
+  // Кнопка «Проверить обновления». Форсирует проверку ВСЕМ регистрациям origin
+  // (хаб + четыре модуля), а не только своей: смысл кнопки именно в том, чтобы
+  // не заходить в каждый модуль и не жать там Shift+Cmd+R.
+  (function () {
+    var btn = document.getElementById('hubUpdateBtn');
+    var label = btn && btn.querySelector('.cw-update-btn__label');
+    if (!btn) return;
+
+    // Результат 'ready' ничего не сообщает сам: CWUpdate.check() уже показал
+    // полосу с кнопкой «Обновить», и второе уведомление поверх неё было бы шумом.
+    var MESSAGE = {
+      others: ['update.others', 'Модули обновлены — изменения появятся при следующем открытии.'],
+      current: ['update.current', 'Установлена последняя версия.'],
+      offline: ['update.offline', 'Нет соединения — проверить обновления не удалось.'],
+      unsupported: ['update.offline', 'Нет соединения — проверить обновления не удалось.']
+    };
+
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      var restore = label ? label.textContent : '';
+      if (label) label.textContent = CWI18n.t('update.checking');
+
+      CWUpdate.check().then(function (result) {
+        var message = MESSAGE[result];
+        if (message) CWUpdate.notify(message[0], message[1]);
+      }).catch(function (err) {
+        console.warn('Проверка обновлений не удалась', err);
+        CWUpdate.notify(MESSAGE.offline[0], MESSAGE.offline[1]);
+      }).then(function () {
+        btn.disabled = false;
+        // Подпись возвращаем через словарь, а не сохранённой строкой: язык мог
+        // смениться, пока шла проверка.
+        if (label) label.textContent = CWI18n.t('hub.update_label') || restore;
+      });
     });
-  }
+  })();
 </script>
 </body>
 </html>

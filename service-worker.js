@@ -25,6 +25,7 @@ const SHELL_FILES = [
   './shared/theme.js',
   './shared/backup.js',
   './shared/version.js',
+  './shared/update.js',
   // Локализация: без неё офлайн-хаб остался бы без переводов и упал бы
   // на CWI18n undefined в inline-скрипте.
   './shared/i18n.js',
@@ -53,8 +54,14 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(SHELL_FILES))
-      .then(() => self.skipWaiting())
   );
+});
+
+// Досрочная активация — только по явной просьбе пользователя (кнопка
+// «Обновить» из shared/update.js). skipWaiting() на установке убран
+// намеренно: он подменял ассеты под уже открытой страницей.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
