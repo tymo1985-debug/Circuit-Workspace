@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.66.0',
+      version: '9.66.1',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2970,15 +2970,29 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
       async sendLetterNow() {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
-        const event = entry ? App.data.getEventById(entry.eventId) : null;
+        // Запись могла исчезнуть, пока модалка была открыта: удалили её в другой
+        // вкладке (сработала кросс-вкладочная синхронизация) или сама модалка
+        // осталась от предыдущего визита. Дальше по коду `entry` разыменовывался
+        // без защиты (`entry.subject`) и обработчик падал с TypeError — кнопка
+        // «Отправить» просто переставала отвечать, без единого сообщения.
+        // Закрыть устаревшую модалку — и есть правильная обратная связь.
+        if (!entry) { App.ui.closeLetterModal(); return; }
+        const event = App.data.getEventById(entry.eventId);
         const text = App.els.letterEmailBodyInput?.value || '';
         const to = event?.contactEmail || '';
         const files = [];
         const filenameSuffix = App.utils.pdfFilenameSuffix(entry, event);
         try {
           const letterDoc = this.buildLetterPdfDoc(entry, event);
-          if (letterDoc) files.push(new File([letterDoc.output('blob')], `${App.utils.slug(entry?.title || 'letter')}${filenameSuffix ? '-' + filenameSuffix : ''}-letter.pdf`, { type: 'application/pdf' }));
-        } catch (err) { console.error('Letter PDF build failed', err); }
+          if (letterDoc) files.push(new File([letterDoc.output('blob')], `${App.utils.slug(entry.title || 'letter')}${filenameSuffix ? '-' + filenameSuffix : ''}-letter.pdf`, { type: 'application/pdf' }));
+        } catch (err) {
+          // Раньше отказ уходил только в console.error. Дальше files оставался
+          // пустым, тост про скачивание не показывался, а mailto: без
+          // назначенного почтового клиента не делает ничего видимого — снаружи
+          // это выглядело как «нажал и ничего не произошло».
+          console.error('Letter PDF build failed', err);
+          App.utils.toast(App.utils.t('letter_pdf_failed'));
+        }
         if (entry?.visitForm) {
           try {
             App.state.visitFormData = JSON.parse(JSON.stringify(entry.visitForm));
@@ -2999,7 +3013,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (navigator.share && files.length && navigator.canShare && navigator.canShare({ files })) {
           try {
             await navigator.share({ text, files });
-            App.utils.toast('Отправлено');
+            App.utils.toast(App.utils.t('sent_done'));
             App.ui.closeLetterModal();
             return;
           } catch (err) { /* user cancelled or unsupported — fall through to fallback below */ }
@@ -3025,7 +3039,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }
         App.els.remindersModalList.innerHTML = items.map((item) => {
           const dayLabel = item.daysUntil < 0 ? `<span class="flag-badge" style="background:#b91c1c">${App.utils.t('reminders_overdue')}</span>` : `<span class="small">${App.utils.t('reminders_days_left', { days: item.daysUntil })}</span>`;
-          const s302Btn = item.needsS302 ? `<button class="md-btn md-btn-danger md-state-layer" type="button" data-mark-reminder="s302" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_s302')}</button><button class="md-btn md-btn-filled md-state-layer" type="button" data-send-s302="${App.utils.escapeAttr(item.id)}">📋 Сформировать и отправить S-302</button>` : '';
+          const s302Btn = item.needsS302 ? `<button class="md-btn md-btn-danger md-state-layer" type="button" data-mark-reminder="s302" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_s302')}</button><button class="md-btn md-btn-filled md-state-layer" type="button" data-send-s302="${App.utils.escapeAttr(item.id)}">${App.utils.t('make_s302')}</button>` : '';
           const letterBtn = item.needsLetter ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" data-mark-reminder="letter" data-entry-id="${App.utils.escapeAttr(item.id)}">${App.utils.t('reminders_mark_letter')}</button>` : '';
           return `<div class="md-card" style="padding:14px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;flex-wrap:wrap">

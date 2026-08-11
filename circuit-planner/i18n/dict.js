@@ -269,6 +269,10 @@
     'cp.s302_field_missing': 'S-302: поле не найдено —',
     'cp.s302_readonly_failed': 'S-302: не удалось сделать поля нередактируемыми',
     'cp.s302_fill_failed': 'Не удалось заполнить форму S-302.',
+    /* Ключ заведён в ru и en. В uk/pl намеренно не продублирован: CWI18n.t()
+       берёт запасной язык ru, поэтому строка видна по-русски и сразу понятно,
+       что перевода ещё нет. Машинный перевод сюда не кладём (см. TODO.md). */
+    'cp.letter_pdf_failed': 'Не удалось собрать PDF письма — подробности в консоли браузера.',
     'cp.s302_generating': 'Формирую S-302…',
     'cp.s302_done': 'S-302 сформирован и отмечен как отправленный.',
     'cp.sent_label': 'Отправлено',
@@ -1279,6 +1283,7 @@
     'cp.s302_field_missing': 'S-302: field not found —',
     'cp.s302_readonly_failed': 'S-302: could not make the fields read-only',
     'cp.s302_fill_failed': 'Could not fill in the S-302 form.',
+    'cp.letter_pdf_failed': 'Could not build the letter PDF — details in the browser console.',
     'cp.s302_generating': 'Generating the S-302…',
     'cp.s302_done': 'The S-302 has been generated and marked as sent.',
     'cp.sent_label': 'Sent',
