@@ -682,6 +682,28 @@ dialog {
     font-size: 13px
   }
 }
+/* ══ МОБИЛЬНЫЙ СЛОЙ (≤680px) ═══════════════════════════════════════════════
+   Здесь настольная таблица программы превращается в список карточек.
+
+   ЧТО БЫЛО НЕ ТАК. Прежняя реализация разворачивала каждую строку таблицы в
+   блок из десяти подписанных полей (`td::before { content: attr(data-label) }`).
+   Подпись «ЧАС», «ХВ.», «РЕП.» физически длиннее значения, которое подписывает;
+   тема задания — единственное, ради чего экран открывают — набиралась тем же
+   кеглем, что и длительность. Одно задание занимало ~450px вместо ~90, и
+   программа из сорока заданий превращалась в бесконечную ленту без иерархии.
+
+   ЧТО ВМЕСТО. Строка остаётся <tr> с теми же десятью <td> (разметка и печать
+   не тронуты) — но становится flex-контейнером, а ячейки расставляются по
+   `order`: время и длительность в первой строке, тема крупно во второй,
+   исполнители в третьей, статусы и метки чипами в четвёртой. Действия скрыты,
+   пока строка не выбрана: выбор уже реализован в renderTasks (`tr.selected`),
+   отдельная логика для этого не нужна.
+
+   ПОЧЕМУ БЕЗ JS. Все нужные зацепки в разметке уже есть — классы ячеек
+   (.time/.num/.topic/.speaker/.kind/.dur/.status-cell/.mail/.reh/.actions-cell)
+   и класс .selected на строке. Значит мобильный вид целиком выражается в CSS,
+   и десктопная таблица, письма и печать физически не могут пострадать.
+   ════════════════════════════════════════════════════════════════════════ */
 @media(max-width:680px) {
   body {
     font-size: 13px
@@ -695,9 +717,74 @@ dialog {
   }
   .sidebar, .card {
     padding: 10px;
-    border-radius: 12px
+    border-radius: var(--md-radius-lg)
   }
-  .meta, .settings-grid, .form-grid, .letter-row, .backup-row, .epart {
+
+  /* Сайдбар перестаёт быть окном со своим скроллом. Вложенный скролл внутри
+     страницы — ловушка на тач-экране: палец листает не то, что ожидаешь.
+     На ≤1100px он уже статичен, здесь снимаем и ограничение высоты. */
+  .sidebar {
+    max-height: none;
+    overflow: visible
+  }
+  .congress {
+    padding: 8px 10px;
+    margin-bottom: 6px
+  }
+  .congress small {
+    color: var(--muted)
+  }
+  /* Подсказки написаны для мыши («клик по пустому месту снимает выделение»,
+     «слева служебное название») и на телефоне только занимают место.
+     .series-empty лежит внутри #congressList и остаётся видимой. */
+  .sidebar > .hint,
+  .workspace .card > .hint {
+    display: none
+  }
+
+  /* Заголовок карточки и её действия: подпись отдельной строкой, кнопки —
+     одной горизонтально прокручиваемой лентой вместо трёх рядов вразнобой. */
+  .head {
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 8px
+  }
+  .head h2 {
+    flex: 1 1 100%;
+    font-size: 15px
+  }
+  .actions {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -10px;
+    padding: 2px 10px 4px
+  }
+  .actions::-webkit-scrollbar {
+    display: none
+  }
+  .actions > button {
+    flex: 0 0 auto
+  }
+  .actions, .top-actions {
+    gap: 6px
+  }
+  button, .btn {
+    padding: 8px 10px;
+    font-size: 13px
+  }
+
+  /* Карточка конгресса: название на всю ширину, место и дата рядом,
+     две кнопки в последнем ряду. Пять полей в столбик были выше экрана. */
+  .meta {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px
+  }
+  .meta > label:first-child {
+    grid-column: 1 / -1
+  }
+  .settings-grid, .form-grid, .letter-row, .backup-row, .epart {
     grid-template-columns: 1fr
   }
   .time-row {
@@ -706,19 +793,6 @@ dialog {
   }
   .time-row .time-btn {
     width: 100%
-  }
-  .head {
-    align-items: stretch
-  }
-  .head .actions {
-    justify-content: flex-start
-  }
-  .actions, .top-actions {
-    gap: 6px
-  }
-  button, .btn {
-    padding: 8px 10px;
-    font-size: 13px
   }
   .modal, .letter-modal, .wide-modal, .small-modal, .template-modal {
     width: 96vw;
@@ -739,84 +813,249 @@ dialog {
   .modal-actions button {
     flex: 1 1 auto
   }
-  .congress {
-    padding: 8px
-  }
   .series-header {
     flex-wrap: wrap;
     row-gap: 4px
   }
+
+  /* ── Программа: таблица → список карточек ───────────────────────────── */
   .table-wrap {
     overflow: visible;
     border: 0;
     border-radius: 0
   }
-  .program-table, .program-table thead, .program-table tbody, .program-table tr, .program-table th, .program-table td {
+  .program-table {
+    table-layout: auto;
+    background: transparent
+  }
+  .program-table colgroup {
+    display: none
+  }
+  .program-table, .program-table thead, .program-table tbody,
+  .program-table tr, .program-table th, .program-table td {
     display: block;
     width: auto !important
   }
+  /* Строка заголовков колонок бессмысленна без колонок. */
   .program-table thead tr:nth-child(2) {
     display: none
   }
-  .program-table thead tr:first-child {
-    margin-bottom: 8px
-  }
+  /* Название конгресса — обычный заголовок списка, а не плашка-«шапка». */
   .program-table thead tr:first-child th {
-    background: var(--md-secondary-container);
-    color: var(--md-on-secondary-container);
-    border-radius: var(--md-radius-md);
-    padding: 8px 10px;
+    border: 0;
+    padding: 0 2px 10px;
+    background: transparent;
     text-align: left;
-    font-size: 13px
+    letter-spacing: 0;
+    font: 500 15px/1.3 var(--md-font-family);
+    color: var(--md-on-surface)
   }
+
   .program-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
     background: var(--md-surface-container-low);
     border: 1px solid var(--md-outline-variant);
-    border-radius: var(--md-radius-md);
-    margin-bottom: 10px;
-    padding: 4px 10px
+    border-radius: var(--md-radius-lg);
+    margin-bottom: 8px;
+    padding: 11px 12px
   }
-  .program-table tr.selected {
-    box-shadow: inset 4px 0 0 var(--blue)
+  /* Выбранная строка подсвечивается рамкой, а не полосой слева: полоса
+     рассчитана на ячейки таблицы, которых здесь уже нет. */
+  .program-table tbody tr.selected {
+    border-color: var(--md-primary);
+    background: var(--md-surface-container)
   }
   .program-table tr.selected td {
+    background: transparent !important;
     box-shadow: none !important
   }
   .program-table td {
     border: 0;
-    border-bottom: 1px solid var(--md-outline-variant);
-    padding: 7px 0;
+    padding: 0;
+    min-width: 0;
     text-align: left !important
   }
-  .program-table td:last-child {
-    border-bottom: 0
+  /* Подписи полей выключены: иерархия объясняет содержимое лучше, чем
+     десять надписей капсом. Исключения — ниже, у меток письма и репетиции. */
+  .program-table td::before {
+    content: none
   }
   .program-table td:empty {
     display: none
   }
-  .program-table td::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 10px;
-    text-transform: uppercase;
-    font-weight: 800;
-    color: var(--muted);
-    letter-spacing: .03em;
-    margin-bottom: 2px
+
+  .program-table td.time {
+    order: 1;
+    font: 600 13.5px/18px var(--cw-font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--md-primary)
   }
-  .program-table td.actions-cell::before {
+  .program-table td.dur {
+    order: 2;
+    font-size: 11.5px;
+    color: var(--muted)
+  }
+  .program-table td.num {
+    order: 3;
+    margin-left: auto;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted)
+  }
+  .program-table td.num::before {
+    content: "№ "
+  }
+  .program-table td.topic {
+    order: 4;
+    flex: 1 1 100%;
+    margin-top: 4px;
+    font: 500 14.5px/1.3 var(--md-font-family);
+    color: var(--md-on-surface)
+  }
+  .program-table td.speaker {
+    order: 5;
+    flex: 1 1 100%;
+    margin-top: 3px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--md-on-surface-variant)
+  }
+  .program-table td.status-cell {
+    order: 6;
+    margin-top: 8px
+  }
+  .program-table td.status-cell .status-sel {
+    width: auto;
+    padding: 3px 10px;
+    border-radius: var(--md-radius-full);
+    font: 500 11px/16px var(--md-font-family)
+  }
+  .program-table td.kind {
+    order: 7;
+    margin-top: 8px
+  }
+  .program-table td.kind .pill {
+    padding: 2px 9px;
+    font-size: 11px;
+    line-height: 16px
+  }
+  /* «Письмо ✓» и «Реп. ✓» — тонированные метки. Подпись возвращается из
+     data-label: галочка без подписи ничего не сообщает, а места на метку
+     хватает. Незаполненные ячейки пустые и скрыты правилом td:empty. */
+  .program-table td.mail,
+  .program-table td.reh {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    padding: 3px 9px;
+    border-radius: var(--md-radius-full);
+    background: var(--status-success-bg);
+    color: var(--status-success);
+    font: 500 11px/16px var(--md-font-family);
+    letter-spacing: .4px
+  }
+  .program-table td.mail {
+    order: 8
+  }
+  .program-table td.reh {
+    order: 9
+  }
+  .program-table td.mail::before,
+  .program-table td.reh::before {
+    content: attr(data-label);
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-transform: none;
+    margin: 0
+  }
+
+  /* Действия появляются у выбранного задания. Одно касание по карточке уже
+     выбирает её (renderTasks вешает обработчик), поэтому получается
+     «нажал — увидел действия», без единой новой строки JS. */
+  .program-table td.actions-cell {
+    order: 10;
+    flex: 1 1 100%;
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--md-outline-variant)
+  }
+  .program-table tr.selected td.actions-cell {
+    display: block
+  }
+  .program-table td.actions-cell .actgrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px
+  }
+  /* .primary-row — сетка внутри сетки; display:contents распрямляет её,
+     чтобы «Изменить», «Письмо» и «Удалить» встали в один ряд. */
+  .program-table td.actions-cell .primary-row {
+    display: contents
+  }
+  .program-table td.actions-cell .tiny {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px
+  }
+
+  /* Раздел программы (утро/день) — надпись-разделитель, а не карточка. */
+  .program-table tbody tr.section-title {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    margin: 14px 0 6px;
+    padding: 0 2px
+  }
+  .program-table tr.section-title td {
+    background: transparent !important
+  }
+  .program-table tr.section-title .topic {
+    order: 1;
+    margin: 0;
+    font: 700 11px/16px var(--md-font-family);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--md-primary)
+  }
+  .program-table tr.section-title .time {
+    order: 2;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--muted)
+  }
+  /* У разделителя номер, длительность, статус и метки — шум: он не задание.
+     Но выключать их насовсем нельзя, иначе поле станет недоступным с телефона,
+     поэтому статус возвращается вместе с действиями, по касанию раздела. */
+  .program-table tr.section-title td.num,
+  .program-table tr.section-title td.dur,
+  .program-table tr.section-title td.kind,
+  .program-table tr.section-title td.mail,
+  .program-table tr.section-title td.reh,
+  .program-table tr.section-title td.status-cell {
     display: none
   }
-  .program-table .primary-row {
-    grid-template-columns: 1fr 1fr
+  .program-table tr.section-title.selected td.status-cell {
+    display: block;
+    order: 3;
+    flex: 1 1 100%;
+    margin-top: 8px
   }
 }
 @media(max-width:420px) {
-  .program-table td::before {
-    font-size: 9.5px
+  .program-table tbody tr {
+    padding: 10px
+  }
+  .program-table td.topic {
+    font-size: 14px
   }
   .actgrid, .primary-row {
-    gap: 3px
+    gap: 4px
   }
   .tiny {
     padding: 5px 6px;
