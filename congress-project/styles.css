@@ -1068,7 +1068,7 @@ dialog {
 }
 @media print {
   .md-topbar-v2, .layout, dialog::backdrop, .modal-head, .error-box, #planMeasure,
-  .mobile-bar, .mobile-fab, .sheet {
+  .mobile-bar, .mobile-fab, .sheet, .mobile-menu {
     display: none !important
   }
   dialog[open] {
@@ -1232,13 +1232,13 @@ dialog {
 .ls-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cw-line-soft); }
 .ls-foot-actions { display: flex; gap: 8px; }
 
-/* ══ МОБИЛЬНАЯ ОБОЛОЧКА (фаза 2) ═══════════════════════════════════════════
-   Панель с текущим конгрессом, два нижних листа и плавающая кнопка. Сами
-   узлы (список конгрессов, поля конгресса, панель действий программы) в
-   листы переносит js/mobile.js — здесь только внешний вид и то, что на
-   широком экране всей этой оболочки не существует.
+/* ══ МОБИЛЬНАЯ ОБОЛОЧКА ═════════════════════════════════════════════════════
+   Панель с текущим конгрессом, выпадающий список конгрессов, нижний лист
+   действий и плавающая кнопка. Сами узлы (список конгрессов, поля конгресса,
+   панель действий программы) переносит js/mobile.js — здесь только внешний
+   вид и то, что на широком экране всей этой оболочки не существует.
    ═══════════════════════════════════════════════════════════════════════ */
-.mobile-bar, .mobile-fab, .sheet { display: none }
+.mobile-bar, .mobile-fab, .sheet, .mobile-menu { display: none }
 
 .no-part__text { display: none }
 
@@ -1294,6 +1294,67 @@ dialog {
   }
   .mobile-bar__more {
     flex: 0 0 auto
+  }
+  /* Стрелка отыгрывает состояние списка — иначе непонятно, открыт он или
+     закрыт, когда список короткий и занимает мало места. */
+  .mobile-bar__chev {
+    flex: 0 0 auto;
+    color: var(--muted);
+    transition: transform var(--md-dur-short, 100ms) var(--md-ease-standard, ease)
+  }
+  #mCongressBtn[aria-expanded="true"] .mobile-bar__chev {
+    transform: rotate(180deg)
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-bar__chev { transition: none }
+  }
+
+  /* Выпадающий список конгрессов. Раскрывается из панели, а не всплывает
+     снизу: переключение конгресса — навигация, а не отдельная задача, и
+     список должен читаться как продолжение той строки, по которой нажали.
+     Позиционируется от .mobile-bar (у sticky-элемента свой контекст). */
+  .mobile-menu {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 8px;
+    right: 8px;
+    z-index: 25;
+    max-height: 60vh;
+    overflow: auto;
+    padding: 10px;
+    background: var(--md-surface-container-high);
+    border: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-radius-md);
+    box-shadow: var(--md-elevation-2)
+  }
+  .mobile-menu[hidden] {
+    display: none
+  }
+  /* Внутри списка сайдбар — не карточка: рамку даёт сам список. */
+  .mobile-menu > .sidebar {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    max-height: none;
+    overflow: visible
+  }
+  /* Заголовок «Конгрессы» и кнопки создания — одной строкой сверху. */
+  .mobile-menu > .sidebar > .head {
+    margin-bottom: 8px
+  }
+  .mobile-menu > .sidebar > .head h2 {
+    font-size: 13px
+  }
+  /* Строки списка ближе друг к другу, чем карточки в сайдбаре: это список
+     выбора, а не набор плиток. Активная помечена слева, как выбранная
+     строка программы. */
+  .mobile-menu .congress {
+    margin-bottom: 4px;
+    padding: 10px
+  }
+  .mobile-menu .congress.active {
+    box-shadow: inset 3px 0 0 var(--md-primary)
   }
 
   /* Плавающая кнопка — единственное частое действие на этом экране.
@@ -1357,16 +1418,17 @@ dialog {
   }
   /* Внутри листа карточки уже не нужны как отдельные плашки — рамка листа
      сама отделяет содержимое от страницы. */
-  .sheet-body > .sidebar,
   .sheet-body > .card {
     background: transparent;
     border: 0;
     padding: 0;
     margin-bottom: 14px
   }
-  /* Заголовок «Конгрессы» дублировал бы заголовок листа. */
-  .sheet-body > .sidebar > .head h2 {
-    display: none
+  /* Заголовок листа — имя текущего конгресса (js/mobile.js). Пока
+     конгрессов нет, показываем прочерк, как и в панели. */
+  #mSheetTitle:empty::before {
+    content: "—";
+    color: var(--muted)
   }
   /* Панель действий в листе — не лента с прокруткой, а обычная сетка:
      места хватает, и все шесть кнопок видно разом. */
