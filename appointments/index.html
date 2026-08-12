@@ -156,6 +156,38 @@
       </div>
     </section>
 
+    <!-- Подпись. Данные модуля, а не общего слоя: скан подписи лежит в
+         localStorage самих Назначений (`cw-appointments-v1`) и в другие
+         модули не уходит. Файл никуда не отправляется — обработка целиком
+         в браузере через <canvas>. -->
+    <section class="md-formsection">
+      <div class="md-formsection__head">
+        <h2 class="md-formsection__title" data-i18n="ap.sign.heading">Подпись</h2>
+        <p class="md-formsection__hint" data-i18n="ap.sign.hint">Фото или скан подписи на белом листе. Белый фон убирается автоматически. Хранится только на этом устройстве.</p>
+      </div>
+
+      <!-- Скрытый input + своя кнопка: системный вид file-инпута выпадает
+           из дизайн-системы, а accept="image/*" на телефоне сразу предлагает
+           камеру. -->
+      <input id="signFile" type="file" accept="image/*" class="sr-only">
+      <div class="sign-actions">
+        <button type="button" class="md-btn md-btn-tonal" id="signPickBtn">Загрузить</button>
+        <button type="button" class="md-btn md-btn-text" id="signClearBtn" data-i18n="ap.sign.clear">Удалить</button>
+      </div>
+
+      <p class="md-body-small hint" id="signStatus" role="status"></p>
+
+      <div class="sign-preview" id="signPreview" hidden>
+        <img id="signPreviewImg" alt="">
+      </div>
+
+      <div class="sign-size" id="signSizeRow" hidden>
+        <label class="md-label-medium" for="signSize" data-i18n="ap.sign.size">Высота подписи</label>
+        <input id="signSize" type="range" min="12" max="28" step="1" value="18">
+        <output class="md-label-medium" id="signSizeOut" for="signSize"></output>
+      </div>
+    </section>
+
     <section class="md-formsection">
       <div class="md-field md-field-select">
         <label for="docLanguage" data-i18n="ap.doc.language">Язык письма</label>
@@ -199,10 +231,15 @@
 
       <p class="letter-closing" data-doc-i18n="doc.ap.closing"></p>
 
+      <!-- Подпись-картинка идёт ПОД кодом района: сначала машинописные
+           строки, затем рукописный автограф — как на бумажном оригинале.
+           Высота приходит из --ap-sign-h (мм), поэтому экран и печать
+           показывают один и тот же размер. -->
       <div class="letter-signature">
         <div data-doc-i18n="doc.ap.signoff"></div>
         <div id="outSignName"></div>
         <div id="outSignCode"></div>
+        <img class="letter-sign-img" id="outSignImage" alt="" hidden>
       </div>
     </article>
   </main>

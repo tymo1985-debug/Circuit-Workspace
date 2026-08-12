@@ -131,6 +131,43 @@ body {
   border-top: 1px solid #c4bfcc;
 }
 
+/* --- Подпись: панель -------------------------------------------------- */
+.sign-actions { display: flex; gap: var(--cw-space-2); flex-wrap: wrap; }
+
+/* Лист под превью белый принудительно: обработанная подпись прозрачная,
+   и на тёмной теме она была бы не видна на фоне поверхности. */
+.sign-preview {
+  margin-top: var(--cw-space-3);
+  padding: var(--cw-space-3);
+  display: flex; justify-content: center;
+  background: #ffffff;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-xs);
+}
+.sign-preview img { max-width: 100%; max-height: 96px; object-fit: contain; }
+
+.sign-size { display: flex; align-items: center; gap: var(--cw-space-3); margin-top: var(--cw-space-4); }
+.sign-size label { flex: 0 0 auto; color: var(--md-on-surface-variant); }
+.sign-size input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--md-primary); }
+.sign-size output { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+
+#signStatus:empty { display: none; }
+#signStatus[data-state="error"] { color: var(--md-error); }
+
+/* --- Подпись: письмо --------------------------------------------------
+   Высота в миллиметрах, а не в px: регулятор в панели задаёт именно
+   печатный размер, и превью обязано совпадать с бумагой. Правило display
+   переопределяет браузерное [hidden]{display:none}, поэтому скрытое
+   состояние прописано явно. */
+.letter-sign-img {
+  display: block;
+  margin-top: 6px;
+  height: var(--ap-sign-h, 18mm);
+  width: auto; max-width: 100%;
+  object-fit: contain;
+}
+.letter-sign-img[hidden] { display: none; }
+
 /* --- Печать ---------------------------------------------------------
    На бумагу уходит только письмо. Плейсхолдеру нужен точный цвет:
    без print-color-adjust браузер осветляет тонкие серые линии до
@@ -151,6 +188,14 @@ body {
   .letter-section { break-inside: avoid; page-break-inside: avoid; }
   .names-empty {
     border-top-color: #9a9a9a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Подпись — растр со сложным альфа-каналом: без print-color-adjust
+     браузер осветляет её вместе с остальной «графикой». Блок подписи
+     не должен разрываться между страницами. */
+  .letter-signature { break-inside: avoid; page-break-inside: avoid; }
+  .letter-sign-img {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
