@@ -24,12 +24,34 @@
  * файл копии пользователь пересылает себе почтой и кладёт в облако, а хеш
  * замка в такой файл попадать не должен. После восстановления PIN остаётся
  * тот, что стоит на устройстве.
+ *
+ * ЗАВИСИМОСТИ ОТ ОБЩЕГО СЛОЯ (`sharedLocal` / `sharedStores`, добавлено
+ * 12.08.2026). Копия модуля по-прежнему не тащит с собой весь общий слой — он
+ * принадлежит хабу. Но часть общего слоя ВХОДИТ В САМИ ДАННЫЕ модуля, и без
+ * неё копия неполна: письма Конгрессов, Клиндария и Назначений печатают блок
+ * отправителя из `cw-sender`, который живёт в общем слое. До этой правки
+ * копия модуля его не включала — восстановление на чистом устройстве давало
+ * письма с пустой шапкой, причём молча.
+ *
+ * Поэтому модуль объявляет, какие части общего слоя нужны его данным, и они
+ * попадают в его копию отдельной секцией с пометкой `partial: true`.
+ *
+ * ⚠️ ЧАСТИЧНАЯ СЕКЦИЯ ВОССТАНАВЛИВАЕТСЯ СЛИЯНИЕМ, А НЕ ЗАМЕНОЙ. Это не
+ * оптимизация, а требование корректности: общий слой делят все модули, и
+ * восстановление копии одного модуля не имеет права стирать данные соседей.
+ * Полная копия хаба по-прежнему заменяет всё — там это и требуется.
+ *
+ * ФОРМАТ ПОДНЯТ ДО 2 именно из-за этой секции. Прежний код, увидев в файле
+ * `sections.shared` рядом с одним модулем, восстановил бы его как полную
+ * замену общего слоя и удалил бы ключи, которых в частичной секции нет.
+ * Версия 2 для него «слишком новая» — он честно откажется и ничего не тронет.
+ * Файлы версии 1 читаются как раньше.
  */
 (function (global) {
   'use strict';
 
   var FORMAT = 'circuit-workspace-backup';
-  var FORMAT_VERSION = 1;
+  var FORMAT_VERSION = 2;
   var LOG_KEY = 'cw-backup-log';
 
   /* Общий слой: настройки, не принадлежащие ни одному модулю. */
@@ -40,11 +62,26 @@
 
   /* Где лежат данные каждого модуля. Ключи вида `cw-lang:<id>` и
      `cw-doclang:<id>` добавляются автоматически — это выбор языка внутри
-     модуля, он логично едет вместе с модулем, а не с общим слоем. */
+     модуля, он логично едет вместе с модулем, а не с общим слоем.
+
+     `sharedLocal` / `sharedStores` — части общего слоя, БЕЗ КОТОРЫХ ДАННЫЕ
+     МОДУЛЯ НЕПОЛНЫ. Критерий один: попадает ли это в готовый документ или в
+     поведение самого модуля. Если да — едет вместе с копией модуля.
+
+     Что сюда сознательно НЕ входит:
+       • `cw-lang` и `cw-doclang` без суффикса — это глобальный выбор языка,
+         принадлежащий хабу. У модуля уже есть свои `cw-lang:<id>` и
+         `cw-doclang:<id>`; затащив сюда глобальные, копия одного модуля
+         переписывала бы язык всего приложения.
+       • общая база целиком — модулю нужны конкретные хранилища, а не всё
+         подряд; иначе копия Конгрессов таскала бы справочник собраний. */
   var MODULES = {
     'congress-project': {
       local: ['congress-pwa-v34-speakers', 'congress-pwa-v34-speakers-backups'],
       idb: [],
+      /* Блок отправителя печатается в шапке каждого письма участнику. */
+      sharedLocal: ['cw-sender'],
+      sharedStores: {},
     },
     'circuit-planner': {
       local: [
@@ -53,19 +90,62 @@
         'service-year-planner-accent',
       ],
       idb: [],
+      /* Подпись под письмом собранию и подстановка `{sender}` в шаблонах. */
+      sharedLocal: ['cw-sender'],
+      sharedStores: {},
     },
     'pioneer-school': {
       local: [],
       idb: ['pioneer-school-db'],
+      /* Анкета и формуляры отправителя не содержат — модуль от общего слоя
+         своими данными не зависит. */
+      sharedLocal: [],
+      sharedStores: {},
     },
     'appointments': {
       local: ['cw-appointments-v1'],
       idb: [],
+      /* Письмо о назначении подписывается районным надзирателем. */
+      sharedLocal: ['cw-sender'],
+      sharedStores: {},
     },
   };
 
+  /* ФАЗА 2 ОБЩЕГО СЛОЯ ДОКУМЕНТОВ: когда шаблоны писем переедут из настроек
+     модулей в общую базу, сюда добавляется хранилище `templates`:
+
+       'congress-project': { …, sharedStores: { 'circuit-workspace-db': ['templates'] } }
+       'circuit-planner':  { …, sharedStores: { 'circuit-workspace-db': ['templates'] } }
+
+     Механизм ниже уже это умеет — дописать нужно только реестр.
+     См. docs/documents/00-proposal.md, фаза 2. */
+
   /* Никогда не попадает в файл копии, даже при полной выгрузке. */
   var EXCLUDE = ['syp-pin-hash'];
+
+  /**
+   * Объединённые зависимости от общего слоя для набора модулей.
+   * @returns {{local: string[], stores: Object<string, string[]>}}
+   */
+  function sharedDeps(ids) {
+    var local = [];
+    var stores = {};
+    ids.forEach(function (id) {
+      var entry = MODULES[id];
+      if (!entry) return;
+      (entry.sharedLocal || []).forEach(function (k) {
+        if (local.indexOf(k) < 0 && EXCLUDE.indexOf(k) < 0) local.push(k);
+      });
+      var declared = entry.sharedStores || {};
+      Object.keys(declared).forEach(function (dbName) {
+        var list = stores[dbName] || (stores[dbName] = []);
+        (declared[dbName] || []).forEach(function (st) {
+          if (list.indexOf(st) < 0) list.push(st);
+        });
+      });
+    });
+    return { local: local, stores: stores };
+  }
 
   function moduleKeys(id) {
     var entry = MODULES[id];
@@ -122,9 +202,17 @@
     });
   }
 
-  function dumpDb(name) {
+  /**
+   * @param {string} name — имя базы
+   * @param {string[]} [only] — выгрузить только эти хранилища (для частичной
+   *   секции общего слоя). Не передан → вся база.
+   */
+  function dumpDb(name, only) {
     return openExisting(name).then(function (db) {
       var storeNames = Array.prototype.slice.call(db.objectStoreNames);
+      if (only && only.length) {
+        storeNames = storeNames.filter(function (s) { return only.indexOf(s) >= 0; });
+      }
       if (!storeNames.length) { db.close(); return null; }
       var out = { version: db.version, stores: {} };
       var tx = db.transaction(storeNames, 'readonly');
@@ -141,7 +229,15 @@
     });
   }
 
-  function restoreDb(name, dump) {
+  /**
+   * @param {string} name — имя базы
+   * @param {Object} dump — секция из файла копии
+   * @param {boolean} [merge] — слияние вместо замены: строки дописываются
+   *   поверх существующих по ключу, `clear()` не вызывается. Нужен для
+   *   частичной секции общего слоя: восстановление копии ОДНОГО модуля не
+   *   имеет права стирать данные соседей из общей базы.
+   */
+  function restoreDb(name, dump, merge) {
     if (!dump || !dump.stores) return Promise.resolve();
     return openExisting(name).then(function (db) {
       var current = db.version;
@@ -181,11 +277,11 @@
       var tx = db.transaction(names, 'readwrite');
       return Promise.all(names.map(function (storeName) {
         var store = tx.objectStore(storeName);
-        return req(store.clear()).then(function () {
-          return Promise.all((dump.stores[storeName].rows || []).map(function (row) {
-            return req(store.put(row));
-          }));
-        });
+        var rows = dump.stores[storeName].rows || [];
+        var write = function () {
+          return Promise.all(rows.map(function (row) { return req(store.put(row)); }));
+        };
+        return merge ? write() : req(store.clear()).then(write);
       })).then(function () {
         return new Promise(function (resolve, reject) {
           tx.oncomplete = function () { db.close(); resolve(); };
@@ -196,11 +292,18 @@
   }
 
   /* --- Сборка и разбор снимка ------------------------------------------ */
+  /**
+   * @param {{local: string[], idb: string[], stores?: Object}} keys
+   *   `stores` — если задан, из каждой базы выгружаются только перечисленные
+   *   хранилища (частичная секция общего слоя).
+   */
   function section(keys) {
     var out = { local: readLocal(keys.local) };
-    if (!keys.idb.length) return Promise.resolve(out);
-    return Promise.all(keys.idb.map(function (name) {
-      return dumpDb(name).then(function (dump) { return { name: name, dump: dump }; });
+    var dbs = keys.idb || [];
+    if (!dbs.length) return Promise.resolve(out);
+    return Promise.all(dbs.map(function (name) {
+      var only = keys.stores && keys.stores[name];
+      return dumpDb(name, only).then(function (dump) { return { name: name, dump: dump }; });
     })).then(function (dumps) {
       out.idb = {};
       dumps.forEach(function (d) { if (d.dump) out.idb[d.name] = d.dump; });
@@ -215,9 +318,22 @@
   function snapshot(ids) {
     var full = !ids || !ids.length;
     var list = full ? Object.keys(MODULES) : ids.filter(function (id) { return MODULES[id]; });
-    // Общий слой (язык, отправитель, общая база) принадлежит хабу, поэтому
-    // в копию отдельного модуля он не входит — модуль сохраняет только себя.
-    var jobs = full ? [section(SHARED).then(function (s) { return { id: 'shared', data: s }; })] : [];
+    // Полная копия забирает общий слой целиком. Копия модуля — только то, без
+    // чего её собственные данные неполны (см. sharedLocal/sharedStores):
+    // блок отправителя печатается в письмах, и терять его молча нельзя.
+    // Секция помечается `partial`, чтобы при восстановлении сработало слияние,
+    // а не замена общего слоя.
+    var jobs = [];
+    if (full) {
+      jobs.push(section(SHARED).then(function (s) { return { id: 'shared', data: s }; }));
+    } else {
+      var deps = sharedDeps(list);
+      var dbs = Object.keys(deps.stores);
+      if (deps.local.length || dbs.length) {
+        jobs.push(section({ local: deps.local, idb: dbs, stores: deps.stores })
+          .then(function (s) { s.partial = true; return { id: 'shared', data: s }; }));
+      }
+    }
     list.forEach(function (id) {
       jobs.push(section(moduleKeys(id)).then(function (s) { return { id: id, data: s }; }));
     });
@@ -271,14 +387,20 @@
 
     Object.keys(snap.sections).forEach(function (id) {
       var sec = snap.sections[id] || {};
+      // Частичная секция общего слоя из копии модуля: слияние, не замена.
+      // Общий слой делят все модули — восстановление копии Клиндария не имеет
+      // права стереть отправителя или шаблоны, нужные Конгрессам.
+      var partial = id === 'shared' && sec.partial === true;
       var keys = id === 'shared' ? SHARED : moduleKeys(id);
-      var known = (keys.local || []).slice();
-      // Ключи, которых нет в реестре (модуль из более новой версии), всё равно
-      // восстанавливаем — терять чужие данные хуже, чем принести лишние.
-      Object.keys(sec.local || {}).forEach(function (k) { if (known.indexOf(k) < 0) known.push(k); });
+      var known = partial ? [] : (keys.local || []).slice();
+      if (!partial) {
+        // Ключи, которых нет в реестре (модуль из более новой версии), всё равно
+        // восстанавливаем — терять чужие данные хуже, чем принести лишние.
+        Object.keys(sec.local || {}).forEach(function (k) { if (known.indexOf(k) < 0) known.push(k); });
+      }
       writeLocal(sec.local || {}, known);
       Object.keys(sec.idb || {}).forEach(function (name) {
-        jobs.push(restoreDb(name, sec.idb[name]));
+        jobs.push(restoreDb(name, sec.idb[name], partial));
       });
     });
 
