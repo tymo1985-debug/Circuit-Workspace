@@ -142,7 +142,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.66.1',
+      version: '9.67.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2455,22 +2455,47 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       syncEventVisitFieldsVisibility() {
         if (App.els.eventVisitOnlyFields) App.els.eventVisitOnlyFields.style.display = App.els.eventVisitTypeInput?.value ? 'contents' : 'none';
       },
+      /**
+       * Справочник переменных в настройках писем.
+       *
+       * Имена берутся из общего реестра (shared/templates.js), собственного
+       * списка у модуля больше нет. В первой колонке — каноническое имя, под
+       * ним прежнее: свой старый шаблон должен опознаваться с первого взгляда,
+       * а старые имена работают всегда.
+       *
+       * Показаны только те переменные, у которых уже есть описание в словаре
+       * (ключи `ph_*`, переведены носителями). Остальные поля реестра —
+       * congregation.address, sender.* кроме имени и т.д. — движок подставит,
+       * но в таблицу они попадут только вместе с описанием от носителя языка:
+       * строка без описания в справочнике бесполезна.
+       */
       renderPlaceholderReference() {
         if (!App.els.placeholderRefBody) return;
         const senderName = App.shared.sender().name || 'Олексій Тимощук';
         const ukDate = (d) => d.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
         const today = new Date();
-        const rows = [
-          ['{congregation}', App.utils.t('ph_congregation'), 'Group Hamburg-Russian-West'],
-          ['{cong_number}', App.utils.t('ph_cong_number'), '14761'],
-          ['{cong_number_suffix}', App.utils.t('ph_cong_number_suffix'), ' (14761)'],
-          ['{start_date}', App.utils.t('ph_start_date'), ukDate(today)],
-          ['{end_date}', App.utils.t('ph_end_date'), ukDate(new Date(today.getTime() + 5 * 86400000))],
-          ['{today}', App.utils.t('ph_today'), ukDate(today)],
-          ['{sender}', App.utils.t('ph_sender'), senderName],
-          ['{contact_name}', App.utils.t('ph_contact_name'), 'Иван Петренко'],
-        ];
-        App.els.placeholderRefBody.innerHTML = rows.map(([ph, desc, example]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap"><code>${App.utils.escapeHtml(ph)}</code></td><td style="padding:6px 8px;border-bottom:1px solid var(--line)">${App.utils.escapeHtml(desc)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--line);color:var(--muted)">${App.utils.escapeHtml(example)}</td></tr>`).join('');
+        /* Каноническое имя → [ключ описания, пример, ПРЕЖНЕЕ написание].
+           Прежнее написание хранится здесь, а не в общем реестре: одно и то же
+           поле в разных модулях писалось по-разному (`{sender}` тут,
+           `{{senderName}}` в Конгрессах), и своё старое имя знает только сам
+           модуль. */
+        const described = {
+          'congregation.name': ['ph_congregation', 'Group Hamburg-Russian-West', '{congregation}'],
+          'congregation.number': ['ph_cong_number', '14761', '{cong_number}'],
+          'congregation.numberSuffix': ['ph_cong_number_suffix', ' (14761)', '{cong_number_suffix}'],
+          'visit.startDate': ['ph_start_date', ukDate(today), '{start_date}'],
+          'visit.endDate': ['ph_end_date', ukDate(new Date(today.getTime() + 5 * 86400000)), '{end_date}'],
+          'doc.today': ['ph_today', ukDate(today), '{today}'],
+          'sender.name': ['ph_sender', senderName, '{sender}'],
+          'congregation.contactName': ['ph_contact_name', 'Іван Петренко', '{contact_name}'],
+        };
+        const all = self.CWTemplates ? self.CWTemplates.tokens(['congregation', 'visit', 'doc', 'sender']) : [];
+        const rows = Object.keys(described).map((key) => {
+          const meta = all.find((v) => v.ns + '.' + v.field === key);
+          const [dictKey, example, legacy] = described[key];
+          return [meta ? meta.token : '{{' + key + '}}', legacy, App.utils.t(dictKey), example];
+        });
+        App.els.placeholderRefBody.innerHTML = rows.map(([token, legacy, desc, example]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap"><code>${App.utils.escapeHtml(token)}</code>${legacy && legacy !== token ? `<br><code style="color:var(--muted);font-size:11px">${App.utils.escapeHtml(legacy)}</code>` : ''}</td><td style="padding:6px 8px;border-bottom:1px solid var(--line)">${App.utils.escapeHtml(desc)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--line);color:var(--muted)">${App.utils.escapeHtml(example)}</td></tr>`).join('');
       },
       renderEventDistanceStatus() {
         if (!App.els.eventDistanceStatus) return;
@@ -2867,18 +2892,52 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         for (let p = 1; p <= totalPages; p += 1) { doc.setPage(p); drawFooter(p, totalPages); }
         return doc;
       },
-      substitutePlaceholders(tpl, entry, event) {
-        const congNumberSuffix = event?.congNumber ? ` (${event.congNumber})` : '';
+      /**
+       * Данные визита → имена общего реестра переменных.
+       *
+       * Модуль обязан привести своё к общим именам сам: движок
+       * (shared/templates.js) не знает про `entry` и `event` и знать не должен.
+       * Формат даты остаётся здесь — это свойство документа, а не движка:
+       * письмо украинское независимо от языка интерфейса.
+       */
+      letterData(entry, event) {
         const ukDate = (d) => { const dt = new Date(d); return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' }); };
-        return String(tpl || '')
-          .replace(/\{congregation\}/g, entry?.title || event?.name || '')
-          .replace(/\{cong_number_suffix\}/g, congNumberSuffix)
-          .replace(/\{cong_number\}/g, event?.congNumber || '')
-          .replace(/\{start_date\}/g, ukDate(entry?.start))
-          .replace(/\{end_date\}/g, ukDate(entry?.end))
-          .replace(/\{today\}/g, ukDate(new Date()))
-          .replace(/\{sender\}/g, App.shared.sender().name || '')
-          .replace(/\{contact_name\}/g, event?.contactName || '');
+        return {
+          congregation: {
+            name: entry?.title || event?.name || '',
+            number: event?.congNumber || '',
+            /* Готовая строка, а не форматирование в шаблоне: собрание без
+               номера не должно оставлять в письме « ()». */
+            numberSuffix: event?.congNumber ? ` (${event.congNumber})` : '',
+            address: event?.address || '',
+            contactName: event?.contactName || '',
+            contactPhone: event?.contactPhone || '',
+            contactEmail: event?.contactEmail || '',
+          },
+          visit: {
+            startDate: ukDate(entry?.start),
+            endDate: ukDate(entry?.end),
+            type: event?.visitType || '',
+            typeLabel: '',
+          },
+          doc: { today: ukDate(new Date()) },
+        };
+      },
+      /**
+       * Подстановка переменных. Раньше здесь была собственная цепочка
+       * .replace() с восемью именами вида `{congregation}`; теперь это общий
+       * движок, а старые имена продолжают работать через алиасы —
+       * отредактированные шаблоны пользователей ломать нельзя.
+       *
+       * Имя и сигнатура функции сохранены: её зовут из четырёх мест модуля.
+       *
+       * Без движка (устаревший кэш SW) шаблон возвращается как есть —
+       * плейсхолдеры останутся видимыми, что заметно сразу, в отличие от
+       * письма с пустыми местами вместо дат.
+       */
+      substitutePlaceholders(tpl, entry, event) {
+        if (!self.CWTemplates) return String(tpl || '');
+        return self.CWTemplates.render(tpl, this.letterData(entry, event));
       },
       openLetterModal(itemId) {
         const item = App.data.getCalendarItemById(itemId);

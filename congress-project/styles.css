@@ -500,6 +500,18 @@ dialog {
   padding: 12px;
   background: var(--md-surface-container-low)
 }
+/* Группа переменных одного пространства имён. Заголовок — техническое имя
+   (`sender.*`), это код, а не подпись интерфейса: перевода не требует. */
+.placeholder-group + .placeholder-group {
+  margin-top: 12px
+}
+.placeholder-group h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-on-surface-variant);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+}
 .placeholder {
   display: block;
   width: 100%;
@@ -511,6 +523,13 @@ dialog {
   border: 1px solid var(--line);
   border-radius: var(--md-radius-xs);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+}
+/* Прежнее написание переменной под новым: свой старый шаблон должен
+   опознаваться с первого взгляда. */
+.placeholder small {
+  display: block;
+  font-size: 11px;
+  color: var(--md-on-surface-variant)
 }
 .modal h3 {
   margin: 0 14px 8px

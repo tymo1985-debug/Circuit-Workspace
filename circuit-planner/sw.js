@@ -53,6 +53,7 @@ const APP_SHELL_URLS = [
   // Локализация: скрипты синхронные и в <head>, без них офлайн-запуск
   // модуля упал бы на CWI18n undefined ещё до отрисовки.
   '../shared/i18n.js','../shared/sender.js',
+  '../shared/templates.js','../shared/templates/namespaces.js',
   '../shared/doclang.js',
   '../shared/i18n/common.js',
   // Словарь модуля: с фазы 5 он живёт отдельным файлом, а не внутри app.js.
