@@ -7,7 +7,25 @@ import { A, S, docLang, row, save, sender, store } from "./state.js";
 import { clean, congressTheme, dt, esc, fmt, id, isLetterable, today } from "./utils.js";
 import { t } from "./i18n.js";
 
-export const DEFAULT_TEMPLATES={uk:"{{senderName}} / Alex Tymoshchuk\n{{senderCode}}\n{{senderAddress}}\n{{senderPhone1}}\n{{senderPhone2}}\n{{senderEmail}}\n\n**Запрошення до участі у виконанні завдання на районному конгресі:**\n\nДорогий брате **{{participantName}}**,\n\nЯ радий, що ти маєш нагоду виступити на наступному районному конгресі\nза темою:\n**«{{congressName}}»**.\n\nМісце: **{{congressPlace}}**. Дата: **{{congressDate}}**.\n\nЗавдання: № **{{assignmentNumber}}** «**{{assignmentTitle}}**»\n\nТвоє завдання починається о **{{assignmentTime}}**.\n\nЗверни увагу, що твоє завдання включає в себе **{{assignmentType}}**.\n\nРепетиція на сцені: **{{stageRehearsalDate}}** о **{{stageRehearsalTime}}**.\n\nБудь ласка, зроби {{recordingMedia}} запис {{recordingKind}} та надішли його мені на WhatsApp до **{{recordingDeadline}}**.\n\nБудь ласка, уважно ознайомся з формою CO-90, що додається. Не бери більше матеріалу, ніж ти можеш викласти у зрозумілій формі за відведений тобі час. Важливо, щоб ти точно дотримувався встановленого часу. Підготуйте твоє завдання у формі вільного виступу. Намагайся не зачитувати завдання перед аудиторією. Говори з ентузіазмом!\n\nДякую тобі за твою готовність і старанність! Бажаю тобі підтримки Єгови і його Святого Духа під час підготовки твого завдання!\n\nЯкщо у тебе виникнуть запитання, будь ласка, не соромся звертатися до мене по телефону або електронною поштою.\n\nТвій брат,\n{{senderName}},\n{{senderCode}}\n\nPS: Будь ласка, як можна швидше дай мені знати по електронній пошті або WhatsApp до **{{responseDeadline}}**, чи можеш ти взяти на себе це завдання. Щиро дякую!",ru:"{{senderName}} / Alex Tymoshchuk\n{{senderCode}}\n{{senderAddress}}\n{{senderPhone1}}\n{{senderPhone2}}\n{{senderEmail}}\n\n**Запрошення до участі у виконанні завдання на районному конгресі:**\n\nДорогий брате **{{participantName}}**,\n\nЯ радий, що ти маєш нагоду виступити на наступному районному конгресі\nза темою:\n**«{{congressName}}»**.\n\nМісце: **{{congressPlace}}**. Дата: **{{congressDate}}**.\n\nЗавдання: № **{{assignmentNumber}}** «**{{assignmentTitle}}**»\n\nТвоє завдання починається о **{{assignmentTime}}**.\n\nЗверни увагу, що твоє завдання включає в себе **{{assignmentType}}**.\n\nРепетиція на сцені: **{{stageRehearsalDate}}** о **{{stageRehearsalTime}}**.\n\nБудь ласка, зроби {{recordingMedia}} запис {{recordingKind}} та надішли його мені на WhatsApp до **{{recordingDeadline}}**.\n\nБудь ласка, уважно ознайомся з формою CO-90, що додається. Не бери більше матеріалу, ніж ти можеш викласти у зрозумілій формі за відведений тобі час. Важливо, щоб ти точно дотримувався встановленого часу. Підготуйте твоє завдання у формі вільного виступу. Намагайся не зачитувати завдання перед аудиторією. Говори з ентузіазмом!\n\nДякую тобі за твою готовність і старанність! Бажаю тобі підтримки Єгови і його Святого Духа під час підготовки твого завдання!\n\nЯкщо у тебе виникнуть запитання, будь ласка, не соромся звертатися до мене по телефону або електронною поштою.\n\nТвій брат,\n{{senderName}},\n{{senderCode}}\n\nPS: Будь ласка, як можна швидше дай мені знати по електронній пошті або WhatsApp до **{{responseDeadline}}**, чи можеш ти взяти на себе це завдання. Щиро дякую!",de:"{{senderName}} / Alex Tymoshchuk\n{{senderCode}}\n{{senderAddress}}\n{{senderPhone1}}\n{{senderPhone2}}\n{{senderEmail}}\n\n**Запрошення до участі у виконанні завдання на районному конгресі:**\n\nДорогий брате **{{participantName}}**,\n\nЯ радий, що ти маєш нагоду виступити на наступному районному конгресі\nза темою:\n**«{{congressName}}»**.\n\nМісце: **{{congressPlace}}**. Дата: **{{congressDate}}**.\n\nЗавдання: № **{{assignmentNumber}}** «**{{assignmentTitle}}**»\n\nТвоє завдання починається о **{{assignmentTime}}**.\n\nЗверни увагу, що твоє завдання включає в себе **{{assignmentType}}**.\n\nРепетиція на сцені: **{{stageRehearsalDate}}** о **{{stageRehearsalTime}}**.\n\nБудь ласка, зроби {{recordingMedia}} запис {{recordingKind}} та надішли його мені на WhatsApp до **{{recordingDeadline}}**.\n\nБудь ласка, уважно ознайомся з формою CO-90, що додається. Не бери більше матеріалу, ніж ти можеш викласти у зрозумілій формі за відведений тобі час. Важливо, щоб ти точно дотримувався встановленого часу. Підготуйте твоє завдання у формі вільного виступу. Намагайся не зачитувати завдання перед аудиторією. Говори з ентузіазмом!\n\nДякую тобі за твою готовність і старанність! Бажаю тобі підтримки Єгови і його Святого Духа під час підготовки твого завдання!\n\nЯкщо у тебе виникнуть запитання, будь ласка, не соромся звертатися до мене по телефону або електронною поштою.\n\nТвій брат,\n{{senderName}},\n{{senderCode}}\n\nPS: Будь ласка, як можна швидше дай мені знати по електронній пошті або WhatsApp до **{{responseDeadline}}**, чи можеш ти взяти на себе це завдання. Щиро дякую!"};
+/**
+ * Системный текст письма. Раньше здесь лежали три копии украинского текста под
+ * видом переводов на ru и de (по 1592 символа, байт-в-байт одинаковые) — теперь
+ * это shared/templates/builtin.js, где ru и de пусты и честно ждут носителя
+ * языка, а fallback отдаёт украинский.
+ *
+ * Обёртка оставлена, потому что на неё смотрят state.js и редактор шаблонов;
+ * собственного текста в модуле больше нет.
+ */
+export const CONGRESS_CONTEXT="congress.assignment.invitation";
+export const CONGRESS_TEMPLATE_ID="sys.congress.assignment.invitation";
+export function builtinTemplate(lang){
+  let list=self.CW_BUILTIN_TEMPLATES||[],b=list.find(x=>x.id===CONGRESS_TEMPLATE_ID);
+  if(!b)return"";
+  let tr=b.translations||{},want=tr[lang];
+  if(want&&want.body)return want.body;
+  let first=Object.keys(tr).map(k=>tr[k]).find(x=>x&&x.body);
+  return first?first.body:"";
+}
 /**
  * Пространства имён, значения которых модуль реально передаёт в render().
  * Панель вставки переменных строится из общего реестра по этому списку —
@@ -26,7 +44,26 @@ function fill(tpl,data){return self.CWTemplates?self.CWTemplates.render(tpl,data
 export function values(t){let c=A(),sd=sender(),p=(t.participants||[])[0]||{};return{sender:sd,congress:{name:congressTheme(c),theme:(c&&c.theme)||"",place:c.place||"",date:fmt(c.date),rehearsalDate:fmt(c.rehearsalDate),rehearsalTime:c.rehearsalTime||"",recordingDeadline:fmt(c.recordingDeadline),responseDeadline:fmt(c.responseDeadline)},assignment:{number:t.number,title:t.title,time:dt(t.time),type:t.kind||t.type||"",participant:p.name||"",recordingMedia:t.recordingMedia||"",recordingKind:t.recordingKind||"",notes:t.notes||""}}}
 export function markup(s){return s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/__([^_]+)__/g,"<u>$1</u>").replace(/\*([^*]+)\*/g,"<em>$1</em>")}
 export function renderPlain(text){let clean=esc(text).replace(/\r\n/g,"\n").replace(/\r/g,"\n");return clean.split(/\n\s*\n/g).map((b,i)=>{b=b.trim();if(!b)return"";return`<p${i===0?" class='letter-header'":""}>${markup(b.replace(/\n/g,"<br>"))}</p>`}).join("")}
-export function pickTemplate(t){let s=S();return(s.templatesByType&&s.templatesByType[t.type])||s.templates[docLang()]||DEFAULT_TEMPLATES.uk}
+/**
+ * Какой текст письма использовать для задания.
+ *
+ * Порядок прежний: шаблон для конкретного типа задания важнее общего.
+ * Изменился только источник — общее хранилище вместо настроек модуля.
+ *
+ * ⚠️ ОТКАТ НА ПРЕЖНИЙ ИСТОЧНИК — не перестраховка, а обязательная часть
+ * миграции. Пока хранилище не прочитано (доля секунды после загрузки страницы)
+ * или пока перенос не выполнен, читаем настройки модуля. Иначе пользователь в
+ * этот момент получил бы системное письмо вместо своего и ничего бы не заметил.
+ * Старые ключи живут ровно до подтверждённого переноса — см. adoptTemplates().
+ */
+export function pickTemplate(t){
+  let s=S(),lang=docLang();
+  if(self.CWTemplates&&self.CWTemplates.stored){
+    if(t.type){let byType=self.CWTemplates.text(CONGRESS_CONTEXT+":"+t.type,lang);if(byType&&byType.body)return byType.body}
+    let main=self.CWTemplates.text(CONGRESS_CONTEXT,lang);
+    if(main&&main.body)return main.body;
+  }
+  return(s.templatesByType&&s.templatesByType[t.type])||(s.templates&&s.templates[lang])||builtinTemplate(lang)}
 export function letterHTML(t){let s=S(),tpl=fill(pickTemplate(t),values(t));return`<article class="letter-page" style="font-family:${esc(s.font)};font-size:${(+s.fontSize||17)}px">${renderPlain(tpl)}</article>`}
 export function openLetter(id){store.previewId=id;let t=A().tasks.find(x=>x.id===id);$("#letterPreview").innerHTML=letterHTML(t);$("#letterDialog").showModal()}
 export function printFilename(title){let c=A(),base=(c?.name||"Конгресс").trim();return(base+(title?" — "+title:"")).replace(/[\\/:*?"<>|]/g,"-").replace(/\s+/g," ").trim()}

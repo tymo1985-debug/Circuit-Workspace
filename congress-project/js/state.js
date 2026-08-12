@@ -1,6 +1,6 @@
 // Auto-generated module: state.js
 import { $ } from "./dom.js";
-import { DEFAULT_TEMPLATES } from "./letters.js";
+import { CONGRESS_CONTEXT, CONGRESS_TEMPLATE_ID, builtinTemplate } from "./letters.js";
 import { render } from "./render.js";
 import { clean, clone, id, isSection, noAssignmentNeeded } from "./utils.js";
 import { t } from "./i18n.js";
@@ -9,7 +9,7 @@ export const KEY="congress-pwa-v34-speakers",BACKUP_KEY=KEY+"-backups";
 export const STATUSES=["Не назначено","Назначено","Ожидает ответа","Подтверждено","Нужно письмо","Письмо отправлено","Запись получена","Готово"];
 export const BASE_TYPES=["Пункт програми","Промова","Інтерв’ю","Показ","Демонстрація","Музика","Пісня і молитва","Оголошення","Серія промов","Раздел"],BASE_KINDS=["інтерв’ю","показ","демонстрація"];
 export let store={st:{congresses:[],activeId:null,settings:null,series:[]},sel:null,editId:null,previewId:null,listMode:"groups",templateMode:"default",deferredPrompt:null,pendingPrintHTML:"",pendingPrintFilename:"",printTitleBackup:null,lastSavedAt:null};
-export function baseSettings(){return{font:"Arial, Helvetica, sans-serif",fontSize:"17",stageRehearsalDate:"",stageRehearsalTime:"",recordingDeadline:"",responseDeadline:"2025-08-18",templates:clone(DEFAULT_TEMPLATES),templatesByType:{},congregations:["EU-K-01","SZ Warszawa","Warszawa-Ukraiński-Południe (19588)","Warszawa-Ukraiński-Północ (9610)"],speakers:["Олексій Тимощук","Якуб Ульфік","Филип Казіродек"],speakerProfiles:[],assignmentTypes:BASE_TYPES.slice(),assignmentKinds:BASE_KINDS.slice()}}
+export function baseSettings(){return{font:"Arial, Helvetica, sans-serif",fontSize:"17",stageRehearsalDate:"",stageRehearsalTime:"",recordingDeadline:"",responseDeadline:"2025-08-18",congregations:["EU-K-01","SZ Warszawa","Warszawa-Ukraiński-Południe (19588)","Warszawa-Ukraiński-Północ (9610)"],speakers:["Олексій Тимощук","Якуб Ульфік","Филип Казіродек"],speakerProfiles:[],assignmentTypes:BASE_TYPES.slice(),assignmentKinds:BASE_KINDS.slice()}}
 // Данные отправителя и язык письма больше не хранятся в настройках модуля:
 // они общие для всей экосистемы (shared/sender.js и shared/doclang.js).
 // Здесь остались только тонкие обёртки, чтобы остальной код модуля не знал,
@@ -20,6 +20,66 @@ export function docLang(){return self.CWDocLang?self.CWDocLang.get():"uk"}
 // Одноразовый перенос: у существующих установок данные лежат внутри settings.
 // Забираем их в общий слой и вычищаем из своего хранилища, чтобы копия не
 // осталась жить второй жизнью и не разошлась с общей.
+/**
+ * Однократный перенос шаблонов писем из настроек модуля в общее хранилище.
+ *
+ * ⚠️ САМАЯ ОПАСНАЯ ОПЕРАЦИЯ ФАЗЫ 2 — она необратима: после неё ключи
+ * `templates` и `templatesByType` из настроек удаляются. Поэтому:
+ *   • перед переносом снимается автоматическая копия состояния (makeBackup);
+ *   • переносится ТОЛЬКО то, что пользователь правил сам — нетронутый
+ *     системный текст не копируется, иначе он «замёрзнет» и перестанет
+ *     обновляться вместе с приложением;
+ *   • adopt() в общем слое не перезаписывает уже существующую запись, поэтому
+ *     повторный вызов безвреден;
+ *   • ключи удаляются и state сохраняется ТОЛЬКО после успешной записи в базу.
+ *     Иначе сбой на середине оставил бы пользователя без текста вообще.
+ *
+ * Как отличается правленое от нетронутого: сравниваем с системным текстом.
+ * Совпало — не правил.
+ */
+export function adoptTemplates(){
+  if(!self.CWTemplates||!self.CWTemplates.stored||!self.CWDB)return Promise.resolve(false);
+  let s=S(),jobs=[],touched=false;
+  let byLang=s.templates&&typeof s.templates==="object"?s.templates:null;
+  if(byLang){
+    let translations={};
+    Object.keys(byLang).forEach(k=>{
+      let text=byLang[k];
+      if(typeof text!=="string"||!text)return;
+      if(text===builtinTemplate(k))return;      // системный текст, не правил
+      translations[k]={subject:null,body:text}});
+    if(Object.keys(translations).length){
+      touched=true;
+      jobs.push(self.CWTemplates.adopt(CONGRESS_TEMPLATE_ID,{
+        context:CONGRESS_CONTEXT,module:"congress-project",format:"text",
+        title:"Приглашение к участию в задании на конгрессе",translations:translations}))}}
+  let byType=s.templatesByType&&typeof s.templatesByType==="object"?s.templatesByType:null;
+  if(byType){
+    Object.keys(byType).forEach(type=>{
+      let text=byType[type];
+      if(typeof text!=="string"||!text)return;
+      touched=true;
+      // Шаблон типа задания в старой модели был один на все языки. Кладём его
+      // в украинскую колонку: fallback отдаёт её для любого языка, поведение
+      // остаётся прежним, и нового понятия «шаблон вне языка» не появляется.
+      jobs.push(self.CWTemplates.adopt("usr.congress.assignment.invitation."+type,{
+        context:CONGRESS_CONTEXT+":"+type,module:"congress-project",format:"text",
+        title:"Письмо для типа задания: "+type,
+        translations:{uk:{subject:null,body:text}}}))})}
+  if(!jobs.length){
+    // Правок не было — просто убираем пустые ключи, копия не нужна.
+    if(byLang||byType){delete s.templates;delete s.templatesByType;save()}
+    return Promise.resolve(false)}
+  makeBackup("перед переносом шаблонов в общее хранилище");
+  return Promise.all(jobs).then(()=>{
+    delete s.templates;delete s.templatesByType;save();
+    return touched}).catch(e=>{
+    // Ключи НЕ трогаем: пользователь остаётся на прежнем источнике, письма
+    // продолжают печататься его текстом, перенос повторится при следующем
+    // запуске.
+    console.error("Конгрессы: перенос шаблонов не выполнен, данные не тронуты",e);
+    return false})}
+
 export function adoptShared(){let s=S();if(self.CWSender){self.CWSender.adopt({name:s.senderName,code:s.senderCode,address:s.senderAddress,phone1:s.senderPhone1,phone2:s.senderPhone2,email:s.senderEmail});["senderName","senderCode","senderAddress","senderPhone1","senderPhone2","senderEmail"].forEach(k=>delete s[k])}if(self.CWDocLang){if(s.language)self.CWDocLang.adopt(s.language);delete s.language}save()}
 
 export function row(o={}){return{id:id(),time:"",number:"",title:"",type:"Пункт програми",kind:"",duration:"",participants:[],confirmed:false,rehearsal:false,notes:"",section:false,recordingMedia:"аудіо",recordingKind:"інтерв’ю",status:"Не назначено",letterSent:false,letterSentDate:"",linkId:null,...o}}
@@ -29,7 +89,7 @@ export function S(){if(!store.st.settings)store.st.settings=baseSettings();retur
 export function save(){localStorage.setItem(KEY,JSON.stringify(store.st));store.lastSavedAt=new Date();updateSaveStatus()}
 export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
 export function makeBackup(label){try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date().toISOString(),label:label||t("cong.msg.autobackup"),data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,10)))}catch(e){}}
-export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.series))store.st.series=[];if(!s.templates)s.templates=b.templates;["uk","ru","de"].forEach(k=>{if(!s.templates[k])s.templates[k]=b.templates[k]});if(!s.templatesByType)s.templatesByType={};if(!s.font)s.font=b.font;if(!s.fontSize)s.fontSize=b.fontSize;if(!Array.isArray(s.congregations))s.congregations=b.congregations;if(!Array.isArray(s.speakers))s.speakers=b.speakers;if(!Array.isArray(s.speakerProfiles))s.speakerProfiles=[];if(!Array.isArray(s.assignmentTypes))s.assignmentTypes=b.assignmentTypes;if(!Array.isArray(s.assignmentKinds))s.assignmentKinds=b.assignmentKinds;(store.st.congresses||[]).forEach(c=>{if(c.theme==null)c.theme="";if(c.language==null)c.language="";if(c.notes==null)c.notes="";if(c.seriesId===undefined)c.seriesId=null;if(c.rehearsalDate===undefined)c.rehearsalDate=s.stageRehearsalDate||"";if(c.rehearsalTime===undefined)c.rehearsalTime=s.stageRehearsalTime||"";if(c.recordingDeadline===undefined)c.recordingDeadline=s.recordingDeadline||"";if(c.responseDeadline===undefined)c.responseDeadline=s.responseDeadline||"";(c.tasks||[]).forEach(t=>{if(t.linkId===undefined)t.linkId=null;if(t.recordingMedia==null)t.recordingMedia=s.recordingMedia||"аудіо";if(t.recordingKind==null)t.recordingKind=s.recordingKind||t.kind||"інтерв’ю";if(noAssignmentNeeded(t)){t.letterSent=false;t.letterSentDate="";t.status=""}else{if(!t.status)t.status=t.confirmed?"Подтверждено":"Не назначено";if(t.letterSent==null)t.letterSent=false;if(t.letterSentDate==null)t.letterSentDate=""}if(isSection(t))t.section=true})});cleanupLinks()}
+export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.series))store.st.series=[];if(!s.font)s.font=b.font;if(!s.fontSize)s.fontSize=b.fontSize;if(!Array.isArray(s.congregations))s.congregations=b.congregations;if(!Array.isArray(s.speakers))s.speakers=b.speakers;if(!Array.isArray(s.speakerProfiles))s.speakerProfiles=[];if(!Array.isArray(s.assignmentTypes))s.assignmentTypes=b.assignmentTypes;if(!Array.isArray(s.assignmentKinds))s.assignmentKinds=b.assignmentKinds;(store.st.congresses||[]).forEach(c=>{if(c.theme==null)c.theme="";if(c.language==null)c.language="";if(c.notes==null)c.notes="";if(c.seriesId===undefined)c.seriesId=null;if(c.rehearsalDate===undefined)c.rehearsalDate=s.stageRehearsalDate||"";if(c.rehearsalTime===undefined)c.rehearsalTime=s.stageRehearsalTime||"";if(c.recordingDeadline===undefined)c.recordingDeadline=s.recordingDeadline||"";if(c.responseDeadline===undefined)c.responseDeadline=s.responseDeadline||"";(c.tasks||[]).forEach(t=>{if(t.linkId===undefined)t.linkId=null;if(t.recordingMedia==null)t.recordingMedia=s.recordingMedia||"аудіо";if(t.recordingKind==null)t.recordingKind=s.recordingKind||t.kind||"інтерв’ю";if(noAssignmentNeeded(t)){t.letterSent=false;t.letterSentDate="";t.status=""}else{if(!t.status)t.status=t.confirmed?"Подтверждено":"Не назначено";if(t.letterSent==null)t.letterSent=false;if(t.letterSentDate==null)t.letterSentDate=""}if(isSection(t))t.section=true})});cleanupLinks()}
 // Проверка формы объекта состояния ПЕРЕД тем, как заменить им рабочие данные.
 // Без неё импорт произвольного JSON заменял store.st мусором ещё до migrate();
 // migrate() падал, alert показывался, но автосохранение (раз в 5 минут) уже

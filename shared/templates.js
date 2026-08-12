@@ -199,5 +199,255 @@
     },
   };
 
+  /* ══════════════════════════════════════════════════════════════════════
+     ХРАНИЛИЩЕ ШАБЛОНОВ (фаза 2, 12.08.2026)
+
+     Системные тексты — в коде (shared/templates/builtin.js). Правки
+     пользователя — в `CWDB.templates` под ТЕМ ЖЕ `id`. Отсутствие записи
+     означает «не правил», и тогда действует системный текст; поэтому
+     «восстановить оригинал» — это удаление записи, а не перезапись.
+
+     ПОЧЕМУ API СИНХРОННЫЙ, А ЗАГРУЗКА АСИНХРОННАЯ. `letterHTML()` в Конгрессах
+     синхронна, её зовут из обработчиков кликов и из печати. Сделать её
+     асинхронной — значит переписать половину модуля и получить мигание при
+     печати. Поэтому всё хранилище один раз вычитывается в память при `init()`
+     (шаблонов десятки, не тысячи), а дальше чтение синхронное. Тот же приём и
+     по той же причине, что в CWSender.
+
+     ⚠️ ОКНО МЕЖДУ ЗАГРУЗКОЙ СТРАНИЦЫ И `init()`. Пока хранилище не прочитано,
+     `stored` равен false, и модуль ОБЯЗАН читать свой прежний источник
+     (настройки в localStorage). Иначе в эту долю секунды пользователь получил
+     бы системное письмо вместо своего, ничего не заметив. Ради этого свойства
+     миграция и устроена так, что старые ключи живут до подтверждённого
+     переноса, а не удаляются заранее.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  var cache = null;      // id → пользовательская запись
+  var readyPromise = null;
+
+  function builtins() {
+    return global.CW_BUILTIN_TEMPLATES || [];
+  }
+
+  function builtinById(id) {
+    var list = builtins();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /** Слияние системной основы и пользовательской правки в один объект. */
+  function effective(id) {
+    var base = builtinById(id);
+    var own = cache && cache[id];
+    if (!base && !own) return null;
+    var merged = {};
+    Object.keys(base || {}).forEach(function (k) { merged[k] = base[k]; });
+    if (!own) { merged.scope = 'system'; merged.custom = false; return merged; }
+    Object.keys(own).forEach(function (k) { if (own[k] !== undefined) merged[k] = own[k]; });
+    merged.scope = 'user';
+    merged.custom = true;
+    return merged;
+  }
+
+  /* --- Правила выбора языка -------------------------------------------- */
+  /**
+   * Колонка перевода для запрошенного языка.
+   * Пустая колонка — это НЕ ошибка и не пустой документ: это «перевода пока
+   * нет». Отдаём первый непустой язык и честно сообщаем об этом флагом
+   * `pending`, чтобы интерфейс мог показать пометку, а документ остался
+   * читаемым. Тихо вернуть пустое письмо было бы худшим из вариантов.
+   */
+  function pickTranslation(tpl, lang) {
+    if (!tpl || !tpl.translations) return null;
+    var tr = tpl.translations;
+    var wanted = tr[lang];
+    if (wanted && wanted.body) return { lang: lang, entry: wanted, pending: false };
+    var langs = Object.keys(tr);
+    for (var i = 0; i < langs.length; i++) {
+      var entry = tr[langs[i]];
+      if (entry && entry.body) return { lang: langs[i], entry: entry, pending: true };
+    }
+    return null;
+  }
+
+  var storage = {
+    /** Прочитано ли хранилище. Пока false — модуль читает свой прежний источник. */
+    stored: false,
+
+    /**
+     * Вычитать пользовательские шаблоны в память. Идемпотентно.
+     * @returns {Promise<void>}
+     */
+    init: function () {
+      if (readyPromise) return readyPromise;
+      if (!global.CWDB || !global.CWDB.templates) {
+        /* Без общей базы работаем на одних системных текстах: это рабочее
+           состояние, а не сбой — модуль просто не получит правок. */
+        cache = {};
+        CWTemplates.stored = true;
+        readyPromise = Promise.resolve();
+        return readyPromise;
+      }
+      readyPromise = global.CWDB.templates.getAll().then(function (rows) {
+        cache = {};
+        (rows || []).forEach(function (row) { if (row && row.id) cache[row.id] = row; });
+        CWTemplates.stored = true;
+      }).catch(function (e) {
+        console.error('CWTemplates: не удалось прочитать хранилище шаблонов', e);
+        cache = {};
+        /* stored НЕ выставляем: пусть модуль продолжает читать прежний
+           источник, это безопаснее, чем подсунуть системный текст вместо
+           пользовательского. */
+        readyPromise = null;
+        throw e;
+      });
+      return readyPromise;
+    },
+
+    /** Промис готовности (или уже разрешённый, если init не звали). */
+    ready: function () { return readyPromise || storage.init(); },
+
+    /** Шаблон по id: системный, поверх него — правка пользователя. */
+    get: function (id) { return effective(id); },
+
+    /** Шаблон по контексту. Пользовательские записи ищутся первыми. */
+    byContext: function (context) {
+      if (cache) {
+        var ids = Object.keys(cache);
+        for (var i = 0; i < ids.length; i++) {
+          if (cache[ids[i]].context === context) return effective(ids[i]);
+        }
+      }
+      var list = builtins();
+      for (var j = 0; j < list.length; j++) {
+        if (list[j].context === context) return effective(list[j].id);
+      }
+      return null;
+    },
+
+    /**
+     * Готовый текст шаблона на нужном языке.
+     * @returns {{id, subject, body, lang, pending, custom}|null}
+     */
+    text: function (contextOrId, lang) {
+      var tpl = storage.byContext(contextOrId) || effective(contextOrId);
+      if (!tpl) return null;
+      var picked = pickTranslation(tpl, lang || (global.CWDocLang && global.CWDocLang.get()));
+      if (!picked) return null;
+      return {
+        id: tpl.id,
+        subject: picked.entry.subject || null,
+        body: picked.entry.body || '',
+        lang: picked.lang,
+        pending: picked.pending,
+        custom: !!tpl.custom,
+        format: tpl.format || 'text',
+      };
+    },
+
+    /** Правил ли пользователь этот шаблон. */
+    isCustom: function (id) { return !!(cache && cache[id]); },
+
+    /**
+     * Сохранить пользовательскую версию текста на одном языке.
+     * @returns {Promise<void>}
+     */
+    save: function (id, lang, patch) {
+      if (!global.CWDB || !global.CWDB.templates) {
+        return Promise.reject(new Error('CWTemplates.save: общая база недоступна'));
+      }
+      var base = builtinById(id);
+      var own = (cache && cache[id]) || null;
+      var record = {
+        id: id,
+        context: (own && own.context) || (base && base.context) || id,
+        module: (own && own.module) || (base && base.module) || '',
+        format: (own && own.format) || (base && base.format) || 'text',
+        title: (own && own.title) || (base && base.title) || '',
+        scope: 'user',
+        baseId: base ? base.id : null,
+        translations: {},
+        updatedAt: new Date().toISOString(),
+      };
+      var pages = (own && own.pages) || (base && base.pages);
+      if (pages) record.pages = pages;
+      var source = (own && own.translations) || {};
+      Object.keys(source).forEach(function (k) { record.translations[k] = source[k]; });
+      /* Если правки ещё не было, остальные языки берём из системного шаблона:
+         иначе сохранение украинской версии обнулило бы немецкую. */
+      if (!own && base && base.translations) {
+        Object.keys(base.translations).forEach(function (k) {
+          if (!record.translations[k]) record.translations[k] = base.translations[k];
+        });
+      }
+      var current = record.translations[lang] || {};
+      record.translations[lang] = {
+        subject: patch.subject !== undefined ? patch.subject : (current.subject || null),
+        body: patch.body !== undefined ? patch.body : (current.body || ''),
+      };
+      return global.CWDB.templates.put(record).then(function () {
+        if (!cache) cache = {};
+        cache[id] = record;
+      });
+    },
+
+    /**
+     * Убрать пользовательскую версию — снова действует системный текст.
+     * @returns {Promise<void>}
+     */
+    reset: function (id) {
+      if (!cache || !cache[id]) return Promise.resolve();
+      if (!global.CWDB || !global.CWDB.templates) {
+        return Promise.reject(new Error('CWTemplates.reset: общая база недоступна'));
+      }
+      return global.CWDB.templates.remove(id).then(function () { delete cache[id]; });
+    },
+
+    /**
+     * Однократный перенос текста из настроек модуля в общее хранилище.
+     *
+     * ⚠️ НЕ ПЕРЕЗАПИСЫВАЕТ уже существующую запись. Повторный вызов безвреден —
+     * это обязательное свойство: adopt зовётся при каждой загрузке модуля, и
+     * второй запуск не должен затирать то, что пользователь успел исправить
+     * уже в новом хранилище.
+     *
+     * @param {string} id
+     * @param {Object} record — { context, module, format, title, translations }
+     * @returns {Promise<boolean>} перенос выполнен (true) или запись уже была
+     */
+    adopt: function (id, record) {
+      if (cache && cache[id]) return Promise.resolve(false);
+      if (!global.CWDB || !global.CWDB.templates) return Promise.resolve(false);
+      var payload = {
+        id: id,
+        context: record.context || id,
+        module: record.module || '',
+        format: record.format || 'text',
+        title: record.title || '',
+        scope: 'user',
+        baseId: builtinById(id) ? id : null,
+        translations: record.translations || {},
+        adoptedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      if (record.pages) payload.pages = record.pages;
+      return global.CWDB.templates.put(payload).then(function () {
+        if (!cache) cache = {};
+        cache[id] = payload;
+        return true;
+      });
+    },
+
+    /** Все известные шаблоны (системные + правки) — для будущей библиотеки. */
+    all: function () {
+      var ids = {};
+      builtins().forEach(function (b) { ids[b.id] = true; });
+      Object.keys(cache || {}).forEach(function (k) { ids[k] = true; });
+      return Object.keys(ids).map(effective).filter(Boolean);
+    },
+  };
+
+  Object.keys(storage).forEach(function (k) { CWTemplates[k] = storage[k]; });
+
   global.CWTemplates = CWTemplates;
 })(typeof self !== 'undefined' ? self : this);

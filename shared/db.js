@@ -12,6 +12,10 @@
  * Модули подключают файл через <script src="../shared/db.js"></script>
  * и используют глобальный объект `CWDB`.
  *
+ * СХЕМА v2 (12.08.2026) добавила хранилище `templates` — пользовательские
+ * версии шаблонов документов. Апгрейд безопасен для существующих данных:
+ * onupgradeneeded создаёт только недостающие хранилища и ничего не переносит.
+ *
  * Пример использования:
  *   const all = await CWDB.communities.getAll();
  *   const id = await CWDB.communities.add({ name: 'Общ. Центр', address: '...' });
@@ -22,7 +26,7 @@
   'use strict';
 
   const DB_NAME = 'circuit-workspace-db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
 
   /** Схема хранилищ: имя store → keyPath + индексы */
   const STORES = {
@@ -30,6 +34,14 @@
     people:      { keyPath: 'id', indexes: ['name', 'role', 'communityId'] },
     meetings:    { keyPath: 'id', indexes: ['communityId', 'start'] },
     roles:       { keyPath: 'id', indexes: ['name'] },
+    /* Пользовательские версии шаблонов документов (v2, 12.08.2026).
+       Системные тексты лежат в коде — shared/templates/builtin.js; сюда
+       попадает ТОЛЬКО то, что пользователь изменил сам. Отсутствие записи —
+       не пустота, а «пользователь этот шаблон не трогал», и тогда действует
+       системный текст. Поэтому «восстановить оригинал» = удалить запись.
+       Работать с этим хранилищем напрямую модули не должны: единственная
+       точка входа — CWTemplates (shared/templates.js). */
+    templates:   { keyPath: 'id', indexes: ['context', 'module'] },
   };
 
   let dbPromise = null;
@@ -168,6 +180,8 @@
     meetings: makeCrud('meetings', 'mtg'),
     /** Роли / должности, на которые могут ссылаться people */
     roles: makeCrud('roles', 'role'),
+    /** Пользовательские версии шаблонов документов. Через CWTemplates, не напрямую. */
+    templates: makeCrud('templates', 'tpl'),
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,

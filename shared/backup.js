@@ -79,9 +79,10 @@
     'congress-project': {
       local: ['congress-pwa-v34-speakers', 'congress-pwa-v34-speakers-backups'],
       idb: [],
-      /* Блок отправителя печатается в шапке каждого письма участнику. */
+      /* Блок отправителя печатается в шапке каждого письма участнику,
+         а с 12.08.2026 в общей базе лежат и сами шаблоны писем. */
       sharedLocal: ['cw-sender'],
-      sharedStores: {},
+      sharedStores: { 'circuit-workspace-db': ['templates'] },
     },
     'circuit-planner': {
       local: [
