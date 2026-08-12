@@ -1,6 +1,6 @@
 // congress-project/js/mobile.js
 //
-// Мобильная оболочка модуля: панель с текущим конгрессом, выпадающий список
+// Оболочка модуля с панелью: панель текущего конгресса, выпадающий список
 // конгрессов, лист действий и плавающая кнопка добавления задания.
 //
 // ЗАЧЕМ. На телефоне до программы приходилось проскроллить четыре экрана
@@ -26,27 +26,51 @@
 // Теперь:
 //   • выпадающий список под панелью — ТОЛЬКО выбор и создание;
 //   • лист по кнопке «ещё» — всё, что делается с текущим конгрессом:
-//     действия программы, его поля, сброс данных.
+//     действия программы и его поля.
 // Заголовком листа служит имя текущего конгресса, поэтому новых строк
 // перевода для этого разделения не понадобилось.
+//
+// ТРИ СОСТОЯНИЯ ОБОЛОЧКИ (4.31.0). Панель перестала быть «мобильной»:
+//
+//   wide     >1100px            сайдбар слева, всё в потоке страницы
+//   pick     ≤1100px, а выше —  сайдбар уезжает в выпадашку под панелью;
+//            по кнопке в шапке  поля конгресса и действия остаются в потоке
+//   compact  ≤680px             плюс лист действий и плавающая кнопка
+//
+// Раньше диапазон 681–1100px не получал ничего: `.layout` там уже
+// одноколоночный, и сайдбар ложился полосой на всю ширину поверх программы,
+// со своим скроллом внутри страницы — то есть ровно то, от чего избавлялись
+// на телефоне. Теперь этот диапазон работает как pick.
+//
+// ПОЧЕМУ ДВА НЕЗАВИСИМЫХ ПЕРЕКЛЮЧАТЕЛЯ, А НЕ ОДИН СПИСОК УЗЛОВ. Выбор
+// конгресса и действия над конгрессом убираются из потока по разным
+// причинам: список — потому что не помещается вторая колонка, действия —
+// потому что не помещается строка из шести кнопок. Эти причины наступают на
+// разной ширине, поэтому и наборы узлов разные.
 import { $ } from "./dom.js";
 
-const MOBILE = "(max-width:680px)";
+const COMPACT = "(max-width:680px)";
+const PICK = "(max-width:1100px)";
+
+/* Сворачивание сайдбара — настройка рабочего места, а не свойство данных:
+   оно одно на модуль и не попадает ни в резервную копию, ни в экспорт.
+   Отдельный ключ, а не поле в состоянии программы, именно поэтому. */
+const COLLAPSE_KEY = "cw-congress-sidebar-collapsed";
 
 /* Узлы переезжают между исходным местом и мобильным контейнером. Чтобы
    вернуть каждый ровно туда, откуда он взят, запоминаем родителя и
    следующего соседа в момент первого переезда: расставлять по индексу
    нельзя — соседи могут появиться и исчезнуть (например, .hint скрывается,
    но остаётся в DOM). */
-const moved = [];
-
 function remember(node, target) {
   if (!node || !target) return null;
   return { node, target, parent: node.parentNode, next: node.nextSibling };
 }
+const toTarget = (list) => list.forEach((m) => m.target.appendChild(m.node));
+const toPage = (list) => list.forEach((m) => m.parent.insertBefore(m.node, m.next));
 
 /* Подписи берутся из уже отрисованного списка конгрессов, а не из состояния:
-   так мобильный слой не знает ничего о модели данных и не требует врезки
+   так слой оболочки не знает ничего о модели данных и не требует врезки
    вызова в render(). renderCongresses переписывает innerHTML списка целиком,
    поэтому MutationObserver ловит любое изменение — создание, удаление,
    переключение активного, переименование. */
@@ -62,6 +86,13 @@ function syncLabels() {
   set("#mSheetTitle", name);
 }
 
+function readCollapsed() {
+  try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; }
+}
+function writeCollapsed(value) {
+  try { localStorage.setItem(COLLAPSE_KEY, value ? "1" : "0"); } catch { /* приватный режим */ }
+}
+
 export function initMobile() {
   const bar = $("#mobileBar");
   const menu = $("#mCongressMenu");
@@ -69,30 +100,24 @@ export function initMobile() {
   if (!bar || !menu || !sheet) return;
 
   const trigger = $("#mCongressBtn");
+  const toggle = $("#sidebarToggleBtn");
   const sheetBody = sheet.querySelector(".sheet-body");
 
-  [
-    /* .sidebar переносится целиком, а не по частям: main.js исключает
-       `.sidebar` в clearSelectionIfOutside, и разрыв этой вложенности сбрасывал
-       бы выделенное задание при каждом клике по списку конгрессов. */
-    remember(document.querySelector(".sidebar"), menu),
-    /* «Сбросить данные» относится к приложению, а не к выбору конгресса —
-       ему не место в списке, который открывают по десять раз на дню.
-       Кнопка — <button>, поэтому вынос за пределы .sidebar безопасен:
-       clearSelectionIfOutside отдельно исключает `button`. */
-    remember($("#resetAppBtn"), sheetBody),
+  /* .sidebar переносится целиком, а не по частям: main.js исключает
+     `.sidebar` в clearSelectionIfOutside, и разрыв этой вложенности сбрасывал
+     бы выделенное задание при каждом клике по списку конгрессов.
+     «Сбросить данные» едет вместе с ним — кнопка лежит внутри сайдбара, и
+     вынимать её отдельно значило бы держать для неё два разных дома в двух
+     режимах. */
+  const pickMoved = [remember(document.querySelector(".sidebar"), menu)].filter(Boolean);
+  const compactMoved = [
     remember($("#programActions"), sheetBody),
     remember($("#congressMeta"), sheetBody),
-  ].forEach((m) => { if (m) moved.push(m); });
+  ].filter(Boolean);
 
   /* Порядок в листе задаётся явно, а не порядком переноса: по частоте —
-     действия программы, поля конгресса, сброс данных последним. */
-  const order = ["#programActions", "#congressMeta", "#resetAppBtn"];
-  const toMobile = () => {
-    moved.forEach((m) => m.target.appendChild(m.node));
-    order.forEach((sel) => { const el = $(sel); if (el) sheetBody.appendChild(el); });
-  };
-  const toPage = () => moved.forEach((m) => m.parent.insertBefore(m.node, m.next));
+     сначала действия программы, потом поля конгресса. */
+  const sheetOrder = ["#programActions", "#congressMeta"];
 
   /* Выпадающий список. Механика повторяет js/topbar-menu.js (открыть,
      закрыть по действию, клик мимо, Esc) — там она привязана к своим
@@ -147,18 +172,48 @@ export function initMobile() {
   if (list) new MutationObserver(syncLabels).observe(list, { childList: true, subtree: true });
   syncLabels();
 
-  const mq = window.matchMedia(MOBILE);
+  let collapsed = readCollapsed();
+
+  const mqCompact = window.matchMedia(COMPACT);
+  const mqPick = window.matchMedia(PICK);
+
+  /* Состояние считается заново при каждом изменении, а не переключается
+     из предыдущего: так переход wide → compact (поворот планшета, а не
+     плавное перетаскивание рамки окна) отрабатывает за один проход. */
   const apply = () => {
-    if (mq.matches) {
-      toMobile();
+    const compact = mqCompact.matches;
+    const pick = compact || mqPick.matches || collapsed;
+
+    if (pick) {
+      toTarget(pickMoved);
     } else {
-      /* Открытый список или лист на широком экране остались бы висеть поверх
-         вернувшегося на место содержимого — закрываем до переноса. */
+      /* Открытый список на широком экране остался бы висеть поверх
+         вернувшегося на место сайдбара — закрываем до переноса. */
       closeMenu();
-      sheet.close();
-      toPage();
+      toPage(pickMoved);
     }
+
+    if (compact) {
+      toTarget(compactMoved);
+      sheetOrder.forEach((sel) => { const el = $(sel); if (el) sheetBody.appendChild(el); });
+    } else {
+      sheet.close();
+      toPage(compactMoved);
+    }
+
+    /* Атрибут читает CSS: гейт видимости панели выше 1100px. Ниже 1100px
+       панель включена медиазапросом и от атрибута не зависит. */
+    document.body.dataset.collapsed = collapsed ? "1" : "0";
+    if (toggle) toggle.setAttribute("aria-pressed", collapsed ? "true" : "false");
   };
-  mq.addEventListener("change", apply);
+
+  if (toggle) toggle.onclick = () => {
+    collapsed = !collapsed;
+    writeCollapsed(collapsed);
+    apply();
+  };
+
+  mqCompact.addEventListener("change", apply);
+  mqPick.addEventListener("change", apply);
   apply();
 }

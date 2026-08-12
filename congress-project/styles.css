@@ -1239,122 +1239,188 @@ dialog {
    вид и то, что на широком экране всей этой оболочки не существует.
    ═══════════════════════════════════════════════════════════════════════ */
 .mobile-bar, .mobile-fab, .sheet, .mobile-menu { display: none }
+/* Кнопка сворачивания сайдбара имеет смысл только там, где сайдбар вообще
+   бывает, — на ≤1100px его нет ни в одном состоянии. */
+.sidebar-toggle { display: none }
 
 .no-part__text { display: none }
 
-@media(max-width:680px) {
-  /* Панель прилипает под шапкой модуля: название конгресса должно быть
-     видно всегда — это единственное, что отвечает на вопрос «а какую
-     программу я сейчас правлю». */
+/* ══ ОБОЛОЧКА С ПАНЕЛЬЮ ═════════════════════════════════════════════════════
+   Панель с текущим конгрессом и выпадающий список конгрессов. Узлы (сам
+   список, поля конгресса, панель действий) переносит js/mobile.js — здесь
+   только внешний вид.
+
+   ГДЕ ЭТО ВКЛЮЧАЕТСЯ. Раньше — только на телефоне. Теперь у оболочки три
+   состояния, и правила ниже описывают вид панели один раз, а включают её
+   два разных гейта (ниже по файлу):
+     • ≤1100px — всегда. Две колонки на такой ширине не помещаются, а прежняя
+       раскладка клала список конгрессов полосой на всю ширину поверх
+       программы, с собственным скроллом внутри страницы.
+     • >1100px — по кнопке сворачивания в шапке (body[data-collapsed="1"]).
+       Сайдбар остаётся раскладкой по умолчанию: на широком экране постоянный
+       обзор серии полезнее, чем +306px таблице.
+   Поэтому здесь нет ни одного `display` — только оформление. Оболочка
+   невидима, пока гейт её не включил.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Панель прилипает под шапкой модуля: название конгресса должно быть
+   видно всегда — это единственное, что отвечает на вопрос «а какую
+   программу я сейчас правлю». */
+.mobile-bar {
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: var(--cw-topbar-h);
+  z-index: 20;
+  padding: 8px;
+  background: var(--md-surface);
+  border-bottom: 1px solid var(--md-outline-variant)
+}
+.mobile-bar__pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  padding: 8px 10px
+}
+.mobile-bar__lines {
+  flex: 1;
+  min-width: 0;
+  display: block
+}
+.mobile-bar__name {
+  display: block;
+  font: 500 14px/1.25 var(--md-font-family);
+  color: var(--md-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis
+}
+.mobile-bar__name:empty::before {
+  content: "—";
+  color: var(--muted)
+}
+.mobile-bar__meta {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--muted)
+}
+/* Кнопка «ещё» открывает нижний лист, а листа нет нигде, кроме узкого
+   экрана: в режиме панели действия программы остаются в потоке страницы. */
+.mobile-bar__more {
+  display: none;
+  flex: 0 0 auto
+}
+/* Стрелка отыгрывает состояние списка — иначе непонятно, открыт он или
+   закрыт, когда список короткий и занимает мало места. */
+.mobile-bar__chev {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform var(--md-dur-short, 100ms) var(--md-ease-standard, ease)
+}
+#mCongressBtn[aria-expanded="true"] .mobile-bar__chev {
+  transform: rotate(180deg)
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bar__chev { transition: none }
+}
+
+/* Выпадающий список конгрессов. Раскрывается из панели, а не всплывает
+   снизу: переключение конгресса — навигация, а не отдельная задача, и
+   список должен читаться как продолжение той строки, по которой нажали.
+   Позиционируется от .mobile-bar (у sticky-элемента свой контекст). */
+.mobile-menu {
+  position: absolute;
+  top: 100%;
+  left: 8px;
+  width: 340px;
+  max-width: calc(100% - 16px);
+  z-index: 25;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 10px;
+  background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  box-shadow: var(--md-elevation-2)
+}
+/* Внутри списка сайдбар — не карточка: рамку даёт сам список. */
+.mobile-menu > .sidebar {
+  position: static;
+  height: auto;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible
+}
+/* Заголовок «Конгрессы» и кнопки создания — одной строкой сверху. */
+.mobile-menu > .sidebar > .head {
+  margin-bottom: 8px
+}
+.mobile-menu > .sidebar > .head h2 {
+  font-size: 13px
+}
+/* Строки списка ближе друг к другу, чем карточки в сайдбаре: это список
+   выбора, а не набор плиток. Активная помечена слева, как выбранная
+   строка программы. */
+.mobile-menu .congress {
+  margin-bottom: 4px;
+  padding: 10px
+}
+.mobile-menu .congress.active {
+  box-shadow: inset 3px 0 0 var(--md-primary)
+}
+
+/* ── Гейты видимости панели ────────────────────────────────────────────────
+   .layout на ≤1100px уже одноколоночный (медиазапрос выше), поэтому там
+   переопределять сетку не нужно — только показать панель. */
+@media(max-width:1100px) {
   .mobile-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    position: sticky;
-    top: var(--cw-topbar-h);
-    z-index: 20;
-    padding: 8px;
-    background: var(--md-surface);
-    border-bottom: 1px solid var(--md-outline-variant)
+    display: flex
   }
-  .mobile-bar__pick {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-align: left;
-    background: var(--md-surface-container-low);
-    border: 1px solid var(--md-outline-variant);
-    border-radius: var(--md-radius-lg);
-    padding: 8px 10px
-  }
-  .mobile-bar__lines {
-    flex: 1;
-    min-width: 0;
+  .mobile-menu:not([hidden]) {
     display: block
   }
-  .mobile-bar__name {
-    display: block;
-    font: 500 14px/1.25 var(--md-font-family);
-    color: var(--md-on-surface);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
+}
+/* Свёрнутое состояние на широком экране. Атрибут ставит js/mobile.js после
+   чтения localStorage; до этого момента виден сайдбар — то есть раскладка
+   по умолчанию, а не мигание панелью. */
+@media(min-width:1101px) {
+  .sidebar-toggle {
+    display: inline-flex
   }
-  .mobile-bar__name:empty::before {
-    content: "—";
-    color: var(--muted)
+  body[data-collapsed="1"] .layout {
+    grid-template-columns: minmax(0, 1fr)
   }
-  .mobile-bar__meta {
-    display: block;
-    margin-top: 1px;
-    font-size: 11.5px;
-    color: var(--muted)
+  body[data-collapsed="1"] .mobile-bar {
+    display: flex;
+    padding: 8px 16px
+  }
+  body[data-collapsed="1"] .mobile-menu:not([hidden]) {
+    display: block
+  }
+  body[data-collapsed="1"] .mobile-menu {
+    left: 16px
+  }
+}
+
+/* ── Только узкий экран: лист действий и плавающая кнопка ─────────────────── */
+@media(max-width:680px) {
+  /* На телефоне выпадашка занимает всю ширину: 340px оставили бы пустую
+     полосу справа, а список выбора должен быть максимально нажимаемым. */
+  .mobile-menu {
+    right: 8px;
+    width: auto;
+    max-width: none
   }
   .mobile-bar__more {
-    flex: 0 0 auto
-  }
-  /* Стрелка отыгрывает состояние списка — иначе непонятно, открыт он или
-     закрыт, когда список короткий и занимает мало места. */
-  .mobile-bar__chev {
-    flex: 0 0 auto;
-    color: var(--muted);
-    transition: transform var(--md-dur-short, 100ms) var(--md-ease-standard, ease)
-  }
-  #mCongressBtn[aria-expanded="true"] .mobile-bar__chev {
-    transform: rotate(180deg)
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .mobile-bar__chev { transition: none }
-  }
-
-  /* Выпадающий список конгрессов. Раскрывается из панели, а не всплывает
-     снизу: переключение конгресса — навигация, а не отдельная задача, и
-     список должен читаться как продолжение той строки, по которой нажали.
-     Позиционируется от .mobile-bar (у sticky-элемента свой контекст). */
-  .mobile-menu {
-    display: block;
-    position: absolute;
-    top: 100%;
-    left: 8px;
-    right: 8px;
-    z-index: 25;
-    max-height: 60vh;
-    overflow: auto;
-    padding: 10px;
-    background: var(--md-surface-container-high);
-    border: 1px solid var(--md-outline-variant);
-    border-radius: var(--md-radius-md);
-    box-shadow: var(--md-elevation-2)
-  }
-  .mobile-menu[hidden] {
-    display: none
-  }
-  /* Внутри списка сайдбар — не карточка: рамку даёт сам список. */
-  .mobile-menu > .sidebar {
-    background: transparent;
-    border: 0;
-    padding: 0;
-    max-height: none;
-    overflow: visible
-  }
-  /* Заголовок «Конгрессы» и кнопки создания — одной строкой сверху. */
-  .mobile-menu > .sidebar > .head {
-    margin-bottom: 8px
-  }
-  .mobile-menu > .sidebar > .head h2 {
-    font-size: 13px
-  }
-  /* Строки списка ближе друг к другу, чем карточки в сайдбаре: это список
-     выбора, а не набор плиток. Активная помечена слева, как выбранная
-     строка программы. */
-  .mobile-menu .congress {
-    margin-bottom: 4px;
-    padding: 10px
-  }
-  .mobile-menu .congress.active {
-    box-shadow: inset 3px 0 0 var(--md-primary)
+    display: inline-flex
   }
 
   /* Плавающая кнопка — единственное частое действие на этом экране.
