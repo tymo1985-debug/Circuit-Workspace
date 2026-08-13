@@ -55,6 +55,8 @@
     'cong.btn.save': 'Сохранить',
     'cong.btn.edit_main_text': 'Редактировать основной текст',
     'cong.btn.edit_type_template': 'Редактировать шаблон типа',
+    'cong.btn.open_documents': 'Тексты писем — в «Документах»',
+    'cong.title.open_documents': 'Открыть модуль «Документы»: там правятся тексты всех писем',
     'cong.btn.preview_letter': 'Предпросмотр письма',
     'cong.btn.reset_letter': 'Сбросить письмо',
     'cong.btn.collect_from_program': 'Собрать из программы',

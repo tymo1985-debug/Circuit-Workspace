@@ -113,8 +113,6 @@
   .settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
   .md-chip.settings-tab{opacity:.65}
   .settings-tab.active{opacity:1;background:var(--accent);color:#fff;border-color:var(--accent)}
-  .md-chip.letter-type-tab{opacity:.65}
-  .letter-type-tab.active{opacity:1;background:var(--accent);color:#fff;border-color:var(--accent)}
   .settings-panel{display:grid;gap:16px}
   .rte-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
   .md-btn.rte-btn{min-width:40px;padding:8px 12px;height:auto}
@@ -474,63 +472,19 @@ body::before{display:none !important}
 <div id="owaUrlRow"><label data-i18n="cp.owa_link" class="small">Ссылка OWA для составления письма</label><input id="owaUrlInput" type="text" placeholder="https://outlook.office.com/mail/deeplink/compose" /></div>
 </div></div>
 
-          <div class="md-card" style="margin-top:16px">
-            <h3 data-i18n="cp.letter_text">Текст письма</h3>
-            <div data-i18n="cp.letter_types_hint" class="small" style="margin-bottom:8px">Отдельный текст для каждого типа визита. Выдели нужное слово или фразу мышью в любом из редакторов ниже, затем нажми «B» или размер — форматируется только выделенный фрагмент.</div>
-            <details style="margin-bottom:12px">
-              <summary data-i18n="cp.placeholders_toggle" class="small" style="cursor:pointer;color:var(--muted)">🔤 Какие плейсхолдеры доступны и как их использовать</summary>
-              <div data-i18n="cp.placeholders_hint" class="small" style="margin:8px 0">Плейсхолдер — это слово в фигурных скобках, которое при отправке письма автоматически заменяется на реальное значение для этого конкретного визита. Работают в тексте письма, в дополнительных страницах и в тексте email-сообщения по умолчанию.</div>
-              <table id="placeholderRefTable" style="width:100%;border-collapse:collapse">
-                <thead><tr><th data-i18n="cp.placeholder_word" style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)">Плейсхолдер</th><th data-i18n="cp.what_is_it" style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)">Что это</th><th data-i18n="cp.example" style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)">Пример</th></tr></thead>
-                <tbody id="placeholderRefBody"></tbody>
-              </table>
-            </details>
-            <div class="settings-tabs" style="margin-bottom:12px">
-              <button data-i18n="cp.visit_type_congregation" class="md-chip md-state-layer letter-type-tab active" data-letter-type="Congregation" type="button">Собрание</button>
-              <button data-i18n="cp.visit_type_group" class="md-chip md-state-layer letter-type-tab" data-letter-type="Group" type="button">Группа</button>
-              <button data-i18n="cp.visit_type_pregroup" class="md-chip md-state-layer letter-type-tab" data-letter-type="Pregroup" type="button">Предгруппа</button>
-            </div>
-            <div class="rte-toolbar">
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn" type="button" data-rte-cmd="bold" title="Жирный (выдели текст)" data-i18n-title="cp.a_bold"><strong>B</strong></button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn" type="button" data-rte-cmd="italic" title="Курсив (выдели текст — см. примечание ниже)" data-i18n-title="cp.a_italic"><em>I</em></button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn" type="button" data-rte-cmd="underline" title="Подчеркнуть (выдели текст)" data-i18n-title="cp.a_underline"><u>U</u></button>
-              <span data-i18n="cp.size_label" class="small" style="margin-left:6px">Размер:</span>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="9">9</button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="10">10</button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="11">11</button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="12">12</button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="14">14</button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="16">16</button>
-              <button class="md-btn md-btn-outlined md-state-layer rte-btn rte-size-btn" type="button" data-rte-size="18">18</button>
-              <span data-i18n="cp.format_hint" class="small rte-font-note">Выдели текст в редакторе, затем нажми нужную кнопку. Шрифт: Aptos</span>
-            </div>
-            <div data-i18n="cp.format_hint2" class="small" style="color:var(--muted);margin-bottom:6px">Обычный текст (без выделения) отображается 11pt, не жирным.</div>
-            <div data-i18n="cp.letter_addressee" class="small" style="font-weight:700;margin:4px 0">Кому адресовано (первая строка письма)</div>
-            <input id="letterSalutationInput" type="text" placeholder="Например: Відповідальному брату групи {congregation}" data-i18n-placeholder="cp.a_addressee_ph" />
-            <div data-i18n="cp.contact_name_hint" class="small" style="margin:4px 0 12px;color:var(--muted)">Для группы/предгруппы можно вписать конкретное имя ответственного вместо общего обращения — доступен плейсхолдер {contact_name} (имя контакта из карточки собрания/группы).</div>
-            <div data-i18n="cp.letter_page1" class="small" style="font-weight:700;margin:4px 0">Страница 1 — само письмо</div>
-            <div id="letterTemplateEditor" class="rte-editor" data-rte-page="body" contenteditable="true"></div>
-            <div data-i18n="cp.pdf_font_hint" class="small" style="margin-top:8px;color:var(--muted)">Шрифт в PDF — Aptos (с полной поддержкой кириллицы). Жирный и подчёркивание работают в PDF по-настоящему (встроены реальные файлы Aptos Bold). ⚠️ Курсив пока отображается только на экране — файла Aptos Italic ещё нет в PDF-сборке.</div>
-            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button data-i18n="cp.reset_salutation" class="md-btn md-btn-outlined md-state-layer" id="letterSalutationResetBtn" type="button">Сбросить обращение к стандартному</button></div>
-            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button data-i18n="cp.reset_page1" class="md-btn md-btn-outlined md-state-layer" id="letterTemplateResetBtn" type="button">Сбросить страницу 1 к стандартной</button></div>
-
-            <div data-i18n="cp.letter_extra_pages" class="small" style="font-weight:700;margin:20px 0 8px">Дополнительные страницы (2, 3...)</div>
-            <div id="letterPagesList" class="grid" style="gap:16px"></div>
-            <button data-i18n="cp.add_page" class="md-btn md-btn-outlined md-state-layer" id="addLetterPageBtn" type="button" style="margin-top:10px">+ Добавить страницу</button>
-
-            <div class="editor-actions" style="margin-top:20px;justify-content:flex-start">
-              <button data-i18n="cp.preview_pdf" class="md-btn md-btn-filled md-state-layer" id="previewLetterPdfBtn" type="button">👁 Предпросмотр PDF (на примере)</button>
-            </div>
-          </div>
-
-          <div class="md-card" style="margin-top:16px">
-            <h3 data-i18n="cp.email_text_default">Текст email-сообщения по умолчанию</h3>
-            <div data-i18n="cp.email_default_hint" class="small" style="margin-bottom:8px">Используется только для новых визитов, для которых ты ещё ничего не писал в окне отправки — свой текст для каждого визита сохраняется отдельно и не перезаписывается этим. Общие плейсхолдеры тоже работают: {congregation}, {start_date}, {end_date}.</div>
-            <div data-i18n="cp.visit_type_hint" class="small" style="margin-bottom:8px">Тип визита выбирается теми же вкладками выше (Собрание / Группа / Предгруппа).</div>
-            <textarea id="emailBodyDefaultInput" rows="4" style="font-family:inherit"></textarea>
-            <div style="margin-top:8px"><button data-i18n="cp.reset_to_default" class="md-btn md-btn-outlined md-state-layer" id="emailBodyDefaultResetBtn" type="button">Сбросить к стандартному</button></div>
-          </div>
-        </div>
+<div class="md-card" style="margin-top:16px">
+<h3 data-i18n="cp.letter_text">Текст письма</h3>
+<!-- Тексты писем, памяток, обращений и сопроводительных e-mail переехали в
+     модуль «Документы» (фаза 3б, 13.08.2026). Здесь остался только вход и
+     предпросмотр: письмо по-прежнему СОБИРАЕТСЯ этим модулем, изменился лишь
+     адрес, где правится его текст. Кнопка ведёт наружу — это ссылка, а не
+     кнопка формы, иначе переход внутри <form> отправлял бы диалог. -->
+<div data-i18n="cp.letter_moved_hint" class="small" style="margin-bottom:12px">Тексты писем, обращений, памяток и сопроводительных e-mail теперь правятся в модуле «Документы» — одно место на всё приложение. Здесь остаётся только предпросмотр.</div>
+<div class="editor-actions" style="justify-content:flex-start;flex-wrap:wrap;gap:10px">
+<a class="md-btn md-btn-filled md-state-layer" href="../documents/index.html" data-i18n="cp.open_documents">Открыть «Документы»</a>
+<button data-i18n="cp.preview_pdf" class="md-btn md-btn-outlined md-state-layer" id="previewLetterPdfBtn" type="button">👁 Предпросмотр PDF (на примере)</button>
+</div>
+</div>
 
         <div class="settings-panel" id="settingsPanelData" hidden>
           <div class="grid" style="grid-template-columns:repeat(2,1fr)">

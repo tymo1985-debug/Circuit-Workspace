@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.68.0',
+      version: '9.69.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2250,84 +2250,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         sel.addRange(newRange);
         return true;
       },
-      onRteEditorInput(editor) {
-        const pageRef = editor.dataset.rtePage;
-        const type = App.state.letterEditingType || 'Congregation';
-        if (pageRef === 'body') {
-          App.ui.setLetterTemplateFor(type, editor.innerHTML);
-        } else {
-          const pages = App.ui.docPages(type).slice();
-          const page = pages.find((p) => p.id === pageRef);
-          if (page) { page.html = editor.innerHTML; App.ui.docSavePages(type, pages); }
-        }
-      },
-      bindRteEditor(editor) {
-        if (!editor || editor.dataset.rteBound) return;
-        editor.dataset.rteBound = '1';
-        editor.addEventListener('focus', () => { App.state.activeRteEditor = editor; });
-        editor.addEventListener('click', () => { App.state.activeRteEditor = editor; });
-        editor.addEventListener('input', () => App.ui.onRteEditorInput(editor));
-      },
-      wireRteToolbar() {
-        document.querySelectorAll('[data-rte-cmd]').forEach((btn) => {
-          if (btn.dataset.rteWired) return;
-          btn.dataset.rteWired = '1';
-          // Prevent the button's mousedown from stealing focus/collapsing the selection —
-          // otherwise by the time 'click' fires, window.getSelection() no longer reflects
-          // what the user actually selected in the editor.
-          btn.addEventListener('mousedown', (e) => e.preventDefault());
-          btn.addEventListener('click', () => {
-            const editor = App.state.activeRteEditor || App.els.letterTemplateEditor;
-            if (!editor) return;
-            const cmd = btn.dataset.rteCmd;
-            const map = { bold: ['fontWeight', 'bold'], italic: ['fontStyle', 'italic'], underline: ['textDecoration', 'underline'] };
-            const [prop, value] = map[cmd] || [];
-            if (!prop || !App.ui.wrapSelection(editor, prop, value)) { App.utils.toast(App.utils.t('select_text_first')); return; }
-            App.ui.onRteEditorInput(editor);
-          });
-        });
-        document.querySelectorAll('[data-rte-size]').forEach((btn) => {
-          if (btn.dataset.rteWired) return;
-          btn.dataset.rteWired = '1';
-          btn.addEventListener('mousedown', (e) => e.preventDefault());
-          btn.addEventListener('click', () => {
-            const editor = App.state.activeRteEditor || App.els.letterTemplateEditor;
-            if (!editor) return;
-            if (!App.ui.wrapSelection(editor, 'fontSize', `${btn.dataset.rteSize}pt`)) { App.utils.toast(App.utils.t('select_text_first')); return; }
-            App.ui.onRteEditorInput(editor);
-          });
-        });
-        App.ui.bindRteEditor(App.els.letterTemplateEditor);
-      },
-      renderLetterPagesList() {
-        const type = App.state.letterEditingType || 'Congregation';
-        const pages = App.ui.docPages(type);
-        if (!App.els.letterPagesList) return;
-        if (!pages.length) { App.els.letterPagesList.innerHTML = `<div class="md-empty">${App.utils.t('letter_pages_empty')}</div>`; return; }
-        App.els.letterPagesList.innerHTML = pages.map((page, i) => `
-          <div class="md-card" style="padding:14px;box-shadow:none;border:1px solid var(--line)" data-page-card="${App.utils.escapeAttr(page.id)}">
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-              <span class="small" style="white-space:nowrap">${App.utils.escapeHtml(App.utils.t('page_no', { n: i + 2 }))}</span>
-              <input type="text" data-page-title="${App.utils.escapeAttr(page.id)}" value="${App.utils.escapeAttr(page.title || '')}" placeholder="${App.utils.escapeAttr(App.utils.t('letter_page_title_ph'))}" style="flex:1" />
-              <button class="md-btn md-btn-danger md-state-layer" type="button" data-remove-page="${App.utils.escapeAttr(page.id)}" style="white-space:nowrap">${App.utils.escapeHtml(App.utils.t('delete_page'))}</button>
-            </div>
-            <div class="rte-editor" data-rte-page="${App.utils.escapeAttr(page.id)}" contenteditable="true">${page.html || ''}</div>
-          </div>`).join('');
-        pages.forEach((page) => {
-          const card = App.els.letterPagesList.querySelector(`[data-page-card="${page.id}"]`);
-          if (!card) return;
-          const editor = card.querySelector('.rte-editor');
-          App.ui.bindRteEditor(editor);
-          card.querySelector('[data-page-title]')?.addEventListener('input', (e) => { page.title = e.target.value; App.ui.docSavePages(type, pages); });
-          card.querySelector('[data-remove-page]')?.addEventListener('click', () => {
-            if (!window.confirm(App.utils.t('letter_page_delete_confirm'))) return;
-            const next = pages.slice();
-            const idx = next.findIndex((p) => p.id === page.id);
-            if (idx >= 0) next.splice(idx, 1);
-            App.ui.docSavePages(type, next).then(() => App.ui.renderLetterPagesList());
-          });
-        });
-      },
       parseRichLetterBlocks(html) {
         const container = document.createElement('div');
         container.innerHTML = html;
@@ -2641,34 +2563,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        * но в таблицу они попадут только вместе с описанием от носителя языка:
        * строка без описания в справочнике бесполезна.
        */
-      renderPlaceholderReference() {
-        if (!App.els.placeholderRefBody) return;
-        const senderName = App.shared.sender().name || 'Олексій Тимощук';
-        const ukDate = (d) => d.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
-        const today = new Date();
-        /* Каноническое имя → [ключ описания, пример, ПРЕЖНЕЕ написание].
-           Прежнее написание хранится здесь, а не в общем реестре: одно и то же
-           поле в разных модулях писалось по-разному (`{sender}` тут,
-           `{{senderName}}` в Конгрессах), и своё старое имя знает только сам
-           модуль. */
-        const described = {
-          'congregation.name': ['ph_congregation', 'Group Hamburg-Russian-West', '{congregation}'],
-          'congregation.number': ['ph_cong_number', '14761', '{cong_number}'],
-          'congregation.numberSuffix': ['ph_cong_number_suffix', ' (14761)', '{cong_number_suffix}'],
-          'visit.startDate': ['ph_start_date', ukDate(today), '{start_date}'],
-          'visit.endDate': ['ph_end_date', ukDate(new Date(today.getTime() + 5 * 86400000)), '{end_date}'],
-          'doc.today': ['ph_today', ukDate(today), '{today}'],
-          'sender.name': ['ph_sender', senderName, '{sender}'],
-          'congregation.contactName': ['ph_contact_name', 'Іван Петренко', '{contact_name}'],
-        };
-        const all = self.CWTemplates ? self.CWTemplates.tokens(['congregation', 'visit', 'doc', 'sender']) : [];
-        const rows = Object.keys(described).map((key) => {
-          const meta = all.find((v) => v.ns + '.' + v.field === key);
-          const [dictKey, example, legacy] = described[key];
-          return [meta ? meta.token : '{{' + key + '}}', legacy, App.utils.t(dictKey), example];
-        });
-        App.els.placeholderRefBody.innerHTML = rows.map(([token, legacy, desc, example]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap"><code>${App.utils.escapeHtml(token)}</code>${legacy && legacy !== token ? `<br><code style="color:var(--muted);font-size:11px">${App.utils.escapeHtml(legacy)}</code>` : ''}</td><td style="padding:6px 8px;border-bottom:1px solid var(--line)">${App.utils.escapeHtml(desc)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--line);color:var(--muted)">${App.utils.escapeHtml(example)}</td></tr>`).join('');
-      },
       renderEventDistanceStatus() {
         if (!App.els.eventDistanceStatus) return;
         const coords = App.state.editingEventCoords;
@@ -3437,7 +3331,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.ui.docText('letter', App.state.letterEditingType || 'Congregation', 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML); this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.ui.getEmailBodyFor(App.state.letterEditingType || 'Congregation'); if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.ui.getSalutationFor(App.state.letterEditingType || 'Congregation'); const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
       closeMobileMenu() {
         if (App.els.appRoot) App.els.appRoot.classList.remove('menu-open');
         if (App.els.mobileOverlay) {
@@ -3641,38 +3535,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = App.utils.t('plan_downloaded');
       });
       App.els.letterSendBtn?.addEventListener('click', () => App.ui.sendLetterNow());
-      App.ui.wireRteToolbar();
-      document.querySelectorAll('.letter-type-tab').forEach((btn) => btn.addEventListener('click', () => {
-        document.querySelectorAll('.letter-type-tab').forEach((b) => b.classList.toggle('active', b === btn));
-        App.state.letterEditingType = btn.dataset.letterType;
-        if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.ui.docText('letter', btn.dataset.letterType, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML);
-        App.ui.renderLetterPagesList();
-        if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.ui.getEmailBodyFor(btn.dataset.letterType);
-        if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.ui.getSalutationFor(btn.dataset.letterType);
-      }));
       App.els.senderNameInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ name: e.target.value }); else { App.state.app.settings.senderName = e.target.value; App.store.save(); } });
-      App.els.emailBodyDefaultInput?.addEventListener('input', (e) => {
-        const type = App.state.letterEditingType || 'Congregation';
-        App.ui.docSave('email', type, 'emailBody', e.target.value);
-      });
-      App.els.emailBodyDefaultResetBtn?.addEventListener('click', () => {
-        const type = App.state.letterEditingType || 'Congregation';
-        App.ui.docReset('email', type, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[type]).then(() => {
-          if (App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.ui.getEmailBodyFor(type);
-          App.utils.toast(App.utils.t('email_default_restored'));
-        });
-      });
-      App.els.letterSalutationInput?.addEventListener('input', (e) => {
-        const type = App.state.letterEditingType || 'Congregation';
-        App.ui.docSave('salutation', type, 'letterSalutation', e.target.value);
-      });
-      App.els.letterSalutationResetBtn?.addEventListener('click', () => {
-        const type = App.state.letterEditingType || 'Congregation';
-        App.ui.docReset('salutation', type, 'letterSalutation', DEFAULT_LETTER_SALUTATIONS[type]).then(() => {
-          if (App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.ui.getSalutationFor(type);
-          App.utils.toast(App.utils.t('salutation_restored'));
-        });
-      });
       App.els.geocodeEventBtn?.addEventListener('click', () => App.ui.geocodeCurrentEvent());
       App.els.eventVisitTypeInput?.addEventListener('change', () => App.ui.syncEventVisitFieldsVisibility());
       App.els.geocodeHomeBtn?.addEventListener('click', () => App.ui.geocodeHome());
@@ -3682,12 +3545,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.senderEmailInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ email: e.target.value }); else { App.state.app.settings.senderEmail = e.target.value; App.store.save(); } });
       App.els.emailMethodSelect?.addEventListener('change', (e) => { App.state.app.settings.emailMethod = e.target.value; App.store.save(); if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = e.target.value === 'owa' ? '' : 'none'; });
       App.els.owaUrlInput?.addEventListener('input', (e) => { App.state.app.settings.owaUrl = e.target.value; App.store.save(); });
-      App.els.addLetterPageBtn?.addEventListener('click', () => {
-        const type = App.state.letterEditingType || 'Congregation';
-        const pages = App.ui.docPages(type).slice();
-        pages.push({ id: App.utils.uid('lp'), title: '', html: '<div></div>' });
-        App.ui.docSavePages(type, pages).then(() => App.ui.renderLetterPagesList());
-      });
       App.els.previewLetterPdfBtn?.addEventListener('click', () => {
         const type = App.state.letterEditingType || 'Congregation';
         const visitTypeMap = { Congregation: 'congregation', Group: 'group', Pregroup: 'pregroup' };
@@ -3704,18 +3561,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           console.error('Preview failed, falling back to download', err);
           doc.save('preview-letter.pdf');
         }
-      });
-      App.els.letterTemplateResetBtn?.addEventListener('click', () => {
-        const type = App.state.letterEditingType || 'Congregation';
-        /* Восстановление = удаление пользовательской записи, а не запись в неё
-           системного текста: шаблон снова начинает обновляться вместе с
-           приложением. Страницы письма лежат в той же записи и возвращаются
-           к системным вместе с ней. */
-        App.ui.docReset('letter', type, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML).then(() => {
-          if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.ui.docText('letter', type, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML);
-          App.ui.renderLetterPagesList();
-          App.utils.toast(App.utils.t('template_restored'));
-        });
       });
       App.els.countdownUnitSelect?.addEventListener('change', (e) => { App.state.countdownUnit = e.target.value; App.ui.renderAll(); });
       App.els.checkRemindersBtnMain?.addEventListener('click', () => App.ui.openRemindersModal());

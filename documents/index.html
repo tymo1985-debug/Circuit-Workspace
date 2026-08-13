@@ -68,6 +68,11 @@
         <select id="docLang"></select>
         <label for="docLang" data-i18n="doc.doclang_label">Язык документа</label>
       </div>
+      <!-- Единственный вид документа, который заводит сам пользователь: письмо
+           под конкретный тип задания в Конгрессах. Раньше его создавали из
+           настроек Конгрессов; после переноса всей правки сюда создание должно
+           жить здесь, иначе возможность просто исчезла бы. -->
+      <button type="button" class="md-btn md-btn-tonal md-state-layer" id="newTypeTplBtn" data-i18n="doc.new_type_template">Шаблон для типа задания</button>
     </div>
 
     <div class="doc-filters" id="filters" role="group" aria-labelledby="filtersLabel"></div>

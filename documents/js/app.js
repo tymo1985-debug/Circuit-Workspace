@@ -508,6 +508,7 @@
       markDirty();
     });
 
+    $('#newTypeTplBtn').addEventListener('click', createTypeTemplate);
     $('#saveBtn').addEventListener('click', save);
     $('#resetBtn').addEventListener('click', resetToOriginal);
 
@@ -515,6 +516,40 @@
       if (!state.dirty) return;
       e.preventDefault();
       e.returnValue = '';
+    });
+  }
+
+  /**
+   * Создать письмо под конкретный тип задания в Конгрессах.
+   *
+   * Единственный документ, который заводит сам пользователь. Текст берётся из
+   * действующего общего письма, а не с чистого листа: на практике нужен тот же
+   * текст с парой правок, и пустое поле здесь было бы вредной строгостью.
+   */
+  function createTypeTemplate() {
+    var type = (window.prompt(t('doc.new_type_prompt')) || '').trim();
+    if (!type) return;
+    var context = 'congress.assignment.invitation:' + type;
+    var existing = self.CWTemplates.byContext(context);
+    if (existing) {
+      window.alert(t('doc.new_type_exists'));
+      openEditor(existing.id);
+      return;
+    }
+    var base = self.CWTemplates.text('congress.assignment.invitation', state.lang || 'uk');
+    var id = 'usr.congress.assignment.invitation.' + type;
+    self.CWTemplates.save(id, (base && base.lang) || 'uk', {
+      body: (base && base.body) || '',
+      context: context,
+      module: 'congress-project',
+      format: 'text',
+      title: t('doc.name.congress_type_template', { type: type }),
+    }).then(function () {
+      renderList();
+      openEditor(id);
+    }).catch(function (error) {
+      console.error('Документы: не удалось создать шаблон', error);
+      status('doc.status_save_failed');
     });
   }
 
