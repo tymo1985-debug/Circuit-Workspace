@@ -342,6 +342,7 @@
         pending: picked.pending,
         custom: !!tpl.custom,
         format: tpl.format || 'text',
+        pages: tpl.pages || [],
       };
     },
 
@@ -356,20 +357,37 @@
       if (!global.CWDB || !global.CWDB.templates) {
         return Promise.reject(new Error('CWTemplates.save: общая база недоступна'));
       }
+      patch = patch || {};
       var base = builtinById(id);
       var own = (cache && cache[id]) || null;
+      /* Порядок источников: явно переданное в patch → уже сохранённое → системный
+         шаблон → запасной вариант.
+         ⚠️ patch ПЕРВЫМ — без этого шаблон, у которого нет системной основы
+         (например, письмо для конкретного типа задания в Конгрессах), при первом
+         сохранении получал `context`, равный собственному id. Текст ложился в
+         базу, но поиск по контексту его не находил, и письмо печаталось общим
+         шаблоном. Ошибка была бесшумной: пользователь видел «Шаблон сохранён».
+         Найдено и исправлено 12.08.2026. */
+      var pick = function (field, fallback) {
+        if (patch[field] !== undefined) return patch[field];
+        if (own && own[field] !== undefined) return own[field];
+        if (base && base[field] !== undefined) return base[field];
+        return fallback;
+      };
       var record = {
         id: id,
-        context: (own && own.context) || (base && base.context) || id,
-        module: (own && own.module) || (base && base.module) || '',
-        format: (own && own.format) || (base && base.format) || 'text',
-        title: (own && own.title) || (base && base.title) || '',
+        context: pick('context', id),
+        module: pick('module', ''),
+        format: pick('format', 'text'),
+        title: pick('title', ''),
         scope: 'user',
         baseId: base ? base.id : null,
         translations: {},
         updatedAt: new Date().toISOString(),
       };
-      var pages = (own && own.pages) || (base && base.pages);
+      /* Дополнительные страницы документа (памятка координатору в Клиндарии)
+         принадлежат записи целиком, а не колонке перевода. */
+      var pages = patch.pages !== undefined ? patch.pages : ((own && own.pages) || (base && base.pages));
       if (pages) record.pages = pages;
       var source = (own && own.translations) || {};
       Object.keys(source).forEach(function (k) { record.translations[k] = source[k]; });

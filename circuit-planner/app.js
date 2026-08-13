@@ -81,55 +81,41 @@
   }
   const VP_LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English', pl: 'Polski' };
 
-  const DEFAULT_LETTER_TEMPLATE = `Час летить непомітно! Ми з дружиною дуже раді, що прийшов час відвідати ваш збір. Знову для нас велика радість провести з вами час протягом тижня служіння!
+  /* Системные тексты писем живут в общем слое — shared/templates/builtin.js.
+     Здесь остались только чтения: второго экземпляра текста в модуле нет, и
+     правка формулировки делается в одном месте, а не в двух.
 
-Візит відбудеться з {start_date} до {end_date}.
-
-Цей тиждень дасть нам можливість служити один одному, щоб Єгова зміцнив нас (Ісаї 41:10).
-
-Збір, безсумнівно, зрадіє, коли почує про це. Вже одразу ви можете заохочувати братів і сестер якомога активніше підтримувати тиждень служіння. Ви також можете нагадати вісникам про можливість служити в якості допоміжних піонерів з метою 15 або 30 годин в місяці візиту («Пасіть», розділ 15, абзац 1). Усіх, хто виконує будь-яку форму піонерського служіння в цьому місяці, сердечно запрошуємо на піонерську зустріч! Дорогі старійшини, ваші зусилля і підтримка на цьому тижні допоможуть нам усім отримати користь і найбільше заохочення.
-
-Для нас завжди особлива радість, коли ми співпрацюємо з вами у проповідуванні, наприклад, громадських місцях (служіння зі стендом, служіння водіям-далекобійникам і т.д.). Ми також раді разом з вісниками відвідувати зацікавлених на повторних відвідинах та біблійні вивчення, на які нас вони запрошують. Можливо в зборі є діти чи підлітки, з якими вивчають Біблію — для нас буде велика честь, коли нас на такі вивчення запрошують. Якщо хтось хоче приєднатися до нас у служінні, але не має повторних відвідин або біблійних вивчень, він також може записатися на служіння разом з нами. В такому випадку ми ходимо разом з групою і можемо розділити з ним нашу радість в служінні.`;
-
-  const DEFAULT_MEMO_TEMPLATE = `• Будь ласка, ознайомтесь з актуальною формою S-61 (видання 12/25) і заповніть сторінку 2 цієї форми і вишліть його мені. Думки з книги «Пасіть», розділ 10, абзаци 1-5 також допоможуть вам у підготовці до тижня візита
-• Зустріч з призначеними братами плануйте на вечір п'ятниці.
-• Заплануйте 2-3 пастирських візита і, по можливості, не відразу після зустріч для служіння. Будь ласка, залиште ранок четверга вільним.
-‣ Я буду радий відвідати молодих вісників; піонерів; літніх братів чи сестер, які відвідують зібрання лише по телефону або через ZOOM; старійшин, служителів збору та їхні сім'ї і, звичайно, тих, кого ви, як старійшини, вважаєте за потрібне відвідати (за бажанням, ви також можете запланувати «проблемні» візити).
-• Зустрічі для проповідницького служіння (ви можете організувати доступ через ZOOM):
-‣ Організуйте зустрічі для служіння згідно плану для служіння, який я вам висилаю. Час для служіння ви можете вибрати у відповідному полі формуляра
-‣ Виберіть час і місце для зустрічі який буде найліпше пасувати для вісників
-‣ Враховуйте так же потреби території, коли ви будете вибирати час і місце для зустрічей для служіння. Найліпше буде той час, коли буде більше можливостей зустріти людей на території
-‣ Також плануйте зустріч для служіння в неділю до або після зібрання (можемо вирішити під час зустрічі у вівторок)
-‣ Якщо ви вважаєте, що це необхідно, ви, як рада старійшин, можете запланувати додаткову зустріч для проповідницького служіння на ранок четверга. Цю зустріч може проводити один з призначених братів
-• Зустріч з піонерами плануйте в середу ввечері або в суботу, але не одразу після зустрічі для проповідування (старші, хворі або немічні піонери можуть відвідати цю зустріч через ZOOM) — наприклад, з піонерами о 14:00, а для служіння о 15:15 чи 15:30 (це про суботу)
-• Теми промов:
-‣ У вівторок тема службової промови: „Що ти зробиш «задля доброї новини»?" (Пісня 82).
-‣ Тема публічної промови „Як вам «пожати... вічне життя»?“ (Пісня 147)
-‣ Службова промова на вихідних «Нехай ваші серця не тривожаться» (Пісня 156).
-
-Коли я перевірятиму документи у вівторок у другій половині дня, мені знадобляться наступне:
-• Заповнений бланк S-61 та зазначені в ньому документи або папки, а також протокол зустрічі старійшин з пунктом про обговорення останнього звіту районного наглядача.
-• Якщо це можливо, ви можете надіслати мені частину даних в електронному вигляді заздалегідь. Все інше, що неможливо надіслати мені в електронному вигляді (наприклад, папки і т.д.), будь ласка, підготуйте для мене в місці нічлігу.
-• У вівторок ввечері перед зустріччю я хотів би зустрітися з одним із старійшин збору, з координатором ради старійшин, чи з іншим старійшиною. Ми можемо домовитися про час і місце зустрічі перед початком візиту.`;
-
+     `vpEscapeForHtml` оставлен: им пользуется не только шаблон. */
   function vpEscapeForHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-  const DEFAULT_LETTER_TEMPLATE_HTML = DEFAULT_LETTER_TEMPLATE.split(/\n{2,}/).map((p) => `<div>${vpEscapeForHtml(p.trim())}</div>`).join('');
-
+  function builtinDoc(kind, suffix) {
+    const type = { Congregation: 'congregation', Group: 'group', Pregroup: 'pregroup' }[suffix] || 'congregation';
+    const list = self.CW_BUILTIN_TEMPLATES || [];
+    return list.find((t) => t.id === 'sys.visit.' + type + '.' + kind) || null;
+  }
+  function builtinBody(kind, suffix) {
+    const tpl = builtinDoc(kind, suffix);
+    if (!tpl) return '';
+    const tr = tpl.translations || {};
+    const first = Object.keys(tr).map((k) => tr[k]).find((x) => x && x.body);
+    return first ? first.body : '';
+  }
+  const DEFAULT_LETTER_TEMPLATE_HTML = builtinBody('letter', 'Congregation');
   const DEFAULT_EMAIL_BODY_TEMPLATES = {
-    Congregation: 'Здравствуйте! Направляю письмо перед визитом к собранию {congregation} ({start_date} — {end_date}), см. вложение.',
-    Group: 'Здравствуйте! Направляю письмо перед визитом к группе {congregation} ({start_date} — {end_date}), см. вложение.',
-    Pregroup: 'Здравствуйте! Направляю письмо перед визитом к предгруппе {congregation} ({start_date} — {end_date}), см. вложение.',
+    Congregation: builtinBody('email', 'Congregation'),
+    Group: builtinBody('email', 'Group'),
+    Pregroup: builtinBody('email', 'Pregroup'),
   };
-
   const DEFAULT_LETTER_SALUTATIONS = {
-    Congregation: 'До старійшин збору {congregation}{cong_number_suffix}',
-    Group: 'Відповідальному брату групи {congregation}',
-    Pregroup: 'Відповідальному брату передгрупи {congregation}',
+    Congregation: builtinBody('salutation', 'Congregation'),
+    Group: builtinBody('salutation', 'Group'),
+    Pregroup: builtinBody('salutation', 'Pregroup'),
   };
+  /** Страницы письма по умолчанию (памятка координатору). */
+  function builtinPages(suffix) {
+    const tpl = builtinDoc('letter', suffix);
+    return tpl && Array.isArray(tpl.pages) ? JSON.parse(JSON.stringify(tpl.pages)) : [];
+  }
 
-  // Per-language pieces for auto-generating the email subject line. Chosen by the event's
-  // formLanguage (the same field that already controls the visit-form/letter language elsewhere
-  // in the app), falling back to the app's UI language.
   const LETTER_SUBJECT_PARTS = {
     ru: { prefix: 'Посещение районного надзирателя', type: { Congregation: 'собрания', Group: 'группы', Pregroup: 'предгруппы' }, from: 'с', to: 'по' },
     uk: { prefix: 'Візит районного наглядача', type: { Congregation: 'збору', Group: 'групи', Pregroup: 'передгрупи' }, from: 'з', to: 'по' },
@@ -142,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.67.1',
+      version: '9.68.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -429,22 +415,20 @@
 
     store: {
       ensureSettingsDefaults(settings = {}) {
-        const out = { ...settings }; if (typeof out.showTeamPanel !== 'boolean') out.showTeamPanel = true; if (typeof out.showHolidays !== 'boolean') out.showHolidays = true; if (!out.language) out.language = 'ru'; if (!out.theme) out.theme = 'light'; if (!out.layoutPreset || !['classic','compact','spacious'].includes(out.layoutPreset)) out.layoutPreset = 'classic'; if (!out.calendarView) out.calendarView = 'month'; if (!out.accentColor) out.accentColor = 'purple'; if (!out.fontSize) out.fontSize = '100'; if (typeof out.letterTemplate !== 'string' || !out.letterTemplate) out.letterTemplate = DEFAULT_LETTER_TEMPLATE_HTML;
+        const out = { ...settings }; if (typeof out.showTeamPanel !== 'boolean') out.showTeamPanel = true; if (typeof out.showHolidays !== 'boolean') out.showHolidays = true; if (!out.language) out.language = 'ru'; if (!out.theme) out.theme = 'light'; if (!out.layoutPreset || !['classic','compact','spacious'].includes(out.layoutPreset)) out.layoutPreset = 'classic'; if (!out.calendarView) out.calendarView = 'month'; if (!out.accentColor) out.accentColor = 'purple'; if (!out.fontSize) out.fontSize = '100';
+        /* Системные тексты в настройки больше НЕ вписываются — они живут в общем
+           слое, и материализовать их здесь значило бы заморозить: обновление
+           приложения перестало бы менять текст у тех, кто его не правил.
+           Осталось единственное: очень старые данные, где правленый текст лежал
+           в одном ключе без суффикса, разложить по трём типам визита — иначе
+           перенос его не увидит и правка пропадёт. */
         ['Congregation','Group','Pregroup'].forEach((suffix) => {
           const key = 'letterTemplate' + suffix;
-          if (typeof out[key] !== 'string' || !out[key]) out[key] = out.letterTemplate || DEFAULT_LETTER_TEMPLATE_HTML;
+          if ((typeof out[key] !== 'string' || !out[key]) && out.letterTemplate) out[key] = out.letterTemplate;
         });
         if (!out.letterPages || typeof out.letterPages !== 'object') out.letterPages = {};
-        {
-          const memoHtml = (out.memoTemplate || DEFAULT_MEMO_TEMPLATE).split('\n').map((line) => `<div>${vpEscapeForHtml(line)}</div>`).join('');
-          const defaultPage = { id: 'p1', title: 'ПАМ\u2019ЯТКА ДЛЯ КООРДИНАТОРА РАДИ СТАРІЙШИН', html: memoHtml };
-          ['Congregation','Group','Pregroup'].forEach((suffix) => {
-            if (!Array.isArray(out.letterPages[suffix])) out.letterPages[suffix] = [JSON.parse(JSON.stringify(defaultPage))];
-          });
-        }
-        if (typeof out.memoTemplate !== 'string' || !out.memoTemplate) out.memoTemplate = DEFAULT_MEMO_TEMPLATE; if (typeof out.senderName !== 'string') out.senderName = ''; if (typeof out.senderAddress !== 'string') out.senderAddress = ''; if (typeof out.senderPhone !== 'string') out.senderPhone = ''; if (typeof out.senderEmail !== 'string') out.senderEmail = ''; if (!out.emailMethod || !['mailto','owa'].includes(out.emailMethod)) out.emailMethod = 'mailto'; if (typeof out.owaUrl !== 'string' || !out.owaUrl) out.owaUrl = 'https://outlook.office.com/mail/deeplink/compose'; if (typeof out.homeAddress !== 'string') out.homeAddress = 'Praha, Česká republika'; if (typeof out.homeLat !== 'number') out.homeLat = null; if (typeof out.homeLng !== 'number') out.homeLng = null; if (typeof out.autoShowReminders !== 'boolean') out.autoShowReminders = true;
-        ['Congregation','Group','Pregroup'].forEach((suffix) => { const key = 'emailBody' + suffix; if (typeof out[key] !== 'string' || !out[key]) out[key] = DEFAULT_EMAIL_BODY_TEMPLATES[suffix]; });
-        ['Congregation','Group','Pregroup'].forEach((suffix) => { const key = 'letterSalutation' + suffix; if (typeof out[key] !== 'string' || !out[key]) out[key] = DEFAULT_LETTER_SALUTATIONS[suffix]; });
+
+        if (typeof out.senderName !== 'string') out.senderName = ''; if (typeof out.senderAddress !== 'string') out.senderAddress = ''; if (typeof out.senderPhone !== 'string') out.senderPhone = ''; if (typeof out.senderEmail !== 'string') out.senderEmail = ''; if (!out.emailMethod || !['mailto','owa'].includes(out.emailMethod)) out.emailMethod = 'mailto'; if (typeof out.owaUrl !== 'string' || !out.owaUrl) out.owaUrl = 'https://outlook.office.com/mail/deeplink/compose'; if (typeof out.homeAddress !== 'string') out.homeAddress = 'Praha, Česká republika'; if (typeof out.homeLat !== 'number') out.homeLat = null; if (typeof out.homeLng !== 'number') out.homeLng = null; if (typeof out.autoShowReminders !== 'boolean') out.autoShowReminders = true;
         return out;
       },
       createDefaultData() {
@@ -523,6 +507,25 @@
       // system (typing in any field would create dozens of snapshots per minute) — instead, at most
       // one checkpoint every few minutes, capturing the state as it was just BEFORE the next change,
       // capped to a small number of recent checkpoints to keep localStorage usage bounded.
+      /**
+       * Снимок состояния перед необратимой миграцией — в обход интервала.
+       * `snapshotIfDue()` здесь не годится: он молча ничего не сделает, если
+       * последний снимок свежий, а именно в этот момент копия нужна больше
+       * всего.
+       */
+      snapshotForMigration() {
+        try {
+          const raw = localStorage.getItem(App.config.historyKey);
+          const history = raw ? JSON.parse(raw) : [];
+          const current = localStorage.getItem(App.config.storageKey);
+          if (!current) return;
+          history.push({ at: Date.now(), data: current });
+          while (history.length > App.config.maxSnapshots) history.shift();
+          localStorage.setItem(App.config.historyKey, JSON.stringify(history));
+        } catch (error) {
+          console.error('Клиндарий: не удалось сохранить снимок перед переносом', error);
+        }
+      },
       snapshotIfDue() {
         try {
           const raw = localStorage.getItem(App.config.historyKey);
@@ -2253,9 +2256,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (pageRef === 'body') {
           App.ui.setLetterTemplateFor(type, editor.innerHTML);
         } else {
-          const pages = App.state.app.settings.letterPages[type] || [];
+          const pages = App.ui.docPages(type).slice();
           const page = pages.find((p) => p.id === pageRef);
-          if (page) { page.html = editor.innerHTML; App.store.save(); }
+          if (page) { page.html = editor.innerHTML; App.ui.docSavePages(type, pages); }
         }
       },
       bindRteEditor(editor) {
@@ -2298,7 +2301,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
       renderLetterPagesList() {
         const type = App.state.letterEditingType || 'Congregation';
-        const pages = App.state.app.settings.letterPages[type] || [];
+        const pages = App.ui.docPages(type);
         if (!App.els.letterPagesList) return;
         if (!pages.length) { App.els.letterPagesList.innerHTML = `<div class="md-empty">${App.utils.t('letter_pages_empty')}</div>`; return; }
         App.els.letterPagesList.innerHTML = pages.map((page, i) => `
@@ -2315,13 +2318,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           if (!card) return;
           const editor = card.querySelector('.rte-editor');
           App.ui.bindRteEditor(editor);
-          card.querySelector('[data-page-title]')?.addEventListener('input', (e) => { page.title = e.target.value; App.store.save(); });
+          card.querySelector('[data-page-title]')?.addEventListener('input', (e) => { page.title = e.target.value; App.ui.docSavePages(type, pages); });
           card.querySelector('[data-remove-page]')?.addEventListener('click', () => {
             if (!window.confirm(App.utils.t('letter_page_delete_confirm'))) return;
-            const idx = pages.findIndex((p) => p.id === page.id);
-            if (idx >= 0) pages.splice(idx, 1);
-            App.store.save();
-            App.ui.renderLetterPagesList();
+            const next = pages.slice();
+            const idx = next.findIndex((p) => p.id === page.id);
+            if (idx >= 0) next.splice(idx, 1);
+            App.ui.docSavePages(type, next).then(() => App.ui.renderLetterPagesList());
           });
         });
       },
@@ -2424,9 +2427,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const settings = App.state.app.settings;
         const candidates = [
           entry?.emailBody,
-          settings['letterTemplate' + suffix],
-          settings['emailBody' + suffix],
-          settings['letterSalutation' + suffix],
+          this.getLetterTemplateFor(event?.visitType),
+          this.getEmailBodyFor(suffix),
+          this.getSalutationFor(suffix),
         ];
         for (const candidate of candidates) {
           const detected = this.detectTextLanguage(candidate);
@@ -2444,13 +2447,182 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const fmt = (iso) => { const d = App.utils.parseLocalDate(iso); return d ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}` : ''; };
         return `${parts.prefix} ${typeLabel} ${name} ${parts.from} ${fmt(entry.start)} ${parts.to} ${fmt(entry.end)}`.replace(/\s+/g, ' ').trim();
       },
+      /* ═══════════════════════════════════════════════════════════════════
+         ДОСТУП К ДОКУМЕНТАМ (фаза 2б, 12.08.2026)
+
+         Тексты писем переехали из настроек модуля в общее хранилище
+         (shared/templates.js). Читать и писать их напрямую через
+         `settings['letterTemplate' + suffix]` больше нельзя — только через
+         методы ниже.
+
+         ⚠️ КАЖДЫЙ ЧИТАЮЩИЙ МЕТОД ОБЯЗАН УМЕТЬ ОТКАТИТЬСЯ В НАСТРОЙКИ. Чтение
+         базы асинхронно, а письмо собирается синхронно. Пока
+         `CWTemplates.stored` равен false (доля секунды после загрузки страницы)
+         или пока перенос не выполнен, действует прежний источник. Иначе
+         пользователь в этот момент получил бы системный текст вместо своего и
+         не заметил бы подмены.
+         ═══════════════════════════════════════════════════════════════════ */
+      docCtx(kind, suffix) {
+        const type = { Congregation: 'congregation', Group: 'group', Pregroup: 'pregroup' }[suffix] || 'congregation';
+        return 'visit.' + type + '.' + kind;
+      },
+      docId(kind, suffix) { return 'sys.' + this.docCtx(kind, suffix); },
+      /** Готов ли общий слой отдавать документы. */
+      docsReady() { return !!(self.CWTemplates && self.CWTemplates.stored); },
+      /** Язык документа. Письмо украинское независимо от языка интерфейса. */
+      docLang() { return (self.CWDocLang && self.CWDocLang.get()) || 'uk'; },
+      /**
+       * Текст документа. `settingsKey` — прежнее место хранения, оно же путь
+       * отката; `fallback` — системный текст на случай, если нет ни того, ни
+       * другого.
+       */
+      docText(kind, suffix, settingsKey, fallback) {
+        if (this.docsReady()) {
+          const found = self.CWTemplates.text(this.docCtx(kind, suffix), this.docLang());
+          if (found && found.body) return found.body;
+        }
+        return App.state.app.settings[settingsKey + suffix] || fallback;
+      },
+      /** Записать текст документа. Возвращает промис — вызывающему ждать не обязательно. */
+      docSave(kind, suffix, settingsKey, html) {
+        if (!this.docsReady()) {
+          App.state.app.settings[settingsKey + suffix] = html;
+          App.store.save();
+          return Promise.resolve();
+        }
+        return self.CWTemplates.save(this.docId(kind, suffix), this.docLang(), {
+          body: html,
+          context: this.docCtx(kind, suffix),
+          module: 'circuit-planner',
+          format: kind === 'letter' ? 'html' : 'text',
+        }).catch((e) => { console.error('Клиндарий: не удалось сохранить документ', e); });
+      },
+      /**
+       * Вернуть системный текст: пользовательская запись УДАЛЯЕТСЯ, а не
+       * перезаписывается. Так шаблон снова начинает обновляться вместе с
+       * приложением, и не остаётся записи-двойника.
+       */
+      docReset(kind, suffix, settingsKey, fallback) {
+        if (!this.docsReady()) {
+          App.state.app.settings[settingsKey + suffix] = fallback;
+          App.store.save();
+          return Promise.resolve();
+        }
+        return self.CWTemplates.reset(this.docId(kind, suffix))
+          .catch((e) => { console.error('Клиндарий: не удалось восстановить оригинал', e); });
+      },
+      /** Дополнительные страницы письма (памятка координатору и прочее). */
+      docPages(suffix) {
+        if (this.docsReady()) {
+          const found = self.CWTemplates.text(this.docCtx('letter', suffix), this.docLang());
+          if (found && Array.isArray(found.pages)) return found.pages;
+        }
+        /* Запасной путь: свои страницы, если они есть, иначе системные.
+           Пустой массив здесь недопустим — письмо ушло бы БЕЗ памятки
+           координатору, и заметить это можно было бы только на бумаге. */
+        const own = App.state.app.settings.letterPages && App.state.app.settings.letterPages[suffix];
+        return (Array.isArray(own) && own.length) ? own : builtinPages(suffix);
+      },
+      docSavePages(suffix, pages) {
+        if (!this.docsReady()) {
+          if (!App.state.app.settings.letterPages) App.state.app.settings.letterPages = {};
+          App.state.app.settings.letterPages[suffix] = pages;
+          App.store.save();
+          return Promise.resolve();
+        }
+        return self.CWTemplates.save(this.docId('letter', suffix), this.docLang(), {
+          pages: pages,
+          context: this.docCtx('letter', suffix),
+          module: 'circuit-planner',
+          format: 'html',
+        }).catch((e) => { console.error('Клиндарий: не удалось сохранить страницы письма', e); });
+      },
+
+      /**
+       * Однократный перенос текстов писем из настроек модуля в общее хранилище.
+       *
+       * ⚠️ НЕОБРАТИМО: после успешного переноса ключи `letterTemplate*`,
+       * `letterPages*`, `emailBody*`, `letterSalutation*` и `memoTemplate`
+       * удаляются из настроек. Четыре правила, те же, что в Конгрессах:
+       *
+       *   1. Снимок состояния в историю модуля ПЕРЕД началом.
+       *   2. Переносится только правленое. Модуль всегда материализовал
+       *      значения по умолчанию прямо в настройки (ensureSettingsDefaults),
+       *      поэтому ключ есть у всех — «правил» определяется сравнением с
+       *      системным текстом, а не наличием ключа. Скопировать нетронутый
+       *      текст значило бы заморозить его: он перестал бы обновляться
+       *      вместе с приложением.
+       *   3. adopt() не перезаписывает существующую запись — он зовётся при
+       *      каждом запуске модуля, и второй запуск не должен затирать правку,
+       *      сделанную уже в новом хранилище.
+       *   4. Ключи удаляются и состояние сохраняется ТОЛЬКО после успешной
+       *      записи в базу. При сбое настройки остаются нетронутыми, модуль
+       *      продолжает работать на прежнем источнике, перенос повторится при
+       *      следующем запуске.
+       */
+      adoptDocuments() {
+        if (!self.CWTemplates || !self.CWTemplates.stored || !self.CWDB) return Promise.resolve(false);
+        const settings = App.state.app.settings || {};
+        const suffixes = ['Congregation', 'Group', 'Pregroup'];
+        const jobs = [];
+        const KINDS = [
+          { kind: 'letter', key: 'letterTemplate', format: 'html', def: (s) => DEFAULT_LETTER_TEMPLATE_HTML },
+          { kind: 'email', key: 'emailBody', format: 'text', def: (s) => DEFAULT_EMAIL_BODY_TEMPLATES[s] },
+          { kind: 'salutation', key: 'letterSalutation', format: 'text', def: (s) => DEFAULT_LETTER_SALUTATIONS[s] },
+        ];
+        suffixes.forEach((suffix) => {
+          const pages = (settings.letterPages && settings.letterPages[suffix]) || null;
+          const defaultPages = builtinPages(suffix);
+          const pagesTouched = pages && JSON.stringify(pages) !== JSON.stringify(defaultPages);
+          KINDS.forEach((spec) => {
+            const value = settings[spec.key + suffix];
+            const isText = typeof value === 'string' && value;
+            const changed = isText && value !== spec.def(suffix);
+            /* Страницы принадлежат записи письма, поэтому правленые страницы
+               при нетронутом тексте письма всё равно требуют его переноса. */
+            const needed = changed || (spec.kind === 'letter' && pagesTouched);
+            if (!needed) return;
+            const record = {
+              context: App.ui.docCtx(spec.kind, suffix),
+              module: 'circuit-planner',
+              format: spec.format,
+              title: spec.kind + ' ' + suffix,
+              translations: { uk: { subject: null, body: changed ? value : spec.def(suffix) } },
+            };
+            if (spec.kind === 'letter' && pagesTouched) record.pages = pages;
+            jobs.push(self.CWTemplates.adopt(App.ui.docId(spec.kind, suffix), record));
+          });
+        });
+        const cleanup = () => {
+          suffixes.forEach((suffix) => {
+            delete settings['letterTemplate' + suffix];
+            delete settings['emailBody' + suffix];
+            delete settings['letterSalutation' + suffix];
+          });
+          delete settings.letterTemplate;
+          delete settings.letterPages;
+          delete settings.memoTemplate;
+          App.store.save();
+        };
+        if (!jobs.length) { cleanup(); return Promise.resolve(false); }
+        App.store.snapshotForMigration();
+        return Promise.all(jobs).then(() => { cleanup(); return true; }).catch((error) => {
+          console.error('Клиндарий: перенос документов не выполнен, настройки не тронуты', error);
+          return false;
+        });
+      },
       getLetterTemplateFor(visitType) {
         const suffix = this.letterTypeSuffix(visitType);
-        return App.state.app.settings['letterTemplate' + suffix] || DEFAULT_LETTER_TEMPLATE_HTML;
+        return this.docText('letter', suffix, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML);
       },
       setLetterTemplateFor(suffix, html) {
-        App.state.app.settings['letterTemplate' + suffix] = html;
-        App.store.save();
+        this.docSave('letter', suffix, 'letterTemplate', html);
+      },
+      getEmailBodyFor(suffix) {
+        return this.docText('email', suffix, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[suffix]);
+      },
+      getSalutationFor(suffix) {
+        return this.docText('salutation', suffix, 'letterSalutation', DEFAULT_LETTER_SALUTATIONS[suffix]);
       },
       syncEventVisitFieldsVisibility() {
         if (App.els.eventVisitOnlyFields) App.els.eventVisitOnlyFields.style.display = App.els.eventVisitTypeInput?.value ? 'contents' : 'none';
@@ -2866,7 +3038,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // ---- Page 1: personal letter ----
         let y = drawHeader();
         const suffixForSalutation = App.ui.letterTypeSuffix(event?.visitType);
-        const salutationTemplate = App.state.app.settings['letterSalutation' + suffixForSalutation] || DEFAULT_LETTER_SALUTATIONS[suffixForSalutation];
+        const salutationTemplate = App.ui.getSalutationFor(suffixForSalutation);
         const salutationText = App.ui.substitutePlaceholders(salutationTemplate, entry, event);
         y = addRichParagraph(y, singleRun(salutationText, { bold: true, size: 11.5 }), { size: 11.5, gap: 20 });
         doc.setFont(FONT, 'normal'); doc.setFontSize(11); doc.text(ukDate(new Date()), pageW - margin, y - 8, { align: 'right' });
@@ -2879,7 +3051,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
 
         // ---- Additional pages (configurable per visit type: add/remove in settings) ----
         const suffix = App.ui.letterTypeSuffix(event?.visitType);
-        const extraPages = draftOverride ? draftOverride.pages : (App.state.app.settings.letterPages?.[suffix] || []);
+        const extraPages = draftOverride ? draftOverride.pages : App.ui.docPages(suffix);
         extraPages.forEach((page) => {
           doc.addPage();
           y = drawHeader();
@@ -2953,11 +3125,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // visit later shows what was written before. Only a brand-new (never-edited) visit falls
         // back to the type-specific default template configured in Settings.
         if (App.els.letterEmailBodyInput) {
-          const defaultTemplate = App.state.app.settings['emailBody' + suffix] || DEFAULT_EMAIL_BODY_TEMPLATES[suffix];
+          const defaultTemplate = App.ui.getEmailBodyFor(suffix);
           App.els.letterEmailBodyInput.value = entry.emailBody || this.substitutePlaceholders(defaultTemplate, entry, event);
         }
         if (App.els.letterSubjectInput) App.els.letterSubjectInput.value = entry.subject || this.buildLetterSubject(entry, event);
-        const extraPages = App.state.app.settings.letterPages?.[suffix] || [];
+        const extraPages = App.ui.docPages(suffix);
         const totalPages = 1 + extraPages.length;
         if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = entry.visitForm ? App.utils.t('attach_letter_and_plan', { pages: totalPages }) : App.utils.t('attach_letter_only', { pages: totalPages });
         this.openModal(App.els.letterModal);
@@ -3265,7 +3437,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.state.app.settings['letterTemplate' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_TEMPLATE_HTML; this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.state.app.settings['emailBody' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_EMAIL_BODY_TEMPLATES[App.state.letterEditingType || 'Congregation']; if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.state.app.settings['letterSalutation' + (App.state.letterEditingType || 'Congregation')] || DEFAULT_LETTER_SALUTATIONS[App.state.letterEditingType || 'Congregation']; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.accentSelect) App.els.accentSelect.value = App.state.app.settings.accentColor || 'purple'; if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; if (App.els.letterTemplateEditor && document.activeElement !== App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.ui.docText('letter', App.state.letterEditingType || 'Congregation', 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML); this.renderLetterPagesList(); this.renderPlaceholderReference(); if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.ui.getEmailBodyFor(App.state.letterEditingType || 'Congregation'); if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.ui.getSalutationFor(App.state.letterEditingType || 'Congregation'); const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
       closeMobileMenu() {
         if (App.els.appRoot) App.els.appRoot.classList.remove('menu-open');
         if (App.els.mobileOverlay) {
@@ -3450,7 +3622,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const event = App.data.getEventById(entry.eventId);
         const suffix = App.ui.letterTypeSuffix(event?.visitType);
         if (!window.confirm(App.utils.t('letter_reset_confirm'))) return;
-        const defaultTemplate = App.state.app.settings['emailBody' + suffix] || DEFAULT_EMAIL_BODY_TEMPLATES[suffix];
+        const defaultTemplate = App.ui.getEmailBodyFor(suffix);
         const fresh = App.ui.substitutePlaceholders(defaultTemplate, entry, event);
         if (App.els.letterEmailBodyInput) App.els.letterEmailBodyInput.value = fresh;
         entry.emailBody = fresh;
@@ -3473,35 +3645,33 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       document.querySelectorAll('.letter-type-tab').forEach((btn) => btn.addEventListener('click', () => {
         document.querySelectorAll('.letter-type-tab').forEach((b) => b.classList.toggle('active', b === btn));
         App.state.letterEditingType = btn.dataset.letterType;
-        if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.state.app.settings['letterTemplate' + btn.dataset.letterType] || DEFAULT_LETTER_TEMPLATE_HTML;
+        if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.ui.docText('letter', btn.dataset.letterType, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML);
         App.ui.renderLetterPagesList();
-        if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.state.app.settings['emailBody' + btn.dataset.letterType] || DEFAULT_EMAIL_BODY_TEMPLATES[btn.dataset.letterType];
-        if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.state.app.settings['letterSalutation' + btn.dataset.letterType] || DEFAULT_LETTER_SALUTATIONS[btn.dataset.letterType];
+        if (App.els.emailBodyDefaultInput && document.activeElement !== App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.ui.getEmailBodyFor(btn.dataset.letterType);
+        if (App.els.letterSalutationInput && document.activeElement !== App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.ui.getSalutationFor(btn.dataset.letterType);
       }));
       App.els.senderNameInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ name: e.target.value }); else { App.state.app.settings.senderName = e.target.value; App.store.save(); } });
       App.els.emailBodyDefaultInput?.addEventListener('input', (e) => {
         const type = App.state.letterEditingType || 'Congregation';
-        App.state.app.settings['emailBody' + type] = e.target.value;
-        App.store.save();
+        App.ui.docSave('email', type, 'emailBody', e.target.value);
       });
       App.els.emailBodyDefaultResetBtn?.addEventListener('click', () => {
         const type = App.state.letterEditingType || 'Congregation';
-        App.state.app.settings['emailBody' + type] = DEFAULT_EMAIL_BODY_TEMPLATES[type];
-        App.store.save();
-        if (App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = DEFAULT_EMAIL_BODY_TEMPLATES[type];
-        App.utils.toast(App.utils.t('email_default_restored'));
+        App.ui.docReset('email', type, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[type]).then(() => {
+          if (App.els.emailBodyDefaultInput) App.els.emailBodyDefaultInput.value = App.ui.getEmailBodyFor(type);
+          App.utils.toast(App.utils.t('email_default_restored'));
+        });
       });
       App.els.letterSalutationInput?.addEventListener('input', (e) => {
         const type = App.state.letterEditingType || 'Congregation';
-        App.state.app.settings['letterSalutation' + type] = e.target.value;
-        App.store.save();
+        App.ui.docSave('salutation', type, 'letterSalutation', e.target.value);
       });
       App.els.letterSalutationResetBtn?.addEventListener('click', () => {
         const type = App.state.letterEditingType || 'Congregation';
-        App.state.app.settings['letterSalutation' + type] = DEFAULT_LETTER_SALUTATIONS[type];
-        App.store.save();
-        if (App.els.letterSalutationInput) App.els.letterSalutationInput.value = DEFAULT_LETTER_SALUTATIONS[type];
-        App.utils.toast(App.utils.t('salutation_restored'));
+        App.ui.docReset('salutation', type, 'letterSalutation', DEFAULT_LETTER_SALUTATIONS[type]).then(() => {
+          if (App.els.letterSalutationInput) App.els.letterSalutationInput.value = App.ui.getSalutationFor(type);
+          App.utils.toast(App.utils.t('salutation_restored'));
+        });
       });
       App.els.geocodeEventBtn?.addEventListener('click', () => App.ui.geocodeCurrentEvent());
       App.els.eventVisitTypeInput?.addEventListener('change', () => App.ui.syncEventVisitFieldsVisibility());
@@ -3514,10 +3684,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.owaUrlInput?.addEventListener('input', (e) => { App.state.app.settings.owaUrl = e.target.value; App.store.save(); });
       App.els.addLetterPageBtn?.addEventListener('click', () => {
         const type = App.state.letterEditingType || 'Congregation';
-        const pages = App.state.app.settings.letterPages[type] || (App.state.app.settings.letterPages[type] = []);
+        const pages = App.ui.docPages(type).slice();
         pages.push({ id: App.utils.uid('lp'), title: '', html: '<div></div>' });
-        App.store.save();
-        App.ui.renderLetterPagesList();
+        App.ui.docSavePages(type, pages).then(() => App.ui.renderLetterPagesList());
       });
       App.els.previewLetterPdfBtn?.addEventListener('click', () => {
         const type = App.state.letterEditingType || 'Congregation';
@@ -3538,9 +3707,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       });
       App.els.letterTemplateResetBtn?.addEventListener('click', () => {
         const type = App.state.letterEditingType || 'Congregation';
-        App.ui.setLetterTemplateFor(type, DEFAULT_LETTER_TEMPLATE_HTML);
-        if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = DEFAULT_LETTER_TEMPLATE_HTML;
-        App.utils.toast(App.utils.t('template_restored'));
+        /* Восстановление = удаление пользовательской записи, а не запись в неё
+           системного текста: шаблон снова начинает обновляться вместе с
+           приложением. Страницы письма лежат в той же записи и возвращаются
+           к системным вместе с ней. */
+        App.ui.docReset('letter', type, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML).then(() => {
+          if (App.els.letterTemplateEditor) App.els.letterTemplateEditor.innerHTML = App.ui.docText('letter', type, 'letterTemplate', DEFAULT_LETTER_TEMPLATE_HTML);
+          App.ui.renderLetterPagesList();
+          App.utils.toast(App.utils.t('template_restored'));
+        });
       });
       App.els.countdownUnitSelect?.addEventListener('change', (e) => { App.state.countdownUnit = e.target.value; App.ui.renderAll(); });
       App.els.checkRemindersBtnMain?.addEventListener('click', () => App.ui.openRemindersModal());
@@ -3779,6 +3954,17 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       // молча и немедленно: обновление могло прилететь посреди заполнения
       // формуляра визита. Теперь решение за пользователем — полоса внизу экрана.
       if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: './sw.js' });
+      /* Тексты писем живут в общем хранилище (фаза 2б). Чтение асинхронное, но
+         запуск модуля его НЕ ждёт: пока хранилище не готово, слой доступа
+         читает настройки, поэтому письмо в этот момент всё равно собирается
+         верным текстом. Перенос идёт сразу после готовности и только один раз;
+         после него настройки перерисовываются, если они открыты. */
+      if (self.CWTemplates && self.CWTemplates.init) {
+        self.CWTemplates.init()
+          .then(() => App.ui.adoptDocuments())
+          .then((moved) => { if (moved) App.ui.renderSettings(); })
+          .catch((error) => console.error('Клиндарий: хранилище шаблонов недоступно', error));
+      }
     }
   };
 

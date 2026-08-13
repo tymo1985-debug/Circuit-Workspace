@@ -91,9 +91,10 @@
         'service-year-planner-accent',
       ],
       idb: [],
-      /* Подпись под письмом собранию и подстановка `{sender}` в шаблонах. */
+      /* Подпись под письмом собранию и подстановка `{sender}` в шаблонах,
+         а с 12.08.2026 в общей базе лежат и сами письма, памятки и обращения. */
       sharedLocal: ['cw-sender'],
-      sharedStores: {},
+      sharedStores: { 'circuit-workspace-db': ['templates'] },
     },
     'pioneer-school': {
       local: [],
