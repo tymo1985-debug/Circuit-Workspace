@@ -92,6 +92,8 @@
       'module.pioneer-school.desc': 'Учащиеся и классы, расписание уроков, учебники, формуляры S-253 и экспорт списков.',
       'module.appointments.title': 'Назначения',
       'module.appointments.desc': 'Письмо о назначении и вычёркивании старейшин и служителей собрания.',
+      'module.documents.title': 'Документы',
+      'module.documents.desc': 'Шаблоны писем и документов: один текст на всю экосистему, правится в одном месте.',
     },
 
     uk: {
@@ -148,6 +150,8 @@
       'module.pioneer-school.desc': 'Учні та класи, розклад уроків, підручники, формуляри S-253 і експорт списків.',
       'module.appointments.title': 'Призначення',
       'module.appointments.desc': 'Лист про призначення і викреслення старійшин та служителів збору.',
+      'module.documents.title': '',
+      'module.documents.desc': '',
     },
 
     en: {
@@ -213,6 +217,8 @@
       'module.pioneer-school.desc': 'Students and classes, lesson schedule, textbooks, S-253 forms and list export.',
       'module.appointments.title': 'Appointments',
       'module.appointments.desc': 'Letter about appointing and deleting elders and ministerial servants.',
+      'module.documents.title': '',
+      'module.documents.desc': '',
     },
 
     pl: {
@@ -269,6 +275,8 @@
       'module.pioneer-school.desc': 'Uczniowie i klasy, plan lekcji, podręczniki, formularze S-253 i eksport list.',
       'module.appointments.title': 'Mianowania',
       'module.appointments.desc': 'List o mianowaniu i skreśleniu starszych oraz sług pomocniczych.',
+      'module.documents.title': '',
+      'module.documents.desc': '',
     },
 
     de: {
@@ -325,6 +333,8 @@
       'module.pioneer-school.desc': 'Schüler und Klassen, Stundenplan, Lehrbücher, S-253-Formulare und Listenexport.',
       'module.appointments.title': 'Ernennungen',
       'module.appointments.desc': 'Brief über Ernennung und Streichung von Ältesten und Dienstamtgehilfen.',
+      'module.documents.title': '',
+      'module.documents.desc': '',
     },
 
   });

@@ -104,6 +104,15 @@
       sharedLocal: [],
       sharedStores: {},
     },
+    /* «Документы» — единственный модуль без собственных данных: он редактирует
+       общее хранилище шаблонов, поэтому его копия состоит ровно из него.
+       Пустые local/idb здесь не забывчивость, а факт. */
+    'documents': {
+      local: [],
+      idb: [],
+      sharedLocal: [],
+      sharedStores: { 'circuit-workspace-db': ['templates'] },
+    },
     'appointments': {
       local: ['cw-appointments-v1'],
       idb: [],

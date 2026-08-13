@@ -1,0 +1,29 @@
+{
+  "name": "Документы — Circuit Workspace",
+  "short_name": "Документы",
+  "description": "Библиотека шаблонов писем и документов Circuit Workspace",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fffbff",
+  "theme_color": "#6a45c9",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "lang": "ru"
+}

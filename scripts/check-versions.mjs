@@ -9,6 +9,7 @@ const files = {
   schoolApp: 'pioneer-school/js/app.js',
   schoolSw: 'pioneer-school/sw.js',
   appointments: 'appointments/sw.js',
+  documents: 'documents/sw.js',
 };
 
 const source = Object.fromEntries(
@@ -35,6 +36,7 @@ const actual = {
   'circuit-planner': capture(source.planner, /version:\s*'([^']+)'/, files.planner),
   'pioneer-school': capture(source.schoolApp, /APP_VERSION\s*=\s*'([^']+)'/, files.schoolApp),
   appointments: capture(source.appointments, /APP_VERSION\s*=\s*'([^']+)'/, files.appointments),
+  documents: capture(source.documents, /APP_VERSION\s*=\s*'([^']+)'/, files.documents),
 };
 
 const errors = [];
