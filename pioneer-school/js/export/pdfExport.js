@@ -307,12 +307,19 @@ const PdfExport = {
   // (только к содержимому на момент создания). Поэтому бланк — для печати и
   // заполнения от руки, либо как приложение к ссылке на онлайн-формуляр
   // (register.html), а не замена ему.
+  // ⚠️ ПРОВЕРКА ИДЁТ ПО ДОКУМЕНТУ, А НЕ ПО ФЛАГУ НА PdfExport. Так было до
+  // 14.08.2026: флаг `this._cyrillicFontLoaded` жил на модуле и после первого
+  // PDF навсегда оставался true, а addFont() регистрирует шрифт в КОНКРЕТНОМ
+  // экземпляре jsPDF. Второй бланк за ту же сессию (без перезагрузки страницы)
+  // молча уходил на встроенный `times`, и кириллица в нём ломалась.
+  // Воспроизведено на jsPDF 2.5.1: setFont('DejaVuSans') во втором документе
+  // пишет в консоль «Unable to look up font label» и возвращает `times`.
   _ensureCyrillicFont(doc) {
-    if (this._cyrillicFontLoaded) return;
+    var list = typeof doc.getFontList === 'function' ? doc.getFontList() : null;
+    if (list && list.DejaVuSans) return;
     if (!window.PDF_FONT_DEJAVU_SANS) throw new Error('Шрифт для PDF-бланка не загрузился.');
     doc.addFileToVFS('DejaVuSans.ttf', window.PDF_FONT_DEJAVU_SANS);
     doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
-    this._cyrillicFontLoaded = true;
   },
 
   // Шрифт бланка урезан (см. js/export/fonts/dejavu-sans-subset.js) до ASCII +
@@ -555,6 +562,79 @@ const PdfExport = {
     ];
     const doc = await this.buildDocument(D('doc.ps.s253.title'), lines);
     doc.save('s253-report.pdf');
+  },
+
+  // ---------- Письмо учащемуся (фаза 6, 14.08.2026) ----------
+  // ПОЧЕМУ НЕ buildDocument(). Тот рисует каждую строку растровой картинкой
+  // через canvas — приём рабочий для списков и формуляров, но письмо человек
+  // читает, пересылает и копирует из него текст. Здесь нужен настоящий
+  // встроенный шрифт, тот же, что в печатном бланке.
+  //
+  // ЖИРНОГО НАЧЕРТАНИЯ НЕТ. Субсет DejaVu собран только в normal
+  // (scripts/build-pdf-font-subset.mjs), второе начертание удвоило бы вес
+  // модуля. Поэтому `**` из текста вычищаются: показать звёздочки в готовом
+  // письме хуже, чем потерять выделение (решение Алекса 14.08.2026).
+  _stripBold(str) {
+    return String(str ?? '').replace(/\*\*/g, '');
+  },
+
+  /**
+   * @param {Object} input
+   *   {string} input.title — заголовок документа (имя из библиотеки шаблонов)
+   *   {string} input.body  — ГОТОВЫЙ текст, подстановка уже выполнена
+   * @returns {Object} jsPDF
+   */
+  buildLetterDoc({ title, body }) {
+    const jsPDF = this._requireJsPdf();
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    this._ensureCyrillicFont(doc);
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 56;
+    const marginTop = 64;
+    const marginBottom = 56;
+    const maxWidth = pageWidth - marginX * 2;
+    const LINE = 16;
+    let y = marginTop;
+
+    // Шрифт и кегль переустанавливаются после КАЖДОГО addPage(): jsPDF не
+    // переносит их на новую страницу сам, и второй лист письма печатался бы
+    // встроенным шрифтом — то есть без кириллицы.
+    const setBody = () => { doc.setFont('DejaVuSans'); doc.setFontSize(11.5); doc.setTextColor(20); };
+
+    if (title) {
+      doc.setFont('DejaVuSans');
+      doc.setFontSize(14);
+      doc.setTextColor(20);
+      doc.splitTextToSize(this._sanitizeForFont(this._stripBold(title)), maxWidth).forEach((line) => {
+        doc.text(line, marginX, y);
+        y += 19;
+      });
+      y += 10;
+    }
+
+    setBody();
+    // Перевод строки в шаблоне — это перевод строки в письме: текст пришёл из
+    // поля `format: 'text'`, где перенос набран человеком осмысленно. Пустая
+    // строка даёт отбивку абзаца, а не полную пустую строку: иначе письмо
+    // растягивается на лишний лист.
+    String(body ?? '').split(/\r?\n/).forEach((paragraph) => {
+      const safe = this._sanitizeForFont(this._stripBold(paragraph));
+      if (!safe.trim()) { y += LINE * 0.6; return; }
+      doc.splitTextToSize(safe, maxWidth).forEach((line) => {
+        if (y > pageHeight - marginBottom) { doc.addPage(); setBody(); y = marginTop; }
+        doc.text(line, marginX, y);
+        y += LINE;
+      });
+    });
+
+    return doc;
+  },
+
+  downloadLetter({ title, body, filename }) {
+    const doc = this.buildLetterDoc({ title, body });
+    doc.save(filename || 'letter.pdf');
   }
 };
 

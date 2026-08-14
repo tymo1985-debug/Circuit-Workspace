@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.10.4';
+const APP_VERSION = '1.11.0';
 
 let LESSONS_SEED = null;
 
@@ -162,6 +162,67 @@ async function renderAssignment() {
     alert(T('ps.app.naznachenie_sohraneno'));
     renderDashboard();
   };
+
+  await renderAssignmentDocMenu();
+}
+
+// Меню «Создать документ» на экране «Назначение». Пунктами идут учащиеся:
+// тип документа здесь один, а адресат без выбора неизвестен. Выбывшие в меню
+// не попадают — им письмо не рассылают.
+async function renderAssignmentDocMenu() {
+  const btn = $('#assignment-doc-btn');
+  const menu = $('#assignment-doc-menu');
+  if (!btn || !menu) return;
+
+  const fill = async () => {
+    const students = (await Students.list())
+      .filter((s) => (s.values || {}).status !== 'withdrawn');
+    if (!students.length) {
+      menu.innerHTML = `<div class="doc-menu-empty">${esc(T('ps.docs.no_students'))}</div>`;
+      return;
+    }
+    menu.innerHTML = students.map((s) => {
+      const values = s.values || {};
+      const name = `${values.lastName || ''} ${values.firstName || ''}`.trim() || T('ps.docs.no_name');
+      return `<button type="button" role="menuitem" data-id="${esc(s.id)}">
+        <span class="doc-mi-name">${esc(name)}</span>
+        <span class="doc-mi-sub">${esc(values.congregation || '—')}</span>
+      </button>`;
+    }).join('');
+    $all('[data-id]', menu).forEach((item) => {
+      item.onclick = async (e) => {
+        e.stopPropagation();
+        closeAssignmentDocMenu();
+        const student = (await Students.list()).find((s) => s.id === item.dataset.id);
+        if (student) await openLetterComposer(student);
+      };
+    });
+  };
+
+  btn.onclick = async (e) => {
+    e.stopPropagation();
+    if (!menu.hidden) return closeAssignmentDocMenu();
+    // Список читается в момент открытия, а не при отрисовке экрана: учащегося
+    // могли добавить на соседнем экране, не возвращаясь сюда.
+    await fill();
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  };
+  // Обработчик вешается один раз на документ, а не при каждой отрисовке
+  // экрана: renderAssignment() зовётся при каждой смене языка, и накопленные
+  // копии закрывали бы меню по нескольку раз подряд.
+  if (!renderAssignmentDocMenu._bound) {
+    document.addEventListener('click', closeAssignmentDocMenu);
+    renderAssignmentDocMenu._bound = true;
+  }
+  closeAssignmentDocMenu();
+}
+
+function closeAssignmentDocMenu() {
+  const btn = $('#assignment-doc-btn');
+  const menu = $('#assignment-doc-menu');
+  if (menu) menu.hidden = true;
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 // ---------- REGISTRATION ----------
@@ -353,6 +414,126 @@ function openModal(innerHtml) {
   $('#active-modal').addEventListener('click', (e) => { if (e.target.id === 'active-modal') closeModal(); });
 }
 function closeModal() { $('#modal-root').innerHTML = ''; }
+
+// ---------- ДОКУМЕНТЫ МОДУЛЯ (фаза 6) ----------
+// Композер: карточка/строка учащегося → предпросмотр с подставленными данными
+// → действия. Три свойства держат проектное требование «не больше двух
+// действий от сущности до предпросмотра», и «улучшать» их нельзя:
+//   1. Кнопка на верхнем уровне (в строке таблицы и на экране «Назначение»).
+//   2. Язык не спрашивается — берётся из PSDocLang.
+//   3. Источник данных не выбирается — учащийся уже известен.
+//
+// Из строки учащегося меню НЕТ намеренно: документ в модуле один, и меню из
+// одного пункта было бы лишним кликом. Появится второй документ — появится и
+// меню, как в Клиндарии.
+
+let composerState = null;
+
+async function openLetterComposer(student) {
+  if (!Letters.available()) return alert(T('ps.docs.unavailable'));
+  let doc;
+  try {
+    doc = await Letters.build(student);
+  } catch (error) {
+    console.error(error);
+    return alert(T('ps.docs.build_failed'));
+  }
+  if (!doc) return alert(T('ps.docs.build_failed'));
+
+  composerState = { doc, student, edited: false };
+
+  const pending = doc.pending
+    ? `<p class="doc-pending">${esc(T('ps.docs.pending', { lang: doc.lang.toUpperCase() }))}</p>`
+    : '';
+  openModal(`
+    <h2>${esc(doc.title)}</h2>
+    <p class="hint">${esc(T('ps.docs.lang_line', {
+      entity: Letters.studentName(student),
+      lang: doc.lang.toUpperCase()
+    }))}</p>
+    ${pending}
+    <div class="doc-paper" id="doc-paper"></div>
+    <p class="hint" id="doc-edit-hint" hidden>${esc(T('ps.docs.edit_hint'))}</p>
+    <div class="modal-close-row">
+      <button class="md-btn md-btn-tonal" id="doc-edit-btn">${esc(T('ps.docs.edit_once'))}</button>
+      <button class="md-btn md-btn-outlined" id="doc-history-btn">${esc(T('ps.docs.to_history'))}</button>
+      <button class="md-btn md-btn-outlined" id="doc-print-btn">${esc(T('ps.docs.print'))}</button>
+      <button class="md-btn md-btn-filled" id="doc-pdf-btn">${esc(T('ps.docs.pdf'))}</button>
+      <button class="md-btn md-btn-text" id="doc-close-btn">${esc(T('common.close'))}</button>
+    </div>
+  `);
+
+  // Текст кладём через textContent, а не в шаблон строки: тело письма —
+  // пользовательские данные, и любая угловая скобка в нём не должна стать
+  // разметкой.
+  $('#doc-paper').textContent = doc.body;
+
+  $('#doc-close-btn').onclick = () => { composerState = null; closeModal(); };
+  $('#doc-edit-btn').onclick = () => enableComposerEdit();
+  $('#doc-print-btn').onclick = () => printComposerDoc();
+  $('#doc-pdf-btn').onclick = () => pdfComposerDoc();
+  $('#doc-history-btn').onclick = async () => {
+    const saved = await Letters.snapshot(currentComposerDoc(), composerState.student, 'manual', composerState.edited);
+    alert(saved ? T('ps.docs.saved') : T('ps.docs.build_failed'));
+  };
+}
+
+// Правка помечает снимок edited в момент ВКЛЮЧЕНИЯ, а не по факту различий:
+// знать, что документ трогали руками, полезно, даже если текст вернули как был.
+function enableComposerEdit() {
+  if (!composerState || composerState.edited) return;
+  composerState.edited = true;
+  const paper = $('#doc-paper');
+  paper.contentEditable = 'true';
+  paper.focus();
+  $('#doc-edit-btn').textContent = T('ps.docs.edit_on');
+  $('#doc-edit-btn').disabled = true;
+  $('#doc-edit-hint').hidden = false;
+}
+
+// Текущее содержимое предпросмотра. После правки берём из DOM: именно
+// правленый текст должен уйти и в печать, и в PDF, и в архив.
+function currentComposerDoc() {
+  if (!composerState) return null;
+  const paper = $('#doc-paper');
+  if (!composerState.edited || !paper) return composerState.doc;
+  return { ...composerState.doc, body: paper.innerText || paper.textContent || '' };
+}
+
+// Печать идёт через изолированное окно, а не через @media print приложения:
+// у оболочки свои правила печати, и документ в них выглядел бы как экран.
+function printComposerDoc() {
+  const doc = currentComposerDoc();
+  if (!doc) return;
+  const win = window.open('', '_blank');
+  if (!win) return alert(T('ps.docs.print_blocked'));
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(doc.title)}</title>
+    <style>
+      body{font:13.5px/1.62 Georgia,"Times New Roman",serif;color:#16251d;margin:28mm 20mm;white-space:pre-wrap}
+      h1{font-size:16px;margin:0 0 18px}
+      @media print{body{margin:0}}
+    </style></head><body><h1>${esc(doc.title)}</h1>${esc(doc.body)}</body></html>`);
+  win.document.close();
+  win.focus();
+  // Печать после отрисовки: иначе Safari печатает пустой лист.
+  setTimeout(() => win.print(), 250);
+  Letters.snapshot(doc, composerState.student, 'print', composerState.edited);
+}
+
+function pdfComposerDoc() {
+  const doc = currentComposerDoc();
+  if (!doc) return;
+  try {
+    PdfExport.downloadLetter({
+      title: doc.title,
+      body: doc.body,
+      filename: Letters.filename(composerState.student)
+    });
+  } catch (error) {
+    return alert(T('ps.app.pdf_failed', { error: error.message }));
+  }
+  Letters.snapshot(doc, composerState.student, 'print', composerState.edited);
+}
 
 // ---------- STUDENTS ----------
 async function renderStudents() {
@@ -548,6 +729,7 @@ function renderStudentsTable(students, classes, columns) {
       ${cells}
       <td><select class="row-class-select" data-id="${esc(s.id)}">${classOptions}</select></td>
       <td>
+        <button class="md-btn md-btn-text row-doc" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.docs.document')}</button>
         <button class="md-btn md-btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.app.formulyar')}</button>
         <button class="md-btn md-btn-text remove-student" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button>
       </td>
@@ -590,6 +772,14 @@ function renderStudentsTable(students, classes, columns) {
       await Students.remove(btn.dataset.id);
       renderStudentsTable(await Students.list(), classes, columns);
       renderDashboard();
+    };
+  });
+
+  $all('.row-doc', tbody).forEach((btn) => {
+    btn.onclick = async () => {
+      const list = await Students.list();
+      const student = list.find((s) => s.id === btn.dataset.id);
+      if (student) await openLetterComposer(student);
     };
   });
 
@@ -1130,6 +1320,17 @@ window.addEventListener('DOMContentLoaded', () => {
   // выключен — параметр ?lang= работает только на публичной register.html,
   // чтобы случайная ссылка не поменяла язык рассылаемых бумаг.
   PSDocLang.init();
+
+  // Общий слой документов (фаза 6). Хранилище шаблонов вычитывается в память
+  // один раз — дальше CWTemplates.text() синхронна. Отсутствие общей базы не
+  // ломает модуль: Letters.available() вернёт false, и кнопки документов
+  // честно скажут, что слой недоступен, вместо тихого показа системного
+  // текста вместо пользовательского.
+  if (typeof CWTemplates !== 'undefined') {
+    CWTemplates.init().catch((error) => {
+      console.error('pioneer-school: хранилище шаблонов недоступно', error);
+    });
+  }
 
   PSI18n.init(() => {
     const current = $all('.route').find((el) => !el.classList.contains('hidden'));

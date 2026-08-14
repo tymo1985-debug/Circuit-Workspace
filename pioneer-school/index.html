@@ -114,6 +114,19 @@
       </div>
       <p class="hint" id="second-teacher-note"></p>
       <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-assignment-btn">Сохранить</button>
+
+      <!-- Документы (фаза 6). Кнопка на верхнем уровне экрана, не под «ещё»:
+           от неё до предпросмотра должно быть не больше двух действий.
+           Пунктами меню идут УЧАЩИЕСЯ, а не типы документов: тип здесь ровно
+           один, а адресат без выбора неизвестен. -->
+      <div class="panel doc-panel">
+        <h3 data-i18n="ps.docs.section_title">Документы</h3>
+        <p class="hint" data-i18n="ps.docs.section_hint">Текст письма правится в модуле «Документы» и общий для всех учащихся.</p>
+        <div class="doc-menu-wrap">
+          <button class="md-btn md-btn-filled" id="assignment-doc-btn" aria-expanded="false" aria-haspopup="menu" data-i18n="ps.docs.create">Создать документ</button>
+          <div class="doc-menu" id="assignment-doc-menu" role="menu" hidden></div>
+        </div>
+      </div>
     </section>
 
     <section id="route-registration" class="route hidden">
@@ -426,6 +439,16 @@
 <script src="../shared/version.js"></script>
 <script src="../shared/i18n.js"></script>
 <script src="../shared/doclang.js"></script>
+<!-- Общий слой документов (фаза 6). Порядок обязателен: реестр переменных и
+     системные тексты должны быть объявлены до движка, движок — до app.js.
+     sender.js даёт письму подпись районного старейшины, общую с Клиндарием и
+     Назначениями: своего экрана отправителя у Школы нет и не нужно. -->
+<script src="../shared/sender.js"></script>
+<script src="../shared/db.js"></script>
+<script src="../shared/templates/namespaces.js"></script>
+<script src="../shared/templates/builtin.js"></script>
+<script src="../shared/templates.js"></script>
+<script src="../shared/documents.js"></script>
 <script src="../shared/i18n/common.js"></script>
 <script src="i18n/dict.js"></script>
 <script src="i18n/doc.js"></script>
@@ -445,6 +468,7 @@
 <script src="js/modules/review.js"></script>
 <script src="js/modules/afterSchool.js"></script>
 <script src="js/modules/signLanguage.js"></script>
+<script src="js/modules/letters.js"></script>
 <script src="js/vendor/pdf-lib.min.js"></script>
 <script src="js/vendor/fontkit.umd.min.js"></script>
 <script src="js/export/fonts/dejavu-sans-subset.js"></script>

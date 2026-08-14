@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.10.4';
+const APP_VERSION = '1.11.0';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -27,6 +27,15 @@ const ASSETS = [
   '../shared/i18n.js',
   '../shared/i18n/common.js',
   '../shared/doclang.js',
+  // Общий слой документов (фаза 6): письмо учащемуся собирается из общего
+  // хранилища шаблонов. Без предварительного кэширования офлайн-запуск падал
+  // бы на CWTemplates is not defined ещё до первой отрисовки.
+  '../shared/sender.js',
+  '../shared/db.js',
+  '../shared/templates/namespaces.js',
+  '../shared/templates/builtin.js',
+  '../shared/templates.js',
+  '../shared/documents.js',
   './i18n/dict.js',
   './i18n/doc.js',
   './js/i18n.js',
@@ -50,6 +59,7 @@ const ASSETS = [
   './js/modules/review.js',
   './js/modules/afterSchool.js',
   './js/modules/signLanguage.js',
+  './js/modules/letters.js',
   './js/export/pdfExport.js',
   './js/export/pdfFormExport.js',
   './js/export/excelExport.js',

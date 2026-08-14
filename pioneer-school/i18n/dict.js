@@ -344,6 +344,29 @@
     'ps.ui.document_language': 'Язык анкеты и бланков',
     'ps.ui.doc_lang_pending': '(пока по-русски)',
     'ps.ui.doc_lang_hint': 'Ссылка на онлайн-анкету на этом языке: {link}',
+
+    /* Документы модуля (фаза 6). Заполнена только русская колонка — остальные
+       ждут носителей языка, как cp.docs_* в Клиндарии. CWI18n.t() падает в
+       FALLBACK='ru', поэтому интерфейс на uk/en/pl/de остаётся рабочим. */
+    'ps.docs.section_title': 'Документы',
+    'ps.docs.section_hint': 'Текст письма правится в модуле «Документы» и общий для всех учащихся.',
+    'ps.docs.create': 'Создать документ',
+    'ps.docs.document': 'Документ',
+    'ps.docs.invitation_title': 'Приглашение на Школу пионерского служения',
+    'ps.docs.no_name': 'Без имени',
+    'ps.docs.no_students': 'Учащихся пока нет',
+    'ps.docs.unavailable': 'Общий слой документов недоступен — откройте приложение из хаба Circuit Workspace',
+    'ps.docs.build_failed': 'Не удалось собрать документ',
+    'ps.docs.lang_line': '{entity} · {lang}',
+    'ps.docs.pending': 'Перевода на этот язык пока нет — показан текст на языке {lang}.',
+    'ps.docs.edit_once': 'Правка на один раз',
+    'ps.docs.edit_on': 'Правка включена',
+    'ps.docs.edit_hint': 'Изменения касаются только этого документа: шаблон остаётся прежним.',
+    'ps.docs.print': 'Печать',
+    'ps.docs.pdf': 'PDF',
+    'ps.docs.to_history': 'В историю',
+    'ps.docs.saved': 'Документ сохранён в архив',
+    'ps.docs.print_blocked': 'Браузер заблокировал окно печати — разрешите всплывающие окна',
   } });
 
   global.CWI18n.register({ uk: {

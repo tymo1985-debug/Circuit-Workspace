@@ -47,6 +47,7 @@
   var NAMESPACES_BY_MODULE = {
     'congress-project': ['sender', 'congress', 'assignment', 'doc'],
     'circuit-planner': ['sender', 'congregation', 'visit', 'doc'],
+    'pioneer-school': ['sender', 'student', 'school', 'doc'],
   };
 
   var state = {
@@ -105,6 +106,7 @@
     { key: 'all', label: 'doc.filter_all' },
     { key: 'congress-project', label: 'module.congress-project.title' },
     { key: 'circuit-planner', label: 'module.circuit-planner.title' },
+    { key: 'pioneer-school', label: 'module.pioneer-school.title' },
     { key: 'custom', label: 'doc.filter_custom' },
   ];
 
@@ -174,6 +176,7 @@
     { key: 'all', label: 'doc.filter_all' },
     { key: 'congress-project', label: 'module.congress-project.title' },
     { key: 'circuit-planner', label: 'module.circuit-planner.title' },
+    { key: 'pioneer-school', label: 'module.pioneer-school.title' },
   ];
 
   function renderArchiveFilters() {
