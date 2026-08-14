@@ -447,6 +447,16 @@ const PdfExport = {
     return y;
   },
 
+  // Заголовок раздела для бумаги — ИЗ СХЕМЫ, вместе с номером.
+  // Раскладка бланка своя (подобранные координаты в две колонки), но названия
+  // и порядок разделов обязаны совпадать с онлайн-анкетой и интерактивным PDF.
+  // Номер приписывает схема: в словаре его нет — там чистое название.
+  _sectionHeading(id) {
+    const S = window.RegistrationSchema;
+    const section = S && S.sectionById(id);
+    return section ? section.heading : '';
+  },
+
   async downloadRegistrationBlankForm(config) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -470,7 +480,7 @@ const PdfExport = {
     y += 26;
 
     // 1. Личные данные
-    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.personal'));
+    y = this._sectionTitle(doc, y, this._sectionHeading('personal'));
     this._labelLine(doc, 40, y, D('doc.ps.field.lastName'), 100, 200);
     this._labelLine(doc, 320, y, D('doc.ps.field.firstName'), 360, 195);
     y += 26;
@@ -481,7 +491,7 @@ const PdfExport = {
     y += 34;
 
     // 2. Участие
-    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.attendance'));
+    y = this._sectionTitle(doc, y, this._sectionHeading('attendance'));
     y = this._label(doc, 40, y, D('doc.ps.reg.field.attending'), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
@@ -490,21 +500,21 @@ const PdfExport = {
     y += 34;
 
     // 3. Транспорт
-    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.transport'));
+    y = this._sectionTitle(doc, y, this._sectionHeading('transport'));
     y = this._label(doc, 40, y, D('doc.ps.reg.field.transport'), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 34;
 
     // 4. Проживание
-    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.lodging'));
+    y = this._sectionTitle(doc, y, this._sectionHeading('lodging'));
     y = this._label(doc, 40, y, D('doc.ps.reg.field.lodging'), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
     y += 34;
 
     // 5. Учебник
-    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.textbook'));
+    y = this._sectionTitle(doc, y, this._sectionHeading('textbook'));
     y = this._label(doc, 40, y, this._withColon(D('doc.ps.field.language')), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [
@@ -529,7 +539,7 @@ const PdfExport = {
     y += 34;
 
     // 6. Дополнительные сведения
-    y = this._sectionTitle(doc, y, D('doc.ps.reg.section.extra'));
+    y = this._sectionTitle(doc, y, this._sectionHeading('extra'));
     y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.notes')), 10.5, 515);
     y += 20;
     for (let i = 0; i < 3; i++) { this._answerLine(doc, 40, y, 515); y += 22; }

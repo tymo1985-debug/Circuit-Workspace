@@ -35,10 +35,29 @@
   .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .field:last-child { margin-bottom: 0; }
   .field label, .group-label { font-size: 13px; color: var(--ink-soft); font-weight: 500; }
-  .lang-select { max-width: 280px; }
+  /* В css/styles.css у всех label задано display:flex;flex-direction:column —
+     это нужно админским формам, где подпись стоит над полем. Здесь подпись и
+     сама лежит над полем (его держит .field), а колонка внутри label уводила
+     звёздочку обязательного поля на отдельную строку: «Фамилия», ниже «*».
+     Было и до перехода на генерацию формы. */
+  .field label, .conditional label { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px; }
 </style>
 </head>
 <body>
+<!-- Поля анкеты собираются скриптом, поэтому без JS страница осталась бы
+     пустой бланкой. Текст здесь НЕ переводится и не может: словарь тоже
+     поднимает JS. Пионер должен увидеть внятную причину, а не белый лист и
+     решить, что старейшина прислал битую ссылку.
+     Отправка формы и выгрузка PDF без JS не работали и раньше. -->
+<noscript>
+  <style>#reg-form, .success-banner { display: none !important; }</style>
+  <div class="wrap">
+    <p style="padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel-bg);">
+      Для заполнения формуляра нужно включить JavaScript в браузере.
+      Если это невозможно, попросите у районного старейшины бумажный бланк.
+    </p>
+  </div>
+</noscript>
 <div class="wrap">
 
   <header class="top">
@@ -56,104 +75,12 @@
 
   <form id="reg-form" novalidate>
 
-    <fieldset>
-      <legend data-doc-i18n="doc.ps.reg.section.personal">1. Личные данные</legend>
-      <div class="field">
-        <label for="lastName"><span data-doc-i18n="doc.ps.field.lastName">Фамилия</span> <span class="required-mark">*</span></label>
-        <input type="text" id="lastName" name="lastName" required autocomplete="family-name">
-      </div>
-      <div class="field">
-        <label for="firstName"><span data-doc-i18n="doc.ps.field.firstName">Имя</span> <span class="required-mark">*</span></label>
-        <input type="text" id="firstName" name="firstName" required autocomplete="given-name">
-      </div>
-      <div class="field">
-        <label for="address"><span data-doc-i18n="doc.ps.field.address">Адрес проживания</span> <span class="required-mark">*</span></label>
-        <input type="text" id="address" name="address" required autocomplete="street-address">
-      </div>
-      <div class="field">
-        <label for="email"><span data-doc-i18n="doc.ps.field.email">Email</span> <span class="required-mark">*</span></label>
-        <input type="email" id="email" name="email" required autocomplete="email">
-      </div>
-      <div class="field">
-        <label for="phone"><span data-doc-i18n="doc.ps.reg.field.phone">Телефон (WhatsApp)</span> <span class="required-mark">*</span></label>
-        <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="+000 00 000 00 00">
-        <span class="hint" data-doc-i18n="doc.ps.reg.hint.phone">Желательно указать номер, привязанный к WhatsApp — так с вами будет проще связаться.</span>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend data-doc-i18n="doc.ps.reg.section.attendance">2. Участие в школе</legend>
-      <div class="field">
-        <span class="group-label"><span data-doc-i18n="doc.ps.reg.field.attending">Будете ли вы присутствовать на Школе пионерского служения?</span> <span class="required-mark">*</span></span>
-        <div class="radio-row">
-          <label class="pill-option"><input type="radio" name="attending" value="yes" required><span data-doc-i18n="doc.ps.reg.opt.yes">Да</span></label>
-          <label class="pill-option"><input type="radio" name="attending" value="no"><span data-doc-i18n="doc.ps.reg.opt.no">Нет</span></label>
-        </div>
-      </div>
-      <div class="conditional" id="attend-reason-block">
-        <label for="attend-reason" data-doc-i18n="doc.ps.reg.field.attendReason">Если нет — укажите причину</label>
-        <textarea id="attend-reason" name="attendReason" rows="2"></textarea>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend data-doc-i18n="doc.ps.reg.section.transport">3. Транспорт</legend>
-      <div class="field">
-        <span class="group-label" data-doc-i18n="doc.ps.reg.field.transport">Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до Школы?</span>
-        <div class="radio-row">
-          <label class="pill-option"><input type="radio" name="transport" value="yes"><span data-doc-i18n="doc.ps.reg.opt.yes">Да</span></label>
-          <label class="pill-option"><input type="radio" name="transport" value="no"><span data-doc-i18n="doc.ps.reg.opt.no">Нет</span></label>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend data-doc-i18n="doc.ps.reg.section.lodging">4. Проживание</legend>
-      <div class="field">
-        <span class="group-label" data-doc-i18n="doc.ps.reg.field.lodging">Нуждаетесь ли вы в месте для ночлега?</span>
-        <div class="radio-row">
-          <label class="pill-option"><input type="radio" name="lodging" value="yes"><span data-doc-i18n="doc.ps.reg.opt.yes">Да</span></label>
-          <label class="pill-option"><input type="radio" name="lodging" value="no"><span data-doc-i18n="doc.ps.reg.opt.no">Нет</span></label>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend data-doc-i18n="doc.ps.reg.section.textbook">5. Учебник для школы</legend>
-      <div class="field">
-        <label for="language" class="group-label"><span data-doc-i18n="doc.ps.field.language">Язык учебника</span> <span class="required-mark">*</span></label>
-        <select id="language" name="language" class="lang-select" required>
-          <option value="" disabled selected data-doc-i18n="doc.ps.page.choose_lang">Выберите язык</option>
-          <option value="ru" data-doc-i18n="doc.ps.reg.opt.lang.ru">Русский</option>
-          <option value="uk" data-doc-i18n="doc.ps.reg.opt.lang.uk">Украинский</option>
-          <option value="pl" data-doc-i18n="doc.ps.reg.opt.lang.pl">Польский</option>
-          <option value="de" data-doc-i18n="doc.ps.reg.opt.lang.de">Немецкий</option>
-          <option value="other" data-doc-i18n="doc.ps.reg.opt.lang.other">Другой</option>
-        </select>
-      </div>
-      <div class="conditional" id="language-other-block">
-        <label for="language-other" data-doc-i18n="doc.ps.reg.field.languageOther">Укажите необходимый язык</label>
-        <input type="text" id="language-other" name="languageOther">
-      </div>
-
-      <div class="field" style="margin-top:6px;">
-        <span class="group-label" data-doc-i18n="doc.ps.reg.field.format">Формат учебника (можно выбрать несколько)</span>
-        <div class="format-grid">
-          <label class="check-card"><input type="checkbox" name="format" value="print"> <span data-doc-i18n="doc.ps.reg.opt.format.print">Печатный</span></label>
-          <label class="check-card"><input type="checkbox" name="format" value="jwpub"> <span data-doc-i18n="doc.ps.reg.opt.format.jwpub">Электронный JWPub</span></label>
-          <label class="check-card"><input type="checkbox" name="format" value="pdf"> PDF</label>
-          <label class="check-card"><input type="checkbox" name="format" value="epub"> EPUB</label>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend data-doc-i18n="doc.ps.reg.section.extra">6. Дополнительные сведения</legend>
-      <div class="field">
-        <label for="notes" data-doc-i18n="doc.ps.page.notes">Дополнительные сведения (например, аллергии, особенности питания, состояние здоровья, другие важные замечания)</label>
-        <textarea id="notes" name="notes" rows="4"></textarea>
-      </div>
-    </fieldset>
+    <!-- Поля анкеты СОБИРАЮТСЯ ИЗ СХЕМЫ (js/modules/registrationSchema.js)
+         через js/modules/registrationForm.js. Руками сюда вопросы не
+         дописывать: состав анкеты должен существовать в одном месте, иначе
+         онлайн-форма и PDF снова разойдутся, как это уже было с подписью
+         «Дополнительные сведения». -->
+    <div id="reg-fields"></div>
 
     <div class="closing-note">
       <p data-doc-i18n="doc.ps.reg.closing">Пожалуйста, заполните и отправьте этот формуляр как можно скорее. Это поможет своевременно подготовить всё необходимое для проведения школы. Благодарим за сотрудничество!</p>
@@ -181,12 +108,21 @@
      (ReferenceError: T is not defined), из-за чего после отправки формы не
      появлялись ни баннер, ни кнопки «отправить письмо/WhatsApp». -->
 <script src="js/modules/registrationSchema.js"></script>
+<script src="js/modules/registrationForm.js"></script>
 <script src="js/export/pdfExport.js"></script>
 <script>
 (function () {
   // Разметку переводим сразу: PSDocLang.init() отработал ещё в <head>,
   // но применить перевод можно только когда разметка разобрана.
   PSDocLang.applyDoc();
+
+  // Поля анкеты — из схемы. Обязательно ПОСЛЕ PSDocLang.init(): подписи
+  // приходят из геттера sections уже на языке документа, и сборка формы до
+  // инициализации языка заморозила бы её на русском.
+  const regForm = document.getElementById('reg-form');
+  const syncConditionals = RegistrationForm.mount(
+    regForm, RegistrationSchema, document.getElementById('reg-fields')
+  );
 
   const pageTitle = document.getElementById('page-title');
   const defaultTitle = pageTitle.textContent;
@@ -226,26 +162,13 @@
   let currentConfig = { deadline: '', email: '', whatsapp: '', title: '' };
   loadConfigAndRender().then((cfg) => { currentConfig = cfg; });
 
-  // ---- условная логика ----
-  const attendReasonBlock = document.getElementById('attend-reason-block');
-  document.querySelectorAll('input[name="attending"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-      const showReason = document.querySelector('input[name="attending"]:checked')?.value === 'no';
-      attendReasonBlock.classList.toggle('show', showReason);
-      document.getElementById('attend-reason').required = showReason;
-    });
-  });
-
-  const languageSelect = document.getElementById('language');
-  const languageOtherBlock = document.getElementById('language-other-block');
-  languageSelect.addEventListener('change', () => {
-    const show = languageSelect.value === 'other';
-    languageOtherBlock.classList.toggle('show', show);
-    document.getElementById('language-other').required = show;
-  });
+  // Условная логика («если нет — укажите причину», «другой язык») живёт в
+  // RegistrationForm.wire() и строится из showIf в схеме. Отдельных
+  // обработчиков на каждое поле здесь больше нет — новое условное поле
+  // включается одной строкой схемы.
 
   // ---- отправка формы ----
-  const form = document.getElementById('reg-form');
+  const form = regForm;
   const successBanner = document.getElementById('success-banner');
   const shareRow = document.getElementById('share-row');
 
@@ -330,8 +253,9 @@ ${D('doc.ps.field.notes')}: ${record.notes || '-'}`;
     successBanner.classList.add('show');
     successBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
     form.reset();
-    attendReasonBlock.classList.remove('show');
-    languageOtherBlock.classList.remove('show');
+    // После reset() значения ушли, а раскрытые условные блоки остались бы
+    // висеть над пустой формой — sync() приводит их в согласие с данными.
+    syncConditionals();
   });
 
   // Раньше кнопка вызывала window.print(): результат зависел от браузера, а на

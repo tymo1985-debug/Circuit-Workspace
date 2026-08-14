@@ -119,7 +119,9 @@ const PdfFormExport = {
   },
 
   _drawSection(state, section) {
-    this._drawSectionTitle(state, section.title);
+    // heading — название с номером раздела. Номер приписывает схема, а не
+    // словарь: переводчик не должен отвечать за нумерацию.
+    this._drawSectionTitle(state, section.heading);
     section.fields.forEach((field) => this._drawField(state, field));
     state.y -= 8;
   },

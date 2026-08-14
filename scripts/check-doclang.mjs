@@ -52,6 +52,7 @@ function makeEnv({ uiLang = null, docLang = null, search = '' } = {}) {
   run(PS + '/i18n/doc.js');
   run(PS + '/js/doclang.js');
   run(PS + '/js/modules/registrationSchema.js');
+  run(PS + '/js/modules/registrationForm.js');
   return { ctx, run, store, window: w };
 }
 
@@ -98,7 +99,13 @@ console.log('\n2. Схема анкеты следует языку докуме
   const { ctx } = makeEnv();
   ctx.PSDocLang.init();
   const s = ctx.RegistrationSchema;
-  ok('раздел 1 по-русски', s.sections[0].title === '1. Личные данные', s.sections[0].title);
+  ok('раздел 1 по-русски', s.sections[0].title === 'Личные данные', s.sections[0].title);
+  // Номер раздела приписывает схема, а не словарь: переводчик отвечает только
+  // за название и не может потерять или перепутать нумерацию.
+  ok('номера разделов нет в словаре', !/^\d/.test(s.sections[0].title), s.sections[0].title);
+  ok('heading нумерует разделы', s.sections[0].heading === '1. Личные данные', s.sections[0].heading);
+  ok('нумерация сквозная и по порядку',
+    s.sections.map((x) => x.number).join() === '1,2,3,4,5,6', s.sections.map((x) => x.number).join());
   ok('подпись Да', s.labelForValue('attending', 'yes') === 'Да');
   ok('ключи опций не переведены', s.fieldByKey('attending').options.map((o) => o.value).join() === 'yes,no');
   ok('ключи формата не переведены', s.fieldByKey('format').options.map((o) => o.value).join() === 'print,jwpub,pdf,epub');
@@ -110,7 +117,7 @@ console.log('\n2. Схема анкеты следует языку докуме
   const { ctx } = makeEnv({ docLang: 'pl' });
   ctx.PSDocLang.init();
   const s = ctx.RegistrationSchema;
-  ok('pl без перевода → русский текст, не ключ', s.sections[0].title === '1. Личные данные', s.sections[0].title);
+  ok('pl без перевода → русский текст, не ключ', s.sections[0].title === 'Личные данные', s.sections[0].title);
   ok('pl помечен как непереведённый', ctx.PSDocLang.isTranslated('pl') === false);
   ok('ru помечен как переведённый', ctx.PSDocLang.isTranslated('ru') === true);
 }
@@ -119,10 +126,10 @@ console.log('\n2. Схема анкеты следует языку докуме
   const { ctx } = makeEnv();
   ctx.PSDocLang.init();
   const before = ctx.RegistrationSchema.sections[0].title;
-  ctx.CWI18n.register({ pl: { 'doc.ps.reg.section.personal': '1. Dane osobowe' } });
+  ctx.CWI18n.register({ pl: { 'doc.ps.reg.section.personal': 'Dane osobowe' } });
   ctx.PSDocLang.set('pl', { scope: 'module' });
   const after = ctx.RegistrationSchema.sections[0].title;
-  ok('sections пересчитывается после смены языка', before !== after && after === '1. Dane osobowe', `${before} → ${after}`);
+  ok('sections пересчитывается после смены языка', before !== after && after === 'Dane osobowe', `${before} → ${after}`);
 }
 
 console.log('\n3. Дата в языке документа');
@@ -182,7 +189,21 @@ console.log('\n5. Разметка register.html');
   const { ctx } = makeEnv();
   ctx.PSDocLang.init();
   const keys = [...html.matchAll(/data-doc-i18n(?:-placeholder|-title)?="([^"]+)"/g)].map((m) => m[1]);
-  ok('атрибуты языка документа расставлены', keys.length >= 25, String(keys.length));
+  // Порог опущен с 25 до 8: 14.08.2026 поля анкеты уехали из разметки в схему,
+  // и в статическом HTML остались только шапка страницы, блок «куда сдавать» и
+  // кнопки. Это законная причина; смысл порога прежний — падать, если разбор
+  // перестал что-либо находить.
+  ok('атрибуты языка документа расставлены', keys.length >= 8, String(keys.length));
+
+  // ГЛАВНОЕ СВОЙСТВО ФАЗЫ: состав вопросов существует в ОДНОМ месте. Вопрос,
+  // дописанный руками в разметку, обойдёт схему — и снова разойдётся с PDF,
+  // как это уже было с подписью «Дополнительные сведения».
+  ok('поля анкеты не прописаны в разметке руками',
+    !/<fieldset/.test(html) && !/name="(lastName|firstName|attending|language|format|notes)"/.test(html));
+  ok('контейнер полей на месте', /id="reg-fields"/.test(html));
+  ok('рендерер анкеты подключается', /src="js\/modules\/registrationForm\.js"/.test(html));
+  ok('поля собираются из схемы', /RegistrationForm\.mount\(/.test(html));
+  ok('без JS страница объясняет себя', /<noscript>/.test(html));
   const missing = keys.filter((k) => ctx.CWI18n.t(k) === k);
   ok('все ключи разметки есть в словаре', missing.length === 0, missing.join(', '));
   ok('registration.js больше не подключается', !/src="js\/modules\/registration\.js"/.test(html));
@@ -205,13 +226,52 @@ console.log('\n6. Живой прогон публичной страницы');
   run(PS + '/i18n/doc.js');
   run(PS + '/js/doclang.js');
   run(PS + '/js/modules/registrationSchema.js');
+  run(PS + '/js/modules/registrationForm.js');
   ctx.PSDocLang.init({ allowUrlOverride: true });
   ctx.PSDocLang.applyDoc();
   const title = w.document.getElementById('page-title').textContent;
   ok('заголовок переведён через applyDoc', title === 'Формуляр для Школы пионерского служения', title);
-  const legend = w.document.querySelector('legend');
-  ok('легенда раздела на месте', legend.textContent === '1. Личные данные', legend.textContent);
   ok('язык страницы выставлен по ?lang=', w.document.documentElement.lang === 'pl', w.document.documentElement.lang);
+
+  // Форма собирается ровно так же, как на живой странице.
+  const form = w.document.getElementById('reg-form');
+  const sync = ctx.RegistrationForm.mount(form, ctx.RegistrationSchema, w.document.getElementById('reg-fields'));
+
+  const schema = ctx.RegistrationSchema;
+  ok('разделов столько же, сколько в схеме',
+    w.document.querySelectorAll('#reg-fields fieldset').length === schema.sections.length);
+  const legend = w.document.querySelector('#reg-fields legend');
+  ok('легенда раздела с номером', legend.textContent === '1. Личные данные', legend.textContent);
+
+  // Имена полей — контракт с FormData, PDF и резервной копией: запись строится
+  // по name, и молчаливое переименование потеряло бы данные пионера.
+  const names = [...new Set([...form.querySelectorAll('[name]')].map((el) => el.name))].sort();
+  const want = schema.allFields().map((f) => f.key).sort();
+  ok('все поля схемы есть в форме', names.join() === want.join(), `${names.join()} ≠ ${want.join()}`);
+
+  ok('обязательные поля помечены звёздочкой',
+    w.document.querySelectorAll('#reg-fields .required-mark').length === schema.allFields().filter((f) => f.required).length);
+  ok('язык учебника — «таблетки», а не select',
+    !w.document.querySelector('#reg-fields select')
+    && w.document.querySelectorAll('input[name="language"][type="radio"]').length === 5);
+
+  // Условные поля: скрыты, пока условие не выполнено.
+  const reasonBlock = w.document.getElementById('attendReason-block');
+  ok('условный блок скрыт по умолчанию', reasonBlock && !reasonBlock.classList.contains('show'));
+  const no = w.document.querySelector('input[name="attending"][value="no"]');
+  no.checked = true; sync();
+  ok('условный блок раскрывается по ответу', reasonBlock.classList.contains('show'));
+  ok('раскрытое условное поле становится обязательным',
+    w.document.querySelector('[name="attendReason"]').required === true);
+
+  // Прежняя разметочная версия значение не чистила: причина неявки уезжала в
+  // письмо у того, кто сперва выбрал «Нет», а потом передумал.
+  w.document.querySelector('[name="attendReason"]').value = 'болезнь';
+  w.document.querySelector('input[name="attending"][value="yes"]').checked = true;
+  no.checked = false; sync();
+  ok('скрытое условное поле очищается', w.document.querySelector('[name="attendReason"]').value === '');
+  ok('скрытое условное поле не обязательно',
+    w.document.querySelector('[name="attendReason"]').required === false);
 }
 
 console.log('\n7. Прежний баг публичной страницы: T is not defined');

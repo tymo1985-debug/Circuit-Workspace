@@ -89,12 +89,12 @@
     'doc.ps.send.to_email': 'Отправить по email',
     'doc.ps.send.to_whatsapp': 'Отправить в WhatsApp',
     /* ---- Онлайн-анкета и интерактивный PDF: разделы ---- */
-    'doc.ps.reg.section.personal': '1. Личные данные',
-    'doc.ps.reg.section.attendance': '2. Участие в школе',
-    'doc.ps.reg.section.transport': '3. Транспорт',
-    'doc.ps.reg.section.lodging': '4. Проживание',
-    'doc.ps.reg.section.textbook': '5. Учебник для школы',
-    'doc.ps.reg.section.extra': '6. Дополнительные сведения',
+    'doc.ps.reg.section.personal': 'Личные данные',
+    'doc.ps.reg.section.attendance': 'Участие в школе',
+    'doc.ps.reg.section.transport': 'Транспорт',
+    'doc.ps.reg.section.lodging': 'Проживание',
+    'doc.ps.reg.section.textbook': 'Учебник для школы',
+    'doc.ps.reg.section.extra': 'Дополнительные сведения',
 
     /* ---- Онлайн-анкета: поля ---- */
     'doc.ps.reg.field.phone': 'Телефон (WhatsApp)',
@@ -202,8 +202,6 @@
     'doc.ps.page.eyebrow': 'Регистрация учащегося',
     'doc.ps.page.lead': 'Пожалуйста, заполните все поля как можно точнее — это поможет организаторам вовремя подготовить всё необходимое для Школы.',
     'doc.ps.page.success': 'Спасибо! Формуляр заполнен и сохранён на этом устройстве. Пожалуйста, дополнительно отправьте копию районному старейшине — кнопки ниже откроют готовое письмо или сообщение WhatsApp с вашими данными.',
-    'doc.ps.page.choose_lang': 'Выберите язык',
-    'doc.ps.page.notes': 'Дополнительные сведения (например, аллергии, особенности питания, состояние здоровья, другие важные замечания)',
     'doc.ps.page.submit': 'Отправить формуляр',
     'doc.ps.page.download_pdf': 'Скачать формуляр (PDF)',
     'doc.ps.page.download_pdf_short': 'Скачать PDF',
