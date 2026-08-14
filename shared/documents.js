@@ -90,6 +90,9 @@
      *   {Object} input.ref           — { module, entity, id }
      *   {string} [input.entityTitle] — подпись сущности на момент выдачи
      *   {Object} [input.data]        — слепок входа движка
+     *   {boolean}[input.edited]      — текст правили вручную перед выдачей;
+     *                                  без этой пометки потом не отличить, где
+     *                                  ушёл шаблонный текст, а где исправленный
      *   {string} [input.reason]      — 'print' | 'send' | 'manual'
      * @returns {Promise<Object|null>} записанный снимок, либо null без базы
      */
@@ -150,6 +153,7 @@
           ref: { module: ref.module || '', entity: ref.entity || '', id: ref.id || '' },
           entityKey: key,
           module: ref.module || '',
+          edited: !!input.edited,
           entityTitle: input.entityTitle || '',
           data: input.data || null,
           reason: reason,

@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.70.0',
+      version: '9.71.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1027,6 +1027,8 @@
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
           'letterModal','letterModalSub','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
           'visitDocsModal','visitDocsSub','visitDocsList','visitDocsCloseBtn','visitDocsCloseBtn2',
+          'composerModal','composerTitle','composerSub','composerSubject','composerPaper','composerCloseBtn',
+          'composerEditBtn','composerCopySubjectBtn','composerCopyTextBtn','composerPrintBtn','composerPdfBtn','composerSaveBtn','composerPaperHead',
           'languageSelect','themeSelect','accentSelect','fontSizeSelect',
           'settingsPdfBtn','backupBtn','resetAppBtn','themeBtn','exportBtn','importInput','pdfModal','pdfModalCloseBtn',
           'pdfCancelBtn','pdfExportConfirmBtn','pdfRangeCard','pdfRangeStartInput','pdfRangeEndInput','pdfRangeHelp','pdfHint',
@@ -1783,13 +1785,17 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const pastResultRow = pastResult ? `<div class="side-row"><div class="side-label">${App.utils.t('last_visit_result')} (${App.utils.prettyDate(pastResult.end)})</div><div class="side-value">${App.utils.escapeHtml(pastResult.resultNote)}</div></div>` : '';
         const hasContact = event && (event.contactName || event.contactPhone || event.contactEmail || event.contactNote);
         const contactBlock = hasContact ? `<div class="send-control" style="margin-top:10px"><div class="send-control-title" style="margin-bottom:8px">${App.utils.t('contact_info')}</div>${event.contactName ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_name')}</div><div class="side-value">${App.utils.escapeHtml(event.contactName)}</div></div>` : ''}${event.contactPhone ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_phone')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="tel:${App.utils.escapeAttr(event.contactPhone.replace(/[^+\d]/g, ''))}">${App.utils.escapeHtml(event.contactPhone)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactPhone)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactEmail ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_email')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="mailto:${App.utils.escapeAttr(event.contactEmail)}">${App.utils.escapeHtml(event.contactEmail)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactEmail)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactNote ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_note')}</div><div class="side-value">${App.utils.escapeHtml(event.contactNote)}</div></div>` : ''}</div>` : '';
-        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ ${App.utils.t('more_actions')}</summary><div class="actions-grid">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">${App.utils.t('visit_form_btn')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailDocsBtn">🗂 ${App.utils.t('docs_title_short')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">${App.utils.t('make_s302')}</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
+        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ ${App.utils.t('more_actions')}</summary><div class="actions-grid">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">${App.utils.t('visit_form_btn')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><span class="menu-wrap" style="position:relative;display:block"><button class="md-btn md-btn-tonal md-state-layer" type="button" id="detailCreateDocBtn" aria-haspopup="menu" aria-expanded="false" style="width:100%">🗂 ${App.utils.t('docs_create')}</button><div class="cp-docmenu" id="detailDocMenu" role="menu" hidden></div></span><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailDocsBtn">🗂 ${App.utils.t('docs_title_short')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">${App.utils.t('make_s302')}</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
         const editBtn = document.getElementById('detailEditBtn'); if (editBtn) editBtn.addEventListener('click', () => App.actions.openCalendarEditorForItem(itemData.id));
         const icsBtn = document.getElementById('detailIcsBtn'); if (icsBtn) icsBtn.addEventListener('click', () => App.actions.exportSingleEventIcs(itemData.id));
         document.getElementById('detailShareBtn')?.addEventListener('click', () => App.ui.shareWeekText(itemData, event));
         document.getElementById('detailVisitFormBtn')?.addEventListener('click', () => App.ui.openVisitForm(itemData.id));
         document.getElementById('detailLetterBtn')?.addEventListener('click', () => App.ui.openLetterModal(itemData.id));
         document.getElementById('detailDocsBtn')?.addEventListener('click', () => App.ui.openVisitDocsModal(itemData.id));
+        document.getElementById('detailCreateDocBtn')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          App.ui.toggleDocMenu(itemData.id, e.currentTarget);
+        });
         document.getElementById('detailS302Btn')?.addEventListener('click', () => App.ui.sendS302(itemData.refId));
         document.querySelectorAll('.copy-btn[data-copy-text]').forEach((btn) => btn.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation();
@@ -3123,6 +3129,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           this.docReasonLabel(doc),
           String(doc.lang || '').toUpperCase(),
           (doc.count || 1) > 1 ? App.utils.t('docs_times', { n: doc.count }) : '',
+          doc.edited ? App.utils.t('docs_edited_mark') : '',
         ].filter(Boolean).join(' · ');
         /* Текст показываем в том виде, в каком он ушёл: html — как разметку
            (она пришла из собственного редактора писем), текст — как есть. */
@@ -3202,6 +3209,300 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           }));
         });
       },
+      /* ═══════════════════════════════════════════════════════════════════
+         КОМПОЗЕР ДОКУМЕНТОВ (фаза 5 общего слоя документов)
+
+         Проектное требование: от карточки визита до предпросмотра — НЕ БОЛЕЕ
+         ДВУХ ДЕЙСТВИЙ. Отсюда три следствия, которые нельзя «улучшать»:
+           1. Кнопка «Создать документ» живёт на верхнем уровне карточки, а не
+              под «⋯ Ещё» — иначе получится три клика.
+           2. Язык не спрашивается: берётся из `CWDocLang`.
+           3. Источник данных не выбирается: мы пришли из карточки, визит уже
+              известен.
+
+         Композер НЕ заменяет модалку письма (решение Алекса 14.08.2026):
+         та про ОТПРАВКУ (почтовый метод, вложенный график, тело, привязанное к
+         записи), а композер про ДОКУМЕНТ. Слияние — отдельная задача.
+
+         Страницы письма показываются отдельными пунктами меню: памятку
+         координатору иногда нужно распечатать без письма. У каждой свой
+         `templateId`, поэтому в архиве они не смешиваются с письмом целиком.
+         ═══════════════════════════════════════════════════════════════════ */
+
+      /** Документы, доступные в контексте визита. Порядок = порядок в меню. */
+      docMenuItems(entry, event) {
+        const suffix = this.letterTypeSuffix(event?.visitType);
+        const items = [
+          { key: 'letter', kind: 'letter', suffix, format: 'html', name: App.utils.t('docs_kind_letter'), pdf: true },
+          { key: 'email', kind: 'email', suffix, format: 'text', name: App.utils.t('docs_kind_email'), pdf: false },
+        ];
+        this.docPages(suffix).forEach((page, i) => {
+          items.push({
+            key: 'page:' + i,
+            kind: 'page',
+            suffix,
+            pageIndex: i,
+            format: 'html',
+            name: page.title || App.utils.t('page_no', { n: i + 2 }),
+            /* PDF для отдельной страницы намеренно не предлагаем: единственный
+               сборщик, который у нас есть, — это сборщик ПИСЬМА, он всегда
+               рисует обращение и «Дорогі брати!». Памятка вышла бы письмом.
+               Печать даёт чистый лист, а отдельный сборщик одиночного документа
+               записан в IDEAS.md. */
+            pdf: false,
+          });
+        });
+        return items;
+      },
+
+      /**
+       * Собрать документ: подстановка выполнена, править уже нечего.
+       * Возвращает то, что уйдёт и в предпросмотр, и в PDF, и в архив —
+       * ОДИН источник, иначе на бумаге окажется не то, что на экране.
+       */
+      buildComposerDoc(item, entry, event) {
+        const suffix = item.suffix;
+        if (item.kind === 'email') {
+          return {
+            templateId: this.docId('email', suffix),
+            context: this.docCtx('email', suffix),
+            subject: entry.subject || this.buildLetterSubject(entry, event),
+            bodyHtml: null,
+            bodyText: entry.emailBody || this.substitutePlaceholders(this.getEmailBodyFor(suffix), entry, event),
+            pages: [],
+          };
+        }
+        if (item.kind === 'page') {
+          const page = this.docPages(suffix)[item.pageIndex] || {};
+          return {
+            /* Своя ветка id: иначе страница и письмо целиком считались бы одним
+               документом и затирали друг друга при дедупликации в архиве. */
+            templateId: this.docId('letter', suffix) + '/pages/' + (page.id || item.pageIndex),
+            context: this.docCtx('letter', suffix) + '.page',
+            subject: null,
+            bodyHtml: this.substitutePlaceholders(page.html || '', entry, event),
+            bodyText: null,
+            pages: [],
+          };
+        }
+        return {
+          templateId: this.docId('letter', suffix),
+          context: this.docCtx('letter', suffix),
+          subject: null,
+          bodyHtml: this.substitutePlaceholders(this.getLetterTemplateFor(event?.visitType), entry, event),
+          bodyText: null,
+          pages: this.docPages(suffix).map((page) => ({
+            id: page.id,
+            title: page.title || '',
+            html: this.substitutePlaceholders(page.html || '', entry, event),
+          })),
+        };
+      },
+
+      /** Меню «Создать документ» под кнопкой в карточке визита. */
+      toggleDocMenu(itemId, anchorBtn) {
+        const box = document.getElementById('detailDocMenu');
+        if (!box) return;
+        if (!box.hidden) { box.hidden = true; return; }
+        const item = App.data.getCalendarItemById(itemId);
+        if (!item || item.source !== 'entry') return App.utils.toast(App.utils.t('letter_only_visits'));
+        const entry = App.state.app.entries.find((e) => e.id === item.refId);
+        if (!entry) return;
+        const event = App.data.getEventById(entry.eventId);
+        const items = this.docMenuItems(entry, event);
+        box.innerHTML = items.map((menuItem) => `<button type="button" role="menuitem" data-doc-key="${App.utils.escapeAttr(menuItem.key)}">
+            <span class="cp-docmenu-name">${App.utils.escapeHtml(menuItem.name)}</span>
+            <span class="cp-docmenu-sub">${App.utils.escapeHtml(App.utils.t('docs_menu_lang', { lang: this.docLang().toUpperCase() }))}</span>
+          </button>`).join('');
+        box.hidden = false;
+        box.querySelectorAll('[data-doc-key]').forEach((btn) => btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          box.hidden = true;
+          App.ui.openComposer(itemId, btn.dataset.docKey);
+        }));
+        if (anchorBtn) anchorBtn.setAttribute('aria-expanded', 'true');
+      },
+
+      openComposer(itemId, key) {
+        const item = App.data.getCalendarItemById(itemId);
+        if (!item || item.source !== 'entry') return;
+        const entry = App.state.app.entries.find((e) => e.id === item.refId);
+        if (!entry) return;
+        const event = App.data.getEventById(entry.eventId);
+        const menuItem = this.docMenuItems(entry, event).find((m) => m.key === key);
+        if (!menuItem) return;
+        const built = this.buildComposerDoc(menuItem, entry, event);
+
+        App.state.composer = {
+          entryId: entry.id,
+          key,
+          item: menuItem,
+          doc: built,
+          edited: false,
+        };
+
+        if (App.els.composerTitle) App.els.composerTitle.textContent = menuItem.name;
+        if (App.els.composerSub) {
+          App.els.composerSub.textContent = `${this.docEntityTitle(entry, event)} · ${this.docActualLangFor(menuItem).toUpperCase()}`;
+        }
+        if (App.els.composerSubject) {
+          App.els.composerSubject.hidden = !built.subject;
+          App.els.composerSubject.textContent = built.subject || '';
+        }
+        if (App.els.composerPaperHead) {
+          const head = this.composerHeadHtml(menuItem, entry, event);
+          App.els.composerPaperHead.innerHTML = head;
+          App.els.composerPaperHead.hidden = !head;
+        }
+        if (App.els.composerPaper) {
+          App.els.composerPaper.contentEditable = 'false';
+          App.els.composerPaper.innerHTML = built.bodyHtml !== null
+            ? built.bodyHtml + (built.pages || []).map((page, i) => `<div class="cp-doc-pagebreak">${App.utils.escapeHtml(page.title || App.utils.t('page_no', { n: i + 2 }))}</div>${page.html || ''}`).join('')
+            : `<div style="white-space:pre-wrap">${App.utils.escapeHtml(built.bodyText || '')}</div>`;
+        }
+        if (App.els.composerEditBtn) App.els.composerEditBtn.textContent = App.utils.t('docs_edit_once');
+        if (App.els.composerCopySubjectBtn) App.els.composerCopySubjectBtn.hidden = !built.subject;
+        if (App.els.composerPdfBtn) App.els.composerPdfBtn.hidden = !menuItem.pdf;
+        this.openModal(App.els.composerModal);
+      },
+
+      /**
+       * Шапка письма для предпросмотра: отправитель, обращение, дата и
+       * «Дорогі брати!». Ровно то, что рисует `buildLetterPdfDoc` перед телом.
+       * В редактируемое тело не входит — иначе после разовой правки шапка
+       * попала бы в PDF дважды. Только письмо: у e-mail своя тема, у отдельной
+       * страницы шапки нет.
+       */
+      composerHeadHtml(menuItem, entry, event) {
+        if (menuItem.kind !== 'letter') return '';
+        const esc = App.utils.escapeHtml;
+        const sender = App.shared.sender();
+        const lines = [sender.name, sender.address, sender.phone1, sender.email].filter(Boolean);
+        const salutation = this.substitutePlaceholders(this.getSalutationFor(menuItem.suffix), entry, event);
+        const today = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
+        return `<div class="cp-doc-sender">${lines.map(esc).join('\n')}</div>`
+          + `<div class="cp-doc-salutation">${esc(salutation)}</div>`
+          + `<div class="cp-doc-date">${esc(today)}</div>`
+          + '<div class="cp-doc-salutation" style="margin-top:12px">Дорогі брати!</div>';
+      },
+      /** Фактический язык документа для пункта меню (см. docActualLang). */
+      docActualLangFor(menuItem) {
+        const kind = menuItem.kind === 'page' ? 'letter' : menuItem.kind;
+        return this.docActualLang(kind, menuItem.suffix);
+      },
+
+      closeComposer() {
+        this.closeModal(App.els.composerModal);
+        App.state.composer = null;
+      },
+
+      /**
+       * Текущее содержимое предпросмотра. После разовой правки берём из DOM:
+       * именно правленый текст должен уйти и в печать, и в PDF, и в архив.
+       */
+      composerCurrent() {
+        const state = App.state.composer;
+        if (!state) return null;
+        const paper = App.els.composerPaper;
+        if (!state.edited || !paper) return state.doc;
+        if (state.doc.bodyHtml === null) {
+          return { ...state.doc, bodyText: paper.innerText || paper.textContent || '' };
+        }
+        /* Разовая правка склеивает письмо и его страницы в один поток — вернуть
+           их обратно по страницам нельзя, не изобретая разметку-разделитель.
+           Поэтому правленое письмо уходит одним куском: на бумаге разрывы
+           страниц расставит сборщик PDF, а в архиве текст и так хранится
+           целиком. */
+        return { ...state.doc, bodyHtml: paper.innerHTML, pages: [] };
+      },
+
+      composerPlainText() {
+        const doc = this.composerCurrent();
+        if (!doc) return '';
+        if (doc.bodyHtml === null) return doc.bodyText || '';
+        const box = document.createElement('div');
+        box.innerHTML = doc.bodyHtml + (doc.pages || []).map((page) => '<br>' + (page.html || '')).join('');
+        return box.innerText || box.textContent || '';
+      },
+
+      /** Снимок документа из композера. `edited` отличает правленый текст. */
+      snapshotComposerDoc(reason) {
+        const state = App.state.composer;
+        if (!state || !this.docsAvailable()) return Promise.resolve(null);
+        const entry = App.state.app.entries.find((e) => e.id === state.entryId);
+        if (!entry) return Promise.resolve(null);
+        const event = App.data.getEventById(entry.eventId);
+        const doc = this.composerCurrent();
+        return self.CWDocs.save({
+          templateId: state.doc.templateId,
+          context: state.doc.context,
+          title: state.item.name,
+          lang: this.docActualLangFor(state.item),
+          templateUpdatedAt: this.docTemplateUpdatedAt(state.item.kind === 'page' ? 'letter' : state.item.kind, state.item.suffix),
+          format: state.doc.bodyHtml === null ? 'text' : 'html',
+          subject: doc.subject,
+          body: doc.bodyHtml === null ? (doc.bodyText || '') : doc.bodyHtml,
+          pages: doc.pages || [],
+          edited: state.edited,
+          ref: this.docRef(entry),
+          entityTitle: this.docEntityTitle(entry, event),
+          data: this.letterData(entry, event),
+          reason,
+        });
+      },
+
+      /**
+       * Печать одного документа. Календарь печатается через `doPrint()` и
+       * стили `@media print` всего приложения — для отдельной бумаги это не
+       * годится, поэтому открывается изолированное окно только с её текстом.
+       */
+      printComposerDoc() {
+        const doc = this.composerCurrent();
+        if (!doc) return;
+        const state = App.state.composer;
+        const head = App.els.composerPaperHead && !App.els.composerPaperHead.hidden
+          ? App.els.composerPaperHead.innerHTML
+          : '';
+        const body = doc.bodyHtml === null
+          ? `<pre>${App.utils.escapeHtml(doc.bodyText || '')}</pre>`
+          : doc.bodyHtml + (doc.pages || []).map((page) => `<div class="pb"></div>${page.html || ''}`).join('');
+        const win = window.open('', '_blank');
+        if (!win) return App.utils.toast(App.utils.t('docs_print_blocked'));
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${App.utils.escapeHtml(state.item.name)}</title>
+          <style>
+            body{font:13.5px/1.62 Georgia,"Times New Roman",serif;color:#16251d;margin:28mm 20mm}
+            .cp-doc-sender{text-align:right;font-size:11px;color:#556;white-space:pre-line;margin-bottom:16px}
+            .cp-doc-salutation{font-weight:700}
+            .cp-doc-date{text-align:right;font-size:11.5px;color:#556;margin-top:-14px}
+            pre{font:inherit;white-space:pre-wrap}
+            .pb{page-break-before:always;height:0}
+            @media print{body{margin:0}}
+          </style></head><body>
+          ${doc.subject ? `<p><b>${App.utils.escapeHtml(doc.subject)}</b></p>` : head}
+          ${body}</body></html>`);
+        win.document.close();
+        win.focus();
+        /* Печать после отрисовки: иначе Safari печатает пустой лист. */
+        setTimeout(() => { win.print(); }, 250);
+        this.snapshotComposerDoc('print');
+      },
+
+      /** PDF одного документа. Переиспользует проверенный сборщик письма. */
+      pdfComposerDoc() {
+        const state = App.state.composer;
+        if (!state) return;
+        const entry = App.state.app.entries.find((e) => e.id === state.entryId);
+        if (!entry) return;
+        const event = App.data.getEventById(entry.eventId);
+        const doc = this.composerCurrent();
+        if (doc.bodyHtml === null) return;
+        const pdf = this.buildLetterPdfDoc(entry, event, { bodyHtml: doc.bodyHtml, pages: doc.pages || [] });
+        if (!pdf) return;
+        const suffix = App.utils.pdfFilenameSuffix(entry, event);
+        pdf.save(`${App.utils.slug(entry.title || 'document')}${suffix ? '-' + suffix : ''}-${App.utils.slug(state.item.name) || 'doc'}.pdf`);
+        this.snapshotComposerDoc('print');
+      },
+
       openLetterModal(itemId) {
         const item = App.data.getCalendarItemById(itemId);
         if (!item || item.source !== 'entry') return App.utils.toast(App.utils.t('letter_only_visits'));
@@ -3704,6 +4005,53 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         ]).then((saved) => {
           App.utils.toast(App.utils.t(saved.some(Boolean) ? 'docs_saved' : 'docs_storage_off'));
         });
+      });
+      /* ─── Композер документов (фаза 5) ─── */
+      App.els.composerCloseBtn?.addEventListener('click', () => App.ui.closeComposer());
+      App.els.composerEditBtn?.addEventListener('click', () => {
+        const state = App.state.composer;
+        const paper = App.els.composerPaper;
+        if (!state || !paper) return;
+        const on = paper.contentEditable !== 'true';
+        paper.contentEditable = on ? 'true' : 'false';
+        App.els.composerEditBtn.textContent = App.utils.t(on ? 'docs_edit_done' : 'docs_edit_once');
+        if (on) {
+          /* Пометка ставится в момент включения правки, а не по факту различий:
+             человек мог поправить и вернуть как было, но знать, что документ
+             трогали руками, всё равно полезно. */
+          state.edited = true;
+          paper.focus();
+          App.utils.toast(App.utils.t('docs_edit_hint'));
+        }
+      });
+      App.els.composerCopySubjectBtn?.addEventListener('click', () => {
+        const doc = App.ui.composerCurrent();
+        if (!doc || !doc.subject) return;
+        const done = () => App.utils.toast(App.utils.t('copied'));
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(doc.subject).then(done).catch(() => done());
+        else done();
+      });
+      App.els.composerCopyTextBtn?.addEventListener('click', () => {
+        const text = App.ui.composerPlainText();
+        const done = () => App.utils.toast(App.utils.t('copied'));
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(() => done());
+        else done();
+      });
+      App.els.composerPrintBtn?.addEventListener('click', () => App.ui.printComposerDoc());
+      App.els.composerPdfBtn?.addEventListener('click', () => App.ui.pdfComposerDoc());
+      App.els.composerSaveBtn?.addEventListener('click', () => {
+        App.ui.snapshotComposerDoc('manual').then((saved) => {
+          App.utils.toast(App.utils.t(saved ? 'docs_saved' : 'docs_storage_off'));
+        });
+      });
+      /* Клик мимо закрывает меню документов. Слушатель один на документ, а не
+         по одному на каждую перерисовку карточки. */
+      document.addEventListener('click', () => {
+        const menu = document.getElementById('detailDocMenu');
+        if (menu && !menu.hidden) {
+          menu.hidden = true;
+          document.getElementById('detailCreateDocBtn')?.setAttribute('aria-expanded', 'false');
+        }
       });
       App.els.visitDocsCloseBtn?.addEventListener('click', () => App.ui.closeVisitDocsModal());
       App.els.visitDocsCloseBtn2?.addEventListener('click', () => App.ui.closeVisitDocsModal());

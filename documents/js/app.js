@@ -222,6 +222,7 @@
       reasonLabel(doc),
       String(doc.lang || '').toUpperCase(),
       (doc.count || 1) > 1 ? t('doc.times', { n: doc.count }) : '',
+      doc.edited ? t('doc.edited_mark') : '',
     ].filter(Boolean).join(' · ');
     /* html-снимок показываем разметкой: она пришла из собственного редактора
        писем модуля-владельца, а не извне. */

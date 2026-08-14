@@ -236,6 +236,33 @@ body::before{display:none !important}
 /* Снимок выданного документа в модалке «Документы визита». Текст письма
    приходит из RTE и может содержать длинные неразрывные вставки — без
    overflow-wrap карточка растягивает модалку по горизонтали. */
+/* Композер документов (фаза 5). Лист выглядит бумагой, а не полем ввода:
+   человек должен видеть, что уйдёт на печать. */
+.cp-doc-paper{background:#fff;color:#16251d;border-radius:12px;padding:22px 24px;margin-top:12px;
+  font:13.5px/1.62 Georgia,"Times New Roman",serif;box-shadow:0 2px 10px rgba(0,0,0,.18);
+  overflow-wrap:anywhere;max-height:52vh;overflow-y:auto}
+.cp-doc-paper #composerPaper[contenteditable="true"]{outline:2px solid var(--accent, #6a45c9);outline-offset:4px}
+/* Шесть кнопок в ряд на телефон не помещаются: без переноса «Править разово»
+   уезжала за левый край карточки. Свой класс, чтобы не трогать .editor-actions
+   в остальных модалках модуля. */
+.cp-doc-actions{flex-wrap:wrap;justify-content:flex-start}
+.cp-doc-head{margin-bottom:18px;color:#16251d}
+.cp-doc-head .cp-doc-sender{text-align:right;font-size:11px;color:#556;white-space:pre-line;margin-bottom:16px}
+.cp-doc-head .cp-doc-salutation{font-weight:700}
+.cp-doc-head .cp-doc-date{text-align:right;font-size:11.5px;color:#556;margin-top:-14px}
+.cp-doc-pagebreak{margin:20px -24px 14px;border-top:1px dashed #bbc;padding:10px 24px 0;
+  font:11px/1 system-ui,sans-serif;color:#889}
+.cp-doc-subject{margin-top:10px;font-size:13px;color:var(--muted)}
+/* Меню «Создать документ». Абсолютное позиционирование под кнопкой: пункт
+   меню — второй и последний клик до предпросмотра. */
+.cp-docmenu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;padding:6px;
+  border:1px solid var(--line);border-radius:14px;background:var(--surface2);
+  box-shadow:0 18px 44px rgba(0,0,0,.34)}
+.cp-docmenu button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;
+  font-family:inherit;cursor:pointer;padding:9px 11px;border-radius:10px}
+.cp-docmenu button:hover{background:var(--surface)}
+.cp-docmenu-name{display:block;font-weight:700;font-size:13px}
+.cp-docmenu-sub{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .doc-snapshot{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .send-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
@@ -638,6 +665,31 @@ body::before{display:none !important}
       <div class="editor-actions"><button data-i18n="cp.attach_pdf" class="md-btn md-btn-outlined md-state-layer" id="letterPreviewPdfBtn" type="button">📄 Прикрепить PDF-документ</button><button data-i18n="cp.attach_schedule" class="md-btn md-btn-outlined md-state-layer" id="letterAttachPdfBtn" type="button">📎 Прикрепить график визитов</button><button data-i18n="cp.docs_save_manual" class="md-btn md-btn-outlined md-state-layer" id="letterSnapshotBtn" type="button">🗂 Сохранить в историю</button><button data-i18n="cp.send_email" class="md-btn md-btn-filled md-state-layer" id="letterSendBtn" type="button">📤 Отправить электронное письмо</button></div>
     </div>
   </div>
+  <!-- Композер: предпросмотр одного документа с подставленными данными.
+       Не путать с модалкой письма — та про отправку, эта про документ. -->
+  <div class="modal" id="composerModal" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><div><h3 id="composerTitle">—</h3><div class="modal-sub" id="composerSub">—</div></div><button class="icon-btn" id="composerCloseBtn" type="button" aria-label="Закрыть" data-i18n-aria-label="cp.a_close">✕</button></div>
+      <div id="composerSubject" class="cp-doc-subject" hidden></div>
+      <div class="cp-doc-paper" id="composerSheet">
+        <!-- Шапка письма (отправитель, обращение, дата) рисуется сборщиком PDF
+             сама и в редактируемое тело не входит: иначе после разовой правки
+             она попала бы в PDF дважды. Показываем её здесь только затем, чтобы
+             предпросмотр совпадал с бумагой. -->
+        <div id="composerPaperHead" class="cp-doc-head" hidden></div>
+        <div id="composerPaper"></div>
+      </div>
+      <div class="editor-actions cp-doc-actions">
+        <button data-i18n="cp.docs_edit_once" class="md-btn md-btn-text md-state-layer" id="composerEditBtn" type="button">Править разово</button>
+        <button data-i18n="cp.docs_copy_subject" class="md-btn md-btn-outlined md-state-layer" id="composerCopySubjectBtn" type="button" hidden>Копировать тему</button>
+        <button data-i18n="cp.docs_copy_text" class="md-btn md-btn-outlined md-state-layer" id="composerCopyTextBtn" type="button">Копировать текст</button>
+        <button data-i18n="cp.docs_print" class="md-btn md-btn-outlined md-state-layer" id="composerPrintBtn" type="button">Печать</button>
+        <button data-i18n="cp.docs_pdf" class="md-btn md-btn-outlined md-state-layer" id="composerPdfBtn" type="button">PDF</button>
+        <button data-i18n="cp.docs_save_archive" class="md-btn md-btn-filled md-state-layer" id="composerSaveBtn" type="button">Сохранить в архив</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Архив выданных документов по одному визиту. Не путать с historyModal:
        тот показывает контрольные точки ВСЕХ данных приложения, а этот —
        бумаги, которые уже ушли собранию. -->

@@ -7,7 +7,7 @@
 // шаблонов, поэтому в ASSETS обязательны shared/db.js, shared/templates.js,
 // реестр переменных и системные тексты. Без них офлайн-запуск покажет пустую
 // библиотеку.
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const CACHE_PREFIX = 'documents-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
