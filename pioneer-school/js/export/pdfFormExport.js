@@ -262,21 +262,23 @@ const PdfFormExport = {
     });
     state.y -= 8;
 
-    const deadline = this._fmtDate(config.deadline) || D('doc.ps.reg.ask_elder');
+    const deadline = this._fmtDate(config.deadline) || D('doc.ps.send.ask_elder');
     this._ensureSpace(state, 80);
-    this._text(state, D('doc.ps.pdf.deadline', { date: deadline }), { size: 11 });
+    // Пунктуация и значение — здесь, в словаре лежит чистая подпись, общая
+    // с печатным бланком и онлайн-страницей.
+    this._text(state, `${D('doc.ps.send.deadline')}: ${deadline}`, { size: 11 });
     state.y -= 18;
-    this._text(state, D('doc.ps.pdf.send_where'), { size: 11 });
+    this._text(state, `${D('doc.ps.send.how')}:`, { size: 11 });
     state.y -= 15;
 
     const contacts = [
       [D('doc.ps.pdf.contact.email'), config.email],
-      [D('doc.ps.pdf.contact.phone'), config.phone],
+      [D('doc.ps.field.phone'), config.phone],
       [D('doc.ps.pdf.contact.whatsapp'), config.whatsapp || config.phone]
     ].filter(([, v]) => v && String(v).trim());
 
     if (!contacts.length) {
-      this._text(state, D('doc.ps.pdf.contact_none'), { x: this.MARGIN + 10, size: 10.5, color: 0.35 });
+      this._text(state, `- ${D('doc.ps.send.ask_elder')}`, { x: this.MARGIN + 10, size: 10.5, color: 0.35 });
       state.y -= 14;
     } else {
       contacts.forEach(([label, value]) => {

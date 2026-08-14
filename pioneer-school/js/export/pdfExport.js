@@ -211,40 +211,47 @@ const PdfExport = {
   },
 
   buildRegistrationLines(record, config = {}) {
-    const row = (key, value) => `${D('doc.ps.rec.' + key)}: ${value || '—'}`;
+    // Ключ передаётся целиком (без префикса `doc.ps.`), потому что подписи
+    // теперь живут в двух наборах: общие для всех документов — в
+    // `doc.ps.field.*`, свои для этой карточки — в `doc.ps.rec.*`. Прежняя
+    // склейка `'doc.ps.rec.' + key` этого различить не умела.
+    const row = (key, value) => `${D('doc.ps.' + key)}: ${value || '—'}`;
     const language = record.language === 'other'
       ? (record.languageOther || D('doc.ps.reg.opt.lang.other_lower'))
       : (this._optLabel('language', record.language) || record.language || '');
     const formats = (record.format || []).map((f) => this._optLabel('format', f) || f).join(', ');
 
     const lines = [
-      row('filled_at', this._formatDocDate(record.submittedAt || new Date().toISOString())),
+      row('rec.filled_at', this._formatDocDate(record.submittedAt || new Date().toISOString())),
       '',
-      row('lastName', record.lastName),
-      row('firstName', record.firstName),
-      row('address', record.address),
-      row('email', record.email),
-      row('phone', record.phone),
+      row('field.lastName', record.lastName),
+      row('field.firstName', record.firstName),
+      row('field.address', record.address),
+      row('field.email', record.email),
+      row('field.phone', record.phone),
       '',
-      row('attending', this._optLabel('attending', record.attending))
+      // Подписи ответов здесь свои («Смогу присутствовать на Школе»), а не
+      // общие («Присутствие»): карточка читается как рассказ о человеке, а
+      // выгрузка — как таблица. Сводить их было бы ошибкой.
+      row('rec.attending', this._optLabel('attending', record.attending))
     ];
-    if (record.attending === 'no') lines.push(row('reason', record.attendReason));
+    if (record.attending === 'no') lines.push(row('rec.reason', record.attendReason));
     lines.push(
-      row('transport', this._optLabel('transport', record.transport)),
-      row('lodging', this._optLabel('lodging', record.lodging)),
+      row('rec.transport', this._optLabel('transport', record.transport)),
+      row('rec.lodging', this._optLabel('lodging', record.lodging)),
       '',
-      row('language', language),
-      row('format', formats),
+      row('field.language', language),
+      row('field.format', formats),
       '',
-      row('notes', record.notes)
+      row('rec.notes', record.notes)
     );
 
     // Напоминание о сроке и адресате печатаем в самом формуляре: бумажную копию
     // часто заполняют заранее и отправляют позже, уже без открытой страницы.
     const footer = [];
-    if (config.deadline) footer.push(row('deadline', this._formatDocDate(config.deadline)));
-    if (config.email) footer.push(row('to_email', config.email));
-    if (config.whatsapp) footer.push(row('to_whatsapp', config.whatsapp));
+    if (config.deadline) footer.push(row('rec.deadline', this._formatDocDate(config.deadline)));
+    if (config.email) footer.push(row('send.to_email', config.email));
+    if (config.whatsapp) footer.push(row('send.to_whatsapp', config.whatsapp));
     if (footer.length) lines.push('', '— — —', ...footer);
 
     return lines;
@@ -464,12 +471,12 @@ const PdfExport = {
 
     // 1. Личные данные
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.personal'));
-    this._labelLine(doc, 40, y, D('doc.ps.reg.field.lastName'), 100, 200);
-    this._labelLine(doc, 320, y, D('doc.ps.reg.field.firstName'), 360, 195);
+    this._labelLine(doc, 40, y, D('doc.ps.field.lastName'), 100, 200);
+    this._labelLine(doc, 320, y, D('doc.ps.field.firstName'), 360, 195);
     y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.reg.field.address'), 155, 400);
+    this._labelLine(doc, 40, y, D('doc.ps.field.address'), 155, 400);
     y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.reg.field.email'), 90, 220);
+    this._labelLine(doc, 40, y, D('doc.ps.field.email'), 90, 220);
     this._labelLine(doc, 330, y, D('doc.ps.reg.field.phone'), 445, 110);
     y += 34;
 
@@ -498,7 +505,7 @@ const PdfExport = {
 
     // 5. Учебник
     y = this._sectionTitle(doc, y, D('doc.ps.reg.section.textbook'));
-    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.language')), 11, 515);
+    y = this._label(doc, 40, y, this._withColon(D('doc.ps.field.language')), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [
       { x: 40, label: opt('language', 'ru') }, { x: 140, label: opt('language', 'uk') },
@@ -540,14 +547,18 @@ const PdfExport = {
     doc.text(closingLines, 40, y);
     y += closingLines.length * 13 + 10;
 
-    const askElder = D('doc.ps.reg.ask_elder');
+    const askElder = D('doc.ps.send.ask_elder');
     const deadline = config.deadline ? this._formatDocDate(config.deadline) : askElder;
     doc.setTextColor(20);
-    doc.text(this._sanitizeForFont(D('doc.ps.blank.deadline', { date: deadline })), 40, y);
+    // Двоеточие и значение дорисовываются здесь: в словаре лежит чистая
+    // подпись, одинаковая для бланка, онлайн-страницы и интерактивного PDF.
+    doc.text(this._sanitizeForFont(`${this._withColon(D('doc.ps.send.deadline'))} ${deadline}`), 40, y);
     y += 16;
-    doc.text(this._sanitizeForFont(D('doc.ps.blank.send_how')), 40, y); y += 14;
-    doc.text(this._sanitizeForFont(D('doc.ps.blank.send_email', { value: config.email || askElder })), 50, y); y += 14;
-    doc.text(this._sanitizeForFont(D('doc.ps.blank.send_whatsapp', { value: config.whatsapp || askElder })), 50, y);
+    doc.text(this._sanitizeForFont(this._withColon(D('doc.ps.send.how'))), 40, y); y += 14;
+    // Дефис списка — тоже разметка, а не текст: он был частью строки словаря
+    // и переводчику пришлось бы помнить, что его нельзя терять.
+    doc.text(this._sanitizeForFont(`- ${this._withColon(D('doc.ps.send.by_email'))} ${config.email || askElder}`), 50, y); y += 14;
+    doc.text(this._sanitizeForFont(`- ${this._withColon(D('doc.ps.send.by_whatsapp'))} ${config.whatsapp || askElder}`), 50, y);
 
     doc.save('registration-blank-form.pdf');
   },

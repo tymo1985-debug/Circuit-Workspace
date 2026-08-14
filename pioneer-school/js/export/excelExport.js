@@ -80,9 +80,16 @@ const ExcelExport = {
   },
 
   downloadRegistrations(registrations) {
-    const headers = ['lastName', 'firstName', 'phone', 'email', 'address', 'attending', 'reason',
-      'transport', 'lodging', 'language', 'languageOther', 'format', 'notes', 'submittedAt']
-      .map((k) => D('doc.ps.csv.' + k));
+    // Ключи выписаны целиком, а не склеиваются с префиксом `doc.ps.csv.`:
+    // часть подписей общая со всеми документами и живёт в `doc.ps.field.*`,
+    // своими у выгрузки остались только те, которых больше нигде нет.
+    const headers = [
+      'doc.ps.field.lastName', 'doc.ps.field.firstName', 'doc.ps.field.phone',
+      'doc.ps.field.email', 'doc.ps.field.address', 'doc.ps.field.attending',
+      'doc.ps.csv.reason', 'doc.ps.field.transport', 'doc.ps.field.lodging',
+      'doc.ps.csv.language', 'doc.ps.csv.languageOther', 'doc.ps.field.format',
+      'doc.ps.field.notes', 'doc.ps.csv.submittedAt',
+    ].map((key) => D(key));
     const rows = registrations.map((r) => [
       r.lastName, r.firstName, r.phone, r.email, r.address,
       this._optLabel('attending', r.attending) || r.attending || '',

@@ -59,19 +59,19 @@
     <fieldset>
       <legend data-doc-i18n="doc.ps.reg.section.personal">1. Личные данные</legend>
       <div class="field">
-        <label for="lastName"><span data-doc-i18n="doc.ps.reg.field.lastName">Фамилия</span> <span class="required-mark">*</span></label>
+        <label for="lastName"><span data-doc-i18n="doc.ps.field.lastName">Фамилия</span> <span class="required-mark">*</span></label>
         <input type="text" id="lastName" name="lastName" required autocomplete="family-name">
       </div>
       <div class="field">
-        <label for="firstName"><span data-doc-i18n="doc.ps.reg.field.firstName">Имя</span> <span class="required-mark">*</span></label>
+        <label for="firstName"><span data-doc-i18n="doc.ps.field.firstName">Имя</span> <span class="required-mark">*</span></label>
         <input type="text" id="firstName" name="firstName" required autocomplete="given-name">
       </div>
       <div class="field">
-        <label for="address"><span data-doc-i18n="doc.ps.reg.field.address">Адрес проживания</span> <span class="required-mark">*</span></label>
+        <label for="address"><span data-doc-i18n="doc.ps.field.address">Адрес проживания</span> <span class="required-mark">*</span></label>
         <input type="text" id="address" name="address" required autocomplete="street-address">
       </div>
       <div class="field">
-        <label for="email"><span data-doc-i18n="doc.ps.reg.field.email">Email</span> <span class="required-mark">*</span></label>
+        <label for="email"><span data-doc-i18n="doc.ps.field.email">Email</span> <span class="required-mark">*</span></label>
         <input type="email" id="email" name="email" required autocomplete="email">
       </div>
       <div class="field">
@@ -121,7 +121,7 @@
     <fieldset>
       <legend data-doc-i18n="doc.ps.reg.section.textbook">5. Учебник для школы</legend>
       <div class="field">
-        <label for="language" class="group-label"><span data-doc-i18n="doc.ps.reg.field.language">Язык учебника</span> <span class="required-mark">*</span></label>
+        <label for="language" class="group-label"><span data-doc-i18n="doc.ps.field.language">Язык учебника</span> <span class="required-mark">*</span></label>
         <select id="language" name="language" class="lang-select" required>
           <option value="" disabled selected data-doc-i18n="doc.ps.page.choose_lang">Выберите язык</option>
           <option value="ru" data-doc-i18n="doc.ps.reg.opt.lang.ru">Русский</option>
@@ -157,12 +157,12 @@
 
     <div class="closing-note">
       <p data-doc-i18n="doc.ps.reg.closing">Пожалуйста, заполните и отправьте этот формуляр как можно скорее. Это поможет своевременно подготовить всё необходимое для проведения школы. Благодарим за сотрудничество!</p>
-      <p><span data-doc-i18n="doc.ps.page.deadline_label">Заполненный формуляр необходимо отправить не позднее:</span>
+      <p><span data-doc-i18n="doc.ps.send.deadline">Заполненный формуляр необходимо отправить не позднее</span>:
         <span class="deadline-line" id="deadline-echo">—</span>
       </p>
-      <p><span data-doc-i18n="doc.ps.page.send_how">Способ отправки:</span><br>
-        · <span data-doc-i18n="doc.ps.page.by_email">на адрес электронной почты:</span> <span class="method-line" id="email-echo">—</span><br>
-        · <span data-doc-i18n="doc.ps.page.by_whatsapp">через WhatsApp:</span> <span class="method-line" id="whatsapp-echo">—</span>
+      <p><span data-doc-i18n="doc.ps.send.how">Способ отправки</span>:<br>
+        · <span data-doc-i18n="doc.ps.send.by_email">на адрес электронной почты</span>: <span class="method-line" id="email-echo">—</span><br>
+        · <span data-doc-i18n="doc.ps.send.by_whatsapp">через WhatsApp</span>: <span class="method-line" id="whatsapp-echo">—</span>
       </p>
     </div>
 
@@ -208,7 +208,7 @@
       cfg = await DB.getMeta('registrationConfig', cfg);
     } catch (e) { /* IndexedDB недоступна — оставляем значения по умолчанию */ }
 
-    const askElder = D('doc.ps.reg.ask_elder');
+    const askElder = D('doc.ps.send.ask_elder');
     const deadline = formatDocDate(cfg.deadline);
     echoes.deadline.textContent = deadline || askElder;
     echoes.deadline.classList.toggle('placeholder-empty', !deadline);
@@ -281,15 +281,15 @@
       : '';
     return `${D('doc.ps.sum.title')}
 ${D('doc.ps.sum.fullname')}: ${record.lastName} ${record.firstName}
-${D('doc.ps.sum.address')}: ${record.address || '-'}
-${D('doc.ps.sum.email')}: ${record.email || '-'}
-${D('doc.ps.sum.phone')}: ${record.phone || '-'}
-${D('doc.ps.sum.attending')}: ${opt('attending', record.attending) || '-'}${reason}
-${D('doc.ps.sum.transport')}: ${opt('transport', record.transport) || '-'}
-${D('doc.ps.sum.lodging')}: ${opt('lodging', record.lodging) || '-'}
-${D('doc.ps.sum.language')}: ${lang || '-'}
-${D('doc.ps.sum.format')}: ${formats || '-'}
-${D('doc.ps.sum.notes')}: ${record.notes || '-'}`;
+${D('doc.ps.field.address')}: ${record.address || '-'}
+${D('doc.ps.field.email')}: ${record.email || '-'}
+${D('doc.ps.field.phone')}: ${record.phone || '-'}
+${D('doc.ps.field.attending')}: ${opt('attending', record.attending) || '-'}${reason}
+${D('doc.ps.field.transport')}: ${opt('transport', record.transport) || '-'}
+${D('doc.ps.field.lodging')}: ${opt('lodging', record.lodging) || '-'}
+${D('doc.ps.field.language')}: ${lang || '-'}
+${D('doc.ps.field.format')}: ${formats || '-'}
+${D('doc.ps.field.notes')}: ${record.notes || '-'}`;
   }
 
   form.addEventListener('submit', async (e) => {
@@ -317,8 +317,8 @@ ${D('doc.ps.sum.notes')}: ${record.notes || '-'}`;
     const waHref = `https://wa.me/${waNumber.replace('+', '')}?text=${encodeURIComponent(summary)}`;
 
     shareRow.innerHTML = `
-      <a class="md-btn md-btn-filled md-btn-tonal" href="${mailtoHref}">${D('doc.ps.page.send_by_email')}</a>
-      ${waNumber ? `<a class="md-btn md-btn-outlined md-btn-tonal" href="${waHref}" target="_blank" rel="noopener">${D('doc.ps.page.send_by_whatsapp')}</a>` : ''}
+      <a class="md-btn md-btn-filled md-btn-tonal" href="${mailtoHref}">${D('doc.ps.send.to_email')}</a>
+      ${waNumber ? `<a class="md-btn md-btn-outlined md-btn-tonal" href="${waHref}" target="_blank" rel="noopener">${D('doc.ps.send.to_whatsapp')}</a>` : ''}
       <button type="button" class="md-btn md-btn-outlined md-btn-tonal" id="pdf-after-submit">${D('doc.ps.page.download_pdf_short')}</button>
     `;
     // Письмо и WhatsApp отправляют только текст — PDF пользователь прикладывает

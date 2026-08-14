@@ -38,10 +38,10 @@ const RegistrationSchema = {
         id: 'personal',
         title: D('doc.ps.reg.section.personal'),
         fields: [
-          { key: 'lastName', label: D('doc.ps.reg.field.lastName'), type: 'text', required: true, autocomplete: 'family-name' },
-          { key: 'firstName', label: D('doc.ps.reg.field.firstName'), type: 'text', required: true, autocomplete: 'given-name' },
-          { key: 'address', label: D('doc.ps.reg.field.address'), type: 'text', required: true, autocomplete: 'street-address', pdfWidth: 'full' },
-          { key: 'email', label: D('doc.ps.reg.field.email'), type: 'email', required: true, autocomplete: 'email' },
+          { key: 'lastName', label: D('doc.ps.field.lastName'), type: 'text', required: true, autocomplete: 'family-name' },
+          { key: 'firstName', label: D('doc.ps.field.firstName'), type: 'text', required: true, autocomplete: 'given-name' },
+          { key: 'address', label: D('doc.ps.field.address'), type: 'text', required: true, autocomplete: 'street-address', pdfWidth: 'full' },
+          { key: 'email', label: D('doc.ps.field.email'), type: 'email', required: true, autocomplete: 'email' },
           {
             key: 'phone', label: D('doc.ps.reg.field.phone'), type: 'tel', required: true, autocomplete: 'tel',
             hint: D('doc.ps.reg.hint.phone')
@@ -82,7 +82,7 @@ const RegistrationSchema = {
         title: D('doc.ps.reg.section.textbook'),
         fields: [
           {
-            key: 'language', type: 'radio', required: true, label: D('doc.ps.reg.field.language'),
+            key: 'language', type: 'radio', required: true, label: D('doc.ps.field.language'),
             options: [
               { value: 'ru', label: D('doc.ps.reg.opt.lang.ru') },
               { value: 'uk', label: D('doc.ps.reg.opt.lang.uk') },

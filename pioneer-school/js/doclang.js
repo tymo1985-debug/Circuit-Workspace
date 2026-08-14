@@ -149,7 +149,7 @@ function global_location() {
 }
 
 // Короткий псевдоним под стать T(): в генераторах документов он встречается
-// десятки раз, и `D('doc.ps.rec.phone')` читается лучше, чем полная форма.
+// десятки раз, и `D('doc.ps.field.phone')` читается лучше, чем полная форма.
 function D(key, vars) { return PSDocLang.t(key, vars); }
 
 if (typeof window !== 'undefined') {

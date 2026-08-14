@@ -47,6 +47,47 @@
   }
 
   global.CWI18n.register({ ru: {
+    /* ── Подписи полей, общие для всех документов ──────────────────────────
+       Одна подпись = одна строка словаря. Раньше «Фамилия» лежала тремя
+       ключами (анкета, карточка регистрации, выгрузка), «Телефон» — четырьмя,
+       и носитель языка переводил одно и то же слово по нескольку раз на
+       каждом из четырёх языков. Сведено 14.08.2026 по таблице, согласованной
+       с Алексом.
+
+       ГРАНИЦА, ПО КОТОРОЙ СВЕДЕНО НЕ ВСЁ: подпись и вопрос — разные вещи.
+       «Ночлег» в выгрузке и «Нуждаетесь ли вы в месте для ночлега?» в анкете
+       остаются двумя ключами; свести их значило бы испортить и то, и другое.
+       По той же причине живут отдельно сокращения `doc.ps.regs.*` («тел»,
+       «авто») — это подписи внутри строки списка, а не заголовки. */
+    'doc.ps.field.lastName': 'Фамилия',
+    'doc.ps.field.firstName': 'Имя',
+    'doc.ps.field.address': 'Адрес проживания',
+    'doc.ps.field.email': 'Email',
+    'doc.ps.field.phone': 'Телефон',
+    'doc.ps.field.language': 'Язык учебника',
+    'doc.ps.field.format': 'Формат учебника',
+    'doc.ps.field.attending': 'Присутствие',
+    'doc.ps.field.lodging': 'Ночлег',
+    'doc.ps.field.transport': 'Транспорт',
+    'doc.ps.field.notes': 'Доп. сведения',
+
+    /* ── Куда и до какого числа сдавать формуляр ───────────────────────────
+       Один и тот же текст печатается на бланке, показывается на онлайн-
+       странице и вставляется в интерактивный PDF. До сведения это были три
+       набора ключей с тремя слегка разными формулировками одной мысли.
+
+       ПУНКТУАЦИИ И ПЛЕЙСХОЛДЕРОВ ЗДЕСЬ НЕТ НАМЕРЕННО. Двоеточие, дефис
+       списка и подстановку значения дорисовывает тот, кто выводит строку
+       (`_withColon` в генераторе, разметка в register.html). Переводчик
+       получает чистую подпись: в части языков пунктуация другая, и помнить
+       про неё он не обязан. */
+    'doc.ps.send.deadline': 'Заполненный формуляр необходимо отправить не позднее',
+    'doc.ps.send.how': 'Способ отправки',
+    'doc.ps.send.by_email': 'на адрес электронной почты',
+    'doc.ps.send.by_whatsapp': 'через WhatsApp',
+    'doc.ps.send.ask_elder': 'уточните у районного старейшины',
+    'doc.ps.send.to_email': 'Отправить по email',
+    'doc.ps.send.to_whatsapp': 'Отправить в WhatsApp',
     /* ---- Онлайн-анкета и интерактивный PDF: разделы ---- */
     'doc.ps.reg.section.personal': '1. Личные данные',
     'doc.ps.reg.section.attendance': '2. Участие в школе',
@@ -56,16 +97,11 @@
     'doc.ps.reg.section.extra': '6. Дополнительные сведения',
 
     /* ---- Онлайн-анкета: поля ---- */
-    'doc.ps.reg.field.lastName': 'Фамилия',
-    'doc.ps.reg.field.firstName': 'Имя',
-    'doc.ps.reg.field.address': 'Адрес проживания',
-    'doc.ps.reg.field.email': 'Email',
     'doc.ps.reg.field.phone': 'Телефон (WhatsApp)',
     'doc.ps.reg.field.attending': 'Будете ли вы присутствовать на Школе пионерского служения?',
     'doc.ps.reg.field.attendReason': 'Если нет — укажите причину',
     'doc.ps.reg.field.transport': 'Есть ли у вас автомобиль, на котором вы сможете самостоятельно добираться до Школы?',
     'doc.ps.reg.field.lodging': 'Нуждаетесь ли вы в месте для ночлега?',
-    'doc.ps.reg.field.language': 'Язык учебника',
     'doc.ps.reg.field.languageOther': 'Укажите необходимый язык',
     'doc.ps.reg.field.format': 'Формат учебника (можно выбрать несколько)',
     'doc.ps.reg.field.notes': 'Аллергии, особенности питания, состояние здоровья, другие важные замечания',
@@ -91,16 +127,11 @@
     'doc.ps.reg.title_page': 'Формуляр для Школы пионерского служения',
     'doc.ps.reg.closing': 'Пожалуйста, заполните и отправьте этот формуляр как можно скорее. Это поможет своевременно подготовить всё необходимое для проведения школы. Благодарим за сотрудничество!',
     'doc.ps.reg.cond_hint': '(только если выше выбрано «{option}»)',
-    'doc.ps.reg.ask_elder': 'уточните у районного старейшины',
 
     /* ---- Интерактивный PDF (pdfFormExport) ---- */
     'doc.ps.pdf.lead': 'Заполните поля прямо в этом PDF, сохраните файл и отправьте его обратно (см. контакты в конце документа).',
-    'doc.ps.pdf.deadline': 'Отправить заполненный формуляр не позднее: {date}',
-    'doc.ps.pdf.send_where': 'Куда отправлять заполненный файл:',
     'doc.ps.pdf.contact.email': 'Эл. почта',
-    'doc.ps.pdf.contact.phone': 'Телефон',
     'doc.ps.pdf.contact.whatsapp': 'WhatsApp',
-    'doc.ps.pdf.contact_none': '- уточните у районного старейшины',
     'doc.ps.pdf.contact_line': '- {label}: {value}',
 
     /* ---- Печатный бланк (pdfExport.downloadRegistrationBlankForm) ----
@@ -110,28 +141,15 @@
        только то, чего в онлайн-анкете нет в принципе: сопроводительный текст
        бумаги и инструкция по отправке. */
     'doc.ps.blank.lead': 'Пожалуйста, заполните и передайте районному старейшине как можно скорее.',
-    'doc.ps.blank.deadline': 'Заполненный формуляр необходимо отправить не позднее: {date}',
-    'doc.ps.blank.send_how': 'Способ отправки:',
-    'doc.ps.blank.send_email': '- на адрес электронной почты: {value}',
-    'doc.ps.blank.send_whatsapp': '- через WhatsApp: {value}',
 
     /* ---- Заполненный формуляр одной регистрации ---- */
     'doc.ps.rec.filled_at': 'Дата заполнения',
-    'doc.ps.rec.lastName': 'Фамилия',
-    'doc.ps.rec.firstName': 'Имя',
-    'doc.ps.rec.address': 'Адрес проживания',
-    'doc.ps.rec.email': 'Email',
-    'doc.ps.rec.phone': 'Телефон',
     'doc.ps.rec.attending': 'Смогу присутствовать на Школе',
     'doc.ps.rec.reason': 'Причина',
     'doc.ps.rec.transport': 'Могу приехать на своём транспорте',
     'doc.ps.rec.lodging': 'Нужен ночлег',
-    'doc.ps.rec.language': 'Язык учебника',
-    'doc.ps.rec.format': 'Формат учебника',
     'doc.ps.rec.notes': 'Дополнительные сведения',
     'doc.ps.rec.deadline': 'Срок сдачи формуляра',
-    'doc.ps.rec.to_email': 'Отправить на email',
-    'doc.ps.rec.to_whatsapp': 'Отправить в WhatsApp',
 
     /* ---- Списки и формуляры учащихся ---- */
     'doc.ps.list.students_title': 'Список учащихся — Школа пионерского служения',
@@ -174,19 +192,9 @@
     'doc.ps.csv.sheet_students': 'Учащиеся',
     'doc.ps.csv.metric': 'Показатель',
     'doc.ps.csv.value': 'Значение',
-    'doc.ps.csv.lastName': 'Фамилия',
-    'doc.ps.csv.firstName': 'Имя',
-    'doc.ps.csv.phone': 'Телефон',
-    'doc.ps.csv.email': 'Email',
-    'doc.ps.csv.address': 'Адрес',
-    'doc.ps.csv.attending': 'Присутствие',
     'doc.ps.csv.reason': 'Причина отсутствия',
-    'doc.ps.csv.transport': 'Транспорт',
-    'doc.ps.csv.lodging': 'Ночлег',
     'doc.ps.csv.language': 'Язык',
     'doc.ps.csv.languageOther': 'Другой язык',
-    'doc.ps.csv.format': 'Формат учебника',
-    'doc.ps.csv.notes': 'Доп. сведения',
     'doc.ps.csv.submittedAt': 'Дата отправки',
 
     /* ---- Публичная страница register.html ---- */
@@ -196,30 +204,15 @@
     'doc.ps.page.success': 'Спасибо! Формуляр заполнен и сохранён на этом устройстве. Пожалуйста, дополнительно отправьте копию районному старейшине — кнопки ниже откроют готовое письмо или сообщение WhatsApp с вашими данными.',
     'doc.ps.page.choose_lang': 'Выберите язык',
     'doc.ps.page.notes': 'Дополнительные сведения (например, аллергии, особенности питания, состояние здоровья, другие важные замечания)',
-    'doc.ps.page.deadline_label': 'Заполненный формуляр необходимо отправить не позднее:',
-    'doc.ps.page.send_how': 'Способ отправки:',
-    'doc.ps.page.by_email': 'на адрес электронной почты:',
-    'doc.ps.page.by_whatsapp': 'через WhatsApp:',
     'doc.ps.page.submit': 'Отправить формуляр',
     'doc.ps.page.download_pdf': 'Скачать формуляр (PDF)',
     'doc.ps.page.download_pdf_short': 'Скачать PDF',
-    'doc.ps.page.send_by_email': 'Отправить по email',
-    'doc.ps.page.send_by_whatsapp': 'Отправить в WhatsApp',
 
     /* ---- Текст письма/сообщения, который уходит старейшине ---- */
     'doc.ps.mail.subject': 'Регистрация — Школа пионерского служения',
     'doc.ps.sum.title': 'Регистрация на Школу пионерского служения',
     'doc.ps.sum.fullname': 'Фамилия Имя',
-    'doc.ps.sum.address': 'Адрес',
-    'doc.ps.sum.email': 'Email',
-    'doc.ps.sum.phone': 'Телефон',
-    'doc.ps.sum.attending': 'Присутствие',
     'doc.ps.sum.reason': 'причина',
-    'doc.ps.sum.transport': 'Транспорт',
-    'doc.ps.sum.lodging': 'Ночлег',
-    'doc.ps.sum.language': 'Язык учебника',
-    'doc.ps.sum.format': 'Формат учебника',
-    'doc.ps.sum.notes': 'Доп. сведения',
   } });
 
   /* ------------------------------------------------------------------
