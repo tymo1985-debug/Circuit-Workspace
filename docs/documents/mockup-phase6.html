@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Мокап писем Школы пионеров (фаза 6) — Circuit Workspace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6a45c9">
+<!-- Мокап фазы 6: первый документ в Школе пионеров.
+     Как и мокапы фаз 3 и 5, лежит внутри монорепо и тянет НАСТОЯЩИЙ
+     shared/style.css — иначе обсуждали бы вид, которого в приложении не будет.
+     Открывать по адресу /docs/documents/mockup-phase6.html на GitHub Pages
+     либо из локального клона.
+
+     Кода модуля здесь нет: учащиеся и «Назначение» выдуманы и вшиты в файл,
+     подстановка переменных имитируется простым replace. Обсуждаем поведение
+     экранов и ИМЕНА ПЕРЕМЕННЫХ, а не реализацию.
+
+     Решения Алекса 14.08.2026, по которым построен мокап:
+       • состав фазы 6 — только письмо учащемуся;
+       • вход в композер — и карточка учащегося, и экран «Назначение»;
+       • жирного начертания в PDF нет, звёздочки вычищаются. -->
+<link rel="stylesheet" href="../../shared/style.css">
+<style>
+  /* Акцент Школы пионеров — мокап показывает экраны внутри этого модуля. */
+  [data-module="pioneer-school"] {
+    --cw-module: #cebdff; --cw-module-container: #5127af;
+    --cw-module-on-container: #e8ddff; --cw-module-edge: #ffa9f0;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 90px; }
+  /* Собственные display сильнее браузерного правила для [hidden]. */
+  [hidden] { display: none !important; }
+
+  .mock-note {
+    margin: 12px 0 22px; padding: 12px 16px;
+    border-left: 3px solid var(--cw-module-edge);
+    background: var(--md-surface-container-low);
+    border-radius: 0 var(--md-radius-xs) var(--md-radius-xs) 0;
+    font-size: 13px; color: var(--md-on-surface-variant);
+  }
+  .mock-note b { color: var(--md-on-surface); }
+  .mock-note + .mock-note { margin-top: -14px; }
+  .mock-h { margin: 34px 0 6px; font: 500 13px/18px var(--md-font-family);
+    letter-spacing: .6px; text-transform: uppercase; color: var(--md-on-surface-variant); }
+  h1 { font: 500 22px/28px var(--md-font-family); margin: 0 0 4px; }
+  .lead { color: var(--md-on-surface-variant); font-size: 13.5px; margin: 0 0 8px; }
+
+  .cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+
+  /* ── Карточки экранов ── */
+  .card { border: 1px solid var(--line); border-radius: var(--md-radius-md);
+    background: var(--md-surface-container-low); padding: 16px; }
+  .card h3 { margin: 0 0 2px; font: 500 16px/22px var(--md-font-family); }
+  .card .sub { font-size: 12.5px; color: var(--md-on-surface-variant); margin-bottom: 14px; }
+  .row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0;
+    border-top: 1px solid var(--line); font-size: 13px; }
+  .row span:first-child { color: var(--md-on-surface-variant); }
+  .card-actions { display: grid; gap: 8px; margin-top: 14px; }
+
+  /* ── Меню «Создать документ» (экран «Назначение») ── */
+  .menu-wrap { position: relative; }
+  .menu {
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20;
+    border: 1px solid var(--line); border-radius: var(--md-radius-md);
+    background: var(--md-surface-container-high);
+    box-shadow: 0 18px 44px rgba(0,0,0,.34); padding: 6px; display: none;
+    max-height: 320px; overflow: auto;
+  }
+  .menu.open { display: block; }
+  .menu button {
+    display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left;
+    background: none; border: 0; color: inherit; cursor: pointer; font-family: inherit;
+    padding: 10px 12px; border-radius: var(--md-radius-xs);
+  }
+  .menu button:hover { background: var(--md-surface-container-highest); }
+  .mi-name { font: 500 14px/18px var(--md-font-family); }
+  .mi-sub { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
+  .menu-hint { padding: 8px 12px 6px; font-size: 11.5px; color: var(--md-on-surface-variant); }
+
+  /* ── Список учащихся ── */
+  .stud { display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-top: 1px solid var(--line); }
+  .stud:first-of-type { border-top: 0; }
+  .stud-name { font: 500 14px/18px var(--md-font-family); }
+  .stud-sub { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 1px; }
+  .stud-spacer { flex: 1 1 auto; }
+  .avatar { flex: 0 0 34px; height: 34px; border-radius: 50%;
+    background: var(--cw-module-container); color: var(--cw-module-on-container);
+    display: grid; place-items: center; font: 500 13px/1 var(--md-font-family); }
+
+  /* ── Композер ── */
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 40; display: none; }
+  .backdrop.open { display: block; }
+  .composer {
+    position: fixed; z-index: 50; inset: 4vh 50% auto auto; transform: translateX(50%);
+    width: min(720px, 94vw); max-height: 92vh; display: none; flex-direction: column;
+    border: 1px solid var(--line); border-radius: var(--md-radius-lg);
+    background: var(--md-surface-container); box-shadow: 0 30px 70px rgba(0,0,0,.5);
+  }
+  .composer.open { display: flex; }
+  .cmp-head { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--line); }
+  .cmp-title { font: 500 16px/21px var(--md-font-family); }
+  .cmp-sub { font-size: 12.5px; color: var(--md-on-surface-variant); margin-top: 2px; }
+  .cmp-spacer { flex: 1 1 auto; }
+  .cmp-scroll { overflow: auto; padding: 18px; flex: 1 1 auto; }
+
+  /* Лист бумаги: сознательно НЕ наследует шрифт приложения — на бумаге будет
+     свой. Показываем то, что напечатается. */
+  .paper {
+    background: #fdfdfb; color: #16251d; border-radius: var(--md-radius-xs);
+    padding: 26px 30px; font: 13.5px/1.62 Georgia, "Times New Roman", serif;
+    white-space: pre-wrap; min-height: 260px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+  }
+  .paper:focus { outline: 2px solid var(--cw-module-edge); outline-offset: 2px; }
+  .paper .ph { background: #ffe9a8; border-radius: 3px; padding: 0 2px; }
+
+  .cmp-foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+  .cmp-foot .cmp-spacer { flex: 1 1 auto; }
+
+  .flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    color: var(--md-on-surface-variant); }
+
+  /* ── Таблица переменных ── */
+  table.vars { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+  table.vars th, table.vars td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.vars th { color: var(--md-on-surface-variant); font-weight: 500; }
+  table.vars code { font-size: 12px; }
+  .src { color: var(--md-on-surface-variant); }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: var(--md-inverse-surface); color: var(--md-inverse-on-surface);
+    padding: 11px 18px; border-radius: var(--md-radius-sm); font-size: 13px;
+    z-index: 60; opacity: 0; pointer-events: none; transition: opacity .18s; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body data-module="pioneer-school">
+<div class="wrap">
+
+  <h1>Письма Школы пионеров — фаза 6</h1>
+  <p class="lead">Мокап поведения. Данные учащихся и «Назначения» выдуманы, подстановка имитируется.</p>
+
+  <div class="mock-note">
+    <b>Что решаем этим мокапом:</b> (1) два входа в композер и число кликов;
+    (2) имена переменных <code>student.*</code> и <code>school.*</code> — их
+    менять после выпуска будет уже нельзя;
+    (3) текст-заготовку системного шаблона.
+  </div>
+  <div class="mock-note">
+    <b>Почему из карточки учащегося меню нет.</b> Документ в фазе 6 один, и меню
+    из одного пункта — лишний клик. Появится второй документ — появится меню, как
+    в Клиндарии. Из «Назначения» меню нужно всегда: там пунктами идут учащиеся,
+    иначе непонятно, кому письмо.
+  </div>
+
+  <div class="cols">
+
+    <!-- ══════════ Вход 1: карточка учащегося ══════════ -->
+    <div>
+      <div class="mock-h">Вход 1 — экран «Учащиеся»</div>
+      <div class="card">
+        <h3>Учащиеся</h3>
+        <div class="sub">Школа 12–17 октября 2026 · 4 человека</div>
+        <div id="studentList"></div>
+      </div>
+      <div class="mock-note" style="margin-top:14px">
+        Кнопка «Документ» — на верхнем уровне строки, не под «⋯». Один клик до
+        предпросмотра: тип документа известен, язык берётся из
+        <code>CWDocLang</code>, источник данных — сам учащийся.
+      </div>
+    </div>
+
+    <!-- ══════════ Вход 2: экран «Назначение» ══════════ -->
+    <div>
+      <div class="mock-h">Вход 2 — экран «Назначение»</div>
+      <div class="card">
+        <h3>Назначение на Школу пионерского служения</h3>
+        <div class="sub">Данные из <code>meta.assignment</code></div>
+        <div class="row"><span>Даты</span><span>12 — 17 октября 2026</span></div>
+        <div class="row"><span>Место</span><span>Зал Царства, Варшава-Бемово</span></div>
+        <div class="row"><span>Преподаватель A</span><span>Алексей Тимощук</span></div>
+        <div class="row"><span>Преподаватель B</span><span>Якуб Ульфик</span></div>
+        <div class="card-actions">
+          <div class="menu-wrap">
+            <button class="md-btn md-btn-filled md-btn-full" id="asgBtn" aria-expanded="false">
+              Создать документ
+            </button>
+            <div class="menu" id="asgMenu" role="menu">
+              <div class="menu-hint">Приглашение на школу · RU</div>
+              <div id="asgMenuItems"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-note" style="margin-top:14px">
+        Два клика: кнопка → учащийся → предпросмотр. Пункты меню — учащиеся, а не
+        типы документов, потому что тип здесь ровно один, а адресат неизвестен.
+        Учащиеся со статусом «выбыл» в меню не попадают.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Переменные ══════════ -->
+  <div class="mock-h">Переменные письма и откуда берутся значения</div>
+  <div class="card">
+    <div class="sub">
+      Алиасов нет и не нужно: у пользователей нет ни одного старого шаблона Школы —
+      переименовывать нечего. Зато имена, выпущенные сейчас, станут вечными.
+    </div>
+    <table class="vars">
+      <thead><tr><th style="width:34%">Переменная</th><th style="width:33%">Источник в модуле</th><th>Пример</th></tr></thead>
+      <tbody id="varTable"></tbody>
+    </table>
+  </div>
+
+  <div class="mock-note" style="margin-top:16px">
+    <b>Обращение и род.</b> У учащегося в базе нет поля пола, а на школу приглашают
+    и братьев, и сестёр. В заготовке стоит «Дорогой брат / дорогая сестра» — так
+    письмо корректно, но неряшливо. Автоматический выбор потребует нового поля
+    <code>gender</code> у учащегося и правки анкеты — это отдельная задача, не фаза 6.
+  </div>
+
+  <!-- ══════════ Композер ══════════ -->
+  <div class="backdrop" id="backdrop"></div>
+  <div class="composer" id="composer" role="dialog" aria-modal="true" aria-labelledby="cmpTitle">
+    <div class="cmp-head">
+      <div>
+        <div class="cmp-title" id="cmpTitle">Приглашение на школу</div>
+        <div class="cmp-sub" id="cmpSub">—</div>
+      </div>
+      <div class="cmp-spacer"></div>
+      <button class="md-icon-btn" id="cmpClose" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="cmp-scroll">
+      <div class="paper" id="paper"></div>
+    </div>
+    <div class="cmp-foot">
+      <button class="md-btn md-btn-tonal" id="cmpEdit">Правка на один раз</button>
+      <label class="flag"><input type="checkbox" id="showPh"> показать переменные</label>
+      <div class="cmp-spacer"></div>
+      <button class="md-btn md-btn-outlined" id="cmpSave">В историю</button>
+      <button class="md-btn md-btn-outlined" id="cmpPrint">Печать</button>
+      <button class="md-btn md-btn-filled" id="cmpPdf">PDF</button>
+    </div>
+  </div>
+
+  <div class="mock-h">Поведение композера</div>
+  <div class="card">
+    <div class="row"><span>Язык</span><span>не спрашивается — <code>CWDocLang</code> Школы</span></div>
+    <div class="row"><span>Правка</span><span>разовая, ставит <code>edited: true</code> в момент включения</span></div>
+    <div class="row"><span>Снимок в архив</span><span>печать · PDF · кнопка «В историю». Предпросмотр — нет</span></div>
+    <div class="row"><span>Ссылка снимка</span><span><code>ref: { module: 'pioneer-school', entity: 'student', id }</code></span></div>
+    <div class="row"><span>Шапка отправителя</span><span>рисует сборщик PDF, в редактируемое тело не входит</span></div>
+    <div class="row"><span>Жирный</span><span>нет: субсет DejaVu только normal, <code>**</code> вычищаются</span></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Выдуманные данные ─────────────────────────────────────────────── */
+  var SCHOOL = {
+    startDate: '12 октября 2026 г.',
+    endDate: '17 октября 2026 г.',
+    place: 'Зал Царства, Варшава-Бемово',
+    teacherA: 'Алексей Тимощук',
+    teacherB: 'Якуб Ульфик',
+    registrationDeadline: '20 сентября 2026 г.',
+    registrationEmail: 'school@example.com',
+    registrationWhatsapp: '+48 000 000 000'
+  };
+  var SENDER = { name: 'Алексей Тимощук', code: 'EU-K-01', phone1: '+48 000 000 000', email: 'mail@example.com' };
+  var STUDENTS = [
+    { id: 's1', firstName: 'Елена',  lastName: 'Коваль',   congregation: 'Варшава-Бемово', status: 'listed' },
+    { id: 's2', firstName: 'Андрей', lastName: 'Петренко', congregation: 'Варшава-Воля',   status: 'listed' },
+    { id: 's3', firstName: 'Мария',  lastName: 'Сидорук',  congregation: 'Прушкув',        status: 'listed' },
+    { id: 's4', firstName: 'Игорь',  lastName: 'Мельник',  congregation: 'Варшава-Бемово', status: 'withdrawn' }
+  ];
+
+  /* ── Текст-заготовка системного шаблона (колонка ru) ────────────────
+     Формат `text`: правится в модуле «Документы» обычным полем. Это ЗАГОТОВКА —
+     окончательный текст пишет Алекс, а переводы uk/en/pl/de остаются пустыми
+     до носителей языка. */
+  var TEMPLATE =
+    'Дорогой брат / дорогая сестра {{student.firstName}}!\n' +
+    '\n' +
+    'Рад сообщить, что ты приглашён(а) на Школу пионерского служения.\n' +
+    '\n' +
+    'Даты: {{school.startDate}} — {{school.endDate}}\n' +
+    'Место: {{school.place}}\n' +
+    'Преподаватели: {{school.teacherA}}, {{school.teacherB}}\n' +
+    '\n' +
+    'Пожалуйста, заполни формуляр учащегося до {{school.registrationDeadline}} и\n' +
+    'отправь его на {{school.registrationEmail}} или через WhatsApp {{school.registrationWhatsapp}}.\n' +
+    '\n' +
+    'Если у тебя возникнут вопросы, пиши или звони мне.\n' +
+    '\n' +
+    'Твой брат,\n' +
+    '{{sender.name}}\n' +
+    '{{sender.code}}\n' +
+    '{{sender.phone1}} · {{sender.email}}';
+
+  /* ── Реестр переменных для таблицы ─────────────────────────────────── */
+  var VARS = [
+    ['student.firstName',   'students → values.firstName',           'Елена'],
+    ['student.lastName',    'students → values.lastName',            'Коваль'],
+    ['student.congregation','students → values.congregation (строка, не справочник)', 'Варшава-Бемово'],
+    ['student.email',       'students → values.email',               '—'],
+    ['student.phone',       'students → values.phone',               '—'],
+    ['school.startDate',    'meta.assignment.startDate',             '12 октября 2026 г.'],
+    ['school.endDate',      'meta.assignment.endDate',               '17 октября 2026 г.'],
+    ['school.place',        'meta.assignment.location',              'Зал Царства, Варшава-Бемово'],
+    ['school.teacherA',     'meta.assignment.teacherA',              'Алексей Тимощук'],
+    ['school.teacherB',     'meta.assignment.teacherB',              'Якуб Ульфик'],
+    ['school.registrationDeadline',  'meta.registrationConfig.deadline', '20 сентября 2026 г.'],
+    ['school.registrationEmail',     'meta.registrationConfig.email',    'school@example.com'],
+    ['school.registrationWhatsapp',  'meta.registrationConfig.whatsapp', '+48 000 000 000'],
+    ['sender.*',            'shared/sender.js — общий слой',          'Алексей Тимощук'],
+    ['doc.today',           'движок shared/templates.js',             '14 августа 2026 г.']
+  ];
+
+  /* ── Утилиты ───────────────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function values(student) {
+    return {
+      'student.firstName': student.firstName,
+      'student.lastName': student.lastName,
+      'student.congregation': student.congregation,
+      'school.startDate': SCHOOL.startDate,
+      'school.endDate': SCHOOL.endDate,
+      'school.place': SCHOOL.place,
+      'school.teacherA': SCHOOL.teacherA,
+      'school.teacherB': SCHOOL.teacherB,
+      'school.registrationDeadline': SCHOOL.registrationDeadline,
+      'school.registrationEmail': SCHOOL.registrationEmail,
+      'school.registrationWhatsapp': SCHOOL.registrationWhatsapp,
+      'sender.name': SENDER.name,
+      'sender.code': SENDER.code,
+      'sender.phone1': SENDER.phone1,
+      'sender.email': SENDER.email
+    };
+  }
+  /* Имитация движка: неизвестный плейсхолдер остаётся в тексте видимым —
+     ровно так же, как в shared/templates.js. */
+  function render(student, raw) {
+    var map = values(student);
+    return esc(TEMPLATE).replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, function (all, key) {
+      if (raw) return '<span class="ph">' + esc(all) + '</span>';
+      return Object.prototype.hasOwnProperty.call(map, key)
+        ? esc(map[key])
+        : '<span class="ph">' + esc(all) + '</span>';
+    });
+  }
+  function toast(text) {
+    var el = document.getElementById('toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+
+  /* ── Список учащихся ───────────────────────────────────────────────── */
+  var listBox = document.getElementById('studentList');
+  listBox.innerHTML = STUDENTS.map(function (s) {
+    var initials = esc(s.firstName[0] + s.lastName[0]);
+    var withdrawn = s.status === 'withdrawn';
+    return '<div class="stud">'
+      + '<div class="avatar">' + initials + '</div>'
+      + '<div><div class="stud-name">' + esc(s.lastName + ' ' + s.firstName) + '</div>'
+      + '<div class="stud-sub">' + esc(s.congregation) + (withdrawn ? ' · выбыл' : '') + '</div></div>'
+      + '<div class="stud-spacer"></div>'
+      + '<button class="md-btn md-btn-tonal" data-student="' + s.id + '"'
+      + (withdrawn ? ' disabled' : '') + '>Документ</button>'
+      + '</div>';
+  }).join('');
+
+  listBox.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-student]');
+    if (btn) openComposer(btn.dataset.student, 'карточка учащегося');
+  });
+
+  /* ── Меню на экране «Назначение» ───────────────────────────────────── */
+  var asgBtn = document.getElementById('asgBtn');
+  var asgMenu = document.getElementById('asgMenu');
+  document.getElementById('asgMenuItems').innerHTML = STUDENTS
+    .filter(function (s) { return s.status !== 'withdrawn'; })
+    .map(function (s) {
+      return '<button type="button" role="menuitem" data-student="' + s.id + '">'
+        + '<span><span class="mi-name">' + esc(s.lastName + ' ' + s.firstName) + '</span>'
+        + '<span class="mi-sub">' + esc(s.congregation) + '</span></span></button>';
+    }).join('');
+
+  asgBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = asgMenu.classList.toggle('open');
+    asgBtn.setAttribute('aria-expanded', String(open));
+  });
+  asgMenu.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-student]');
+    if (!btn) return;
+    asgMenu.classList.remove('open');
+    asgBtn.setAttribute('aria-expanded', 'false');
+    openComposer(btn.dataset.student, 'экран «Назначение»');
+  });
+  document.addEventListener('click', function () {
+    asgMenu.classList.remove('open');
+    asgBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  /* ── Таблица переменных ────────────────────────────────────────────── */
+  document.getElementById('varTable').innerHTML = VARS.map(function (v) {
+    return '<tr><td><code>{{' + esc(v[0]) + '}}</code></td>'
+      + '<td class="src">' + esc(v[1]) + '</td>'
+      + '<td>' + esc(v[2]) + '</td></tr>';
+  }).join('');
+
+  /* ── Композер ──────────────────────────────────────────────────────── */
+  var composer = document.getElementById('composer');
+  var backdrop = document.getElementById('backdrop');
+  var paper = document.getElementById('paper');
+  var showPh = document.getElementById('showPh');
+  var editBtn = document.getElementById('cmpEdit');
+  var current = null;
+
+  function openComposer(id, from) {
+    var student = STUDENTS.filter(function (s) { return s.id === id; })[0];
+    if (!student) return;
+    current = { student: student, edited: false };
+    document.getElementById('cmpSub').textContent =
+      student.lastName + ' ' + student.firstName + ' · RU · вход: ' + from;
+    showPh.checked = false;
+    paper.contentEditable = 'false';
+    editBtn.textContent = 'Правка на один раз';
+    paper.innerHTML = render(student, false);
+    composer.classList.add('open');
+    backdrop.classList.add('open');
+  }
+  function close() {
+    composer.classList.remove('open');
+    backdrop.classList.remove('open');
+    current = null;
+  }
+  document.getElementById('cmpClose').addEventListener('click', close);
+  backdrop.addEventListener('click', close);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  showPh.addEventListener('change', function () {
+    if (!current) return;
+    if (current.edited) {
+      /* После разовой правки переключать нечего: подстановка уже выполнена
+         и текст принадлежит человеку, а не шаблону. */
+      showPh.checked = false;
+      return toast('После правки переменные уже подставлены');
+    }
+    paper.innerHTML = render(current.student, showPh.checked);
+  });
+
+  editBtn.addEventListener('click', function () {
+    if (!current) return;
+    if (current.edited) return;
+    current.edited = true;
+    showPh.checked = false;
+    paper.innerHTML = render(current.student, false);
+    paper.contentEditable = 'true';
+    paper.focus();
+    editBtn.textContent = 'Правка включена · edited: true';
+    toast('Снимок будет помечен edited — даже если текст вернуть как был');
+  });
+
+  document.getElementById('cmpPrint').addEventListener('click', function () {
+    toast('Печать в изолированном окне + снимок в архив (reason: print)');
+  });
+  document.getElementById('cmpPdf').addEventListener('click', function () {
+    toast('PDF на встроенном DejaVu, без жирного + снимок в архив');
+  });
+  document.getElementById('cmpSave').addEventListener('click', function () {
+    toast('Снимок в архив (reason: manual)');
+  });
+})();
+</script>
+</body>
+</html>
