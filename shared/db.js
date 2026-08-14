@@ -26,7 +26,7 @@
   'use strict';
 
   const DB_NAME = 'circuit-workspace-db';
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
 
   /** Схема хранилищ: имя store → keyPath + индексы */
   const STORES = {
@@ -42,6 +42,20 @@
        Работать с этим хранилищем напрямую модули не должны: единственная
        точка входа — CWTemplates (shared/templates.js). */
     templates:   { keyPath: 'id', indexes: ['context', 'module'] },
+    /* Архив выданных документов (v3, 13.08.2026). Запись появляется только в
+       момент, когда документ ПОКИНУЛ приложение: печать, выгрузка PDF,
+       отправка письма, либо явное «сохранить». Предпросмотр и черновое
+       редактирование сюда не попадают — иначе архив превращается в шум из
+       почти одинаковых записей.
+       `body` хранится уже подставленным: именно это делает историю
+       неизменной. Шаблон потом можно править сколько угодно — то, что ушло
+       людям, останется как ушло.
+       `entityKey` — плоская склейка `module:entity:id`. Индекс по вложенному
+       `ref.module` формально возможен, но плоский ключ надёжнее переживает
+       восстановление копии, где вложенный объект мог прийти неполным.
+       Работать напрямую модули не должны: точка входа — CWDocs
+       (shared/documents.js). */
+    documents:   { keyPath: 'id', indexes: ['entityKey', 'module', 'createdAt', 'templateId'] },
   };
 
   let dbPromise = null;
@@ -110,6 +124,18 @@
         const store = await tx(storeName, 'readonly');
         const result = await promisifyRequest(store.get(id));
         return result === undefined ? null : result;
+      },
+
+      /**
+       * Все записи, у которых значение индексируемого поля равно value.
+       * Нужна архиву документов: выбирать историю одной сущности перебором
+       * всего хранилища значит вычитывать чужие письма ради своих.
+       * Несуществующий индекс — это ошибка схемы, а не пустой результат,
+       * поэтому она пробрасывается наружу, а не глотается.
+       */
+      async byIndex(indexName, value) {
+        const store = await tx(storeName, 'readonly');
+        return promisifyRequest(store.index(indexName).getAll(value));
       },
 
       /** Добавить запись; если record.id не задан — генерируется автоматически. Возвращает id. */
@@ -182,6 +208,8 @@
     roles: makeCrud('roles', 'role'),
     /** Пользовательские версии шаблонов документов. Через CWTemplates, не напрямую. */
     templates: makeCrud('templates', 'tpl'),
+    /** Архив выданных документов. Через CWDocs (shared/documents.js), не напрямую. */
+    documents: makeCrud('documents', 'doc'),
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,

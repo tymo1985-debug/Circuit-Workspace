@@ -28,6 +28,7 @@
 <script src="../shared/templates/namespaces.js"></script>
 <script src="../shared/templates/builtin.js"></script>
 <script src="../shared/templates.js"></script>
+<script src="../shared/documents.js"></script>
 </head>
 <!-- data-module у модуля НЕТ намеренно: «Документы» держат общую фирменную
      палитру хаба (сид #6a45c9), а не собственный акцент. Решение Алекса:
@@ -56,6 +57,15 @@
 
 <div class="doc-wrap">
 
+  <!-- Два раздела модуля: что БУДЕТ напечатано (шаблоны) и что УЖЕ напечатано
+       (архив). Разделены намеренно: в библиотеке текст правится и меняется,
+       в архиве — не меняется никогда. -->
+  <nav class="doc-screens" id="screens" role="group" aria-labelledby="screensLabel">
+    <button type="button" class="md-chip md-chip-full" data-screen="library" aria-pressed="true" data-i18n="doc.tab_library">Шаблоны</button>
+    <button type="button" class="md-chip" data-screen="archive" aria-pressed="false" data-i18n="doc.tab_archive">Архив</button>
+  </nav>
+  <span class="sr-only" id="screensLabel" data-i18n="doc.screens_label">Раздел модуля</span>
+
   <!-- ═══════════ Библиотека ═══════════ -->
   <section id="screenLibrary">
     <div class="doc-toolbar">
@@ -79,6 +89,23 @@
     <span class="sr-only" id="filtersLabel" data-i18n="doc.filters_label">Фильтр по модулю</span>
 
     <div class="doc-list" id="list"></div>
+  </section>
+
+  <!-- ═══════════ Архив ═══════════ -->
+  <section id="screenArchive" hidden>
+    <p class="doc-hint" data-i18n="doc.archive_hint">Здесь то, что уже покинуло приложение: напечатанные и отправленные документы. Текст сохранён таким, каким он ушёл, и правка шаблона его не меняет.</p>
+
+    <div class="doc-toolbar">
+      <div class="md-field doc-search">
+        <input type="text" id="archiveSearch" placeholder=" " autocomplete="off">
+        <label for="archiveSearch" data-i18n="doc.archive_search_label">Поиск по тексту и получателю</label>
+      </div>
+    </div>
+
+    <div class="doc-filters" id="archiveFilters" role="group" aria-labelledby="archiveFiltersLabel"></div>
+    <span class="sr-only" id="archiveFiltersLabel" data-i18n="doc.filters_label">Фильтр по модулю</span>
+
+    <div class="doc-archive" id="archiveList"></div>
   </section>
 
   <!-- ═══════════ Редактор ═══════════ -->

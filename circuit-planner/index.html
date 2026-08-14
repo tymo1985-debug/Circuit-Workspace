@@ -233,6 +233,10 @@ body::before{display:none !important}
 .send-control-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
 .send-control-title{font-weight:800;font-size:13px}
 .send-control-hint{color:var(--muted);font-size:11px;margin-top:2px}
+/* Снимок выданного документа в модалке «Документы визита». Текст письма
+   приходит из RTE и может содержать длинные неразрывные вставки — без
+   overflow-wrap карточка растягивает модалку по горизонтали. */
+.doc-snapshot{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .send-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
 .send-card.is-pending{border-color:rgba(var(--danger-rgb),.45);background:rgba(var(--danger-rgb),.07)}
@@ -317,6 +321,8 @@ body::before{display:none !important}
 <script src="../shared/templates/namespaces.js"></script>
 <script src="../shared/templates/builtin.js"></script>
 <script src="../shared/templates.js"></script>
+<!-- Архив выданных документов: снимок письма в момент печати и отправки. -->
+<script src="../shared/documents.js"></script>
 <!-- Язык документа (формуляр визита, письмо) — отдельно от языка интерфейса. -->
 <script src="../shared/doclang.js"></script>
 <script src="i18n/dict.js"></script>
@@ -629,7 +635,18 @@ body::before{display:none !important}
       <div data-i18n="cp.entry_text_hint" class="small" style="margin-top:6px;color:var(--muted)">Этот текст сохранён именно для данной записи и с этого момента не следует за изменениями шаблона по умолчанию в Настройках. Если недавно менял шаблон по умолчанию и хочешь применить его здесь — используй кнопку ниже (текущий текст будет заменён).</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button data-i18n="cp.replace_with_default" class="md-btn md-btn-outlined md-state-layer" id="letterEmailBodyResetToDefaultBtn" type="button">↺ Заменить на текущий текст по умолчанию</button><button class="md-btn md-btn-outlined md-state-layer copy-btn" type="button" data-copy-input="letterEmailBodyInput" title="Скопировать текст сообщения" data-i18n-title="cp.a_copy_body" aria-label="Скопировать текст сообщения" data-i18n-aria-label="cp.a_copy_body"><span data-i18n="cp.copy_text">📋 Скопировать текст</span></button></div>
       <div class="small" id="letterAttachStatus" style="margin-top:8px"></div>
-      <div class="editor-actions"><button data-i18n="cp.attach_pdf" class="md-btn md-btn-outlined md-state-layer" id="letterPreviewPdfBtn" type="button">📄 Прикрепить PDF-документ</button><button data-i18n="cp.attach_schedule" class="md-btn md-btn-outlined md-state-layer" id="letterAttachPdfBtn" type="button">📎 Прикрепить график визитов</button><button data-i18n="cp.send_email" class="md-btn md-btn-filled md-state-layer" id="letterSendBtn" type="button">📤 Отправить электронное письмо</button></div>
+      <div class="editor-actions"><button data-i18n="cp.attach_pdf" class="md-btn md-btn-outlined md-state-layer" id="letterPreviewPdfBtn" type="button">📄 Прикрепить PDF-документ</button><button data-i18n="cp.attach_schedule" class="md-btn md-btn-outlined md-state-layer" id="letterAttachPdfBtn" type="button">📎 Прикрепить график визитов</button><button data-i18n="cp.docs_save_manual" class="md-btn md-btn-outlined md-state-layer" id="letterSnapshotBtn" type="button">🗂 Сохранить в историю</button><button data-i18n="cp.send_email" class="md-btn md-btn-filled md-state-layer" id="letterSendBtn" type="button">📤 Отправить электронное письмо</button></div>
+    </div>
+  </div>
+  <!-- Архив выданных документов по одному визиту. Не путать с historyModal:
+       тот показывает контрольные точки ВСЕХ данных приложения, а этот —
+       бумаги, которые уже ушли собранию. -->
+  <div class="modal" id="visitDocsModal" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><div><h3 data-i18n="cp.docs_title">🗂 Документы визита</h3><div class="modal-sub" id="visitDocsSub">—</div></div><button class="icon-btn" id="visitDocsCloseBtn" type="button" aria-label="Закрыть" data-i18n-aria-label="cp.a_close">✕</button></div>
+      <div data-i18n="cp.docs_hint" class="small" style="margin-bottom:10px">Здесь остаётся то, что уже ушло из приложения: напечатанные и отправленные бумаги. Текст сохранён таким, каким он ушёл, и не меняется вместе с шаблоном.</div>
+      <div id="visitDocsList" class="grid"></div>
+      <div class="editor-actions"><button data-i18n="cp.reminders_close" class="md-btn md-btn-filled md-state-layer" id="visitDocsCloseBtn2" type="button">Закрыть</button></div>
     </div>
   </div>
   <div class="modal" id="historyModal" hidden>

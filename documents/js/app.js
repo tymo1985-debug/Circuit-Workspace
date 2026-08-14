@@ -50,6 +50,7 @@
   };
 
   var state = {
+    screen: 'library',
     filter: 'all',
     search: '',
     id: null,
@@ -155,6 +156,166 @@
         + '<span class="md-chip">' + escapeHtml(t(tpl.custom ? 'doc.badge_custom' : 'doc.badge_system')) + '</span>'
         + '</button>';
     }).join('');
+  }
+
+  /* ─────────────────────────  Архив  ─────────────────────────
+     Второй раздел модуля: документы, которые УЖЕ покинули приложение.
+     Отличие от библиотеки принципиальное и потому вынесено в отдельный экран:
+     в библиотеке текст правится, здесь он неизменен. Редактирования тут нет
+     вообще — только чтение, копирование и удаление записи.
+
+     Группировка по сущности, а не плоский список: все бумаги одного визита
+     нужны вместе, а плоский список из сотен писем нечитаем (правило из
+     docs/documents/00-proposal.md, раздел 11). */
+
+  var archive = { rows: null, search: '', filter: 'all', loading: false };
+
+  var ARCHIVE_FILTERS = [
+    { key: 'all', label: 'doc.filter_all' },
+    { key: 'congress-project', label: 'module.congress-project.title' },
+    { key: 'circuit-planner', label: 'module.circuit-planner.title' },
+  ];
+
+  function renderArchiveFilters() {
+    $('#archiveFilters').innerHTML = ARCHIVE_FILTERS.map(function (f) {
+      var on = archive.filter === f.key;
+      return '<button type="button" class="md-chip' + (on ? ' md-chip-full' : '') + '"'
+        + ' aria-pressed="' + on + '" data-afilter="' + f.key + '">' + escapeHtml(t(f.label)) + '</button>';
+    }).join('');
+  }
+
+  /** Вид документа — из контекста, как и в библиотеке. Своей таблицы нет. */
+  function docKind(doc) {
+    var ctx = String(doc.context || doc.templateId || '');
+    if (/\.email$/.test(ctx)) return t('doc.kind.email');
+    if (/\.salutation$/.test(ctx)) return t('doc.kind.salutation');
+    return doc.title || t('doc.kind.letter');
+  }
+
+  function reasonLabel(doc) {
+    var reasons = (doc.reasons && doc.reasons.length ? doc.reasons : [doc.reason]).filter(Boolean);
+    var map = { print: 'doc.reason_print', send: 'doc.reason_send', manual: 'doc.reason_manual' };
+    return reasons.map(function (r) { return t(map[r] || 'doc.reason_manual'); }).join(' · ');
+  }
+
+  function archiveMatches(doc) {
+    if (archive.filter !== 'all' && (doc.module || '') !== archive.filter) return false;
+    if (!archive.search) return true;
+    var q = archive.search.toLowerCase();
+    return String(doc.entityTitle || '').toLowerCase().indexOf(q) >= 0
+      || String(doc.subject || '').toLowerCase().indexOf(q) >= 0
+      || String(doc.body || '').toLowerCase().indexOf(q) >= 0;
+  }
+
+  /** Снимок в виде обычного текста — для копирования. */
+  function docPlainText(doc) {
+    if (doc.format !== 'html') return doc.body || '';
+    var box = document.createElement('div');
+    box.innerHTML = doc.body || '';
+    return box.innerText || box.textContent || '';
+  }
+
+  function docCardHtml(doc) {
+    var when = doc.lastAt || doc.createdAt;
+    var meta = [
+      when ? new Date(when).toLocaleString(self.CWI18n ? self.CWI18n.getLang() : 'ru') : '',
+      reasonLabel(doc),
+      String(doc.lang || '').toUpperCase(),
+      (doc.count || 1) > 1 ? t('doc.times', { n: doc.count }) : '',
+    ].filter(Boolean).join(' · ');
+    /* html-снимок показываем разметкой: она пришла из собственного редактора
+       писем модуля-владельца, а не извне. */
+    var body = doc.format === 'html'
+      ? (doc.body || '')
+      : '<div class="arc-plain">' + escapeHtml(doc.body || '') + '</div>';
+    var pages = (doc.pages || []).map(function (page, i) {
+      return '<div class="arc-page"><div class="doc-hint">' + escapeHtml(page.title || t('doc.page_n', { n: i + 2 })) + '</div>'
+        + (page.html || '') + '</div>';
+    }).join('');
+    return '<article class="arc-doc">'
+      + '<header class="arc-doc__head"><strong>' + escapeHtml(docKind(doc)) + '</strong>'
+      + '<span class="arc-doc__meta">' + escapeHtml(meta) + '</span></header>'
+      + (doc.subject ? '<p class="arc-doc__subject">' + escapeHtml(doc.subject) + '</p>' : '')
+      + '<details class="arc-doc__text"><summary>' + escapeHtml(t('doc.show_text')) + '</summary>'
+      + '<div class="arc-doc__body">' + body + pages + '</div></details>'
+      + '<div class="arc-doc__actions">'
+      + '<button type="button" class="md-btn md-btn-text md-state-layer" data-copy-doc="' + escapeHtml(doc.id) + '">' + escapeHtml(t('doc.copy')) + '</button>'
+      + '<button type="button" class="md-btn md-btn-text md-state-layer" data-del-doc="' + escapeHtml(doc.id) + '">' + escapeHtml(t('doc.delete_doc')) + '</button>'
+      + '</div></article>';
+  }
+
+  function renderArchive() {
+    var box = $('#archiveList');
+    if (archive.loading) { box.innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.archive_loading')) + '</div>'; return; }
+    if (!archive.rows) { box.innerHTML = ''; return; }
+    if (!archive.rows.length) { box.innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.archive_empty')) + '</div>'; return; }
+
+    var rows = archive.rows.filter(archiveMatches);
+    if (!rows.length) { box.innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.archive_nothing_found')) + '</div>'; return; }
+
+    /* Группы идут в порядке свежести своего последнего документа: сверху то,
+       чем занимались только что. */
+    var groups = [];
+    var index = {};
+    rows.forEach(function (doc) {
+      var key = doc.entityKey || (doc.ref ? [doc.ref.module, doc.ref.entity, doc.ref.id].join(':') : '');
+      if (!index[key]) { index[key] = { key: key, docs: [], doc: doc }; groups.push(index[key]); }
+      index[key].docs.push(doc);
+    });
+
+    box.innerHTML = groups.map(function (group) {
+      var head = group.doc;
+      var title = head.entityTitle || t('doc.archive_entity_gone');
+      var meta = [
+        head.module ? t('module.' + head.module + '.title') : '',
+        t('doc.archive_docs_count', { n: group.docs.length }),
+      ].filter(Boolean).join(' · ');
+      return '<section class="arc-group">'
+        + '<h3 class="arc-group__title">' + escapeHtml(title) + '</h3>'
+        + '<p class="arc-group__meta">' + escapeHtml(meta) + '</p>'
+        + group.docs.map(docCardHtml).join('')
+        + '</section>';
+    }).join('');
+  }
+
+  function loadArchive(force) {
+    if (!self.CWDocs || !self.CWDocs.available()) {
+      archive.rows = [];
+      renderArchive();
+      return;
+    }
+    if (archive.rows && !force) { renderArchive(); return; }
+    archive.loading = true;
+    renderArchive();
+    self.CWDocs.listAll().then(function (rows) {
+      archive.loading = false;
+      archive.rows = rows;
+      renderArchive();
+    }).catch(function (error) {
+      console.error('Документы: не удалось прочитать архив', error);
+      archive.loading = false;
+      archive.rows = [];
+      renderArchive();
+    });
+  }
+
+  function showScreen(name) {
+    /* Редактор — не раздел, а состояние библиотеки: уходя в архив, из него
+       выходим, иначе несохранённая правка осталась бы висеть невидимой. */
+    if (name !== 'library' && state.id) {
+      if (state.dirty && !window.confirm(t('doc.confirm_leave'))) return;
+      showLibrary();
+    }
+    state.screen = name;
+    $('#screenLibrary').hidden = name !== 'library' || !!state.id;
+    $('#screenEditor').hidden = !(name === 'library' && state.id);
+    $('#screenArchive').hidden = name !== 'archive';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-screen]'), function (btn) {
+      var on = btn.dataset.screen === name;
+      btn.classList.toggle('md-chip-full', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    if (name === 'archive') loadArchive(false);
   }
 
   /* ─────────────────────────  Редактор  ───────────────────────── */
@@ -508,6 +669,41 @@
       markDirty();
     });
 
+    $('#screens').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-screen]');
+      if (btn) showScreen(btn.dataset.screen);
+    });
+
+    $('#archiveFilters').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-afilter]');
+      if (!btn) return;
+      archive.filter = btn.dataset.afilter;
+      renderArchiveFilters();
+      renderArchive();
+    });
+
+    $('#archiveSearch').addEventListener('input', function (e) {
+      archive.search = e.target.value.trim();
+      renderArchive();
+    });
+
+    $('#archiveList').addEventListener('click', function (e) {
+      var copyBtn = e.target.closest('[data-copy-doc]');
+      if (copyBtn) {
+        var doc = (archive.rows || []).filter(function (d) { return d.id === copyBtn.dataset.copyDoc; })[0];
+        if (!doc) return;
+        var plain = docPlainText(doc);
+        var text = doc.subject ? doc.subject + '\n\n' + plain : plain;
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text);
+        status('doc.copied');
+        return;
+      }
+      var delBtn = e.target.closest('[data-del-doc]');
+      if (!delBtn) return;
+      if (!window.confirm(t('doc.confirm_delete_doc'))) return;
+      self.CWDocs.remove(delBtn.dataset.delDoc).then(function () { loadArchive(true); });
+    });
+
     $('#newTypeTplBtn').addEventListener('click', createTypeTemplate);
     $('#saveBtn').addEventListener('click', save);
     $('#resetBtn').addEventListener('click', resetToOriginal);
@@ -581,6 +777,7 @@
     bind();
     initDocLangSelect();
     renderFilters();
+    renderArchiveFilters();
 
     /* Библиотека без хранилища бессмысленна: показать системные тексты и
        промолчать о том, что правок пользователя не видно, было бы хуже, чем

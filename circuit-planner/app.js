@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.69.0',
+      version: '9.70.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1025,7 +1025,8 @@
           'eventCongNumberInput','eventFormLanguageSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
-          'letterModal','letterModalSub','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput',
+          'letterModal','letterModalSub','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
+          'visitDocsModal','visitDocsSub','visitDocsList','visitDocsCloseBtn','visitDocsCloseBtn2',
           'languageSelect','themeSelect','accentSelect','fontSizeSelect',
           'settingsPdfBtn','backupBtn','resetAppBtn','themeBtn','exportBtn','importInput','pdfModal','pdfModalCloseBtn',
           'pdfCancelBtn','pdfExportConfirmBtn','pdfRangeCard','pdfRangeStartInput','pdfRangeEndInput','pdfRangeHelp','pdfHint',
@@ -1782,12 +1783,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const pastResultRow = pastResult ? `<div class="side-row"><div class="side-label">${App.utils.t('last_visit_result')} (${App.utils.prettyDate(pastResult.end)})</div><div class="side-value">${App.utils.escapeHtml(pastResult.resultNote)}</div></div>` : '';
         const hasContact = event && (event.contactName || event.contactPhone || event.contactEmail || event.contactNote);
         const contactBlock = hasContact ? `<div class="send-control" style="margin-top:10px"><div class="send-control-title" style="margin-bottom:8px">${App.utils.t('contact_info')}</div>${event.contactName ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_name')}</div><div class="side-value">${App.utils.escapeHtml(event.contactName)}</div></div>` : ''}${event.contactPhone ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_phone')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="tel:${App.utils.escapeAttr(event.contactPhone.replace(/[^+\d]/g, ''))}">${App.utils.escapeHtml(event.contactPhone)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactPhone)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactEmail ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_email')}</div><div class="side-value" style="display:flex;align-items:center;gap:6px"><a href="mailto:${App.utils.escapeAttr(event.contactEmail)}">${App.utils.escapeHtml(event.contactEmail)}</a><button class="icon-btn copy-btn" type="button" data-copy-text="${App.utils.escapeAttr(event.contactEmail)}" title="${App.utils.escapeAttr(App.utils.t('copy'))}" aria-label="${App.utils.escapeAttr(App.utils.t('copy'))}">📋</button></div></div>` : ''}${event.contactNote ? `<div class="side-row"><div class="side-label">${App.utils.t('contact_note')}</div><div class="side-value">${App.utils.escapeHtml(event.contactNote)}</div></div>` : ''}</div>` : '';
-        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ ${App.utils.t('more_actions')}</summary><div class="actions-grid">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">${App.utils.t('visit_form_btn')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">${App.utils.t('make_s302')}</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
+        App.els.calendarSideDetails.innerHTML = `<div class="side-row"><div class="side-label">${App.utils.t('type')}</div><div class="side-value">${itemData.source === 'week' ? App.utils.t('type_week') : App.utils.t('type_entry')}</div></div><div class="side-row"><div class="side-label">${App.utils.t('template')}</div><div class="side-value">${App.utils.escapeHtml(event?.name || App.utils.t('no_template'))}</div></div>${visitTypeRow}<div class="side-row"><div class="side-label">${App.utils.t('address')}</div><div class="side-value">${addressHtml}</div></div><div class="side-row"><div class="side-label">${App.utils.t('schedule')}</div><div class="side-value">${App.utils.escapeHtml(event?.schedule || App.utils.t('no_schedule'))}</div></div><div class="side-row"><div class="side-label">${App.utils.t('note')}</div><div class="side-value">${App.utils.escapeHtml(itemData.note || App.utils.t('no_note'))}</div></div>${resultRow}${pastResultRow}${sendControls}${contactBlock}<div style="display:grid;gap:8px;margin-top:12px"><button class="md-btn md-btn-filled md-state-layer" type="button" id="detailEditBtn">${App.utils.t('edit')}</button><details class="more-actions"><summary>⋯ ${App.utils.t('more_actions')}</summary><div class="actions-grid">${itemData.source === 'entry' && event?.visitType ? `<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailVisitFormBtn">${App.utils.t('visit_form_btn')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailLetterBtn">✉ ${App.utils.t('compose_letter')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailDocsBtn">🗂 ${App.utils.t('docs_title_short')}</button><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailS302Btn">${App.utils.t('make_s302')}</button>` : ''}<button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailShareBtn">📤 ${App.utils.t('share')}</button><a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.googleCalendarUrl(itemData, event)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_calendar')}</a><button class="md-btn md-btn-outlined md-state-layer" type="button" id="detailIcsBtn">${App.utils.t('apple_calendar')}</button>${event?.address ? `<a class="md-btn md-btn-outlined md-state-layer" href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.t('google_maps')}</a>` : ''}</div></details></div>`;
         const editBtn = document.getElementById('detailEditBtn'); if (editBtn) editBtn.addEventListener('click', () => App.actions.openCalendarEditorForItem(itemData.id));
         const icsBtn = document.getElementById('detailIcsBtn'); if (icsBtn) icsBtn.addEventListener('click', () => App.actions.exportSingleEventIcs(itemData.id));
         document.getElementById('detailShareBtn')?.addEventListener('click', () => App.ui.shareWeekText(itemData, event));
         document.getElementById('detailVisitFormBtn')?.addEventListener('click', () => App.ui.openVisitForm(itemData.id));
         document.getElementById('detailLetterBtn')?.addEventListener('click', () => App.ui.openLetterModal(itemData.id));
+        document.getElementById('detailDocsBtn')?.addEventListener('click', () => App.ui.openVisitDocsModal(itemData.id));
         document.getElementById('detailS302Btn')?.addEventListener('click', () => App.ui.sendS302(itemData.refId));
         document.querySelectorAll('.copy-btn[data-copy-text]').forEach((btn) => btn.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation();
@@ -3005,6 +3007,201 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!self.CWTemplates) return String(tpl || '');
         return self.CWTemplates.render(tpl, this.letterData(entry, event));
       },
+      /* ═══════════════════════════════════════════════════════════════════
+         АРХИВ ВЫДАННЫХ ДОКУМЕНТОВ (фаза 4 общего слоя документов)
+
+         Снимок пишется ТОЛЬКО когда документ покинул приложение: выгрузка PDF
+         письма, отправка e-mail — либо по явной кнопке в модалке письма.
+         Предпросмотр, открытие модалки и правка черновика не сохраняются:
+         иначе список превращается в шум из почти одинаковых записей.
+
+         Печать календаря (`doPrint`) снимков НЕ делает намеренно: это не
+         документ из шаблона, а выгрузка данных, и её место — не в архиве
+         писем к собранию.
+
+         Формуляр S-302 и график визита тоже не попадают сюда: их текст
+         принадлежит словарю (i18n), а данные лежат в `entry.visitForm` —
+         снимок дублировал бы их, не добавляя ничего.
+
+         Отказ архива никогда не мешает выдаче: письмо уже собрано и уходит
+         адресату, а ошибка уходит в консоль (см. CWDocs.save).
+         ═══════════════════════════════════════════════════════════════════ */
+      docsAvailable() { return !!(self.CWDocs && self.CWDocs.available()); },
+      docRef(entry) { return { module: 'circuit-planner', entity: 'entry', id: entry?.id || '' }; },
+      /** Подпись визита на момент выдачи — чтобы запись читалась и без сущности. */
+      docEntityTitle(entry, event) {
+        const name = entry?.title || event?.name || '';
+        const when = entry?.start ? App.utils.prettyDate(entry.start) : '';
+        return [name, when].filter(Boolean).join(' · ');
+      },
+      /**
+       * Язык, на котором документ РЕАЛЬНО собран, а не запрошенный.
+       * Если колонка запрошенного языка пуста, `CWTemplates` отдаёт первый
+       * непустой и помечает это `pending` — в архив обязан попасть тот язык,
+       * который получил адресат, иначе запись врёт (у нас уже так вышло на
+       * прогоне: язык документа `en`, текст украинский).
+       */
+      docActualLang(kind, suffix) {
+        if (this.docsReady() && self.CWTemplates) {
+          const found = self.CWTemplates.text(this.docCtx(kind, suffix), this.docLang());
+          if (found && found.lang) return found.lang;
+        }
+        return this.docLang();
+      },
+      /** Когда шаблон правился в последний раз — чтобы отличить версии текста. */
+      docTemplateUpdatedAt(kind, suffix) {
+        const tpl = this.docsReady() && self.CWTemplates ? self.CWTemplates.get(this.docId(kind, suffix)) : null;
+        return (tpl && tpl.updatedAt) || null;
+      },
+      /** Снимок письма (PDF): основной текст + дополнительные страницы. */
+      snapshotLetterDoc(entry, event, reason) {
+        if (!this.docsAvailable() || !entry) return Promise.resolve(null);
+        const suffix = this.letterTypeSuffix(event?.visitType);
+        const pages = this.docPages(suffix).map((page) => ({
+          id: page.id,
+          title: page.title || '',
+          html: this.substitutePlaceholders(page.html || '', entry, event),
+        }));
+        return self.CWDocs.save({
+          templateId: this.docId('letter', suffix),
+          context: this.docCtx('letter', suffix),
+          title: App.utils.t('docs_kind_letter'),
+          lang: this.docActualLang('letter', suffix),
+          templateUpdatedAt: this.docTemplateUpdatedAt('letter', suffix),
+          format: 'html',
+          body: this.substitutePlaceholders(this.getLetterTemplateFor(event?.visitType), entry, event),
+          pages: pages,
+          ref: this.docRef(entry),
+          entityTitle: this.docEntityTitle(entry, event),
+          data: this.letterData(entry, event),
+          reason: reason,
+        });
+      },
+      /**
+       * Снимок текста e-mail. Берётся из поля модалки, а не из шаблона: именно
+       * этот текст уходит адресату, включая правки, сделанные прямо перед
+       * отправкой.
+       */
+      snapshotEmailDoc(entry, event, reason) {
+        if (!this.docsAvailable() || !entry) return Promise.resolve(null);
+        const suffix = this.letterTypeSuffix(event?.visitType);
+        const body = App.els.letterEmailBodyInput?.value || entry.emailBody || '';
+        if (!body.trim()) return Promise.resolve(null);
+        return self.CWDocs.save({
+          templateId: this.docId('email', suffix),
+          context: this.docCtx('email', suffix),
+          title: App.utils.t('docs_kind_email'),
+          lang: this.docActualLang('email', suffix),
+          templateUpdatedAt: this.docTemplateUpdatedAt('email', suffix),
+          format: 'text',
+          subject: App.els.letterSubjectInput?.value || entry.subject || '',
+          body: body,
+          ref: this.docRef(entry),
+          entityTitle: this.docEntityTitle(entry, event),
+          data: this.letterData(entry, event),
+          reason: reason,
+        });
+      },
+      /* ─── Экран «Документы визита» ─── */
+      docReasonLabel(doc) {
+        const reasons = (doc.reasons && doc.reasons.length ? doc.reasons : [doc.reason]).filter(Boolean);
+        const map = { print: 'docs_reason_print', send: 'docs_reason_send', manual: 'docs_reason_manual' };
+        return reasons.map((r) => App.utils.t(map[r] || 'docs_reason_manual')).join(' · ');
+      },
+      /** Вид документа выводится из контекста — своей таблицы модуль не заводит. */
+      docKindLabel(doc) {
+        const ctx = String(doc.context || doc.templateId || '');
+        if (/\.email$/.test(ctx)) return App.utils.t('docs_kind_email');
+        if (/\.salutation$/.test(ctx)) return App.utils.t('docs_kind_salutation');
+        return App.utils.t('docs_kind_letter');
+      },
+      docCardHtml(doc) {
+        const esc = App.utils.escapeHtml;
+        const when = doc.lastAt || doc.createdAt;
+        const meta = [
+          new Date(when).toLocaleString(App.utils.lang()),
+          this.docReasonLabel(doc),
+          String(doc.lang || '').toUpperCase(),
+          (doc.count || 1) > 1 ? App.utils.t('docs_times', { n: doc.count }) : '',
+        ].filter(Boolean).join(' · ');
+        /* Текст показываем в том виде, в каком он ушёл: html — как разметку
+           (она пришла из собственного редактора писем), текст — как есть. */
+        const bodyHtml = doc.format === 'html'
+          ? (doc.body || '')
+          : `<div style="white-space:pre-wrap">${esc(doc.body || '')}</div>`;
+        const pages = (doc.pages || []).map((page, i) => `<div style="margin-top:10px"><div class="small">${esc(page.title || App.utils.t('page_no', { n: i + 2 }))}</div>${page.html || ''}</div>`).join('');
+        /* Тема отдельной строкой, а не `.side-row`: тот кладёт подпись слева, а
+           значение прижимает вправо — в узкой модалке тема оказывалась оторвана
+           от своей подписи. */
+        const subject = doc.subject ? `<div style="margin-top:8px"><div class="small">${App.utils.t('letter_subject')}</div><div>${esc(doc.subject)}</div></div>` : '';
+        return `<div class="send-control" style="margin-bottom:10px">
+          <div class="send-control-head"><div><div class="send-control-title">${esc(this.docKindLabel(doc))}</div><div class="send-control-hint">${esc(meta)}</div></div></div>
+          ${subject}
+          <details style="margin-top:8px"><summary>${App.utils.t('docs_show_text')}</summary><div class="doc-snapshot" style="margin-top:8px">${bodyHtml}${pages}</div></details>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="md-btn md-btn-outlined md-state-layer" type="button" data-copy-doc="${App.utils.escapeAttr(doc.id)}">${App.utils.t('copy')}</button>
+            <button class="md-btn md-btn-outlined md-state-layer" type="button" data-remove-doc="${App.utils.escapeAttr(doc.id)}">${App.utils.t('docs_delete')}</button>
+          </div>
+        </div>`;
+      },
+      /** Текст снимка для копирования: html разворачиваем в обычный текст. */
+      docPlainText(doc) {
+        if (doc.format !== 'html') return doc.body || '';
+        const box = document.createElement('div');
+        box.innerHTML = doc.body || '';
+        return box.innerText || box.textContent || '';
+      },
+      openVisitDocsModal(itemId) {
+        const item = App.data.getCalendarItemById(itemId);
+        if (!item || item.source !== 'entry') return App.utils.toast(App.utils.t('letter_only_visits'));
+        const entry = App.state.app.entries.find((e) => e.id === item.refId);
+        if (!entry) return;
+        const event = App.data.getEventById(entry.eventId);
+        App.state.visitDocsEntryId = entry.id;
+        if (App.els.visitDocsSub) App.els.visitDocsSub.textContent = this.docEntityTitle(entry, event) || '—';
+        if (App.els.visitDocsModal) App.els.visitDocsModal.hidden = false;
+        this.renderVisitDocs();
+      },
+      closeVisitDocsModal() {
+        if (App.els.visitDocsModal) App.els.visitDocsModal.hidden = true;
+        App.state.visitDocsEntryId = null;
+      },
+      renderVisitDocs() {
+        const list = App.els.visitDocsList;
+        if (!list) return;
+        if (!this.docsAvailable()) {
+          list.innerHTML = `<div class="md-empty">${App.utils.t('docs_storage_off')}</div>`;
+          return;
+        }
+        const entryId = App.state.visitDocsEntryId;
+        list.innerHTML = `<div class="md-empty">${App.utils.t('docs_loading')}</div>`;
+        self.CWDocs.list({ module: 'circuit-planner', entity: 'entry', id: entryId }).then((rows) => {
+          if (App.state.visitDocsEntryId !== entryId) return; // модалку успели переключить
+          App.state.visitDocsRows = rows;
+          list.innerHTML = rows.length
+            ? rows.map((doc) => this.docCardHtml(doc)).join('')
+            : `<div class="md-empty">${App.utils.t('docs_empty')}</div>`;
+          /* Текст берём из памяти по id, а не из data-атрибута: письмо целиком
+             в атрибуте — это килобайты разметки и потерянные переносы строк
+             (парсер HTML нормализует их в атрибутах). */
+          list.querySelectorAll('[data-copy-doc]').forEach((btn) => btn.addEventListener('click', () => {
+            const doc = (App.state.visitDocsRows || []).find((d) => d.id === btn.dataset.copyDoc);
+            if (!doc) return;
+            const plain = App.ui.docPlainText(doc);
+            const text = doc.subject ? doc.subject + '\n\n' + plain : plain;
+            const done = () => App.utils.toast(App.utils.t('copied'));
+            if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(() => done());
+            else done();
+          }));
+          list.querySelectorAll('[data-remove-doc]').forEach((btn) => btn.addEventListener('click', () => {
+            if (!window.confirm(App.utils.t('docs_delete_confirm'))) return;
+            self.CWDocs.remove(btn.dataset.removeDoc).then(() => {
+              App.utils.toast(App.utils.t('docs_deleted'));
+              App.ui.renderVisitDocs();
+            });
+          }));
+        });
+      },
       openLetterModal(itemId) {
         const item = App.data.getCalendarItemById(itemId);
         if (!item || item.source !== 'entry') return App.utils.toast(App.utils.t('letter_only_visits'));
@@ -3139,6 +3336,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           try {
             await navigator.share({ text, files });
             App.utils.toast(App.utils.t('sent_done'));
+            this.snapshotLetterDoc(entry, event, 'send');
+            this.snapshotEmailDoc(entry, event, 'send');
             App.ui.closeLetterModal();
             return;
           } catch (err) { /* user cancelled or unsupported — fall through to fallback below */ }
@@ -3147,6 +3346,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           files.forEach((f) => App.utils.downloadBlob(f, f.name));
           App.utils.toast(files.length > 1 ? App.utils.t('files_downloaded') : App.utils.t('file_downloaded'));
         }
+        /* Снимок ДО закрытия модалки: текст e-mail читается из её поля. */
+        this.snapshotLetterDoc(entry, event, 'send');
+        this.snapshotEmailDoc(entry, event, 'send');
         mailto();
         App.ui.closeLetterModal();
       },
@@ -3489,6 +3691,22 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       });
       // Letter modal
       App.els.letterModalCloseBtn?.addEventListener('click', () => App.ui.closeLetterModal());
+      /* Ручной снимок: единственный способ положить документ в архив, не
+         печатая и не отправляя его. Модалка при этом не закрывается —
+         человек может продолжить правку и отправить. */
+      App.els.letterSnapshotBtn?.addEventListener('click', () => {
+        const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
+        if (!entry) return;
+        const event = App.data.getEventById(entry.eventId);
+        Promise.all([
+          App.ui.snapshotLetterDoc(entry, event, 'manual'),
+          App.ui.snapshotEmailDoc(entry, event, 'manual'),
+        ]).then((saved) => {
+          App.utils.toast(App.utils.t(saved.some(Boolean) ? 'docs_saved' : 'docs_storage_off'));
+        });
+      });
+      App.els.visitDocsCloseBtn?.addEventListener('click', () => App.ui.closeVisitDocsModal());
+      App.els.visitDocsCloseBtn2?.addEventListener('click', () => App.ui.closeVisitDocsModal());
       App.els.letterEmailBodyInput?.addEventListener('input', (e) => {
         const entry = App.state.app.entries.find((en) => en.id === App.state.letterEntryId);
         if (!entry) return;
@@ -3509,6 +3727,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!doc) return;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
         doc.save(`${App.utils.slug(entry.title || 'letter')}${suffix ? '-' + suffix : ''}-letter.pdf`);
+        /* Файл сохранён на диск — с этого момента бумага существует вне
+           приложения, и её текст обязан остаться неизменным. */
+        App.ui.snapshotLetterDoc(entry, event, 'print');
       });
       App.els.letterEmailBodyResetToDefaultBtn?.addEventListener('click', () => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);

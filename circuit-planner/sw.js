@@ -54,6 +54,7 @@ const APP_SHELL_URLS = [
   // модуля упал бы на CWI18n undefined ещё до отрисовки.
   '../shared/i18n.js','../shared/sender.js',
   '../shared/templates.js','../shared/templates/namespaces.js','../shared/templates/builtin.js',
+  '../shared/documents.js',
   '../shared/db.js',
   '../shared/doclang.js',
   '../shared/i18n/common.js',
