@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.71.0',
+      version: '9.72.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2841,7 +2841,26 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         return window.PdfGenerator.generate(state, buildVpI18n(state.language));
       },
       // ===================== Letter PDF (preserves the original document's layout) =====================
-      buildLetterPdfDoc(entry, event, draftOverride) {
+      /**
+       * Сборщик PDF.
+       *
+       * По умолчанию собирает ПИСЬМО: шапка отправителя, обращение, дата,
+       * «Дорогі брати!», тело, дополнительные страницы. Ровно так, как было
+       * до появления композера, — эта ветка не менялась и меняться не должна.
+       *
+       * `options.plain` даёт «просто текст на бумаге»: те же шрифты, те же
+       * поля, та же нумерация страниц, но без обязательной шапки письма. Нужно
+       * для документов, которые письмом не являются — памятки координатору,
+       * текста e-mail, а в будущем формуляров Школы пионеров. До этого флага
+       * PDF был доступен только письму, потому что памятка выходила письмом.
+       *
+       * @param {Object} [draftOverride] — { bodyHtml, pages } с УЖЕ выполненной
+       *        подстановкой; так композер отдаёт разово правленный текст.
+       * @param {Object} [options] — { plain, title }
+       */
+      buildLetterPdfDoc(entry, event, draftOverride, options) {
+        const opts = options || {};
+        const plain = !!opts.plain;
         if (!window.jspdf) { App.utils.toast(App.utils.t('pdf_not_loaded')); return null; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -2937,14 +2956,25 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         };
         const singleRun = (text, opts = {}) => [{ text, bold: !!opts.bold, italic: !!opts.italic, size: opts.size }];
 
-        // ---- Page 1: personal letter ----
-        let y = drawHeader();
-        const suffixForSalutation = App.ui.letterTypeSuffix(event?.visitType);
-        const salutationTemplate = App.ui.getSalutationFor(suffixForSalutation);
-        const salutationText = App.ui.substitutePlaceholders(salutationTemplate, entry, event);
-        y = addRichParagraph(y, singleRun(salutationText, { bold: true, size: 11.5 }), { size: 11.5, gap: 20 });
-        doc.setFont(FONT, 'normal'); doc.setFontSize(11); doc.text(ukDate(new Date()), pageW - margin, y - 8, { align: 'right' });
-        y = addRichParagraph(y, singleRun('Дорогі брати!', { bold: true }), { gap: 14 });
+        // ---- Page 1 ----
+        let y;
+        if (plain) {
+          /* Плоский документ: ни шапки отправителя, ни обращения, ни даты.
+             Только заголовок, если он передан, — иначе лист начинается прямо
+             с текста. */
+          y = margin;
+          if (opts.title && String(opts.title).trim()) {
+            y = addRichParagraph(y, singleRun(String(opts.title).trim(), { bold: true, size: 12.5 }), { size: 12.5, align: 'center', gap: 18 });
+          }
+        } else {
+          y = drawHeader();
+          const suffixForSalutation = App.ui.letterTypeSuffix(event?.visitType);
+          const salutationTemplate = App.ui.getSalutationFor(suffixForSalutation);
+          const salutationText = App.ui.substitutePlaceholders(salutationTemplate, entry, event);
+          y = addRichParagraph(y, singleRun(salutationText, { bold: true, size: 11.5 }), { size: 11.5, gap: 20 });
+          doc.setFont(FONT, 'normal'); doc.setFontSize(11); doc.text(ukDate(new Date()), pageW - margin, y - 8, { align: 'right' });
+          y = addRichParagraph(y, singleRun('Дорогі брати!', { bold: true }), { gap: 14 });
+        }
         const bodyHtml = draftOverride ? draftOverride.bodyHtml : App.ui.substitutePlaceholders(App.ui.getLetterTemplateFor(event?.visitType), entry, event);
         App.ui.parseRichLetterBlocks(bodyHtml).forEach((block) => { y = addRichParagraph(y, block.runs, { size: 11, gap: 14 }); });
         y += 6;
@@ -2956,7 +2986,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const extraPages = draftOverride ? draftOverride.pages : App.ui.docPages(suffix);
         extraPages.forEach((page) => {
           doc.addPage();
-          y = drawHeader();
+          y = plain ? margin : drawHeader();
           if (page.title && page.title.trim()) y = addRichParagraph(y, singleRun(page.title.trim(), { bold: true, size: 12.5 }), { size: 12.5, align: 'center', gap: 18 });
           const pageHtml = draftOverride ? page.html : App.ui.substitutePlaceholders(page.html || '', entry, event);
           App.ui.parseRichLetterBlocks(pageHtml).forEach((block) => { y = addRichParagraph(y, block.runs, { size: 10, gap: 10 }); });
@@ -3234,7 +3264,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const suffix = this.letterTypeSuffix(event?.visitType);
         const items = [
           { key: 'letter', kind: 'letter', suffix, format: 'html', name: App.utils.t('docs_kind_letter'), pdf: true },
-          { key: 'email', kind: 'email', suffix, format: 'text', name: App.utils.t('docs_kind_email'), pdf: false },
+          { key: 'email', kind: 'email', suffix, format: 'text', name: App.utils.t('docs_kind_email'), pdf: true },
         ];
         this.docPages(suffix).forEach((page, i) => {
           items.push({
@@ -3244,12 +3274,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             pageIndex: i,
             format: 'html',
             name: page.title || App.utils.t('page_no', { n: i + 2 }),
-            /* PDF для отдельной страницы намеренно не предлагаем: единственный
-               сборщик, который у нас есть, — это сборщик ПИСЬМА, он всегда
-               рисует обращение и «Дорогі брати!». Памятка вышла бы письмом.
-               Печать даёт чистый лист, а отдельный сборщик одиночного документа
-               записан в IDEAS.md. */
-            pdf: false,
+            /* Плоский режим сборщика (14.08.2026) — страница печатается как
+               самостоятельный документ, без шапки письма. */
+            pdf: true,
           });
         });
         return items;
@@ -3495,8 +3522,20 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
         const doc = this.composerCurrent();
-        if (doc.bodyHtml === null) return;
-        const pdf = this.buildLetterPdfDoc(entry, event, { bodyHtml: doc.bodyHtml, pages: doc.pages || [] });
+        const isLetter = state.item.kind === 'letter';
+        /* Текст e-mail хранится строкой: сборщик принимает разметку, поэтому
+           переносы строк превращаем в абзацы. Пустые строки схлопываем — иначе
+           каждая даёт пустой абзац с полным межстрочным интервалом. */
+        const bodyHtml = doc.bodyHtml !== null
+          ? doc.bodyHtml
+          : String(doc.bodyText || '').split(/\n/).filter((line) => line.trim())
+              .map((line) => '<div>' + App.utils.escapeHtml(line) + '</div>').join('');
+        const pdf = this.buildLetterPdfDoc(
+          entry,
+          event,
+          { bodyHtml, pages: isLetter ? (doc.pages || []) : [] },
+          isLetter ? null : { plain: true, title: state.item.name },
+        );
         if (!pdf) return;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
         pdf.save(`${App.utils.slug(entry.title || 'document')}${suffix ? '-' + suffix : ''}-${App.utils.slug(state.item.name) || 'doc'}.pdf`);
