@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.72.2',
+      version: '9.73.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -992,22 +992,63 @@
         };
         const body = (type === 'month-grid' || type === 'custom-range-calendar') ? calendar() : type === 'year-overview' ? overview() : type === 'visits-schedule' ? visitsSchedule() : agenda();
         const label = `${App.utils.prettyDateLong(App.utils.parseLocalDate(range.start))} — ${App.utils.prettyDateLong(App.utils.parseLocalDate(range.end))}`;
-        return `<!doctype html><html lang="${App.utils.lang()}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>*{box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;color:#16251d;margin:0;padding:22px;background:#fff;font-size:12px}h1{font-size:22px;margin:0 0 6px}h2{font-size:16px;margin:0 0 10px}.meta{color:#566;margin-bottom:18px}.print-months{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.print-month{break-inside:avoid;border:1px solid #ccd8d0;border-radius:12px;padding:12px}.cal-dow,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal-dow span{text-align:center;color:#667;font-weight:600}.cal-day,.cal-empty{min-height:78px;border:1px solid #dde6e0;border-radius:8px;padding:5px}.cal-day strong{display:block;margin-bottom:3px}.cal-event{font-size:10px;margin:2px 0;padding:2px 4px;border-radius:6px;background:#f1f5f2;overflow:hidden;text-overflow:ellipsis}.dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:5px}.flag{display:inline-block;border:1px solid #ccd8d0;border-radius:999px;padding:1px 5px;margin-left:3px;font-size:10px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccd8d0;padding:7px;text-align:left;vertical-align:top}th{background:#eef5f0}.empty{border:1px dashed #ccd8d0;border-radius:10px;padding:20px;text-align:center;color:#667}@media print{body{padding:0}.print-month{page-break-inside:avoid}@page{size:A4 landscape;margin:10mm}}</style></head><body><h1>${esc(title)}</h1><div class="meta">${esc(label)} · Service Year Planner</div>${body}</body></html>`;
+        /* Возвращается НЕ готовый документ, а его части: окно, <head> и
+           отправку на печать собирает CWPrint.document(). Раньше здесь
+           склеивался весь HTML целиком, вместе с копией того же каркаса,
+           что и в композере.
+
+           Календарь — не письмо, поэтому почти вся типографика общего слоя
+           здесь переопределяется: своя гарнитура, свой кегль, свои поля.
+           Правила модуля идут ПОСЛЕ общих, поэтому переопределение работает
+           без !important. `@page` уехал в параметр `page`. */
+        return {
+          title,
+          css: /* line-height и font-weight ОБЯЗАТЕЛЬНЫ, хотя в прежнем документе их не
+               было: общий слой задаёт типографику сокращённым `font:`, а оно
+               сбрасывает оба свойства заодно. Без явного сброса в календарь
+               протекала письмовая интерлиньяж 1.62 — поймано сравнением бумаги. */
+            'body{font-family:Segoe UI,Arial,sans-serif;color:#16251d;margin:0;padding:22px;background:#fff;font-size:12px;font-weight:400;line-height:normal}'
+            + 'h1{font-size:22px;margin:0 0 6px}h2{font-size:16px;margin:0 0 10px}'
+            + '.meta{color:#566;margin-bottom:18px}'
+            + '.print-months{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}'
+            + '.print-month{break-inside:avoid;border:1px solid #ccd8d0;border-radius:12px;padding:12px}'
+            + '.cal-dow,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}'
+            + '.cal-dow span{text-align:center;color:#667;font-weight:600}'
+            + '.cal-day,.cal-empty{min-height:78px;border:1px solid #dde6e0;border-radius:8px;padding:5px}'
+            + '.cal-day strong{display:block;margin-bottom:3px}'
+            + '.cal-event{font-size:10px;margin:2px 0;padding:2px 4px;border-radius:6px;background:#f1f5f2;overflow:hidden;text-overflow:ellipsis}'
+            + '.dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:5px}'
+            + '.flag{display:inline-block;border:1px solid #ccd8d0;border-radius:999px;padding:1px 5px;margin-left:3px;font-size:10px}'
+            + 'table{width:100%;border-collapse:collapse}'
+            + 'th,td{border:1px solid #ccd8d0;padding:7px;text-align:left;vertical-align:top}'
+            + 'th{background:#eef5f0}'
+            + '.empty{border:1px dashed #ccd8d0;border-radius:10px;padding:20px;text-align:center;color:#667}'
+            + '@media print{body{padding:0}.print-month{page-break-inside:avoid}}',
+          body: `<h1>${esc(title)}</h1><div class="meta">${esc(label)} · Service Year Planner</div>${body}`,
+        };
       },
       doPrint() {
-        const html = this.buildPrintHtml(App.state.pdfExportType || 'month-grid');
-        if (!html) return;
+        const doc = this.buildPrintHtml(App.state.pdfExportType || 'month-grid');
+        /* Пустая строка — сигнал «диапазон задан неверно», тост уже показан
+           внутри buildPrintHtml. Проверять надо ДО closePdf(), иначе диалог
+           закроется, а печатать нечего. */
+        if (!doc) return;
         this.closePdf();
-        /* Заблокированное окно — это отказ. Раньше здесь стоял откат на
-           window.print(), то есть на бумагу уходил ЭКРАН приложения вместо
-           календаря: пользователь получал лист, выглядящий как успех, но с
-           не тем содержимым. См. docs/print/01-audit.md, §2.2.
-           На CWPrint.document() этот тракт ещё не переведён — у него своя
-           раскладка и свой @page; перенос запланирован отдельной фазой. */
-        const win = window.open('', '_blank');
-        if (!win) { App.utils.toast(App.utils.t('docs_print_blocked')); return; }
-        win.document.open(); win.document.write(html); win.document.close(); win.focus();
-        setTimeout(() => { try { win.print(); } catch (_) {} }, 250);
+        /* Заблокированное окно — это отказ, а не повод напечатать что-нибудь
+           ещё. Раньше здесь стоял откат на window.print(): на бумагу уходил
+           ЭКРАН приложения вместо календаря, то есть лист выглядел как успех,
+           но содержал не то. См. docs/print/01-audit.md, §2.2. */
+        CWPrint.document({
+          title: doc.title,
+          lang: App.utils.lang(),
+          css: doc.css,
+          /* Альбомная ориентация и узкие поля — свойство именно календаря:
+             сетка на 7 колонок в книжной не читается. Общий слой по умолчанию
+             даёт письмовые 28/20 мм. */
+          page: { size: 'A4 landscape', margin: '10mm' },
+          html: doc.body,
+          onBlocked: () => App.utils.toast(App.utils.t('docs_print_blocked')),
+        });
       }
     },
 
