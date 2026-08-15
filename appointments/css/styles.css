@@ -21,12 +21,6 @@ body {
   font: 400 14px/20px var(--md-font-family);
 }
 
-.sr-only {
-  position: absolute; width: 1px; height: 1px;
-  padding: 0; margin: -1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
-
 /* Индикатор сохранения показывается только когда есть что сообщить:
    у .md-savestatus точка рисуется через ::before, и на пустом тексте
    она висела бы в шапке одна. */

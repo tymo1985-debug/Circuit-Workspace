@@ -4,16 +4,6 @@
 
 .doc-wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 96px; }
 
-/* Подписи для скринридеров. Разметка модуля пользовалась `.sr-only` с фазы 3а,
-   но правила не было ни здесь, ни в общем слое — «Язык интерфейса», «Фильтр по
-   модулю» и «Раздел модуля» печатались прямо на экране. Найдено живым прогоном
-   13.08.2026. Три других модуля объявляют этот класс у себя; вынос в
-   shared/style.css записан в IDEAS.md. */
-.sr-only {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
-
 /* ─── Панель поиска ─── */
 .doc-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 .doc-toolbar__spacer { flex: 1 1 auto; }
