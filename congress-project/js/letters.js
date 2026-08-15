@@ -70,4 +70,16 @@ export function printFilename(title){let c=A(),base=(c?.name||"Конгресс"
 export function letterFileTitle(t){let n=String(t.number||"").trim();return n?"№"+n+" "+(t.title||""):(t.title||"")}
 export function printLetter(){let t=A().tasks.find(x=>x.id===store.previewId);if(t)askOrientation("Печать письма","portrait",letterHTML(t),printFilename(letterFileTitle(t)))}
 export function allLetters(){askOrientation("Печать всех писем","portrait",A().tasks.filter(isLetterable).map(letterHTML).join(""),printFilename("Все письма"))}
-export function openLettersMode(){let tasks=(A().tasks||[]).filter(isLetterable);$("#lettersList").innerHTML=tasks.map(t=>{let p=(t.participants||[])[0]||{};return`<div class="letter-row"><div><b>${esc(p.name||t("cong.msg.no_participant"))}</b><br><span class="muted">${esc(t.number||"")} ${esc(t.title||"")}</span></div><button type="button" data-open="${t.id}" class="icon-text-btn" title="${esc(t("cong.title.open_letter"))}">${icon("eye")}<span>${esc(t("cong.btn.open"))}</span></button><button type="button" data-sent="${t.id}" class="light icon-text-btn" title="${esc(t("cong.title.mark_sent"))}">${icon("check")}<span>${esc(t("cong.btn.sent"))}</span></button><span>${t.letterSent?"✓":""}</span></div>`}).join("");$$("[data-open]").forEach(b=>b.onclick=()=>openLetter(b.dataset.open));$$("[data-sent]").forEach(b=>b.onclick=()=>{let t=A().tasks.find(x=>x.id===b.dataset.sent);t.letterSent=true;t.letterSentDate=today();t.status="Письмо отправлено";save();renderTasks();openLettersMode()});$("#lettersDialog").showModal()}
+/**
+ * Список писем.
+ *
+ * ⚠️ ПЕРЕМЕННАЯ ЗАДАНИЯ ЗДЕСЬ — `task`, А НЕ `t`. Функция перевода
+ * импортируется как `t`, и коллбэк с параметром `t` её затеняет: вызов
+ * `t("cong.btn.open")` обращается к ОБЪЕКТУ задания и бросает
+ * «t is not a function». Именно так этот диалог не открывался вовсе
+ * с v4.19.0 до 14.08.2026 — молча, весь экран целиком.
+ * Чинить переименованием переменной, а не псевдонимом для перевода:
+ * псевдоним прячет ловушку, а не убирает её. Ловится
+ * `node scripts/check-i18n-shadow.mjs`.
+ */
+export function openLettersMode(){let tasks=(A().tasks||[]).filter(isLetterable);$("#lettersList").innerHTML=tasks.map(task=>{let p=(task.participants||[])[0]||{};return`<div class="letter-row"><div><b>${esc(p.name||t("cong.msg.no_participant"))}</b><br><span class="muted">${esc(task.number||"")} ${esc(task.title||"")}</span></div><button type="button" data-open="${task.id}" class="icon-text-btn" title="${esc(t("cong.title.open_letter"))}">${icon("eye")}<span>${esc(t("cong.btn.open"))}</span></button><button type="button" data-sent="${task.id}" class="light icon-text-btn" title="${esc(t("cong.title.mark_sent"))}">${icon("check")}<span>${esc(t("cong.btn.sent"))}</span></button><span>${task.letterSent?"✓":""}</span></div>`}).join("");$$("[data-open]").forEach(b=>b.onclick=()=>openLetter(b.dataset.open));$$("[data-sent]").forEach(b=>b.onclick=()=>{let task=A().tasks.find(x=>x.id===b.dataset.sent);task.letterSent=true;task.letterSentDate=today();task.status="Письмо отправлено";save();renderTasks();openLettersMode()});$("#lettersDialog").showModal()}
