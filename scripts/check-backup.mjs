@@ -97,12 +97,21 @@ console.log('\nКопия модуля');
 let db = await open(DB, 1, (d) => {
   d.createObjectStore('templates', { keyPath: 'id' });
   d.createObjectStore('communities', { keyPath: 'id' });
+  d.createObjectStore('state', { keyPath: 'id' });
 });
 await put(db, 'templates', [
   { id: 'tpl_own', body: 'шаблон проверяемого модуля' },
   { id: 'tpl_neighbour', body: 'шаблон соседнего модуля' },
 ]);
 await put(db, 'communities', [{ id: 'c1', name: 'Тестовое собрание' }]);
+/* Состояние ДВУХ модулей в одном хранилище: ключ записи здесь — идентификатор
+   модуля, поэтому выгрузка хранилища целиком означала бы, что копия одного
+   модуля везёт состояние соседа и при восстановлении кладёт его поверх
+   актуального. Слияние по ключу тут не спасает — оно и есть механизм затирания. */
+await put(db, 'state', [
+  { id: 'own-module', payload: '{"свой":1}', savedAt: 1 },
+  { id: 'neighbour-module', payload: '{"соседний":1}', savedAt: 1 },
+]);
 db.close();
 
 /* Берём первый модуль, которому реально что-то нужно от общего слоя. */
@@ -113,7 +122,7 @@ if (!subject) {
   /* Хранилище общей базы подмешиваем на время проверки: пока ни один модуль
      от неё не зависит, но фаза 2 это изменит, и механизм должен работать
      заранее, а не «когда понадобится». */
-  CWBackup.MODULES[subject].sharedStores = { [DB]: ['templates'] };
+  CWBackup.MODULES[subject].sharedStores = { [DB]: ['templates', { store: 'state', ids: ['own-module'] }] };
 
   mem.set('cw-sender', JSON.stringify({ name: 'Тест Тестович' }));
   mem.set('cw-lang', 'pl');
@@ -127,11 +136,18 @@ if (!subject) {
   ok('глобальный язык хаба НЕ захвачен', !shared.local || shared.local['cw-lang'] === undefined);
   ok('объявленное хранилище попало в копию', (shared.idb?.[DB]?.stores?.templates?.rows || []).length === 2);
   ok('необъявленное хранилище НЕ попало', !shared.idb?.[DB]?.stores?.communities);
+  const stateRows = shared.idb?.[DB]?.stores?.state?.rows || [];
+  ok('адресное хранилище: своя запись в копии', stateRows.some((r) => r.id === 'own-module'));
+  ok('адресное хранилище: ЧУЖОЙ записи в копии нет', !stateRows.some((r) => r.id === 'neighbour-module'),
+    'ключ записи здесь — модуль, и чужая строка при восстановлении затёрла бы его состояние целиком');
 
   /* Портим состояние и восстанавливаем: сосед обязан уцелеть. */
   mem.set('cw-sender', JSON.stringify({ name: 'испорчено' }));
   db = await open(DB, 1);
   await put(db, 'templates', [{ id: 'tpl_own', body: 'испорчено' }, { id: 'tpl_late', body: 'появился позже копии' }]);
+  /* Сосед поработал уже ПОСЛЕ того, как сделана копия. Восстановление копии
+     проверяемого модуля не должно откатить его состояние. */
+  await put(db, 'state', [{ id: 'neighbour-module', payload: '{"новее копии":1}', savedAt: 2 }]);
   db.close();
 
   await CWBackup.restore(snap);
@@ -143,6 +159,9 @@ if (!subject) {
   ok('ЧУЖИЕ записи уцелели', !!t.tpl_neighbour && !!t.tpl_late,
     'восстановление копии одного модуля не имеет права стирать данные соседей');
   ok('необъявленное хранилище уцелело', (await rows(DB, 'communities')).length === 1);
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('состояние соседнего модуля не тронуто восстановлением', st['neighbour-module']?.payload === '{"новее копии":1}',
+    'копия одного модуля не имеет права откатывать состояние другого');
 }
 
 /* --- 3. Полная копия хаба по-прежнему заменяет целиком ------------------- */

@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.74.0',
+      version: '9.75.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -473,7 +473,45 @@
         return app;
       },
       migrate(appData) { return this.normalizeApp(appData && appData.schema === 'sp-backup-v2' ? this.convertLegacyBackup(appData) : appData); },
-      load() { try { const saved = localStorage.getItem(App.config.storageKey); this.lastWrittenPayload = saved || null; App.state.app = saved ? this.migrate(JSON.parse(saved)) : this.createDefaultData(); } catch (error) { console.error('Storage load failed', error); App.state.app = this.createDefaultData(); App.utils.toast('Storage reset.'); } },
+      /* ── Где лежат данные (фаза 2 миграции на shared/db.js) ──────────────
+         Источник истины — хранилище `state` общей базы через `CWState`.
+         Прежний ключ localStorage остаётся: пока в базе записи нет, он и есть
+         данные, а после переезда — снимок «как было до», то есть обратимость
+         этой фазы. Переписывать и удалять его здесь нельзя категорически.
+
+         `CWState.get()` синхронен: базу прочитал загрузчик ДО `App.init()`
+         (см. низ файла). Тот же приём и по той же причине, что у `CWSender` и
+         `CWTemplates` — модуль не умеет ждать, отрисовка идёт сразу. */
+      /** Экземпляр CWState для этого модуля; ставится загрузчиком внизу файла.
+       *  `null` = общий слой недоступен, работаем на прежнем ключе. */
+      remote: null,
+      source: 'legacy',
+      load() {
+        const usable = !!(this.remote && this.remote.available());
+        let saved = usable ? this.remote.get() : null;
+        let fromLegacy = false;
+        if (saved === null || saved === undefined) {
+          try { saved = localStorage.getItem(App.config.storageKey); } catch (e) { saved = null; }
+          fromLegacy = !!saved;
+        }
+        this.source = usable ? 'db' : 'legacy';
+        try {
+          this.lastWrittenPayload = saved || null;
+          App.state.app = saved ? this.migrate(JSON.parse(saved)) : this.createDefaultData();
+        } catch (error) {
+          console.error('Storage load failed', error);
+          App.state.app = this.createDefaultData();
+          App.utils.toast('Storage reset.');
+          return;
+        }
+        /* Переезд: данные нашлись только в старом ключе. Копируем их в базу
+           как есть — без разбора и без нормализации, чтобы перенос нельзя было
+           спутать со сменой модели. Старый ключ остаётся на месте. */
+        if (fromLegacy && this.source === 'db') {
+          this.snapshotForMigration();
+          this.remote.write(saved);
+        }
+      },
       /* ── Отложенная запись (shared/persist.js, фаза 1 миграции на CWDB) ──
          `save()` больше не пишет сама: она помечает состояние изменённым и
          ставит запись в очередь. Для всех 52 вызовов в этом файле ничего не
@@ -516,7 +554,8 @@
         try {
           this.snapshotIfDue();
           const payload = JSON.stringify(App.state.app);
-          localStorage.setItem(App.config.storageKey, payload);
+          if (this.source === 'db') this.remote.write(payload);
+          else localStorage.setItem(App.config.storageKey, payload);
           // Remember exactly what this tab wrote, so the unload-time safety net can tell
           // "storage still holds my data" apart from "another tab has since written newer data".
           this.lastWrittenPayload = payload;
@@ -531,6 +570,21 @@
       // has genuinely newer unsaved changes relative to its own last write).
       saveIfOwnStateIsCurrent() {
         try {
+          if (this.source === 'db') {
+            /* Соседняя вкладка писала после нас — её данные новее, наше
+               состояние устарело, и записывать его нельзя. Признак приезжает
+               маячком в localStorage: запись в IndexedDB события `storage` не
+               порождает, и без маячка соседства просто не видно. */
+            if (this.remote.foreignWrote()) return;
+            this.snapshotIfDue();
+            const payload = JSON.stringify(App.state.app);
+            /* Синхронное зеркало: `pagehide` не умеет ждать промис, поэтому
+               блоб ложится в localStorage сразу, а запись в базу идёт следом.
+               Не успеет — зеркало прочитается при следующей загрузке. */
+            this.remote.writeSync(payload);
+            this.lastWrittenPayload = payload;
+            return;
+          }
           const current = localStorage.getItem(App.config.storageKey);
           if (current && this.lastWrittenPayload && current !== this.lastWrittenPayload) {
             // Storage changed underneath us — another tab owns the newer data. Don't clobber it.
@@ -542,6 +596,20 @@
         } catch (error) {
           console.error('Guarded save failed', error);
         }
+      },
+      /**
+       * Последнее ЗАПИСАННОЕ состояние — то, что снимок истории должен
+       * сохранить перед очередной правкой.
+       *
+       * Раньше это читалось из localStorage напрямую. После переезда так
+       * делать нельзя: под старым ключом лежит дореформенный снимок, и
+       * история наполнялась бы одним и тем же днём переезда — бесшумно, ведь
+       * записи в ней появляются исправно. Читаем то, что сами записали
+       * последним; на первой загрузке это состояние из базы.
+       */
+      currentStored() {
+        if (this.source === 'db') return this.lastWrittenPayload || null;
+        try { return localStorage.getItem(App.config.storageKey); } catch (e) { return null; }
       },
       // Rolling checkpoint history so mistakes can be undone. Deliberately NOT a snapshot-per-edit
       // system (typing in any field would create dozens of snapshots per minute) — instead, at most
@@ -561,7 +629,7 @@
         try {
           const raw = localStorage.getItem(App.config.historyKey);
           const history = raw ? JSON.parse(raw) : [];
-          const current = localStorage.getItem(App.config.storageKey);
+          const current = this.currentStored();
           if (!current) return;
           history.push({ at: Date.now(), data: current });
           while (history.length > App.config.maxSnapshots) history.shift();
@@ -577,7 +645,7 @@
           const last = history[history.length - 1];
           const now = Date.now();
           if (last && now - last.at < App.config.snapshotIntervalMs) return;
-          const current = localStorage.getItem(App.config.storageKey);
+          const current = this.currentStored();
           if (!current) return; // nothing to checkpoint yet (very first save of a fresh install)
           history.push({ at: now, data: current });
           while (history.length > App.config.maxSnapshots) history.shift();
@@ -603,7 +671,7 @@
         // The restore itself must be undoable too — checkpoint the CURRENT (about-to-be-replaced)
         // state first, unconditionally, regardless of the normal time throttle.
         try {
-          const current = localStorage.getItem(App.config.storageKey);
+          const current = this.currentStored();
           if (current) { history.push({ at: Date.now(), data: current }); while (history.length > App.config.maxSnapshots) history.shift(); localStorage.setItem(App.config.historyKey, JSON.stringify(history)); }
         } catch (error) { console.error('Pre-restore checkpoint failed', error); }
         App.state.app = this.migrate(JSON.parse(snap.data));
@@ -4492,7 +4560,24 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       }
       // Keep tabs in sync: if another tab saves, adopt its data instead of holding stale state
       // that a later save from this tab would write back over the top of.
+      /* Соседняя вкладка, вариант с общей базой. Запись в IndexedDB события
+         `storage` не порождает — приходит только маячок, а состояние
+         перечитывается из базы. Без этого синхронизация вкладок пропала бы
+         молча: в одной вкладке всё работает, в двух данные расходятся, и
+         никакой ошибки нигде. */
+      if (App.store.source === 'db') {
+        App.store.remote.onForeign((payload) => {
+          const p = App.store.persist();
+          if (p && p.pending()) { App.store.flushNow('conflict'); return; }
+          try {
+            App.state.app = App.store.migrate(JSON.parse(payload));
+            App.store.lastWrittenPayload = payload;
+            App.ui.renderAll();
+          } catch (err) { console.error('Cross-tab sync failed', err); }
+        });
+      }
       window.addEventListener('storage', (e) => {
+        if (App.store.source === 'db') return;   // синхронизацию ведёт CWState
         if (e.key !== App.config.storageKey || !e.newValue) return;
         /* Отложенная запись открыла окно, которого раньше не было: в очереди
            может лежать правка, которую человек только что сделал в ЭТОЙ
@@ -4532,5 +4617,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
 const hideMonthSummaryDotsStyle = document.createElement('style');
 hideMonthSummaryDotsStyle.textContent = '.sy-month-summary{display:none !important}';
 document.head.appendChild(hideMonthSummaryDotsStyle);
-App.init();
+/* Запуск ждёт общую базу: `store.load()` синхронна и должна получить данные
+   сразу, а чтение IndexedDB асинхронно. Ожидание ограничено сроком внутри
+   `CWState` — если база недоступна или её обновление заблокировано соседней
+   вкладкой со старой версией, модуль стартует на прежнем ключе, а не остаётся
+   не открытым вовсе. Промис не отклоняется никогда. */
+if (self.CWState && self.CWDB) {
+  App.store.remote = self.CWState.create('circuit-planner');
+  App.store.remote.init().then(() => App.init());
+} else {
+  App.init();
+}
 })();

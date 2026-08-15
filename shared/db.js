@@ -26,7 +26,7 @@
   'use strict';
 
   const DB_NAME = 'circuit-workspace-db';
-  const DB_VERSION = 3;
+  const DB_VERSION = 4;
 
   /** Схема хранилищ: имя store → keyPath + индексы */
   const STORES = {
@@ -56,6 +56,17 @@
        Работать напрямую модули не должны: точка входа — CWDocs
        (shared/documents.js). */
     documents:   { keyPath: 'id', indexes: ['entityKey', 'module', 'createdAt', 'templateId'] },
+    /* Состояние модуля целиком (v4, 15.08.2026) — одна запись на модуль:
+       `{ id: '<module>', payload: '<JSON>', savedAt }`. Это переезд из
+       localStorage, а НЕ смена модели данных: внутри `payload` лежит тот же
+       блоб, что лежал под ключом модуля. Разбор блоба на записи
+       (`events[]` → `communities`) — отдельная фаза, и смешивать её с
+       переездом нельзя: у переезда цена ошибки уже максимальная.
+       Индексов нет намеренно: искать внутри блоба всё равно нечем, а лишний
+       индекс пришлось бы поддерживать при каждой записи.
+       Работать напрямую модули не должны: точка входа — CWState
+       (shared/state.js), он же держит синхронное зеркало на закрытие вкладки. */
+    state:       { keyPath: 'id' },
   };
 
   let dbPromise = null;
@@ -210,6 +221,8 @@
     templates: makeCrud('templates', 'tpl'),
     /** Архив выданных документов. Через CWDocs (shared/documents.js), не напрямую. */
     documents: makeCrud('documents', 'doc'),
+    /** Состояние модуля одним блобом. Через CWState (shared/state.js), не напрямую. */
+    state: makeCrud('state', 'st'),
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,

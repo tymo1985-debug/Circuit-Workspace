@@ -347,6 +347,9 @@ body::before{display:none !important}
 <!-- Отложенная запись состояния: подключать ДО app.js, планировщик создаётся
      при первом save() (фаза 1 миграции на shared/db.js). -->
 <script src="../shared/persist.js"></script>
+<!-- Состояние модуля в общей базе (фаза 2): нужен ДО app.js — загрузчик
+     внизу app.js ждёт его чтения, прежде чем запустить App.init(). -->
+<script src="../shared/state.js"></script>
 <script src="../shared/db.js"></script>
 <script src="../shared/templates/namespaces.js"></script>
 <script src="../shared/templates/builtin.js"></script>

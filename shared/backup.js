@@ -99,7 +99,13 @@
          восстановленный модуль показывал бы визиты, о которых «никогда ничего
          не отправляли», хотя письма ушли. */
       sharedLocal: ['cw-sender'],
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents'] },
+      /* С 15.08.2026 (фаза 2 переезда на общую базу) САМИ ДАННЫЕ МОДУЛЯ лежат
+         в хранилище `state` общей базы, а не в localStorage. Без него копия
+         модуля уехала бы с одним лишь дореформенным снимком под старым ключом:
+         внешне полноценный файл, внутри — состояние на день переезда. Ровно
+         тот бесшумный отказ, что уже случался с `cw-sender` и с архивом
+         Конгрессов, и выясняется он в момент восстановления. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['circuit-planner'] }] },
     },
     'pioneer-school': {
       local: [],
@@ -131,7 +137,15 @@
     },
   };
 
-  /* ⚠️ АРХИВ ДОКУМЕНТОВ ВЫГРУЖАЕТСЯ ХРАНИЛИЩЕМ ЦЕЛИКОМ. Механизм умеет брать
+  /* ⚠️ ХРАНИЛИЩЕ `state` — ЕДИНСТВЕННОЕ, ГДЕ ВЫГРУЖАТЬ ЦЕЛИКОМ НЕЛЬЗЯ.
+     Ключ записи в нём — идентификатор модуля, то есть у каждого модуля ровно
+     одна запись. Слияние при восстановлении здесь не спасает, как спасает в
+     остальных хранилищах: оно кладёт строки поверх существующих ПО КЛЮЧУ, и
+     недельной давности копия Клиндария затёрла бы этой строкой актуальное
+     состояние соседнего модуля целиком. Поэтому запись объявляется адресно —
+     `{ store: 'state', ids: [<module>] }`, и в копию едет только своя.
+
+     ⚠️ АРХИВ ДОКУМЕНТОВ ВЫГРУЖАЕТСЯ ХРАНИЛИЩЕМ ЦЕЛИКОМ. Механизм умеет брать
      отдельные store общей базы, но не отдельные записи внутри store — поэтому
      в копии Клиндария едут и снимки документов Конгрессов. Это осознанный
      размен: секция помечена `partial` и при восстановлении СЛИВАЕТСЯ, значит
@@ -149,6 +163,7 @@
   function sharedDeps(ids) {
     var local = [];
     var stores = {};
+    var filters = {};
     ids.forEach(function (id) {
       var entry = MODULES[id];
       if (!entry) return;
@@ -159,11 +174,21 @@
       Object.keys(declared).forEach(function (dbName) {
         var list = stores[dbName] || (stores[dbName] = []);
         (declared[dbName] || []).forEach(function (st) {
-          if (list.indexOf(st) < 0) list.push(st);
+          /* Две формы записи: строка — хранилище целиком; объект
+             `{store, ids}` — только перечисленные записи. Вторая нужна там,
+             где ключ записи принадлежит конкретному модулю (`state`). */
+          var name = typeof st === 'string' ? st : st && st.store;
+          if (!name) return;
+          if (list.indexOf(name) < 0) list.push(name);
+          var byDb = filters[dbName] || (filters[dbName] = {});
+          if (typeof st === 'string') { byDb[name] = null; return; }   // целиком побеждает
+          if (byDb[name] === null) return;                              // уже объявлено целиком
+          var ids = byDb[name] || (byDb[name] = []);
+          (st.ids || []).forEach(function (key) { if (ids.indexOf(key) < 0) ids.push(key); });
         });
       });
     });
-    return { local: local, stores: stores };
+    return { local: local, stores: stores, filters: filters };
   }
 
   function moduleKeys(id) {
@@ -225,8 +250,11 @@
    * @param {string} name — имя базы
    * @param {string[]} [only] — выгрузить только эти хранилища (для частичной
    *   секции общего слоя). Не передан → вся база.
+   * @param {Object<string, string[]>} [rowFilters] — для перечисленных хранилищ
+   *   взять только записи с этими ключами. Нужно там, где ключ принадлежит
+   *   конкретному модулю (`state`) и чужую запись брать нельзя.
    */
-  function dumpDb(name, only) {
+  function dumpDb(name, only, rowFilters) {
     return openExisting(name).then(function (db) {
       var storeNames = Array.prototype.slice.call(db.objectStoreNames);
       if (only && only.length) {
@@ -241,7 +269,11 @@
           var idx = store.index(i);
           return { name: idx.name, keyPath: idx.keyPath, unique: idx.unique };
         });
+        var wanted = rowFilters && rowFilters[storeName];
         return req(store.getAll()).then(function (rows) {
+          if (wanted && wanted.length && store.keyPath) {
+            rows = rows.filter(function (r) { return r && wanted.indexOf(r[store.keyPath]) >= 0; });
+          }
           out.stores[storeName] = { keyPath: store.keyPath, autoIncrement: store.autoIncrement, indexes: indexes, rows: rows };
         });
       })).then(function () { db.close(); return out; });
@@ -322,7 +354,8 @@
     if (!dbs.length) return Promise.resolve(out);
     return Promise.all(dbs.map(function (name) {
       var only = keys.stores && keys.stores[name];
-      return dumpDb(name, only).then(function (dump) { return { name: name, dump: dump }; });
+      var rowFilters = keys.filters && keys.filters[name];
+      return dumpDb(name, only, rowFilters).then(function (dump) { return { name: name, dump: dump }; });
     })).then(function (dumps) {
       out.idb = {};
       dumps.forEach(function (d) { if (d.dump) out.idb[d.name] = d.dump; });
@@ -349,7 +382,7 @@
       var deps = sharedDeps(list);
       var dbs = Object.keys(deps.stores);
       if (deps.local.length || dbs.length) {
-        jobs.push(section({ local: deps.local, idb: dbs, stores: deps.stores })
+        jobs.push(section({ local: deps.local, idb: dbs, stores: deps.stores, filters: deps.filters })
           .then(function (s) { s.partial = true; return { id: 'shared', data: s }; }));
       }
     }
