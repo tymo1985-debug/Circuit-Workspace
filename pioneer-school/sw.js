@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.12.2';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -36,6 +36,7 @@ const ASSETS = [
   '../shared/templates/builtin.js',
   '../shared/templates.js',
   '../shared/documents.js',
+  '../shared/print.js',
   './i18n/dict.js',
   './i18n/doc.js',
   './js/i18n.js',

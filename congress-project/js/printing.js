@@ -13,7 +13,13 @@ export function setPrintStyle(o, margin, extraCSS) {
 export function printWithOrientation(h, o, filename, margin, extraCSS) {
   setPrintStyle(o || "portrait", margin, extraCSS);
   $("#printArea").innerHTML = h;
-  if (filename) { store.printTitleBackup = document.title; document.title = filename }
+  /* Имя файла — через общий слой (shared/print.js). Прежняя реализация меняла
+     document.title прямо здесь и восстанавливала его на afterprint в main.js,
+     БЕЗ защиты от двойного beforeprint: событие приходит и от своего
+     window.print(), и от системного диалога, поэтому имя вкладки могло
+     остаться названием документа навсегда. В Назначениях этот баг уже чинили
+     отдельно — теперь защита одна на оба модуля. */
+  if (filename) CWPrint.filename(filename);
   setTimeout(() => window.print(), 80);
 }
 export function askOrientation(title, def, html, filename) {

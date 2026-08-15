@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.72.1',
+      version: '9.72.2',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -998,8 +998,14 @@
         const html = this.buildPrintHtml(App.state.pdfExportType || 'month-grid');
         if (!html) return;
         this.closePdf();
+        /* Заблокированное окно — это отказ. Раньше здесь стоял откат на
+           window.print(), то есть на бумагу уходил ЭКРАН приложения вместо
+           календаря: пользователь получал лист, выглядящий как успех, но с
+           не тем содержимым. См. docs/print/01-audit.md, §2.2.
+           На CWPrint.document() этот тракт ещё не переведён — у него своя
+           раскладка и свой @page; перенос запланирован отдельной фазой. */
         const win = window.open('', '_blank');
-        if (!win) { window.print(); return; }
+        if (!win) { App.utils.toast(App.utils.t('docs_print_blocked')); return; }
         win.document.open(); win.document.write(html); win.document.close(); win.focus();
         setTimeout(() => { try { win.print(); } catch (_) {} }, 250);
       }
@@ -3493,24 +3499,22 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const body = doc.bodyHtml === null
           ? `<pre>${App.utils.escapeHtml(doc.bodyText || '')}</pre>`
           : doc.bodyHtml + (doc.pages || []).map((page) => `<div class="pb"></div>${page.html || ''}`).join('');
-        const win = window.open('', '_blank');
-        if (!win) return App.utils.toast(App.utils.t('docs_print_blocked'));
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${App.utils.escapeHtml(state.item.name)}</title>
-          <style>
-            body{font:13.5px/1.62 Georgia,"Times New Roman",serif;color:#16251d;margin:28mm 20mm}
-            .cp-doc-sender{text-align:right;font-size:11px;color:#556;white-space:pre-line;margin-bottom:16px}
-            .cp-doc-salutation{font-weight:700}
-            .cp-doc-date{text-align:right;font-size:11.5px;color:#556;margin-top:-14px}
-            pre{font:inherit;white-space:pre-wrap}
-            .pb{page-break-before:always;height:0}
-            @media print{body{margin:0}}
-          </style></head><body>
-          ${doc.subject ? `<p><b>${App.utils.escapeHtml(doc.subject)}</b></p>` : head}
-          ${body}</body></html>`);
-        win.document.close();
-        win.focus();
-        /* Печать после отрисовки: иначе Safari печатает пустой лист. */
-        setTimeout(() => { win.print(); }, 250);
+        /* Окно, стили бумаги и задержка перед печатью — в CWPrint.document().
+           Здесь остаются только те стили, которых нет больше нигде: шапка
+           письма (отправитель, дата, обращение) рисуется этим модулем. */
+        const ok = CWPrint.document({
+          title: state.item.name,
+          /* Именно ФАКТИЧЕСКИЙ язык, как в архиве: при пустой колонке перевода
+             текст приезжает на первом непустом языке, и пометить страницу
+             запрошенным значило бы соврать про переносы слов. */
+          lang: this.docActualLangFor(state.item),
+          html: `${doc.subject ? `<p><b>${App.utils.escapeHtml(doc.subject)}</b></p>` : head}${body}`,
+          css: '.cp-doc-sender{text-align:right;font-size:11px;color:#556;white-space:pre-line;margin-bottom:16px}'
+             + '.cp-doc-salutation{font-weight:700}'
+             + '.cp-doc-date{text-align:right;font-size:11.5px;color:#556;margin-top:-14px}',
+          onBlocked: () => App.utils.toast(App.utils.t('docs_print_blocked')),
+        });
+        if (!ok) return;
         this.snapshotComposerDoc('print');
       },
 

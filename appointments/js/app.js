@@ -447,22 +447,11 @@
     return parts.length ? parts.join('; ') : null;
   }
 
-  var titleBackup = null;
-  function beforePrint() {
-    var built = printTitle();
-    if (!built) return;
-    /* beforeprint может прийти дважды (свой вызов window.print() плюс
-       системный диалог печати). Без этой проверки второе событие клало в
-       резерв уже подменённый заголовок, и после печати имя вкладки
-       навсегда оставалось составом письма. */
-    if (titleBackup === null) titleBackup = document.title;
-    document.title = built;
-  }
-  function afterPrint() {
-    if (titleBackup === null) return;
-    document.title = titleBackup;
-    titleBackup = null;
-  }
+  /* Подмена заголовка вкладки (браузер берёт из неё имя PDF) уехала в
+     shared/print.js: тот же приём с той же защитой от двойного beforeprint
+     нужен и Конгрессам, где его не было. Имя передаётся ФУНКЦИЕЙ, а не
+     строкой: состав письма меняется, пока пользователь правит форму, и
+     собирать имя надо в момент печати. Пустой ответ = заголовок не трогаем. */
 
   /* --- Переключатель языка -------------------------------------------- */
   function initLanguage() {
@@ -569,8 +558,7 @@
     bindSignature();
 
     $('#printBtn').addEventListener('click', function () { window.print(); });
-    window.addEventListener('beforeprint', beforePrint);
-    window.addEventListener('afterprint', afterPrint);
+    CWPrint.filename(printTitle);
   }
 
   /* --- Подпись: события панели ----------------------------------------- */

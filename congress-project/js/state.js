@@ -8,7 +8,7 @@ import { t } from "./i18n.js";
 export const KEY="congress-pwa-v34-speakers",BACKUP_KEY=KEY+"-backups";
 export const STATUSES=["Не назначено","Назначено","Ожидает ответа","Подтверждено","Нужно письмо","Письмо отправлено","Запись получена","Готово"];
 export const BASE_TYPES=["Пункт програми","Промова","Інтерв’ю","Показ","Демонстрація","Музика","Пісня і молитва","Оголошення","Серія промов","Раздел"],BASE_KINDS=["інтерв’ю","показ","демонстрація"];
-export let store={st:{congresses:[],activeId:null,settings:null,series:[]},sel:null,editId:null,previewId:null,listMode:"groups",templateMode:"default",deferredPrompt:null,pendingPrintHTML:"",pendingPrintFilename:"",printTitleBackup:null,lastSavedAt:null};
+export let store={st:{congresses:[],activeId:null,settings:null,series:[]},sel:null,editId:null,previewId:null,listMode:"groups",templateMode:"default",deferredPrompt:null,pendingPrintHTML:"",pendingPrintFilename:"",lastSavedAt:null};
 export function baseSettings(){return{font:"Arial, Helvetica, sans-serif",fontSize:"17",stageRehearsalDate:"",stageRehearsalTime:"",recordingDeadline:"",responseDeadline:"2025-08-18",congregations:["EU-K-01","SZ Warszawa","Warszawa-Ukraiński-Południe (19588)","Warszawa-Ukraiński-Północ (9610)"],speakers:["Олексій Тимощук","Якуб Ульфік","Филип Казіродек"],speakerProfiles:[],assignmentTypes:BASE_TYPES.slice(),assignmentKinds:BASE_KINDS.slice()}}
 // Данные отправителя и язык письма больше не хранятся в настройках модуля:
 // они общие для всей экосистемы (shared/sender.js и shared/doclang.js).

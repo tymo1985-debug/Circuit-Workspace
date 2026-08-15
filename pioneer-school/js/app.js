@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.12.2';
 
 let LESSONS_SEED = null;
 
@@ -502,21 +502,21 @@ function currentComposerDoc() {
 
 // Печать идёт через изолированное окно, а не через @media print приложения:
 // у оболочки свои правила печати, и документ в них выглядел бы как экран.
+// Само окно, типографика бумаги и задержка перед печатью — в shared/print.js:
+// здесь и в композере Клиндария этот код был написан дважды независимо.
 function printComposerDoc() {
   const doc = currentComposerDoc();
   if (!doc) return;
-  const win = window.open('', '_blank');
-  if (!win) return alert(T('ps.docs.print_blocked'));
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(doc.title)}</title>
-    <style>
-      body{font:13.5px/1.62 Georgia,"Times New Roman",serif;color:#16251d;margin:28mm 20mm;white-space:pre-wrap}
-      h1{font-size:16px;margin:0 0 18px}
-      @media print{body{margin:0}}
-    </style></head><body><h1>${esc(doc.title)}</h1>${esc(doc.body)}</body></html>`);
-  win.document.close();
-  win.focus();
-  // Печать после отрисовки: иначе Safari печатает пустой лист.
-  setTimeout(() => win.print(), 250);
+  const ok = CWPrint.document({
+    title: doc.title,
+    lang: PSDocLang.get(),
+    // Тело письма — простой текст, поэтому переносы держит сам body.
+    // В общий слой это не уехало: у Клиндария документ приходит размеченным.
+    css: 'body{white-space:pre-wrap}',
+    html: `<h1>${esc(doc.title)}</h1>${esc(doc.body)}`,
+    onBlocked: () => alert(T('ps.docs.print_blocked')),
+  });
+  if (!ok) return;
   Letters.snapshot(doc, composerState.student, 'print', composerState.edited);
 }
 
