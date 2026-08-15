@@ -80,9 +80,11 @@
       local: ['congress-pwa-v34-speakers', 'congress-pwa-v34-speakers-backups'],
       idb: [],
       /* Блок отправителя печатается в шапке каждого письма участнику,
-         а с 12.08.2026 в общей базе лежат и сами шаблоны писем. */
+         а с 12.08.2026 в общей базе лежат и сами шаблоны писем.
+         С 15.08.2026 модуль пишет и снимки выданных писем (`documents`):
+         без них копия Конгрессов восстановилась бы с пустым архивом. */
       sharedLocal: ['cw-sender'],
-      sharedStores: { 'circuit-workspace-db': ['templates'] },
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents'] },
     },
     'circuit-planner': {
       local: [

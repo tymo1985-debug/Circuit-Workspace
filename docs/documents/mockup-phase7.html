@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="../../shared/theme.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Макет — композер документов в Конгрессах (фаза 7)</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<!--
+  МАКЕТ, А НЕ КОД. Показывает вид и порядок кликов, чтобы утвердить их до
+  правки модуля. Данные здесь выдуманные и захардкожены, ничего не сохраняется.
+  Удалить после выпуска фазы — см. «Правило про мокапы» в AGENTS.md.
+
+  Подключён НАСТОЯЩИЙ shared/style.css: если что-то выглядит иначе, чем в
+  приложении, это расхождение макета, а не приложения.
+-->
+<style>
+  body { background: var(--md-surface); color: var(--md-on-surface); font-family: var(--cw-font, system-ui, sans-serif); margin: 0; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--md-on-surface-variant); font-size: 13.5px; margin: 0 0 20px; line-height: 1.5; }
+  .note { border-left: 3px solid var(--md-primary); background: var(--md-surface-container-low); padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.55; margin: 18px 0; }
+  .note b { color: var(--md-primary); }
+  section { margin: 28px 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; letter-spacing: .01em; }
+  .switcher { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  /* --- строка программы (упрощённая копия .program-table) --- */
+  .prog { border: 1px solid var(--md-outline-variant); border-radius: 12px; overflow: hidden; background: var(--md-surface-container-lowest); }
+  .prog-row { display: grid; grid-template-columns: 62px 46px 1fr auto; gap: 12px; padding: 12px 14px; align-items: start; border-bottom: 1px solid var(--md-outline-variant); }
+  .prog-row:last-child { border-bottom: 0; }
+  .prog-row.selected { background: var(--md-secondary-container); }
+  .prog-time, .prog-num { color: var(--md-on-surface-variant); font-size: 13px; padding-top: 3px; }
+  .prog-title { font-size: 14.5px; font-weight: 500; }
+  .prog-people { font-size: 13px; color: var(--md-on-surface-variant); margin-top: 3px; line-height: 1.5; }
+  .prog-actions { display: flex; gap: 6px; align-items: center; position: relative; }
+
+  /* --- меню участников --- */
+  .docmenu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; min-width: 240px; background: var(--md-surface-container-high); border: 1px solid var(--md-outline-variant); border-radius: 12px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
+  .docmenu button { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 9px 10px; color: inherit; cursor: pointer; font: inherit; }
+  .docmenu button:hover { background: var(--md-surface-container-highest); }
+  .docmenu-name { display: block; font-size: 14px; }
+  .docmenu-sub { display: block; font-size: 11.5px; color: var(--md-on-surface-variant); margin-top: 2px; }
+
+  /* --- композер --- */
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+  .modal-back.show { display: flex; }
+  .composer { background: var(--md-surface-container); border-radius: 18px; width: min(760px, 100%); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+  .composer-head { display: flex; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; }
+  .composer-head h3 { margin: 0; font-size: 17px; }
+  .composer-sub { font-size: 12.5px; color: var(--md-on-surface-variant); margin-top: 3px; }
+  .paper-wrap { overflow: auto; padding: 0 18px; }
+  .paper { background: #fff; color: #16161a; border-radius: 6px; padding: 26px 30px; font-size: 14px; line-height: 1.62; box-shadow: 0 1px 0 rgba(0,0,0,.14); }
+  .paper.editing { outline: 2px solid var(--md-primary); outline-offset: 4px; }
+  .paper-head { color: #45464f; font-size: 12.5px; line-height: 1.5; border-bottom: 1px dashed #cfcfd6; padding-bottom: 12px; margin-bottom: 16px; }
+  .paper p { margin: 0 0 11px; }
+  .composer-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 18px 18px; }
+  .composer-actions .grow { margin-left: auto; }
+  .edited-flag { font-size: 12px; color: var(--md-primary); align-self: center; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Композер документов в Конгрессах — макет</h1>
+  <p class="sub">Фаза 7 общего слоя документов. Образец — композер Клиндария (фаза 5) и письма Школы (фаза 6);
+  здесь показано только то, чем Конгрессы от них отличаются.</p>
+
+  <div class="note">
+    <b>Главное отличие от Клиндария.</b> Там пункты меню — типы документов. Здесь тип
+    документа один (письмо участнику), а пункты меню — <b>участники задания</b>: у задания их
+    может быть несколько, и сейчас письмо получает только первый из списка. Ровно та же
+    развилка, что на экране «Назначение» в Школе пионеров.
+  </div>
+
+  <section>
+    <h2>1. Строка программы: вход в композер</h2>
+    <div class="switcher">
+      <button class="md-btn md-btn-outlined" type="button" onclick="setMode('one')">Задание с одним участником</button>
+      <button class="md-btn md-btn-outlined" type="button" onclick="setMode('many')">Задание с двумя участниками</button>
+    </div>
+
+    <div class="prog">
+      <div class="prog-row selected">
+        <div class="prog-time">10:25</div>
+        <div class="prog-num">№4</div>
+        <div>
+          <div class="prog-title">Довіряй Єгові всім серцем</div>
+          <div class="prog-people" id="people">Якуб Ульфік <span style="opacity:.7">(Варшава–Північ)</span></div>
+        </div>
+        <div class="prog-actions">
+          <button class="md-btn md-btn-outlined" type="button" onclick="docBtn()" id="docBtn">Создать документ</button>
+          <button class="md-btn md-btn-text" type="button">Изменить</button>
+          <div class="docmenu hidden" id="docmenu" role="menu"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" id="modeNote">
+      <b>Один участник — меню нет.</b> Кнопка открывает предпросмотр сразу: меню из одного пункта
+      было бы лишним кликом. Правило взято из Школы пионеров и здесь не меняется.
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Что показывает предпросмотр</h2>
+    <p class="sub" style="margin-bottom:10px">Открывается по кнопке выше. Ниже — пояснения к тому, что в нём видно.</p>
+    <div class="note">
+      <b>Шапка письма показана, но не редактируется.</b> Отправителя, обращение и дату рисует
+      сборщик письма сам; в тело они не входят. Иначе после разовой правки шапка попала бы в
+      печать дважды — на этом уже спотыкались в Клиндарии.
+    </div>
+    <div class="note">
+      <b>Язык не спрашивается</b> — берётся из настройки языка документа модуля (uk/ru/de).
+      <b>Источник данных не выбирается</b> — задание известно из строки, из которой открыли.
+      Оба ограничения держат проектное требование «не больше двух действий до предпросмотра».
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Чего в этой фазе НЕ будет</h2>
+    <div class="note">
+      Новых типов писем (напоминание о репетиции, о записи) не появляется: это новый текст,
+      который придётся писать и потом переводить на три языка, а переводы вот-вот заказываются.
+      Вынесено в <code>IDEAS.md</code>, решается отдельно.
+      <br><br>
+      Модалка «Письма» остаётся: она про рассылку и отметку «отправлено», композер — про
+      отдельный документ. Слияние — отдельная задача, не «очевидный рефакторинг».
+    </div>
+  </section>
+
+</div>
+
+<!-- ------------------------- композер ------------------------- -->
+<div class="modal-back" id="back" onclick="if(event.target===this)closeComposer()">
+  <div class="composer" role="dialog" aria-modal="true">
+    <div class="composer-head">
+      <div>
+        <h3 id="cTitle">Письмо участнику</h3>
+        <div class="composer-sub" id="cSub">№4 · Довіряй Єгові всім серцем · язык документа: UK</div>
+      </div>
+      <button class="md-icon-btn" type="button" aria-label="Закрыть" onclick="closeComposer()">✕</button>
+    </div>
+
+    <div class="paper-wrap">
+      <div class="paper" id="paper">
+        <div class="paper-head" id="paperHead">
+          Районний наглядач · Круг 12<br>
+          вул. Прикладна 5, Варшава · +48 000 000 000<br>
+          Варшава, 14 серпня 2026 р.
+        </div>
+        <div id="paperBody"></div>
+      </div>
+    </div>
+
+    <div class="composer-actions">
+      <button class="md-btn md-btn-text" type="button" id="editBtn" onclick="toggleEdit()">Править разово</button>
+      <span class="edited-flag hidden" id="editedFlag">правлено вручную</span>
+      <button class="md-btn md-btn-outlined grow" type="button">Копировать текст</button>
+      <button class="md-btn md-btn-outlined" type="button">Печать</button>
+      <button class="md-btn md-btn-outlined" type="button">PDF</button>
+      <button class="md-btn md-btn-filled" type="button">Сохранить в архив</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Выдуманные данные: макет показывает раскладку и порядок кликов, не логику.
+  var PEOPLE = {
+    one:  [{ name: 'Якуб Ульфік', cong: 'Варшава–Північ' }],
+    many: [{ name: 'Якуб Ульфік', cong: 'Варшава–Північ' }, { name: 'Марек Новак', cong: 'Варшава–Схід' }]
+  };
+  var mode = 'one';
+
+  function letterBody(person) {
+    return '<p>Дорогі брати!</p>'
+      + '<p>Раді повідомити, що на обласному конгресі «Довіряй Єгові!» брату <b>' + person.name + '</b> '
+      + '(збір ' + person.cong + ') доручено завдання <b>№4 — «Довіряй Єгові всім серцем»</b>, '
+      + 'початок о 10:25.</p>'
+      + '<p>Просимо підтвердити отримання цього листа до 20 вересня 2026 р. Запис завдання '
+      + 'потрібно здати до 1 жовтня 2026 р., репетиція відбудеться 5 жовтня 2026 р. о 09:00.</p>'
+      + '<p>З братньою любов’ю,<br>районний наглядач</p>';
+  }
+
+  function setMode(m) {
+    mode = m;
+    var list = PEOPLE[m];
+    document.getElementById('people').innerHTML = list
+      .map(function (p) { return p.name + ' <span style="opacity:.7">(' + p.cong + ')</span>'; })
+      .join('<br>');
+    document.getElementById('docmenu').classList.add('hidden');
+    document.getElementById('modeNote').innerHTML = m === 'one'
+      ? '<b>Один участник — меню нет.</b> Кнопка открывает предпросмотр сразу: меню из одного '
+        + 'пункта было бы лишним кликом. Правило взято из Школы пионеров и здесь не меняется.'
+      : '<b>Участников несколько — кнопка открывает меню.</b> Пункт = человек, которому пишем. '
+        + 'Сегодня письмо всегда уходит первому в списке, а второй участник задания не получает '
+        + 'ничего — эта фаза как раз и закрывает пробел. Список читается в момент открытия меню, '
+        + 'а не при отрисовке строки: участника могли добавить только что.';
+  }
+
+  function docBtn() {
+    var list = PEOPLE[mode];
+    if (list.length === 1) return openComposer(list[0]);
+    var box = document.getElementById('docmenu');
+    box.innerHTML = list.map(function (p, i) {
+      return '<button type="button" role="menuitem" onclick="pick(' + i + ')">'
+        + '<span class="docmenu-name">' + p.name + '</span>'
+        + '<span class="docmenu-sub">' + p.cong + ' · язык документа UK</span></button>';
+    }).join('');
+    box.classList.toggle('hidden');
+  }
+
+  function pick(i) {
+    document.getElementById('docmenu').classList.add('hidden');
+    openComposer(PEOPLE[mode][i]);
+  }
+
+  function openComposer(person) {
+    document.getElementById('paperBody').innerHTML = letterBody(person);
+    document.getElementById('cSub').textContent =
+      '№4 · Довіряй Єгові всім серцем · ' + person.name + ' · язык документа: UK';
+    setEdit(false);
+    document.getElementById('editedFlag').classList.add('hidden');
+    document.getElementById('back').classList.add('show');
+  }
+
+  function closeComposer() { document.getElementById('back').classList.remove('show'); }
+
+  function setEdit(on) {
+    var paper = document.getElementById('paper');
+    var body = document.getElementById('paperBody');
+    body.contentEditable = on ? 'true' : 'false';
+    paper.classList.toggle('editing', on);
+    document.getElementById('editBtn').textContent = on ? 'Готово' : 'Править разово';
+    // Шапка не редактируется никогда — её рисует сборщик письма.
+    document.getElementById('paperHead').contentEditable = 'false';
+    if (on) body.focus();
+  }
+
+  function toggleEdit() {
+    var on = document.getElementById('paperBody').contentEditable !== 'true';
+    setEdit(on);
+    // Пометка ставится в момент ВКЛЮЧЕНИЯ правки, а не по факту различий:
+    // знать, что документ трогали руками, полезно, даже если текст вернули как был.
+    if (on) document.getElementById('editedFlag').classList.remove('hidden');
+  }
+
+  setMode('one');
+</script>
+</body>
+</html>

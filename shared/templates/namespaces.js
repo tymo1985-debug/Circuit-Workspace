@@ -108,6 +108,10 @@
         time:           { aliases: ['assignmentTime'],    example: '10:00' },
         type:           { aliases: ['assignmentType'],    example: 'промову' },
         participant:    { aliases: ['participantName'],   example: 'Якуб Ульфік' },
+        /* Собрание брата, которому адресовано ЭТО письмо, а не собрание вообще.
+           Добавлено 15.08.2026 вместе с архивом документов Конгрессов. Алиаса
+           нет: старых шаблонов с таким плейсхолдером не существовало. */
+        congregation:   { aliases: [],                    example: 'Варшава–Північ' },
         recordingMedia: { aliases: ['recordingMedia'],    example: 'аудіо' },
         recordingKind:  { aliases: ['recordingKind'],     example: 'інтерв’ю' },
         notes:          { aliases: ['notes'],             example: '' },
