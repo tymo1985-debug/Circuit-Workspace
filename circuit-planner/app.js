@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.73.0',
+      version: '9.74.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -474,7 +474,45 @@
       },
       migrate(appData) { return this.normalizeApp(appData && appData.schema === 'sp-backup-v2' ? this.convertLegacyBackup(appData) : appData); },
       load() { try { const saved = localStorage.getItem(App.config.storageKey); this.lastWrittenPayload = saved || null; App.state.app = saved ? this.migrate(JSON.parse(saved)) : this.createDefaultData(); } catch (error) { console.error('Storage load failed', error); App.state.app = this.createDefaultData(); App.utils.toast('Storage reset.'); } },
+      /* ── Отложенная запись (shared/persist.js, фаза 1 миграции на CWDB) ──
+         `save()` больше не пишет сама: она помечает состояние изменённым и
+         ставит запись в очередь. Для всех 52 вызовов в этом файле ничего не
+         меняется — функция по-прежнему синхронна и по-прежнему зовётся после
+         каждой правки. Меняется только момент попадания на диск, и это ровно
+         то свойство, ради которого фаза 1 существует: когда в фазе 2 писать
+         начнёт `CWDB` (асинхронно), код вокруг переписывать не придётся.
+
+         Полезная нагрузка собирается ЗДЕСЬ, в момент записи, а не в момент
+         вызова `save()` — поэтому отложенная запись физически не может
+         записать устаревшее состояние. */
+      scheduler: null,
+      persist() {
+        if (this.scheduler) return this.scheduler;
+        if (!self.CWPersist) return null;
+        this.scheduler = self.CWPersist.create({
+          name: 'circuit-planner',
+          /* На закрытии вкладки пишем ЧЕРЕЗ ЗАЩИЩЁННЫЙ путь: если за время
+             ожидания соседняя вкладка записала более свежие данные, наше
+             устаревшее состояние их затрёт. Такое уже приводило к реальной
+             потере данных при работе в двух вкладках. */
+          write: (reason) => { if (reason === 'unload') this.saveIfOwnStateIsCurrent(); else this.writeNow(); },
+        });
+        return this.scheduler;
+      },
       save() {
+        const p = this.persist();
+        /* Общий слой не приехал (офлайн-кэш старой версии) — пишем как раньше,
+           немедленно. Молча терять данные из-за отсутствующего файла нельзя. */
+        if (!p) { this.writeNow(); return; }
+        p.schedule();
+      },
+      /** Записать немедленно, минуя очередь. Нужно там, где сразу после этого
+       *  читается СОХРАНЁННОЕ значение, а не состояние в памяти. */
+      flushNow(reason) {
+        const p = this.persist();
+        if (p) p.flush(reason || 'flush'); else this.writeNow();
+      },
+      writeNow() {
         try {
           this.snapshotIfDue();
           const payload = JSON.stringify(App.state.app);
@@ -498,7 +536,9 @@
             // Storage changed underneath us — another tab owns the newer data. Don't clobber it.
             return;
           }
-          this.save();
+          // Именно writeNow(): этот путь и есть запись, ставить её обратно в
+          // очередь на закрытии вкладки значило бы не записать вовсе.
+          this.writeNow();
         } catch (error) {
           console.error('Guarded save failed', error);
         }
@@ -514,6 +554,10 @@
        * всего.
        */
       snapshotForMigration() {
+        /* Снимок берётся ИЗ ХРАНИЛИЩА, а с фазы 1 в очереди может лежать
+           незаписанная правка — тогда в историю попало бы состояние старее
+           того, что человек видит на экране. Догоняем очередь до снимка. */
+        this.flushNow('snapshot');
         try {
           const raw = localStorage.getItem(App.config.historyKey);
           const history = raw ? JSON.parse(raw) : [];
@@ -563,7 +607,9 @@
           if (current) { history.push({ at: Date.now(), data: current }); while (history.length > App.config.maxSnapshots) history.shift(); localStorage.setItem(App.config.historyKey, JSON.stringify(history)); }
         } catch (error) { console.error('Pre-restore checkpoint failed', error); }
         App.state.app = this.migrate(JSON.parse(snap.data));
-        this.save();
+        /* Восстановление — не рядовая правка: результат должен лежать на диске
+           до того, как пользователь закроет вкладку или обновит страницу. */
+        this.flushNow('restore');
         return true;
       },
     },
@@ -4434,13 +4480,28 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       // future code path ever mutates state without calling store.save() itself. Guarded by
       // saveIfOwnStateIsCurrent() so it can never clobber newer data written by another tab —
       // blindly writing here caused real data loss when the app was open in two tabs.
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') App.store.saveIfOwnStateIsCurrent(); });
-      window.addEventListener('pagehide', () => App.store.saveIfOwnStateIsCurrent());
-      window.addEventListener('beforeunload', () => App.store.saveIfOwnStateIsCurrent());
+      //
+      // С фазы 1 эти три обработчика вешает общий слой (shared/persist.js) —
+      // там же, где живёт отложенная запись, иначе страховка и очередь
+      // разъехались бы. Здесь остался только запасной путь на случай, когда
+      // общий файл не подключился.
+      if (!App.store.persist()) {
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') App.store.saveIfOwnStateIsCurrent(); });
+        window.addEventListener('pagehide', () => App.store.saveIfOwnStateIsCurrent());
+        window.addEventListener('beforeunload', () => App.store.saveIfOwnStateIsCurrent());
+      }
       // Keep tabs in sync: if another tab saves, adopt its data instead of holding stale state
       // that a later save from this tab would write back over the top of.
       window.addEventListener('storage', (e) => {
         if (e.key !== App.config.storageKey || !e.newValue) return;
+        /* Отложенная запись открыла окно, которого раньше не было: в очереди
+           может лежать правка, которую человек только что сделал в ЭТОЙ
+           вкладке. Принять чужое состояние значило бы стереть её молча, прямо
+           под курсором. Поэтому сначала записываем своё, а чужое пропускаем —
+           соседняя вкладка получит нашу запись тем же событием и подхватит её.
+           Симметрично и без тихой потери на активной вкладке. */
+        const p = App.store.persist();
+        if (p && p.pending()) { App.store.flushNow('conflict'); return; }
         try {
           App.state.app = App.store.migrate(JSON.parse(e.newValue));
           App.store.lastWrittenPayload = e.newValue;

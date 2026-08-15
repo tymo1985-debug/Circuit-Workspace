@@ -86,7 +86,35 @@ export function row(o={}){return{id:id(),time:"",number:"",title:"",type:"Пун
 export function demo(){return[row({time:"9:30",title:"РАНКОВА ПРОГРАМА",type:"Раздел",section:true,recordingMedia:"",recordingKind:""}),row({time:"9:40",title:"Музика",type:"Музика",recordingMedia:"аудіо",recordingKind:"інтерв’ю",status:"Назначено"}),row({time:"9:50",title:"Пісня — і молитва",type:"Пісня і молитва",participants:[{name:"",congregation:""}],recordingMedia:"аудіо",recordingKind:"інтерв’ю"}),row({time:"10:00",number:"1",title:"Why “Trust In Jehovah With All Your Heart”?",type:"Промова",duration:"15",participants:[{name:"",congregation:""}],recordingMedia:"аудіо",recordingKind:"промову"}),row({time:"13:20",title:"ПОПОЛУДНЕВА ПРОГРАМА",type:"Раздел",section:true,recordingMedia:"",recordingKind:""})]}
 export function A(){return store.st.congresses.find(c=>c.id===store.st.activeId)}
 export function S(){if(!store.st.settings)store.st.settings=baseSettings();return store.st.settings}
-export function save(){localStorage.setItem(KEY,JSON.stringify(store.st));store.lastSavedAt=new Date();updateSaveStatus()}
+/* ── Отложенная запись (shared/persist.js, фаза 1 миграции на CWDB) ──────────
+   `save()` больше не пишет сама: она ставит запись в очередь. Для всех 27
+   вызовов в модуле ничего не меняется — функция синхронна, как была. Меняется
+   момент попадания на диск, и это ровно то свойство, ради которого фаза 1
+   существует: когда в фазе 2 писать начнёт `CWDB` (асинхронно), окружающий код
+   переписывать не придётся.
+
+   Здесь выигрыш заметен уже сегодня: `save()` висит на `oninput` полей
+   названия, места и даты конгресса, то есть до сих пор весь блоб состояния
+   сериализовался и уходил в localStorage на КАЖДЫЙ введённый символ.
+
+   Полезная нагрузка собирается в момент записи, а не в момент вызова `save()`.
+   Поэтому сброс приложения (`localStorage.removeItem(KEY)` + новое состояние)
+   не рискует получить поверх себя «догоняющую» запись старых данных. */
+let scheduler=null;
+export function persist(){
+  if(scheduler)return scheduler;
+  if(!self.CWPersist)return null;
+  scheduler=self.CWPersist.create({name:"congress-project",write:writeNow});
+  return scheduler}
+export function save(){let p=persist();
+  // Общий слой не приехал (офлайн-кэш старой версии) — пишем немедленно, как
+  // раньше. Молча терять данные из-за отсутствующего файла нельзя.
+  if(!p){writeNow();return}
+  p.schedule()}
+/** Записать немедленно, минуя очередь: там, где сразу после этого читается
+ *  СОХРАНЁННОЕ значение, а не состояние в памяти. */
+export function flushNow(reason){let p=persist();if(p)p.flush(reason||"flush");else writeNow()}
+function writeNow(){localStorage.setItem(KEY,JSON.stringify(store.st));store.lastSavedAt=new Date();updateSaveStatus()}
 export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
 export function makeBackup(label){try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date().toISOString(),label:label||t("cong.msg.autobackup"),data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,10)))}catch(e){}}
 export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.series))store.st.series=[];if(!s.font)s.font=b.font;if(!s.fontSize)s.fontSize=b.fontSize;if(!Array.isArray(s.congregations))s.congregations=b.congregations;if(!Array.isArray(s.speakers))s.speakers=b.speakers;if(!Array.isArray(s.speakerProfiles))s.speakerProfiles=[];if(!Array.isArray(s.assignmentTypes))s.assignmentTypes=b.assignmentTypes;if(!Array.isArray(s.assignmentKinds))s.assignmentKinds=b.assignmentKinds;(store.st.congresses||[]).forEach(c=>{if(c.theme==null)c.theme="";if(c.language==null)c.language="";if(c.notes==null)c.notes="";if(c.seriesId===undefined)c.seriesId=null;if(c.rehearsalDate===undefined)c.rehearsalDate=s.stageRehearsalDate||"";if(c.rehearsalTime===undefined)c.rehearsalTime=s.stageRehearsalTime||"";if(c.recordingDeadline===undefined)c.recordingDeadline=s.recordingDeadline||"";if(c.responseDeadline===undefined)c.responseDeadline=s.responseDeadline||"";(c.tasks||[]).forEach(t=>{if(t.linkId===undefined)t.linkId=null;if(t.recordingMedia==null)t.recordingMedia=s.recordingMedia||"аудіо";if(t.recordingKind==null)t.recordingKind=s.recordingKind||t.kind||"інтерв’ю";if(noAssignmentNeeded(t)){t.letterSent=false;t.letterSentDate="";t.status=""}else{if(!t.status)t.status=t.confirmed?"Подтверждено":"Не назначено";if(t.letterSent==null)t.letterSent=false;if(t.letterSentDate==null)t.letterSentDate=""}if(isSection(t))t.section=true})});cleanupLinks()}

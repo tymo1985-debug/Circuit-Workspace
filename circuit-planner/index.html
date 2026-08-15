@@ -344,6 +344,9 @@ body::before{display:none !important}
 <script src="../shared/i18n/common.js"></script>
 <!-- Словарь модуля: с фазы 5 он вынесен из app.js в общий слой (префикс cp.). -->
 <script src="../shared/sender.js"></script>
+<!-- Отложенная запись состояния: подключать ДО app.js, планировщик создаётся
+     при первом save() (фаза 1 миграции на shared/db.js). -->
+<script src="../shared/persist.js"></script>
 <script src="../shared/db.js"></script>
 <script src="../shared/templates/namespaces.js"></script>
 <script src="../shared/templates/builtin.js"></script>
