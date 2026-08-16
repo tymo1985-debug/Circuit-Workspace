@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.78.0',
+      version: '9.79.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -766,12 +766,58 @@
 
     data: {
       ensureServiceYear(year) { if (!App.state.app.serviceYears[year]) App.state.app.serviceYears[year] = { weeks: {} }; return App.state.app.serviceYears[year]; },
-      getEventById(id) { return App.state.app.events.find((item) => item.id === id) || null; },
+      /**
+       * Чтение события идёт через общий справочник (фаза 5, шаг 4а).
+       *
+       * Возвращается ОБЪЕДИНЁННОЕ представление: поля модуля (цвет,
+       * расписание, тип визита, язык формуляра) плюс идентификация из
+       * `CWDirectory`, если он прочитан. Сорок с лишним мест читают
+       * `event.name` / `event.address` через эту точку — их правка не
+       * потребовалась, и это была единственная причина сохранить воронку.
+       *
+       * ⚠️ Результат — КОПИЯ. Писать в него бесполезно и БЕСШУМНО: правка
+       * никуда не доедет. Для изменения есть `getRawEventById()`.
+       */
+      getEventById(id) {
+        const own = this.getRawEventById(id);
+        return own ? App.shared.directory.merge(own) : null;
+      },
+
+      /** Сырая запись модуля. Только для тех, кто её МЕНЯЕТ. */
+      getRawEventById(id) { return App.state.app.events.find((item) => item.id === id) || null; },
+
+      /** Все события в объединённом виде — для списков, фильтров и выпадающих. */
+      allEvents() { return (App.state.app.events || []).map((item) => App.shared.directory.merge(item)); },
+
+      /**
+       * `entry.title` — СНИМОК названия на момент создания записи, а не
+       * ссылка. Поэтому переименование обязано пройтись по записям, иначе
+       * письма, формуляры и сам календарь навсегда остались бы со старым
+       * именем. Трогаются только записи, чей заголовок ещё СОВПАДАЕТ со
+       * старым названием: правленное вручную остаётся как есть.
+       *
+       * Раньше это жило внутри `saveEventTemplate()`. Вынесено потому, что
+       * переименование теперь может прийти и ИЗВНЕ — из справочника
+       * (соседняя вкладка, в будущем соседний модуль). Логика починки
+       * обязана ехать за названием: это прямое условие шага 4 из аудита.
+       *
+       * @returns {boolean} чинили ли хоть что-нибудь
+       */
+      renameEntryTitles(eventId, oldName, newName) {
+        const from = String(oldName == null ? '' : oldName);
+        const to = String(newName == null ? '' : newName);
+        if (!eventId || !from || !to || from === to) return false;
+        let touched = false;
+        (App.state.app.entries || []).forEach((entry) => {
+          if (entry.eventId === eventId && entry.title === from) { entry.title = to; touched = true; }
+        });
+        return touched;
+      },
       getServiceYearStats(sy) {
         const syStart = new Date(sy, App.config.serviceYearStartMonth, 1);
         const syEnd = new Date(sy + 1, App.config.serviceYearStartMonth, 0);
         const today = new Date(); today.setHours(0,0,0,0);
-        const visitEvents = (App.state.app.events || []).filter((e) => e.visitType);
+        const visitEvents = this.allEvents().filter((e) => e.visitType);
         const entriesInYear = (App.state.app.entries || []).filter((entry) => {
           const es = App.utils.parseLocalDate(entry.start), ee = App.utils.parseLocalDate(entry.end);
           return es && ee && App.utils.overlaps(es, ee, syStart, syEnd);
@@ -919,9 +965,7 @@
           // re-synced) — letters, S-302 forms, and the calendar itself would all keep showing it.
           // Only touch entries whose title still matches the old name, to avoid clobbering anything
           // that was somehow customized separately.
-          if (oldName !== null && oldName !== name) {
-            App.state.app.entries.forEach((entry) => { if (entry.eventId === payload.id && entry.title === oldName) entry.title = name; });
-          }
+          if (oldName !== null) App.data.renameEntryTitles(payload.id, oldName, name);
           App.store.save();
           App.shared.directory.mirror(payload);
           this.resetEventForm(); App.ui.renderAll(); App.utils.toast(App.utils.t('event_template_saved'));
@@ -2135,7 +2179,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.els.calendarEditor.hidden = false;
         App.els.editorTitle.textContent = isEdit ? App.utils.t('edit_event') : App.utils.t('new_event');
         App.els.editorMeta.textContent = `${data.start || ''} — ${data.end || data.start || ''}`;
-        App.els.editorEventSelect.innerHTML = ['<option value="">' + App.utils.t('choose_template') + '</option>'].concat(App.state.app.events.map((event) => `<option value="${App.utils.escapeAttr(event.id)}">${App.utils.escapeHtml(event.name)}</option>`)).join('');
+        App.els.editorEventSelect.innerHTML = ['<option value="">' + App.utils.t('choose_template') + '</option>'].concat(App.data.allEvents().map((event) => `<option value="${App.utils.escapeAttr(event.id)}">${App.utils.escapeHtml(event.name)}</option>`)).join('');
         App.els.editorEventSelect.value = data.eventId || '';
         App.els.editorStart.value = data.start || '';
         App.els.editorEnd.value = data.end || data.start || '';
@@ -2842,8 +2886,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.state.editingEventCoords = { lat: result.lat, lng: result.lng };
         // If editing an existing (already saved) event, persist immediately so the user doesn't have to remember to hit Save.
         if (App.state.editingEventId) {
-          const existing = App.data.getEventById(App.state.editingEventId);
-          if (existing) { existing.lat = result.lat; existing.lng = result.lng; App.store.save(); }
+          // Писать надо в СЫРУЮ запись: getEventById() с шага 4а отдаёт
+          // объединённую копию, и правка в ней исчезла бы молча.
+          const existing = App.data.getRawEventById(App.state.editingEventId);
+          if (existing) {
+            existing.lat = result.lat; existing.lng = result.lng;
+            App.store.save();
+            // Координаты — машинная форма адреса, то есть часть идентификации.
+            App.shared.directory.mirror(existing);
+          }
         }
         App.ui.renderEventDistanceStatus();
       },
@@ -4066,7 +4117,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const query = (App.state.eventSearch || '').trim().toLowerCase();
         const colorFilter = App.state.eventColorFilter || 'all';
         const visitFilter = App.state.eventVisitFilter || 'all';
-        const allEvents = App.state.app.events || [];
+        const allEvents = App.data.allEvents();
         const colors = App.utils.uniqueBy(allEvents.map((event) => App.utils.clampColor(event.color)).filter(Boolean), (color) => color.toLowerCase());
         if (App.els.eventSearchInput) {
           App.els.eventSearchInput.placeholder = App.utils.t('events_search');
@@ -4561,6 +4612,89 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           };
         },
 
+        /**
+         * Объединённое представление: поля модуля плюс идентификация из
+         * справочника. Справочник не прочитан или записи нет — модуль
+         * работает ровно как раньше, на собственных полях. Это и есть
+         * страховка шага 4а: общий слой не приехал в офлайн-кэше старой
+         * версии → ничего не пропало и ничего не сломалось.
+         *
+         * Пустое название из справочника НЕ принимается: пустая карточка —
+         * это сбой, а не переименование, и стирать ею живое имя нельзя.
+         *
+         * Координаты берутся из справочника БЕЗУСЛОВНО, вместе с адресом:
+         * они его машинная форма. Взять адрес наверху, а координаты снизу —
+         * ровно тот рассинхрон, ради устранения которого справочник заведён.
+         */
+        merge(event) {
+          const own = Object.assign({}, event);
+          if (!this.ready() || !CWDirectory.ready || !own.id) return own;
+          const record = CWDirectory.get(own.id);
+          if (!record || !String(record.name || '').trim()) return own;
+          CWDirectory.FIELDS.forEach((field) => { own[field] = record[field] == null ? '' : record[field]; });
+          own.lat = typeof record.lat === 'number' ? record.lat : null;
+          own.lng = typeof record.lng === 'number' ? record.lng : null;
+          return own;
+        },
+
+        /**
+         * Принять живое изменение справочника в записи модуля.
+         *
+         * Почему принимаем, а не читаем на лету: события уходят в экспорт,
+         * в снимки истории и в офлайн. Оставить там устаревшее имя значило
+         * бы получить его обратно при восстановлении копии — бесшумно.
+         * Плюс это и есть путь ОТКАТА шага 4а: пока идентификация лежит и в
+         * модуле, зеркало можно снять без потерь.
+         *
+         * Вместе с названием едет починка заголовков записей — иначе
+         * переименование извне оставило бы старое имя в письмах и
+         * формулярах. Порядок важен: чиним ДО того, как затрём `event.name`.
+         *
+         * ⚠️ На СТАРТЕ расхождение по-прежнему решается в пользу модуля
+         * (`seed()`, как в шаге 3), и менять это здесь нельзя. Второго
+         * пишущего модуля ещё нет, а политика слияния — предмет шага 6;
+         * принять её побочным эффектом этого шага значило бы решить молча.
+         *
+         * @returns {boolean} менялось ли что-нибудь
+         */
+        absorb() {
+          if (!this.ready() || !CWDirectory.ready) return false;
+          const events = App.state.app && App.state.app.events ? App.state.app.events : [];
+          let changed = false;
+          events.forEach((event) => {
+            const record = CWDirectory.get(event.id);
+            if (!record || !String(record.name || '').trim()) return;
+            if (record.name !== event.name) {
+              App.data.renameEntryTitles(event.id, event.name, record.name);
+              changed = true;
+            }
+            CWDirectory.FIELDS.forEach((field) => {
+              const value = record[field] == null ? '' : record[field];
+              if (event[field] !== value) { event[field] = value; changed = true; }
+            });
+            const lat = typeof record.lat === 'number' ? record.lat : null;
+            const lng = typeof record.lng === 'number' ? record.lng : null;
+            if (event.lat !== lat) { event.lat = lat; changed = true; }
+            if (event.lng !== lng) { event.lng = lng; changed = true; }
+          });
+          return changed;
+        },
+
+        /**
+         * Подписка на справочник. Ставится один раз, после досеивания.
+         * Собственная запись расхождения не даёт (`events[]` уже обновлён к
+         * моменту зеркалирования), поэтому лишней перерисовки не будет.
+         */
+        watch() {
+          if (!this.ready() || this._watching) return;
+          this._watching = true;
+          CWDirectory.onChange(() => {
+            if (!this.absorb()) return;
+            App.store.save();
+            App.ui.renderAll();
+          });
+        },
+
         /** Создать/обновить запись справочника по событию модуля. */
         mirror(event) {
           if (!this.ready()) return;
@@ -4630,6 +4764,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // Справочник уже прочитан загрузчиком внизу файла, поэтому досеивание
         // может опираться на синхронный CWDirectory.get().
         App.shared.directory.seed();
+        // Подписка ставится ПОСЛЕ досеивания: иначе собственные записи seed()
+        // немедленно вернулись бы обратно через absorb() лишней перерисовкой.
+        App.shared.directory.watch();
       },
     },
 
