@@ -2,7 +2,7 @@
 // Имя кэша привязано к версии модуля: при выпуске новой версии достаточно
 // поднять APP_VERSION, и вернувшийся пользователь получит свежую оболочку,
 // а не бесконечно закэшированную старую.
-const APP_VERSION='4.40.1';
+const APP_VERSION='4.41.0';
 const CACHE='congress-pwa-v'+APP_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
 // активация этого SW стирала офлайн-кэши хаба и остальных модулей.
@@ -16,7 +16,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
 './js/main.js','./js/mobile.js',
 './js/topbar-menu.js','./js/state.js','./js/render.js','./js/tasks.js','./js/congress.js','./js/directories.js',
 './js/letters.js','./js/plan.js','./js/plan-fit.js','./js/printing.js','./js/backup.js',
-'./js/utils.js','./js/dom.js','./js/icons.js','./js/i18n.js',
+'./js/utils.js','./js/dom.js','./js/icons.js','./js/i18n.js','./js/matching.js',
 // Локализация: словарь модуля и общий слой хаба. Без них офлайн-запуск
 // остался бы без переводов, а js/i18n.js — без CWI18n.
 './i18n/dict.js','../shared/i18n.js',

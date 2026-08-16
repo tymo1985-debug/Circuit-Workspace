@@ -442,6 +442,11 @@ dialog {
   min-height: 360px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 }
+.match-body{display:grid;gap:12px;max-height:60vh;overflow:auto}
+.match-section h3{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:8px}
+.match-row{padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.match-main{overflow-wrap:anywhere}
+.match-target,.match-meta{color:var(--muted)}
 .chips {
   display: flex;
   gap: 6px;
