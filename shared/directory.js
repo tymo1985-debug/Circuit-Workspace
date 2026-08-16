@@ -80,6 +80,147 @@
     return { name: str(m[1]), congNumber: m[2] };
   }
 
+  /**
+   * СИЛЬНАЯ нормализация: гаснут регистр, пробелы и вся пунктуация.
+   * «SZ-Warszawa» и «SZ Warszawa» становятся одинаковыми.
+   *
+   * ⚠️ Годится только для СЛАБОГО совпадения, которое обязан подтверждать
+   * человек. Связывать записи по ней нельзя: она гасит и значимые различия.
+   */
+  function loose(value) {
+    return normName(value).replace(/[^0-9a-z\u00c0-\u024f\u0400-\u04ff]+/g, '');
+  }
+
+  function findFirst(list, test) {
+    for (var i = 0; i < list.length; i++) { if (test(list[i])) return list[i]; }
+    return null;
+  }
+
+  function copy(record) { return record ? Object.assign({}, record) : null; }
+
+  /**
+   * Сопоставить свободную строку с карточкой справочника.
+   *
+   * Порядок доверия — из аудита §2. Самый надёжный признак это НОМЕР
+   * собрания: он присваивается организацией, уникален и переживает
+   * переименование, переезд и смену контактного лица. Название не переживает
+   * ничего из этого. Поэтому `number` стоит выше `name`.
+   *
+   * ⚠️ Функция ЧИСТАЯ: ничего не пишет и ничего сама не применяет. Исходы
+   * `conflict`, `weak` и `ambiguous` обязан разрешать человек — см. аудит §3
+   * о том, почему здесь нет ни расстояния редактирования, ни транслитерации.
+   *
+   * @param {string} value — строка модуля, например «Warszawa-Bemowo (19588)»
+   * @param {Array} [records] — где искать; по умолчанию весь справочник.
+   *   Явный список нужен проверке: без него функцию не испытать вне браузера.
+   * @returns {{input:string, record:Object|null, confidence:string,
+   *            candidates:Array, parsed:Object}}
+   */
+  function matchName(value, records) {
+    var list = records || cache;
+    var raw = str(value);
+    var result = { input: raw, record: null, confidence: 'none',
+                   candidates: [], parsed: { name: raw, congNumber: '' } };
+    if (!raw || !list.length) return result;
+    result.parsed = parseName(raw);
+
+    /* 1. Полная строка совпала с названием карточки — самый спокойный случай,
+          разбирать скобки не нужно вовсе. */
+    var needle = normName(raw);
+    var exact = findFirst(list, function (r) { return normName(r.name) === needle; });
+    if (exact) {
+      result.record = copy(exact);
+      result.confidence = 'exact';
+      return result;
+    }
+
+    var parsed = result.parsed;
+    var byNumber = parsed.congNumber
+      ? findFirst(list, function (r) { return str(r.congNumber) === parsed.congNumber; })
+      : null;
+    var byStripped = parsed.congNumber
+      ? findFirst(list, function (r) { return normName(r.name) === normName(parsed.name); })
+      : null;
+
+    /* 2. Номер ведёт к одной карточке, название — к другой. Это ошибка в
+          данных, а не спор приоритетов: тихо выбрать номер значило бы
+          закрепить её в ссылке и потерять единственный момент, когда она
+          была видна. */
+    if (byNumber && byStripped && byNumber.id !== byStripped.id) {
+      result.confidence = 'conflict';
+      result.candidates = [copy(byNumber), copy(byStripped)];
+      return result;
+    }
+    if (byNumber) {
+      result.record = copy(byNumber);
+      result.confidence = 'number';
+      return result;
+    }
+    if (byStripped) {
+      result.record = copy(byStripped);
+      result.confidence = 'name';
+      return result;
+    }
+
+    /* 3. Слабое совпадение — только сигнал человеку. */
+    var loosely = loose(raw);
+    var looseStripped = parsed.congNumber ? loose(parsed.name) : '';
+    var weak = list.filter(function (r) {
+      var target = loose(r.name);
+      if (!target) return false;
+      return target === loosely || (looseStripped && target === looseStripped);
+    });
+    if (weak.length === 1) {
+      result.record = copy(weak[0]);
+      result.confidence = 'weak';
+      result.candidates = [copy(weak[0])];
+      return result;
+    }
+    if (weak.length > 1) {
+      result.confidence = 'ambiguous';
+      result.candidates = weak.map(copy);
+    }
+    return result;
+  }
+
+  /**
+   * Дубли ВНУТРИ справочника. Оба правила консервативны, слияние здесь не
+   * делается: оно необратимо и подчиняется тому же правилу «сначала показать,
+   * потом применить», что и шаг 4б.
+   *
+   * `number` — почти наверняка дубль, номер уникален по определению.
+   * `name`   — слабее: два собрания в разных городах могут законно
+   *            называться одинаково. Поэтому это предложение, а не вывод.
+   *
+   * @returns {Array<{reason:string, value:string, ids:Array<string>}>}
+   */
+  function findDuplicates(records) {
+    var list = records || cache;
+    var groups = [];
+    ['number', 'name'].forEach(function (reason) {
+      var buckets = Object.create(null);
+      list.forEach(function (record) {
+        var key = reason === 'number' ? str(record.congNumber) : normName(record.name);
+        if (!key) return;
+        (buckets[key] = buckets[key] || []).push(record);
+      });
+      Object.keys(buckets).forEach(function (key) {
+        if (buckets[key].length < 2) return;
+        /* Дубль по номеру уже назван — не повторять его как дубль по имени. */
+        if (reason === 'name' && groups.some(function (g) {
+          return g.reason === 'number'
+            && buckets[key].every(function (r) { return g.ids.indexOf(r.id) >= 0; });
+        })) return;
+        groups.push({
+          reason: reason,
+          value: reason === 'number' ? key : buckets[key][0].name,
+          ids: buckets[key].map(function (r) { return r.id; }),
+        });
+      });
+    });
+    return groups;
+  }
+
   function normalize(raw, previous) {
     var record = {};
     var source = raw || {};
@@ -263,6 +404,17 @@
 
     /** Разбор «Название (номер)». Результат подтверждает человек — см. выше. */
     parseName: parseName,
+
+    /* Сопоставление и дедупликация (шаг 6, кусок 1). Всё ЧИСТОЕ: ничего не
+       пишет и ничего не применяет — см. docs/db-migration/03-matching-audit.md */
+    normalizeName: normName,
+    looseName: loose,
+    matchName: matchName,
+    matchAll: function (values, records) {
+      var list = records || cache;
+      return (values || []).map(function (value) { return matchName(value, list); });
+    },
+    findDuplicates: findDuplicates,
 
     /** @returns {Function} отписка */
     onChange: function (fn) {
