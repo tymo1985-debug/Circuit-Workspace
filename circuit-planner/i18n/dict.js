@@ -20,9 +20,19 @@
  * значка). Прежде чем добавлять ключ, проверь, что имени ещё нет в файле.
  *
  * Немецкого пока нет намеренно: у модуля ещё остаются строки, вшитые прямо в
- * разметку и в JS. Пока они не вынесены сюда, немецкий интерфейс был бы
- * наполовину русским — поэтому язык хаба `de` продолжает отображаться на
- * ближайший доступный (см. NEAREST в мосте App.i18nBridge).
+ * разметку. Пока они не вынесены сюда, немецкий интерфейс был бы наполовину
+ * русским — поэтому язык хаба `de` продолжает отображаться на ближайший
+ * доступный (см. NEAREST в мосте App.i18nBridge).
+ *
+ * 16.08.2026 (v9.77.0): из JS зашитые строки вынесены полностью — редактор
+ * формуляра визита и кнопка «Восстановить» в окне истории. В разметке остались
+ * две подписи настроек («Праздники CZ/AT/DE», «Всплывающее окно напоминаний
+ * при открытии»): это текстовые узлы после <input> внутри <label>, им нужен
+ * <span data-i18n>, а не атрибут на самом label.
+ *
+ * ⚠️ Часть ключей `cp.vf_*` заполнена ТОЛЬКО по-русски и ждёт носителя языка.
+ * Пустая колонка безопасна: CWI18n.t() падает в FALLBACK='ru'. Не заполнять их
+ * «очевидным» переводом — потом не отличить от вычитанного носителем.
  */
 (function (global) {
   'use strict';
@@ -282,6 +292,21 @@
     'cp.file_downloaded': 'Файл скачан — прикрепи его к письму вручную.',
     'cp.history_empty': 'Пока нет сохранённых контрольных точек — они появляются автоматически по мере использования программы (не чаще раза в 5 минут).',
     'cp.history_summary': '{events} собраний, {entries} визитов',
+    'cp.history_restore': 'Восстановить',
+    'cp.vf_language_mismatch': '⚠️ Обрати внимание: формуляр составляется на языке <strong>{doc}</strong>, а интерфейс программы сейчас на языке <strong>{ui}</strong>. Проверь, что это правильный язык для данного собрания, прежде чем заполнять поля.',
+    'cp.vf_day': 'День',
+    'cp.vf_name': 'Имя',
+    'cp.vf_reason': 'Причина',
+    'cp.vf_kind': 'Вид служения',
+    'cp.vf_delete_day': 'Удалить день',
+    'cp.vf_delete_service_row': 'Удалить строку',
+    'cp.vf_add_service_row': '+ Строка',
+    'cp.vf_session_before': 'До обеда',
+    'cp.vf_session_after': 'После обеда',
+    'cp.vf_no_meetings': 'Встречи ещё не добавлены',
+    'cp.vf_no_days': 'Дни ещё не добавлены',
+    'cp.vf_no_pastoral': 'Посещения ещё не добавлены',
+    'cp.vf_no_meals': 'Обеды ещё не добавлены',
     'cp.history_restore_confirm': 'Восстановить данные на этот момент? Текущее состояние тоже будет сохранено как контрольная точка, так что этот откат тоже можно будет отменить.',
     'cp.history_restored': 'Данные восстановлены.',
     'cp.history_restore_failed': 'Не удалось восстановить эту точку.',
@@ -824,6 +849,9 @@
     'cp.file_downloaded': 'Файл завантажено — прикріпи його до листа вручну.',
     'cp.history_empty': 'Поки немає збережених контрольних точок — вони з’являються автоматично під час роботи з програмою (не частіше ніж раз на 5 хвилин).',
     'cp.history_summary': '{events} зібрань, {entries} візитів',
+    'cp.history_restore': 'Відновити',
+    'cp.vf_day': 'День',
+    'cp.vf_name': 'Ім’я',
     'cp.history_restore_confirm': 'Відновити дані на цей момент? Поточний стан теж буде збережено як контрольну точку, тож це відкочування можна буде скасувати.',
     'cp.history_restored': 'Дані відновлено.',
     'cp.history_restore_failed': 'Не вдалося відновити цю точку.',
@@ -1330,6 +1358,9 @@
     'cp.file_downloaded': 'File downloaded — attach it to the email manually.',
     'cp.history_empty': 'No checkpoints yet — they appear automatically as you use the app (at most once every 5 minutes).',
     'cp.history_summary': '{events} congregations, {entries} visits',
+    'cp.history_restore': 'Restore',
+    'cp.vf_day': 'Day',
+    'cp.vf_name': 'Name',
     'cp.history_restore_confirm': 'Restore the data to this point? The current state will also be saved as a checkpoint, so this rollback can be undone too.',
     'cp.history_restored': 'Data restored.',
     'cp.history_restore_failed': 'Could not restore this checkpoint.',
@@ -1835,6 +1866,9 @@
     'cp.file_downloaded': 'Plik pobrany — dołącz go do listu ręcznie.',
     'cp.history_empty': 'Nie ma jeszcze punktów kontrolnych — pojawiają się automatycznie podczas pracy z aplikacją (nie częściej niż raz na 5 minut).',
     'cp.history_summary': '{events} zborów, {entries} wizyt',
+    'cp.history_restore': 'Przywróć',
+    'cp.vf_day': 'Dzień',
+    'cp.vf_name': 'Imię',
     'cp.history_restore_confirm': 'Przywrócić dane do tego momentu? Bieżący stan również zostanie zapisany jako punkt kontrolny, więc to cofnięcie da się odwrócić.',
     'cp.history_restored': 'Dane przywrócone.',
     'cp.history_restore_failed': 'Nie udało się przywrócić tego punktu.',
