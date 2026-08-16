@@ -104,8 +104,40 @@ let scheduler=null;
 export function persist(){
   if(scheduler)return scheduler;
   if(!self.CWPersist)return null;
-  scheduler=self.CWPersist.create({name:"congress-project",write:writeNow});
+  scheduler=self.CWPersist.create({name:"congress-project",write:onWrite});
   return scheduler}
+
+/* ── Где лежат данные (фаза 3 миграции на shared/db.js) ──────────────────────
+   Источник истины — хранилище `state` общей базы через `CWState`; внутри
+   записи тот же блоб, что лежал под ключом `KEY`. Прежний ключ остаётся на
+   месте как снимок «как было до переезда» — в этом обратимость фазы.
+   Переписывать его нельзя: он и есть путь отката.
+
+   Клиндарий проехал этот путь первым (фаза 2), поэтому здесь только подключение
+   готового слоя. Разбор блоба на записи — фаза 5, тут схема не меняется. */
+let remote=null;
+export let source="legacy";
+
+/** Прочитать состояние из общей базы ДО первого `load()`.
+ *  Промис не отклоняется: недоступная база означает работу на прежнем ключе,
+ *  а не отказ запуска. */
+export function initState(){
+  if(!self.CWState||!self.CWDB)return Promise.resolve(false);
+  remote=self.CWState.create("congress-project");
+  return remote.init().then(()=>remote.available()).catch(e=>{
+    console.error("Конгрессы: общая база недоступна, работаем на прежнем ключе",e);
+    return false})}
+
+/* Единственная развилка записи. `unload` идёт через синхронное зеркало:
+   `pagehide` промис ждать не умеет, и без зеркала последняя правка перед
+   закрытием вкладки пропала бы бесшумно. */
+function onWrite(reason){
+  if(reason==="unload"&&source==="db"){
+    let payload=JSON.stringify(store.st);
+    remote.writeSync(payload);
+    store.lastSavedAt=new Date();updateSaveStatus();
+    return}
+  writeNow()}
 export function save(){let p=persist();
   // Общий слой не приехал (офлайн-кэш старой версии) — пишем немедленно, как
   // раньше. Молча терять данные из-за отсутствующего файла нельзя.
@@ -114,7 +146,10 @@ export function save(){let p=persist();
 /** Записать немедленно, минуя очередь: там, где сразу после этого читается
  *  СОХРАНЁННОЕ значение, а не состояние в памяти. */
 export function flushNow(reason){let p=persist();if(p)p.flush(reason||"flush");else writeNow()}
-function writeNow(){localStorage.setItem(KEY,JSON.stringify(store.st));store.lastSavedAt=new Date();updateSaveStatus()}
+function writeNow(){let payload=JSON.stringify(store.st);
+  if(source==="db")remote.write(payload);
+  else localStorage.setItem(KEY,payload);
+  store.lastSavedAt=new Date();updateSaveStatus()}
 export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
 export function makeBackup(label){try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date().toISOString(),label:label||t("cong.msg.autobackup"),data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,10)))}catch(e){}}
 export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.series))store.st.series=[];if(!s.font)s.font=b.font;if(!s.fontSize)s.fontSize=b.fontSize;if(!Array.isArray(s.congregations))s.congregations=b.congregations;if(!Array.isArray(s.speakers))s.speakers=b.speakers;if(!Array.isArray(s.speakerProfiles))s.speakerProfiles=[];if(!Array.isArray(s.assignmentTypes))s.assignmentTypes=b.assignmentTypes;if(!Array.isArray(s.assignmentKinds))s.assignmentKinds=b.assignmentKinds;(store.st.congresses||[]).forEach(c=>{if(c.theme==null)c.theme="";if(c.language==null)c.language="";if(c.notes==null)c.notes="";if(c.seriesId===undefined)c.seriesId=null;if(c.rehearsalDate===undefined)c.rehearsalDate=s.stageRehearsalDate||"";if(c.rehearsalTime===undefined)c.rehearsalTime=s.stageRehearsalTime||"";if(c.recordingDeadline===undefined)c.recordingDeadline=s.recordingDeadline||"";if(c.responseDeadline===undefined)c.responseDeadline=s.responseDeadline||"";(c.tasks||[]).forEach(t=>{if(t.linkId===undefined)t.linkId=null;if(t.recordingMedia==null)t.recordingMedia=s.recordingMedia||"аудіо";if(t.recordingKind==null)t.recordingKind=s.recordingKind||t.kind||"інтерв’ю";if(noAssignmentNeeded(t)){t.letterSent=false;t.letterSentDate="";t.status=""}else{if(!t.status)t.status=t.confirmed?"Подтверждено":"Не назначено";if(t.letterSent==null)t.letterSent=false;if(t.letterSentDate==null)t.letterSentDate=""}if(isSection(t))t.section=true})});cleanupLinks()}
@@ -124,7 +159,22 @@ export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.
 // записывало мусор в localStorage поверх реальных конгрессов.
 export function isValidState(x){return !!x&&typeof x==="object"&&!Array.isArray(x)&&Array.isArray(x.congresses)}
 export function addList(k,vals){let s=S();s[k]=clean((s[k]||[]).concat(vals||[]))}
-export function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(isValidState(x))store.st=x}catch{}migrate();adoptShared();if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());render();store.lastSavedAt=new Date();updateSaveStatus()}
+export function load(){
+  let usable=!!(remote&&remote.available());
+  source=usable?"db":"legacy";
+  let raw=usable?remote.get():null,fromLegacy=false;
+  if(raw===null||raw===undefined){
+    try{raw=localStorage.getItem(KEY)}catch{raw=null}
+    fromLegacy=!!raw}
+  try{let x=JSON.parse(raw);if(isValidState(x))store.st=x}catch{}
+  /* Переезд: данные нашлись только в старом ключе. Копируем их в базу как
+     есть — ДО migrate(), чтобы в базу уехало ровно то, что лежало под ключом,
+     и перенос нельзя было спутать с правкой данных. Снимок в собственные копии
+     модуля снимается перед этим: операция необратимая. */
+  if(fromLegacy&&usable){makeBackup("Перед переносом в общую базу");remote.write(raw)}
+  migrate();adoptShared();
+  if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
+  render();store.lastSavedAt=new Date();updateSaveStatus()}
 export function newC(n,p,d,t,seriesId,letterFields){let lf=letterFields||{};let c={id:id(),name:n,place:p||"",date:d||"",theme:"",language:"",notes:"",tasks:t||[],seriesId:seriesId||null,rehearsalDate:lf.rehearsalDate||"",rehearsalTime:lf.rehearsalTime||"",recordingDeadline:lf.recordingDeadline||"",responseDeadline:lf.responseDeadline||""};store.st.congresses.unshift(c);store.st.activeId=c.id;store.sel=c.tasks[0]?.id||null;save();return c}
 export function cloneTask(t,m){let n=clone(t);n.id=id();n.linkId=null;if(m==="emptyPeople"){n.participants=(n.participants||[]).map(()=>({name:"",congregation:""}));n.confirmed=false;n.rehearsal=false;n.notes="";n.letterSent=false;n.letterSentDate="";n.status="Не назначено"}return n}
 

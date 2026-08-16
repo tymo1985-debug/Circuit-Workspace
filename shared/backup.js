@@ -84,7 +84,11 @@
          С 15.08.2026 модуль пишет и снимки выданных писем (`documents`):
          без них копия Конгрессов восстановилась бы с пустым архивом. */
       sharedLocal: ['cw-sender'],
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents'] },
+      /* С 15.08.2026 (фаза 3) данные модуля лежат в хранилище `state` общей
+         базы. Запись адресная — см. предупреждение ниже: ключ там это
+         идентификатор модуля, и выгрузка хранилища целиком означала бы, что
+         копия Конгрессов при восстановлении затирает состояние Клиндария. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['congress-project'] }] },
     },
     'circuit-planner': {
       local: [
