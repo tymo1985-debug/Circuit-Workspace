@@ -314,6 +314,8 @@
     'cong.alert.import_failed': 'Ошибка импорта JSON: {error}\nТекущие данные сохранены без изменений.',
     'cong.alert.column_required': 'Выберите колонку',
     'cong.alert.backups_corrupt': 'Повреждён список автокопий',
+    'cong.alert.backup_unreadable': 'Автокопия не читается — данные не изменены.',
+    'cong.alert.backup_failed': 'Не удалось сохранить копию перед сбросом. Сброс отменён: без копии стирать данные нельзя.',
 
     'cong.check.no_time': 'Нет времени',
     'cong.check.no_topic': 'Нет темы',

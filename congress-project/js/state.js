@@ -6,6 +6,9 @@ import { clean, clone, id, isSection, noAssignmentNeeded } from "./utils.js";
 import { t } from "./i18n.js";
 
 export const KEY="congress-pwa-v34-speakers",BACKUP_KEY=KEY+"-backups";
+// Сколько автокопий держим. Было зашито числом в двух местах (срез массива и
+// нигде больше); теперь это ещё и предел хранилища снимков — одно значение.
+export const MAX_BACKUPS=10;
 export const STATUSES=["Не назначено","Назначено","Ожидает ответа","Подтверждено","Нужно письмо","Письмо отправлено","Запись получена","Готово"];
 export const BASE_TYPES=["Пункт програми","Промова","Інтерв’ю","Показ","Демонстрація","Музика","Пісня і молитва","Оголошення","Серія промов","Раздел"],BASE_KINDS=["інтерв’ю","показ","демонстрація"];
 export let store={st:{congresses:[],activeId:null,settings:null,series:[]},sel:null,editId:null,previewId:null,listMode:"groups",templateMode:"default",deferredPrompt:null,pendingPrintHTML:"",pendingPrintFilename:"",lastSavedAt:null};
@@ -118,13 +121,32 @@ export function persist(){
 let remote=null;
 export let source="legacy";
 
+/* ── Где лежат автокопии (фаза 4 миграции на shared/db.js) ───────────────────
+   Десять копий — это десять ПОЛНЫХ состояний рядом с рабочим; вместе с
+   историей Клиндария именно они и упирались в квоту localStorage. С фазы 4
+   они лежат в хранилище `snapshots` общей базы через `CWSnapshots`, по одной
+   записи на копию: добавление больше не переписывает соседние девять.
+   Прежний ключ `BACKUP_KEY` остаётся рабочим запасным путём — пока общий слой
+   недоступен, всё идёт по-старому. Обе ветки ниже живые. */
+let backups=null;
+
 /** Прочитать состояние из общей базы ДО первого `load()`.
  *  Промис не отклоняется: недоступная база означает работу на прежнем ключе,
  *  а не отказ запуска. */
 export function initState(){
   if(!self.CWState||!self.CWDB)return Promise.resolve(false);
   remote=self.CWState.create("congress-project");
-  return remote.init().then(()=>remote.available()).catch(e=>{
+  if(self.CWSnapshots)backups=self.CWSnapshots.create({
+    module:"congress-project",limit:MAX_BACKUPS,legacyKey:BACKUP_KEY,
+    /* Старый формат: массив `{id, date(ISO), label, data(объект)}`, НОВЫЕ
+       вперёд. Общий слой сам разложит записи по времени, поэтому порядок здесь
+       не важен — важно не потерять подпись и не перепутать дату с меткой. */
+    readLegacy:raw=>{let a=JSON.parse(raw);if(!Array.isArray(a))return[];
+      return a.filter(x=>x&&x.data).map(x=>({at:Date.parse(x.date)||Date.now(),label:x.label||"",payload:JSON.stringify(x.data)}))}});
+  /* Состояние и копии поднимаются вместе: `load()` может тут же снять копию
+     перед переносом в базу. Ни один из промисов не отклоняется. */
+  return Promise.all([remote.init(),backups?backups.init():Promise.resolve(false)])
+    .then(()=>remote.available()).catch(e=>{
     console.error("Конгрессы: общая база недоступна, работаем на прежнем ключе",e);
     return false})}
 
@@ -151,7 +173,41 @@ function writeNow(){let payload=JSON.stringify(store.st);
   else localStorage.setItem(KEY,payload);
   store.lastSavedAt=new Date();updateSaveStatus()}
 export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
-export function makeBackup(label){try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date().toISOString(),label:label||t("cong.msg.autobackup"),data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,10)))}catch(e){}}
+/**
+ * Автокопия состояния. Возвращает промис: с фазы 4 запись асинхронна.
+ *
+ * ⚠️ ПОЛЕЗНАЯ НАГРУЗКА СНИМАЕТСЯ СИНХРОННО, прямо здесь. Поэтому вызывающий
+ * может сразу менять `store.st` — копия уже отделена от рабочего состояния,
+ * как и раньше при `clone()`. Ждать промис нужно ТОЛЬКО там, где сразу после
+ * копии данные уничтожаются и другого источника не остаётся (сброс
+ * приложения); остальные вызовы, как и прежде, ничего не ждут.
+ *
+ * Отказ записи не бросает исключение и не мешает действию — то же правило, что
+ * у архива документов: страховка не имеет права ронять то, ради чего заведена.
+ * Признак отказа — `null` в результате промиса.
+ */
+export function makeBackup(label){
+  let lbl=label||t("cong.msg.autobackup"),at=Date.now();
+  if(backups&&backups.available())return backups.add({at:at,label:lbl,payload:JSON.stringify(store.st)});
+  try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date(at).toISOString(),label:lbl,data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,MAX_BACKUPS)))}
+  catch(e){console.error("Конгрессы: автокопия не сохранена",e);return Promise.resolve(null)}
+  return Promise.resolve("legacy")}
+
+/** Шапки автокопий, НОВЫЕ → СТАРЫЕ: `{id, at, label}`. Состояний в память не
+ *  поднимает — список окна автокопий их и не показывает. */
+export function listBackups(){
+  if(backups&&backups.available())return backups.list().map(b=>({id:b.id,at:b.at,label:b.label}));
+  try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");if(!Array.isArray(a))return[];
+    return a.map(x=>({id:"legacy:"+x.id,at:Date.parse(x.date)||0,label:x.label||""}))}
+  catch(e){console.error(t("cong.alert.backups_corrupt"),e);return[]}}
+
+/** Состояние из автокопии по её id. `null` = копии нет или она нечитаема. */
+export function getBackup(bid){
+  if(backups&&backups.available())return backups.get(bid).then(r=>{
+    if(!r||typeof r.payload!=="string")return null;
+    try{return JSON.parse(r.payload)}catch(e){console.error("Конгрессы: автокопия нечитаема",e);return null}});
+  try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]"),x=a.find(y=>"legacy:"+y.id===bid);return Promise.resolve(x?x.data:null)}
+  catch(e){console.error(t("cong.alert.backups_corrupt"),e);return Promise.resolve(null)}}
 export function migrate(){let s=S(),b=baseSettings();if(!Array.isArray(store.st.series))store.st.series=[];if(!s.font)s.font=b.font;if(!s.fontSize)s.fontSize=b.fontSize;if(!Array.isArray(s.congregations))s.congregations=b.congregations;if(!Array.isArray(s.speakers))s.speakers=b.speakers;if(!Array.isArray(s.speakerProfiles))s.speakerProfiles=[];if(!Array.isArray(s.assignmentTypes))s.assignmentTypes=b.assignmentTypes;if(!Array.isArray(s.assignmentKinds))s.assignmentKinds=b.assignmentKinds;(store.st.congresses||[]).forEach(c=>{if(c.theme==null)c.theme="";if(c.language==null)c.language="";if(c.notes==null)c.notes="";if(c.seriesId===undefined)c.seriesId=null;if(c.rehearsalDate===undefined)c.rehearsalDate=s.stageRehearsalDate||"";if(c.rehearsalTime===undefined)c.rehearsalTime=s.stageRehearsalTime||"";if(c.recordingDeadline===undefined)c.recordingDeadline=s.recordingDeadline||"";if(c.responseDeadline===undefined)c.responseDeadline=s.responseDeadline||"";(c.tasks||[]).forEach(t=>{if(t.linkId===undefined)t.linkId=null;if(t.recordingMedia==null)t.recordingMedia=s.recordingMedia||"аудіо";if(t.recordingKind==null)t.recordingKind=s.recordingKind||t.kind||"інтерв’ю";if(noAssignmentNeeded(t)){t.letterSent=false;t.letterSentDate="";t.status=""}else{if(!t.status)t.status=t.confirmed?"Подтверждено":"Не назначено";if(t.letterSent==null)t.letterSent=false;if(t.letterSentDate==null)t.letterSentDate=""}if(isSection(t))t.section=true})});cleanupLinks()}
 // Проверка формы объекта состояния ПЕРЕД тем, как заменить им рабочие данные.
 // Без неё импорт произвольного JSON заменял store.st мусором ещё до migrate();

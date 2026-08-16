@@ -350,6 +350,10 @@ body::before{display:none !important}
 <!-- Состояние модуля в общей базе (фаза 2): нужен ДО app.js — загрузчик
      внизу app.js ждёт его чтения, прежде чем запустить App.init(). -->
 <script src="../shared/state.js"></script>
+<!-- История контрольных точек (фаза 4): 15 полных блобов состояния уехали из
+     localStorage в общую базу. Нужен ДО app.js — загрузчик внизу app.js
+     поднимает его вместе с состоянием. -->
+<script src="../shared/snapshots.js"></script>
 <script src="../shared/db.js"></script>
 <script src="../shared/templates/namespaces.js"></script>
 <script src="../shared/templates/builtin.js"></script>

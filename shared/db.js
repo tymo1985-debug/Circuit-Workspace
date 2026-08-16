@@ -26,7 +26,7 @@
   'use strict';
 
   const DB_NAME = 'circuit-workspace-db';
-  const DB_VERSION = 4;
+  const DB_VERSION = 5;
 
   /** Схема хранилищ: имя store → keyPath + индексы */
   const STORES = {
@@ -67,6 +67,18 @@
        Работать напрямую модули не должны: точка входа — CWState
        (shared/state.js), он же держит синхронное зеркало на закрытие вкладки. */
     state:       { keyPath: 'id' },
+    /* История снимков состояния (v5, 16.08.2026) — то, что раньше лежало в
+       localStorage: контрольные точки Клиндария и резервные копии Конгрессов.
+       Именно эти два набора и упирались в квоту: пятнадцать и десять полных
+       блобов состояния рядом с самим состоянием.
+       Ключ записи ПРЕФИКСОВАН модулем (`<module>:<uid>`) намеренно: механизм
+       резервного копирования умеет отбирать записи по ключу, и префикс даёт
+       ему возможность взять в копию модуля только его снимки, не таща чужие.
+       Индекс `module` — для выборки, `at` — чтобы обрезать самые старые не
+       вычитывая всё хранилище целиком.
+       Работать напрямую модули не должны: точка входа — CWSnapshots
+       (shared/snapshots.js). */
+    snapshots:   { keyPath: 'id', indexes: ['module', 'at'] },
   };
 
   let dbPromise = null;
@@ -149,6 +161,37 @@
         return promisifyRequest(store.index(indexName).getAll(value));
       },
 
+      /**
+       * Перебор записей по индексу КУРСОРОМ, с отбором нужного на лету.
+       * Возвращает массив значений, которые вернул `visit(record)`
+       * (`undefined` пропускается).
+       *
+       * Зачем это рядом с `byIndex`, который делает то же самое одной строкой:
+       * `getAll()` материализует ВСЕ записи разом, а в хранилище `snapshots`
+       * запись — это полный блоб состояния модуля. Список из пятнадцати таких
+       * записей нужен ради даты и подписи, а стоил бы десятков мегабайт в
+       * памяти на телефоне. Курсор отдаёт записи по одной, и вызывающий
+       * оставляет себе только шапку.
+       */
+      async eachByIndex(indexName, value, visit) {
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(storeName, 'readonly');
+          const out = [];
+          const req = transaction.objectStore(storeName).index(indexName).openCursor(IDBKeyRange.only(value));
+          req.onsuccess = () => {
+            const cursor = req.result;
+            if (!cursor) return;
+            const picked = visit(cursor.value);
+            if (picked !== undefined) out.push(picked);
+            cursor.continue();
+          };
+          transaction.oncomplete = () => resolve(out);
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error || new Error(`CWDB.${storeName}.eachByIndex: транзакция прервана`));
+        });
+      },
+
       /** Добавить запись; если record.id не задан — генерируется автоматически. Возвращает id. */
       async add(record) {
         const store = await tx(storeName, 'readwrite');
@@ -223,6 +266,8 @@
     documents: makeCrud('documents', 'doc'),
     /** Состояние модуля одним блобом. Через CWState (shared/state.js), не напрямую. */
     state: makeCrud('state', 'st'),
+    /** История снимков состояния. Через CWSnapshots (shared/snapshots.js), не напрямую. */
+    snapshots: makeCrud('snapshots', 'snap'),
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,

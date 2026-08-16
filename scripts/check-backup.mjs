@@ -98,6 +98,7 @@ let db = await open(DB, 1, (d) => {
   d.createObjectStore('templates', { keyPath: 'id' });
   d.createObjectStore('communities', { keyPath: 'id' });
   d.createObjectStore('state', { keyPath: 'id' });
+  d.createObjectStore('snapshots', { keyPath: 'id' });
 });
 await put(db, 'templates', [
   { id: 'tpl_own', body: 'шаблон проверяемого модуля' },
@@ -112,6 +113,16 @@ await put(db, 'state', [
   { id: 'own-module', payload: '{"свой":1}', savedAt: 1 },
   { id: 'neighbour-module', payload: '{"соседний":1}', savedAt: 1 },
 ]);
+/* Снимки истории (фаза 4): хранилище общее, ключ вида `<module>:<uid>`.
+   Перечислить записи поимённо, как у `state`, здесь нельзя — они появляются и
+   исчезают, — поэтому отбор идёт по префиксу ключа. Проверяется то же самое:
+   в копию модуля не должно попасть чужое. Затирания тут не боятся (ключи не
+   пересекаются), боятся веса и содержимого: снимок — это полное состояние
+   модуля, а файл копии пользователь пересылает почтой. */
+await put(db, 'snapshots', [
+  { id: 'own-module:s1', module: 'own-module', at: 1, payload: '{"своя история":1}' },
+  { id: 'neighbour-module:s1', module: 'neighbour-module', at: 1, payload: '{"чужая история":1}' },
+]);
 db.close();
 
 /* Берём первый модуль, которому реально что-то нужно от общего слоя. */
@@ -122,7 +133,7 @@ if (!subject) {
   /* Хранилище общей базы подмешиваем на время проверки: пока ни один модуль
      от неё не зависит, но фаза 2 это изменит, и механизм должен работать
      заранее, а не «когда понадобится». */
-  CWBackup.MODULES[subject].sharedStores = { [DB]: ['templates', { store: 'state', ids: ['own-module'] }] };
+  CWBackup.MODULES[subject].sharedStores = { [DB]: ['templates', { store: 'state', ids: ['own-module'] }, { store: 'snapshots', prefix: 'own-module:' }] };
 
   mem.set('cw-sender', JSON.stringify({ name: 'Тест Тестович' }));
   mem.set('cw-lang', 'pl');
@@ -140,6 +151,11 @@ if (!subject) {
   ok('адресное хранилище: своя запись в копии', stateRows.some((r) => r.id === 'own-module'));
   ok('адресное хранилище: ЧУЖОЙ записи в копии нет', !stateRows.some((r) => r.id === 'neighbour-module'),
     'ключ записи здесь — модуль, и чужая строка при восстановлении затёрла бы его состояние целиком');
+
+  const snapRows = shared.idb?.[DB]?.stores?.snapshots?.rows || [];
+  ok('отбор по префиксу: свои снимки в копии', snapRows.some((r) => r.id === 'own-module:s1'));
+  ok('отбор по префиксу: ЧУЖИХ снимков в копии нет', !snapRows.some((r) => r.id === 'neighbour-module:s1'),
+    'снимок — это полное состояние модуля; без отбора копия увозила бы чужие данные в файле, который уходит почтой');
 
   /* Портим состояние и восстанавливаем: сосед обязан уцелеть. */
   mem.set('cw-sender', JSON.stringify({ name: 'испорчено' }));
@@ -162,6 +178,9 @@ if (!subject) {
   const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
   ok('состояние соседнего модуля не тронуто восстановлением', st['neighbour-module']?.payload === '{"новее копии":1}',
     'копия одного модуля не имеет права откатывать состояние другого');
+  const sn = Object.fromEntries((await rows(DB, 'snapshots')).map((r) => [r.id, r]));
+  ok('снимки соседнего модуля уцелели', !!sn['neighbour-module:s1'],
+    'слияние восстанавливает свои записи и не трогает чужие ключи');
 }
 
 /* --- 3. Полная копия хаба по-прежнему заменяет целиком ------------------- */

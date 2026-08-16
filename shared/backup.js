@@ -88,7 +88,11 @@
          базы. Запись адресная — см. предупреждение ниже: ключ там это
          идентификатор модуля, и выгрузка хранилища целиком означала бы, что
          копия Конгрессов при восстановлении затирает состояние Клиндария. */
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['congress-project'] }] },
+      /* Резервные копии модуля (10 шт.) с 16.08.2026 (фаза 4) лежат в
+         хранилище `snapshots` общей базы, а не в localStorage. Отбор по
+         префиксу ключа: хранилище общее, и без отбора копия Конгрессов везла
+         бы полные состояния Клиндария. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['congress-project'] }, { store: 'snapshots', prefix: 'congress-project:' }] },
     },
     'circuit-planner': {
       local: [
@@ -109,7 +113,12 @@
          внешне полноценный файл, внутри — состояние на день переезда. Ровно
          тот бесшумный отказ, что уже случался с `cw-sender` и с архивом
          Конгрессов, и выясняется он в момент восстановления. */
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['circuit-planner'] }] },
+      /* Контрольные точки истории (15 шт.) с 16.08.2026 (фаза 4) лежат в
+         хранилище `snapshots` общей базы. Отбор по префиксу ключа — см.
+         предупреждение ниже. До фазы 4 они ехали ключом
+         `service-year-planner-v9-4-2-history`; ключ оставлен в `local`, потому
+         что при недоступной базе модуль по-прежнему пишет туда. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['circuit-planner'] }, { store: 'snapshots', prefix: 'circuit-planner:' }] },
     },
     'pioneer-school': {
       local: [],
@@ -149,6 +158,14 @@
      состояние соседнего модуля целиком. Поэтому запись объявляется адресно —
      `{ store: 'state', ids: [<module>] }`, и в копию едет только своя.
 
+     ⚠️ ХРАНИЛИЩЕ `snapshots` ОТБИРАЕТСЯ ПО ПРЕФИКСУ КЛЮЧА. Ключ там —
+     `<module>:<uid>`, то есть модуль виден прямо в ключе, и перечислять
+     записи поимённо (как у `state`) невозможно: они появляются и исчезают.
+     Форма `{ store, prefix }` решает ровно этот случай. Затирания здесь не
+     боятся — ключи у модулей не пересекаются, — но снимок это полный блоб
+     состояния, и без отбора копия одного модуля увозила бы полтора десятка
+     чужих состояний в файле, который пользователь пересылает почтой.
+
      ⚠️ АРХИВ ДОКУМЕНТОВ ВЫГРУЖАЕТСЯ ХРАНИЛИЩЕМ ЦЕЛИКОМ. Механизм умеет брать
      отдельные store общей базы, но не отдельные записи внутри store — поэтому
      в копии Клиндария едут и снимки документов Конгрессов. Это осознанный
@@ -187,8 +204,9 @@
           var byDb = filters[dbName] || (filters[dbName] = {});
           if (typeof st === 'string') { byDb[name] = null; return; }   // целиком побеждает
           if (byDb[name] === null) return;                              // уже объявлено целиком
-          var ids = byDb[name] || (byDb[name] = []);
-          (st.ids || []).forEach(function (key) { if (ids.indexOf(key) < 0) ids.push(key); });
+          var f = byDb[name] || (byDb[name] = { ids: [], prefixes: [] });
+          (st.ids || []).forEach(function (key) { if (f.ids.indexOf(key) < 0) f.ids.push(key); });
+          if (st.prefix && f.prefixes.indexOf(st.prefix) < 0) f.prefixes.push(st.prefix);
         });
       });
     });
@@ -254,9 +272,11 @@
    * @param {string} name — имя базы
    * @param {string[]} [only] — выгрузить только эти хранилища (для частичной
    *   секции общего слоя). Не передан → вся база.
-   * @param {Object<string, string[]>} [rowFilters] — для перечисленных хранилищ
-   *   взять только записи с этими ключами. Нужно там, где ключ принадлежит
-   *   конкретному модулю (`state`) и чужую запись брать нельзя.
+   * @param {Object<string, {ids: string[], prefixes: string[]}>} [rowFilters] —
+   *   для перечисленных хранилищ взять только записи, чей ключ либо назван
+   *   поимённо (`ids`), либо начинается с одного из префиксов (`prefixes`).
+   *   Нужно там, где ключ принадлежит конкретному модулю: у `state` это сам
+   *   идентификатор модуля, у `snapshots` — префикс ключа.
    */
   function dumpDb(name, only, rowFilters) {
     return openExisting(name).then(function (db) {
@@ -275,8 +295,16 @@
         });
         var wanted = rowFilters && rowFilters[storeName];
         return req(store.getAll()).then(function (rows) {
-          if (wanted && wanted.length && store.keyPath) {
-            rows = rows.filter(function (r) { return r && wanted.indexOf(r[store.keyPath]) >= 0; });
+          var byId = wanted && wanted.ids && wanted.ids.length ? wanted.ids : null;
+          var byPrefix = wanted && wanted.prefixes && wanted.prefixes.length ? wanted.prefixes : null;
+          if ((byId || byPrefix) && store.keyPath) {
+            rows = rows.filter(function (r) {
+              if (!r) return false;
+              var key = String(r[store.keyPath]);
+              if (byId && byId.indexOf(r[store.keyPath]) >= 0) return true;
+              if (!byPrefix) return false;
+              return byPrefix.some(function (p) { return key.slice(0, p.length) === p; });
+            });
           }
           out.stores[storeName] = { keyPath: store.keyPath, autoIncrement: store.autoIncrement, indexes: indexes, rows: rows };
         });

@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.75.1',
+      version: '9.76.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -485,6 +485,10 @@
       /** Экземпляр CWState для этого модуля; ставится загрузчиком внизу файла.
        *  `null` = общий слой недоступен, работаем на прежнем ключе. */
       remote: null,
+      /** Экземпляр CWSnapshots для истории контрольных точек (фаза 4);
+       *  ставится загрузчиком внизу файла. `null` или недоступный слой =
+       *  работаем на прежнем ключе `historyKey`, как до переезда. */
+      history: null,
       source: 'legacy',
       load() {
         const usable = !!(this.remote && this.remote.available());
@@ -508,6 +512,11 @@
            как есть — без разбора и без нормализации, чтобы перенос нельзя было
            спутать со сменой модели. Старый ключ остаётся на месте. */
         if (fromLegacy && this.source === 'db') {
+          /* Снимок перед необратимым переносом. Ждать его нельзя: `load()`
+             синхронна, а после неё сразу идёт отрисовка. Промис снимка не
+             отклоняется, отказ уходит в консоль — потерять из-за него сам
+             перенос было бы хуже: старый ключ при этом остаётся на месте и
+             остаётся полноценным путём отката. */
           this.snapshotForMigration();
           this.remote.write(saved);
         }
@@ -621,29 +630,70 @@
        * последний снимок свежий, а именно в этот момент копия нужна больше
        * всего.
        */
+      /* ── Где лежит история (фаза 4 миграции на shared/db.js) ─────────────
+         Пятнадцать контрольных точек — это пятнадцать ПОЛНЫХ блобов состояния
+         рядом с самим состоянием; именно они и упирались в квоту localStorage.
+         С фазы 4 они лежат в хранилище `snapshots` общей базы через
+         `CWSnapshots`. Прежний ключ `historyKey` остаётся рабочим запасным
+         путём: пока общий слой недоступен, всё идёт по-старому, поэтому обе
+         ветки ниже живые, а не «одна на удаление». */
+
+      /** Короткая шапка снимка для списка: считается ОДИН раз, при записи.
+       *  Раньше окно истории разбирало каждый блоб заново на каждой отрисовке. */
+      snapshotMeta(payload) {
+        try {
+          const data = JSON.parse(payload);
+          return { events: (data.events || []).length, entries: (data.entries || []).length };
+        } catch (error) { return null; }
+      },
+      /** Снимок текущего СОХРАНЁННОГО состояния, безусловно, без интервала. */
+      checkpointNow(label) {
+        const current = this.currentStored();
+        if (!current) return Promise.resolve(null);   // нечего снимать: первая загрузка чистой установки
+        const h = this.history;
+        if (h && h.available()) {
+          return h.add({ at: Date.now(), label: label || '', meta: this.snapshotMeta(current), payload: current });
+        }
+        try {
+          const raw = localStorage.getItem(App.config.historyKey);
+          const history = raw ? JSON.parse(raw) : [];
+          history.push({ at: Date.now(), data: current });
+          while (history.length > App.config.maxSnapshots) history.shift();
+          localStorage.setItem(App.config.historyKey, JSON.stringify(history));
+        } catch (error) {
+          // History is a convenience safety net, not core data — never let it block a real save.
+          console.error('Snapshot failed (non-fatal)', error);
+        }
+        return Promise.resolve(null);
+      },
+      /**
+       * Снимок состояния перед необратимой миграцией — в обход интервала.
+       * `snapshotIfDue()` здесь не годится: он молча ничего не сделает, если
+       * последний снимок свежий, а именно в этот момент копия нужна больше
+       * всего.
+       */
       snapshotForMigration() {
         /* Снимок берётся ИЗ ХРАНИЛИЩА, а с фазы 1 в очереди может лежать
            незаписанная правка — тогда в историю попало бы состояние старее
            того, что человек видит на экране. Догоняем очередь до снимка. */
         this.flushNow('snapshot');
-        try {
-          const raw = localStorage.getItem(App.config.historyKey);
-          const history = raw ? JSON.parse(raw) : [];
-          const current = this.currentStored();
-          if (!current) return;
-          history.push({ at: Date.now(), data: current });
-          while (history.length > App.config.maxSnapshots) history.shift();
-          localStorage.setItem(App.config.historyKey, JSON.stringify(history));
-        } catch (error) {
-          console.error('Клиндарий: не удалось сохранить снимок перед переносом', error);
-        }
+        return this.checkpointNow('migration');
       },
       snapshotIfDue() {
+        const now = Date.now();
+        const h = this.history;
+        if (h && h.available()) {
+          /* `lastAt()` синхронен намеренно: этот метод вызывается ВНУТРИ
+             записи состояния и ждать базу не может. Шапки снимков читаются
+             один раз при запуске и живут в памяти. */
+          if (now - h.lastAt() < App.config.snapshotIntervalMs) return;
+          this.checkpointNow();
+          return;
+        }
         try {
           const raw = localStorage.getItem(App.config.historyKey);
           const history = raw ? JSON.parse(raw) : [];
           const last = history[history.length - 1];
-          const now = Date.now();
           if (last && now - last.at < App.config.snapshotIntervalMs) return;
           const current = this.currentStored();
           if (!current) return; // nothing to checkpoint yet (very first save of a fresh install)
@@ -651,34 +701,66 @@
           while (history.length > App.config.maxSnapshots) history.shift();
           localStorage.setItem(App.config.historyKey, JSON.stringify(history));
         } catch (error) {
-          // History is a convenience safety net, not core data — never let it block a real save.
           console.error('Snapshot failed (non-fatal)', error);
         }
       },
+      /** Шапки снимков, НОВЫЕ → СТАРЫЕ: `{ id, at, meta }`. Блобы не поднимаются
+       *  в память — окну истории нужны только дата и сводка. */
       getHistory() {
+        const h = this.history;
+        if (h && h.available()) return h.list();
         try {
           const raw = localStorage.getItem(App.config.historyKey);
-          return raw ? JSON.parse(raw) : [];
+          const history = raw ? JSON.parse(raw) : [];
+          return history.map((snap, i) => ({
+            id: 'legacy:' + i, at: snap.at, label: '', meta: this.snapshotMeta(snap.data),
+          })).reverse();
         } catch (error) {
           console.error('Reading history failed', error);
           return [];
         }
       },
-      restoreSnapshot(index) {
-        const history = this.getHistory();
-        const snap = history[index];
-        if (!snap) return false;
-        // The restore itself must be undoable too — checkpoint the CURRENT (about-to-be-replaced)
-        // state first, unconditionally, regardless of the normal time throttle.
+      /** Применить снимок к рабочему состоянию. Возвращает успех. */
+      applySnapshot(payload) {
         try {
-          const current = this.currentStored();
-          if (current) { history.push({ at: Date.now(), data: current }); while (history.length > App.config.maxSnapshots) history.shift(); localStorage.setItem(App.config.historyKey, JSON.stringify(history)); }
-        } catch (error) { console.error('Pre-restore checkpoint failed', error); }
-        App.state.app = this.migrate(JSON.parse(snap.data));
+          App.state.app = this.migrate(JSON.parse(payload));
+        } catch (error) {
+          console.error('Restore failed', error);
+          return false;
+        }
         /* Восстановление — не рядовая правка: результат должен лежать на диске
            до того, как пользователь закроет вкладку или обновит страницу. */
         this.flushNow('restore');
         return true;
+      },
+      /**
+       * Восстановление по идентификатору снимка (раньше был индекс в массиве).
+       * Асинхронно: блоб лежит в базе и читается по требованию.
+       */
+      restoreSnapshot(id) {
+        const h = this.history;
+        if (h && h.available()) {
+          return h.get(id).then((snap) => {
+            if (!snap || typeof snap.payload !== 'string') return false;
+            /* Само восстановление тоже должно быть отменяемым — снимаем
+               контрольную точку с ТЕКУЩЕГО состояния, безусловно, в обход
+               интервала. Ждём её: иначе состояние, которое вот-вот будет
+               заменено, могло бы не успеть попасть в историю. */
+            return this.checkpointNow('pre-restore').then(() => this.applySnapshot(snap.payload));
+          });
+        }
+        let history;
+        try {
+          const raw = localStorage.getItem(App.config.historyKey);
+          history = raw ? JSON.parse(raw) : [];
+        } catch (error) { console.error('Reading history failed', error); return Promise.resolve(false); }
+        const snap = history[Number(String(id).replace('legacy:', ''))];
+        if (!snap) return Promise.resolve(false);
+        try {
+          const current = this.currentStored();
+          if (current) { history.push({ at: Date.now(), data: current }); while (history.length > App.config.maxSnapshots) history.shift(); localStorage.setItem(App.config.historyKey, JSON.stringify(history)); }
+        } catch (error) { console.error('Pre-restore checkpoint failed', error); }
+        return Promise.resolve(this.applySnapshot(snap.data));
       },
     },
 
@@ -2696,8 +2778,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.store.save();
         };
         if (!jobs.length) { cleanup(); return Promise.resolve(false); }
-        App.store.snapshotForMigration();
-        return Promise.all(jobs).then(() => { cleanup(); return true; }).catch((error) => {
+        // Снимок ДО необратимого переноса, а не параллельно с ним: с фазы 4
+        // запись снимка асинхронна, и «позвал и пошёл дальше» означало бы, что
+        // копия и перенос идут наперегонки.
+        return App.store.snapshotForMigration().then(() => Promise.all(jobs)).then(() => { cleanup(); return true; }).catch((error) => {
           console.error('Клиндарий: перенос документов не выполнен, настройки не тронуты', error);
           return false;
         });
@@ -3909,29 +3993,37 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.els.historyList.innerHTML = `<div class="md-empty">${App.utils.t('history_empty')}</div>`;
           return;
         }
-        const sorted = history.map((snap, realIndex) => ({ snap, realIndex })).reverse(); // newest first, keep original index for restore
-        App.els.historyList.innerHTML = sorted.map(({ snap, realIndex }) => {
+        // Список приходит НОВЫМИ вперёд и уже с готовой сводкой: разбирать
+        // блоб на каждой отрисовке больше не нужно, да и блоба здесь нет.
+        App.els.historyList.innerHTML = history.map((snap) => {
           const date = new Date(snap.at);
           const label = date.toLocaleString(App.utils.lang(), { dateStyle: 'medium', timeStyle: 'short' });
-          let summary = '';
-          try { const data = JSON.parse(snap.data); summary = App.utils.t('history_summary', { events: (data.events || []).length, entries: (data.entries || []).length }); } catch (err) { summary = ''; }
+          const summary = snap.meta
+            ? App.utils.t('history_summary', { events: snap.meta.events, entries: snap.meta.entries })
+            : '';
           return `<div class="md-card" style="padding:12px;box-shadow:none;border:1px solid var(--line)">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div><strong>${App.utils.escapeHtml(label)}</strong><div class="small" style="color:var(--muted)">${App.utils.escapeHtml(summary)}</div></div>
-              <button class="md-btn md-btn-danger md-state-layer" type="button" data-restore-snapshot="${realIndex}">Восстановить</button>
+              <button class="md-btn md-btn-danger md-state-layer" type="button" data-restore-snapshot="${App.utils.escapeHtml(snap.id)}">Восстановить</button>
             </div>
           </div>`;
         }).join('');
         document.querySelectorAll('[data-restore-snapshot]').forEach((btn) => btn.addEventListener('click', () => {
-          const index = Number(btn.dataset.restoreSnapshot);
+          const id = btn.dataset.restoreSnapshot;
           if (!window.confirm(App.utils.t('history_restore_confirm'))) return;
-          if (App.store.restoreSnapshot(index)) {
-            App.ui.closeModal(App.els.historyModal);
-            App.ui.renderAll();
-            App.utils.toast(App.utils.t('history_restored'));
-          } else {
-            App.utils.toast(App.utils.t('history_restore_failed'));
-          }
+          // Снимок лежит в базе — чтение асинхронно. Кнопку блокируем, чтобы
+          // повторный клик не запустил второе восстановление поверх первого.
+          btn.disabled = true;
+          App.store.restoreSnapshot(id).then((ok) => {
+            if (ok) {
+              App.ui.closeModal(App.els.historyModal);
+              App.ui.renderAll();
+              App.utils.toast(App.utils.t('history_restored'));
+            } else {
+              btn.disabled = false;
+              App.utils.toast(App.utils.t('history_restore_failed'));
+            }
+          });
         }));
       },
       openRemindersModal() {
@@ -4624,7 +4716,29 @@ document.head.appendChild(hideMonthSummaryDotsStyle);
    не открытым вовсе. Промис не отклоняется никогда. */
 if (self.CWState && self.CWDB) {
   App.store.remote = self.CWState.create('circuit-planner');
-  App.store.remote.init().then(() => App.init());
+  /* История контрольных точек (фаза 4) поднимается ВМЕСТЕ с состоянием, а не
+     после `App.init()`: `store.load()` может тут же снять снимок перед
+     переносом, а `writeNow()` — спросить у истории время последней точки.
+     Оба слоя не отклоняют промис: недоступная база означает работу на прежних
+     ключах, а не отказ запуска. */
+  if (self.CWSnapshots) {
+    App.store.history = self.CWSnapshots.create({
+      module: 'circuit-planner',
+      limit: App.config.maxSnapshots,
+      legacyKey: App.config.historyKey,
+      /* Старый формат: массив `{ at, data }`, СТАРЫЕ → НОВЫЕ. */
+      readLegacy: (raw) => {
+        const list = JSON.parse(raw);
+        if (!Array.isArray(list)) return [];
+        return list.filter((snap) => snap && typeof snap.data === 'string')
+          .map((snap) => ({ at: snap.at, label: '', meta: App.store.snapshotMeta(snap.data), payload: snap.data }));
+      },
+    });
+  }
+  Promise.all([
+    App.store.remote.init(),
+    App.store.history ? App.store.history.init() : Promise.resolve(false),
+  ]).then(() => App.init());
 } else {
   App.init();
 }
