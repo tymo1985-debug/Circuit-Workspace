@@ -8,7 +8,7 @@
 // кому уйдёт письмо, и человек обязан увидеть предложение до того, как оно
 // станет ссылкой.
 import { $ } from "./dom.js";
-import { S, store } from "./state.js";
+import { S, save, store } from "./state.js";
 import { clean, esc } from "./utils.js";
 import { t } from "./i18n.js";
 
@@ -54,6 +54,40 @@ export function collectCongregationStrings() {
    Всё остальное показывается человеку как вопрос, а не как вывод. */
 const SURE = ["exact", "number", "name"];
 
+const key = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * Строки, помеченные человеком как НЕ собрания: названия районов (EU-K-01),
+ * места проведения (SCO Gunzenhausen). Машине отличить их не от чего —
+ * «Group (Ukrainian) Neratovice» тоже без номера и тоже законная запись, —
+ * поэтому это список, а не правило.
+ *
+ * ⚠️ Пометка влияет ТОЛЬКО на этот отчёт. В автодополнении строка остаётся:
+ * EU-K-01 стоит в двенадцати заданиях программы, и убрать её из подсказок
+ * значило бы сломать рабочий процесс ради чистоты отчёта.
+ */
+function notCongregations() {
+  const list = S().notCongregations;
+  return Array.isArray(list) ? list : [];
+}
+
+function isNotCongregation(value) {
+  const k = key(value);
+  return notCongregations().some((item) => key(item) === k);
+}
+
+/** Пометить строку как не-собрание или снять пометку. Пишет в настройки. */
+export function toggleNotCongregation(value) {
+  const s = S();
+  if (!Array.isArray(s.notCongregations)) s.notCongregations = [];
+  const k = key(value);
+  const at = s.notCongregations.findIndex((item) => key(item) === k);
+  if (at >= 0) s.notCongregations.splice(at, 1);
+  else s.notCongregations.push(String(value).trim());
+  save();
+  openMatchReport();
+}
+
 function confidenceLabel(confidence) {
   return t("cong.match.conf_" + confidence);
 }
@@ -73,6 +107,12 @@ function cardLabel(card) {
   return name + " (" + num + ")";
 }
 
+/** Кнопка пометки. type="button" обязателен: окно лежит внутри
+    <form method="dialog">, и кнопка по умолчанию закрыла бы его. */
+function markButton(value, marked) {
+  return `<button type="button" class="tiny light match-mark" data-mark="${esc(value)}">${esc(t(marked ? "cong.match.unmark" : "cong.match.mark"))}</button>`;
+}
+
 function rowHTML(item, result) {
   const where = item.uses
     ? t("cong.match.used_in", { count: item.uses })
@@ -82,9 +122,12 @@ function rowHTML(item, result) {
     : (result.candidates || []).length
       ? `<span class="match-target">→ ${result.candidates.map((c) => esc(cardLabel(c))).join(" / ")}</span>`
       : "";
+  /* Пометить имеет смысл только то, чему соответствия не нашлось: если
+     строка уже связалась с карточкой справочника, она заведомо собрание. */
+  const mark = result.confidence === "none" ? markButton(item.value, false) : "";
   return `<div class="match-row">
     <div class="match-main"><b>${esc(item.value)}</b> ${target}</div>
-    <div class="match-meta small">${esc(confidenceLabel(result.confidence))} · ${esc(where)}</div>
+    <div class="match-meta small">${esc(confidenceLabel(result.confidence))} · ${esc(where)}${mark ? " " + mark : ""}</div>
   </div>`;
 }
 
@@ -99,6 +142,19 @@ function sectionHTML(title, rows) {
  * показать «соответствия нет» по каждой строке — это выглядело бы как вывод
  * о данных, а на деле означало бы, что мы просто не смотрели.
  */
+/**
+ * Показать окно, если оно ещё не открыто.
+ *
+ * Отчёт перестраивается после каждой пометки, и безусловный `showModal()`
+ * закрывал бы и открывал уже открытое окно — видимое мигание. Заодно это
+ * делает проверку «окно не закрылось от нажатия кнопки внутри формы»
+ * осмысленной: без этого повторный `showModal()` прятал бы такую ошибку.
+ */
+function showReport() {
+  const dlg = $("#matchDialog");
+  if (dlg && !dlg.open) dlg.showModal();
+}
+
 export function openMatchReport() {
   const body = $("#matchBody");
   const D = self.CWDirectory;
@@ -106,7 +162,7 @@ export function openMatchReport() {
 
   if (!D || !D.ready) {
     body.innerHTML = `<p class="hint">${esc(t("cong.match.no_directory"))}</p>`;
-    $("#matchDialog").showModal();
+    showReport();
     return;
   }
 
@@ -115,17 +171,23 @@ export function openMatchReport() {
 
   if (!cards.length) {
     body.innerHTML = `<p class="hint">${esc(t("cong.match.empty_directory"))}</p>`;
-    $("#matchDialog").showModal();
+    showReport();
     return;
   }
   if (!items.length) {
     body.innerHTML = `<p class="hint">${esc(t("cong.match.no_strings"))}</p>`;
-    $("#matchDialog").showModal();
+    showReport();
     return;
   }
 
-  const sure = [], ask = [], none = [];
+  const sure = [], ask = [], none = [], excluded = [];
   items.forEach((item) => {
+    if (isNotCongregation(item.value)) {
+      const where = item.uses ? t("cong.match.used_in", { count: item.uses }) : t("cong.match.only_list");
+      excluded.push(`<div class="match-row"><div class="match-main"><b>${esc(item.value)}</b></div>
+        <div class="match-meta small">${esc(where)} ${markButton(item.value, true)}</div></div>`);
+      return;
+    }
     const result = D.matchName(item.value, cards);
     const row = rowHTML(item, result);
     if (SURE.indexOf(result.confidence) >= 0) sure.push(row);
@@ -168,12 +230,23 @@ export function openMatchReport() {
   body.innerHTML = `
     <p class="hint">${esc(t("cong.match.hint"))}</p>
     <p class="hint">${esc(t("cong.match.summary", {
-      total: items.length, sure: sure.length, ask: ask.length, none: none.length,
+      total: items.length - excluded.length, sure: sure.length, ask: ask.length, none: none.length,
     }))}</p>
     ${sectionHTML(t("cong.match.group_ask"), ask)}
     ${sectionHTML(t("cong.match.group_none"), none)}
     ${sectionHTML(t("cong.match.group_sure"), sure)}
     ${sectionHTML(t("cong.match.group_dupes"), dupes)}
-    ${sectionHTML(t("cong.match.group_embedded"), embedded)}`;
-  $("#matchDialog").showModal();
+    ${sectionHTML(t("cong.match.group_embedded"), embedded)}
+    ${sectionHTML(t("cong.match.group_excluded"), excluded)}`;
+
+  /* Делегирование: строки перерисовываются целиком после каждой пометки,
+     поэтому обработчики на самих кнопках пришлось бы вешать заново каждый
+     раз — и один забытый раз означал бы молча мёртвую кнопку. */
+  body.onclick = (event) => {
+    const btn = event.target.closest("[data-mark]");
+    if (!btn) return;
+    event.preventDefault();
+    toggleNotCongregation(btn.getAttribute("data-mark"));
+  };
+  showReport();
 }
