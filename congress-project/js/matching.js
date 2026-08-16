@@ -58,14 +58,29 @@ function confidenceLabel(confidence) {
   return t("cong.match.conf_" + confidence);
 }
 
+/**
+ * Подпись карточки справочника.
+ *
+ * Номер приписывается ТОЛЬКО если его нет внутри названия. На настоящих
+ * данных выяснилось, что у части карточек номер вшит в само название
+ * («Praha-ukrajinský-jih (15545)») и продублирован в поле номера — отчёт
+ * показывал «Praha-ukrajinský-jih (15545) (15545)» и выглядел сломанным.
+ */
+function cardLabel(card) {
+  const name = String(card.name || "");
+  const num = String(card.congNumber || "").trim();
+  if (!num || name.trim().endsWith("(" + num + ")")) return name;
+  return name + " (" + num + ")";
+}
+
 function rowHTML(item, result) {
   const where = item.uses
     ? t("cong.match.used_in", { count: item.uses })
     : t("cong.match.only_list");
   const target = result.record
-    ? `<span class="match-target">→ ${esc(result.record.name)}${result.record.congNumber ? " (" + esc(result.record.congNumber) + ")" : ""}</span>`
+    ? `<span class="match-target">→ ${esc(cardLabel(result.record))}</span>`
     : (result.candidates || []).length
-      ? `<span class="match-target">→ ${result.candidates.map((c) => esc(c.name)).join(" / ")}</span>`
+      ? `<span class="match-target">→ ${result.candidates.map((c) => esc(cardLabel(c))).join(" / ")}</span>`
       : "";
   return `<div class="match-row">
     <div class="match-main"><b>${esc(item.value)}</b> ${target}</div>
@@ -118,10 +133,25 @@ export function openMatchReport() {
     else ask.push(row);
   });
 
+  /* Номер внутри названия. Это не косметика: пока номер лежит в названии, а
+     поле номера пустое, сопоставление по номеру — самый надёжный признак из
+     всех — не работает вовсе, и остаётся только точное совпадение строк.
+     Отдельная секция нужна, чтобы человек увидел масштаб и решил, наводить ли
+     порядок: расщепление названия — догадка, и само оно применяться не имеет
+     права (аудит §3). */
+  const embedded = cards.map((card) => {
+    const parsed = D.parseName(card.name);
+    if (!parsed.congNumber) return null;
+    const own = String(card.congNumber || "").trim();
+    const state = !own ? "empty" : (own === parsed.congNumber ? "same" : "differs");
+    return `<div class="match-row"><div class="match-main"><b>${esc(card.name)}</b></div>
+      <div class="match-meta small">${esc(t("cong.match.embedded_" + state, { value: own || parsed.congNumber }))}</div></div>`;
+  }).filter(Boolean);
+
   const dupes = D.findDuplicates(cards).map((group) => {
     const names = group.ids.map((id) => {
       const card = cards.find((c) => c.id === id);
-      return card ? card.name : id;
+      return card ? cardLabel(card) : id;
     });
     const label = group.reason === "number"
       ? t("cong.match.dupe_number", { value: group.value })
@@ -138,6 +168,7 @@ export function openMatchReport() {
     ${sectionHTML(t("cong.match.group_ask"), ask)}
     ${sectionHTML(t("cong.match.group_none"), none)}
     ${sectionHTML(t("cong.match.group_sure"), sure)}
-    ${sectionHTML(t("cong.match.group_dupes"), dupes)}`;
+    ${sectionHTML(t("cong.match.group_dupes"), dupes)}
+    ${sectionHTML(t("cong.match.group_embedded"), embedded)}`;
   $("#matchDialog").showModal();
 }
