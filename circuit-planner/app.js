@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.80.0',
+      version: '9.81.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -803,6 +803,38 @@
        *
        * @returns {boolean} чинили ли хоть что-нибудь
        */
+      /**
+       * Собрания, у которых номер стоит в названии, а поле «Номер собрания»
+       * пустое.
+       *
+       * ⚠️ Название НЕ трогается и трогаться не будет. По решению Алекса
+       * «Warszawa-Ukraiński-Południe (19588)» — это ОФИЦИАЛЬНОЕ название
+       * собрания целиком, в таком виде он его и пересылает собраниям.
+       * Расщепление, которое аудит §3 держал как догадку, отменено не потому,
+       * что оказалось ненадёжным, а потому что оно не нужно: разделять нечего.
+       *
+       * Заполняется только пустое поле. Расхождение (в названии один номер, в
+       * поле другой) выносится отдельно и НЕ правится: это ошибка в данных, и
+       * выбирать за человека, какой номер верный, здесь нельзя.
+       *
+       * @returns {{fill: Array, conflicts: Array}}
+       */
+      congNumberSuggestions() {
+        const fill = [];
+        const conflicts = [];
+        if (typeof CWDirectory === 'undefined') return { fill, conflicts };
+        (App.state.app.events || []).forEach((event) => {
+          const parsed = CWDirectory.parseName(event.name);
+          if (!parsed.congNumber) return;
+          const own = String(event.congNumber || '').trim();
+          if (!own) fill.push({ id: event.id, name: event.name, congNumber: parsed.congNumber });
+          else if (own !== parsed.congNumber) {
+            conflicts.push({ id: event.id, name: event.name, inName: parsed.congNumber, inField: own });
+          }
+        });
+        return { fill, conflicts };
+      },
+
       renameEntryTitles(eventId, oldName, newName) {
         const from = String(oldName == null ? '' : oldName);
         const to = String(newName == null ? '' : newName);
@@ -1045,6 +1077,30 @@
        *
        * @param {'detach'|'purge'} scope — убрать только отсюда или везде
        */
+      /**
+       * Заполнить пустые поля номера. Название не меняется, поэтому починка
+       * заголовков записей здесь не нужна — снимок названия остаётся верным.
+       *
+       * Контрольная точка снимается ДО правки и в обход интервала: правка
+       * затрагивает разом десяток собраний, и откатить её иначе было бы
+       * нечем.
+       */
+      applyCongNumbers() {
+        const { fill } = App.data.congNumberSuggestions();
+        if (!fill.length) return Promise.resolve(0);
+        return App.store.checkpointNow('congnumbers').then(() => {
+          fill.forEach((item) => {
+            const event = App.data.getRawEventById(item.id);
+            if (!event) return;
+            event.congNumber = item.congNumber;
+            App.shared.directory.mirror(event);
+          });
+          App.store.save();
+          App.ui.renderAll();
+          return fill.length;
+        });
+      },
+
       performEventDelete(eventId, scope) {
         if (!App.data.getRawEventById(eventId)) return;
         App.state.app.events = App.state.app.events.filter((item) => item.id !== eventId);
@@ -1358,6 +1414,7 @@
           'calendarSideTitle','calendarSideMeta','calendarSideDetails','calendarSideCountdownRow','calendarSideCountdown','countdownUnitSelect',
           'toggleTeamPanelBtn','calendarLayout','eventsList','eventSearchInput','eventColorFilter','eventVisitFilter','deleteAllEventsBtn','eventsListCount','eventNameInput','eventColorInput','eventAddressInput',
           'eventScheduleInput','resetEventBtn','saveEventBtn','deleteEventBtn','newEventBtn','eventVisitTypeInput','eventContactNameInput','eventContactPhoneInput','eventContactEmailInput','eventContactNoteInput','editorFlagsRow','editorFlagS302','editorFlagLetter',
+          'fillCongNumbersBtn','fillNumbersModal','fillNumbersSub','fillNumbersBody','fillNumbersApplyBtn','fillNumbersCancelBtn','fillNumbersCloseBtn',
           'eventDeleteModal','eventDeleteSub','eventDeleteHereBtn','eventDeleteEverywhereBtn','eventDeleteCancelBtn','eventDeleteCloseBtn',
           'remindersModal','remindersModalList','remindersModalCloseBtn','remindersModalOkBtn','remindersModalTitle','remindersModalSub','checkRemindersBtnMain',
           'historyModal','historyList','historyModalCloseBtn','historyModalCloseBtn2','openHistoryBtn',
@@ -4140,6 +4197,27 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        * подставляет префикс `cp.`, а `module.*.title` живёт в общем слое и
        * существует на всех пяти языках.
        */
+      openFillNumbersModal() {
+        const { fill, conflicts } = App.data.congNumberSuggestions();
+        const esc = App.utils.escapeHtml;
+        if (App.els.fillNumbersSub) {
+          App.els.fillNumbersSub.textContent = fill.length
+            ? App.utils.t('fill_numbers_sub', { count: fill.length })
+            : App.utils.t('fill_numbers_none');
+        }
+        if (App.els.fillNumbersApplyBtn) {
+          App.els.fillNumbersApplyBtn.textContent = App.utils.t('fill_numbers_apply', { count: fill.length });
+          App.els.fillNumbersApplyBtn.disabled = !fill.length;
+          App.els.fillNumbersApplyBtn.style.opacity = fill.length ? '' : '.55';
+        }
+        if (App.els.fillNumbersBody) {
+          App.els.fillNumbersBody.innerHTML = fill.map((item) => `<div class="side-row"><div class="side-label">${esc(item.name)}</div><div class="side-value small">${esc(App.utils.t('fill_numbers_row', { value: item.congNumber }))}</div></div>`)
+            .concat(conflicts.map((item) => `<div class="side-row"><div class="side-label">⚠️ ${esc(item.name)}</div><div class="side-value small">${esc(App.utils.t('fill_numbers_conflict', { inName: item.inName, inField: item.inField }))}</div></div>`))
+            .join('');
+        }
+        this.openModal(App.els.fillNumbersModal);
+      },
+
       openEventDeleteModal({ eventId, name, modules }) {
         App.state.pendingEventDelete = { eventId, modules };
         const titles = (modules || []).map((id) => (typeof CWI18n !== 'undefined'
@@ -4224,6 +4302,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           return queryMatch && colorMatch && visitMatch;
         }).sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), App.utils.lang()));
         if (App.els.eventsListCount) App.els.eventsListCount.textContent = App.utils.t('events_shown_count', { shown: visibleEvents.length, total: allEvents.length });
+        /* Кнопка появляется, только когда заполнять действительно есть что,
+           и исчезает после того, как всё заполнено: постоянный элемент, ничего
+           не делающий в 99% открытий, только мешал бы. */
+        if (App.els.fillCongNumbersBtn) {
+          const pending = App.data.congNumberSuggestions();
+          App.els.fillCongNumbersBtn.textContent = App.utils.t('fill_numbers');
+          App.els.fillCongNumbersBtn.hidden = !pending.fill.length && !pending.conflicts.length;
+        }
         if (App.els.deleteAllEventsBtn) {
           App.els.deleteAllEventsBtn.textContent = App.utils.t('delete_all_events');
           App.els.deleteAllEventsBtn.disabled = !allEvents.length;
@@ -4355,6 +4441,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.pdfExportConfirmBtn?.addEventListener('click', () => App.actions.doPrint());
       App.els.exportBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = false; });
       App.els.exportModalCloseBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = true; });
+      App.els.fillCongNumbersBtn?.addEventListener('click', () => App.ui.openFillNumbersModal());
+      App.els.fillNumbersCancelBtn?.addEventListener('click', () => App.ui.closeModal(App.els.fillNumbersModal));
+      App.els.fillNumbersCloseBtn?.addEventListener('click', () => App.ui.closeModal(App.els.fillNumbersModal));
+      App.els.fillNumbersApplyBtn?.addEventListener('click', () => {
+        App.ui.closeModal(App.els.fillNumbersModal);
+        App.actions.applyCongNumbers().then((count) => {
+          if (count) App.utils.toast(App.utils.t('fill_numbers_done', { count }));
+        });
+      });
       App.els.eventDeleteHereBtn?.addEventListener('click', () => App.ui.confirmEventDelete('detach'));
       App.els.eventDeleteEverywhereBtn?.addEventListener('click', () => App.ui.confirmEventDelete('purge'));
       App.els.eventDeleteCancelBtn?.addEventListener('click', () => App.ui.closeEventDeleteModal());

@@ -143,7 +143,12 @@ export function openMatchReport() {
     const parsed = D.parseName(card.name);
     if (!parsed.congNumber) return null;
     const own = String(card.congNumber || "").trim();
-    const state = !own ? "empty" : (own === parsed.congNumber ? "same" : "differs");
+    /* Совпадение номера в названии и в поле — это НОРМА, а не дефект:
+       название официальное, поле служебное. Показываем только то, что
+       требует внимания, иначе секция висела бы вечно и её перестали бы
+       читать. */
+    const state = !own ? "empty" : (own === parsed.congNumber ? "ok" : "differs");
+    if (state === "ok") return null;
     return `<div class="match-row"><div class="match-main"><b>${esc(card.name)}</b></div>
       <div class="match-meta small">${esc(t("cong.match.embedded_" + state, { value: own || parsed.congNumber }))}</div></div>`;
   }).filter(Boolean);
