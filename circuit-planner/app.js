@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.79.0',
+      version: '9.80.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -975,12 +975,34 @@
           App.utils.toast(App.utils.t('msg_save_error', { error: err?.message || err }));
         }
       },
+      /**
+       * Удаление всех собраний. Тот же вопрос, что и у одиночного удаления, и
+       * задаётся он ОДИН раз на всю пачку: пятнадцать окон подряд человек
+       * закликает не глядя, и выбор перестанет быть выбором. Обойти развилку
+       * здесь было бы легко и незаметно — «удалить все» унесло бы карточки
+       * соседей молча, мимо только что принятого решения.
+       */
       deleteAllEventTemplates() {
         const total = App.state.app.events.length;
         if (!total) return;
+        const shared = [];
+        App.state.app.events.forEach((item) => {
+          App.shared.directory.otherSources(item.id).forEach((moduleId) => {
+            if (shared.indexOf(moduleId) < 0) shared.push(moduleId);
+          });
+        });
+        if (shared.length) { App.ui.openEventDeleteModal({ eventId: null, name: '', modules: shared }); return; }
         if (!window.confirm(App.utils.t('delete_all_events_confirm'))) return;
+        this.performDeleteAllEvents('detach');
+      },
+
+      /** @param {'detach'|'purge'} scope */
+      performDeleteAllEvents(scope) {
         // Идентификаторы снимаются ДО очистки: после неё отвязывать нечего.
-        App.state.app.events.forEach((item) => App.shared.directory.forget(item.id));
+        App.state.app.events.forEach((item) => {
+          if (scope === 'purge') App.shared.directory.purge(item.id);
+          else App.shared.directory.forget(item.id);
+        });
         App.state.app.events = [];
         App.state.app.entries = [];
         Object.values(App.state.app.serviceYears || {}).forEach((sy) => {
@@ -995,12 +1017,39 @@
         App.ui.renderAll();
         App.utils.toast(App.utils.t('delete_all_events_done'));
       },
+      /**
+       * Удаление собрания. Если карточку знает ещё какой-то модуль, область
+       * удаления выбирает ЧЕЛОВЕК (решение Алекса от 16.08.2026, вариант Б):
+       * зашитая политика здесь угадывала бы намерение. «Собрание
+       * расформировано» и «чищу свой календарь» выглядят одинаково, а значат
+       * противоположное.
+       *
+       * Никто больше карточку не знает — прежний одиночный `confirm()`,
+       * лишнего экрана не появляется.
+       */
       deleteEventTemplate(eventId) {
         const event = App.data.getEventById(eventId);
         if (!event) return;
+        const others = App.shared.directory.otherSources(eventId);
+        if (others.length) { App.ui.openEventDeleteModal({ eventId, name: event.name, modules: others }); return; }
         if (!window.confirm(`${App.utils.t('delete_template_confirm')}: ${event.name}?`)) return;
+        this.performEventDelete(eventId, 'detach');
+      },
+
+      /**
+       * Собственно удаление. Отделено от вопроса намеренно: спрашивать и
+       * удалять — разные обязанности, и после появления окна выбора у
+       * удаления стало ДВА входа (кнопка и окно). Один общий путь означает,
+       * что забыть, например, очистку недель служебного года можно только в
+       * одном месте, а не в двух.
+       *
+       * @param {'detach'|'purge'} scope — убрать только отсюда или везде
+       */
+      performEventDelete(eventId, scope) {
+        if (!App.data.getRawEventById(eventId)) return;
         App.state.app.events = App.state.app.events.filter((item) => item.id !== eventId);
-        App.shared.directory.forget(eventId);
+        if (scope === 'purge') App.shared.directory.purge(eventId);
+        else App.shared.directory.forget(eventId);
         App.state.app.entries = App.state.app.entries.filter((item) => item.eventId !== eventId);
         Object.values(App.state.app.serviceYears).forEach((sy) => {
           Object.values(sy.weeks || {}).forEach((week) => { if (week.eventId === eventId) week.eventId = ''; });
@@ -1309,6 +1358,7 @@
           'calendarSideTitle','calendarSideMeta','calendarSideDetails','calendarSideCountdownRow','calendarSideCountdown','countdownUnitSelect',
           'toggleTeamPanelBtn','calendarLayout','eventsList','eventSearchInput','eventColorFilter','eventVisitFilter','deleteAllEventsBtn','eventsListCount','eventNameInput','eventColorInput','eventAddressInput',
           'eventScheduleInput','resetEventBtn','saveEventBtn','deleteEventBtn','newEventBtn','eventVisitTypeInput','eventContactNameInput','eventContactPhoneInput','eventContactEmailInput','eventContactNoteInput','editorFlagsRow','editorFlagS302','editorFlagLetter',
+          'eventDeleteModal','eventDeleteSub','eventDeleteHereBtn','eventDeleteEverywhereBtn','eventDeleteCancelBtn','eventDeleteCloseBtn',
           'remindersModal','remindersModalList','remindersModalCloseBtn','remindersModalOkBtn','remindersModalTitle','remindersModalSub','checkRemindersBtnMain',
           'historyModal','historyList','historyModalCloseBtn','historyModalCloseBtn2','openHistoryBtn',
           'statsModal','statsModalTitle','statsModalSub','statsModalBody','statsModalCloseBtn','statsModalOkBtn','statsBtn','plannerBtn',
@@ -4082,6 +4132,41 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           });
         }));
       },
+      /**
+       * Окно выбора области удаления. `eventId === null` означает «удалить
+       * все» — тогда выбор применяется ко всей пачке.
+       *
+       * Названия модулей берутся из ОБЩЕГО словаря напрямую: `App.utils.t()`
+       * подставляет префикс `cp.`, а `module.*.title` живёт в общем слое и
+       * существует на всех пяти языках.
+       */
+      openEventDeleteModal({ eventId, name, modules }) {
+        App.state.pendingEventDelete = { eventId, modules };
+        const titles = (modules || []).map((id) => (typeof CWI18n !== 'undefined'
+          ? CWI18n.t(`module.${id}.title`, null, App.utils.lang())
+          : id)).join(', ');
+        if (App.els.eventDeleteSub) {
+          App.els.eventDeleteSub.textContent = eventId
+            ? App.utils.t('delete_shared_sub', { name, modules: titles })
+            : App.utils.t('delete_all_shared_sub', { modules: titles });
+        }
+        this.openModal(App.els.eventDeleteModal);
+      },
+
+      closeEventDeleteModal() {
+        App.state.pendingEventDelete = null;
+        this.closeModal(App.els.eventDeleteModal);
+      },
+
+      /** @param {'detach'|'purge'} scope */
+      confirmEventDelete(scope) {
+        const pending = App.state.pendingEventDelete;
+        this.closeEventDeleteModal();
+        if (!pending) return;
+        if (pending.eventId) App.actions.performEventDelete(pending.eventId, scope);
+        else App.actions.performDeleteAllEvents(scope);
+      },
+
       openRemindersModal() {
         this.renderRemindersModal();
         if (App.els.remindersModal) App.els.remindersModal.hidden = false;
@@ -4270,6 +4355,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.pdfExportConfirmBtn?.addEventListener('click', () => App.actions.doPrint());
       App.els.exportBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = false; });
       App.els.exportModalCloseBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = true; });
+      App.els.eventDeleteHereBtn?.addEventListener('click', () => App.ui.confirmEventDelete('detach'));
+      App.els.eventDeleteEverywhereBtn?.addEventListener('click', () => App.ui.confirmEventDelete('purge'));
+      App.els.eventDeleteCancelBtn?.addEventListener('click', () => App.ui.closeEventDeleteModal());
+      App.els.eventDeleteCloseBtn?.addEventListener('click', () => App.ui.closeEventDeleteModal());
       App.els.remindersModalCloseBtn?.addEventListener('click', () => App.ui.closeRemindersModal());
       App.els.remindersModalOkBtn?.addEventListener('click', () => App.ui.closeRemindersModal());
       document.querySelectorAll('.settings-tab').forEach((btn) => btn.addEventListener('click', () => {
@@ -4702,6 +4791,43 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           if (!payload) return;
           Promise.resolve(CWDirectory.upsert(payload, this.MODULE))
             .catch((err) => console.error('CWDirectory: зеркало собрания не записалось', err));
+        },
+
+        /**
+         * Какие ЕЩЁ модули знают эту карточку. Пустой список — удаление
+         * никого не задевает и спрашивать не о чем.
+         *
+         * До появления второго ПИШУЩЕГО модуля список всегда пуст: Конгрессы
+         * справочник только читают и в `sources[]` не попадают. Поэтому окно
+         * выбора сегодня не показывается ни разу — оно готово к шагу 6, где
+         * станет обязательным.
+         */
+        otherSources(eventId) {
+          if (!this.ready() || !CWDirectory.ready || !eventId) return [];
+          const record = CWDirectory.get(eventId);
+          return ((record && record.sources) || []).filter((item) => item !== this.MODULE);
+        },
+
+        /**
+         * Стереть карточку целиком, вместе со ссылками соседей.
+         *
+         * Реализовано через тот же `detach()`, а не в обход слоя: политика
+         * «запись исчезает, когда её не знает никто» остаётся ОДНА, а «удалить
+         * везде» выражается как «отвязать всех». Обход слоя завёл бы вторую
+         * политику удаления, и они разошлись бы при первой же правке.
+         *
+         * Отвязка идёт последовательно: `detach()` читает состояние из кэша,
+         * который обновляется после каждой записи.
+         */
+        purge(eventId) {
+          if (!this.ready() || !eventId) return Promise.resolve(null);
+          const record = CWDirectory.ready ? CWDirectory.get(eventId) : null;
+          const sources = (record && record.sources) ? record.sources.slice() : [];
+          if (sources.indexOf(this.MODULE) < 0) sources.push(this.MODULE);
+          return sources.reduce(
+            (chain, moduleId) => chain.then(() => CWDirectory.detach(eventId, moduleId)),
+            Promise.resolve()
+          ).catch((err) => { console.error('CWDirectory: полное удаление не удалось', err); return null; });
         },
 
         /**

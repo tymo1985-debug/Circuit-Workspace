@@ -722,6 +722,25 @@ body::before{display:none !important}
       <div class="editor-actions"><button data-i18n="cp.reminders_close" class="md-btn md-btn-filled md-state-layer" id="historyModalCloseBtn2" type="button">Закрыть</button></div>
     </div>
   </div>
+  <!-- Выбор области удаления. Показывается ТОЛЬКО когда карточку собрания
+       знает ещё какой-то модуль (решение Алекса от 16.08.2026, вариант Б).
+       До появления второго пишущего модуля этого не случается. -->
+  <div class="modal" id="eventDeleteModal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 data-i18n="cp.delete_template">Удалить собрание</h3>
+          <div class="modal-sub" id="eventDeleteSub"></div>
+        </div>
+        <button class="icon-btn" id="eventDeleteCloseBtn" type="button" aria-label="Закрыть" data-i18n-aria-label="cp.a_close">✕</button>
+      </div>
+      <div class="editor-actions" style="display:grid;gap:8px;justify-items:stretch">
+        <button class="md-btn md-btn-outlined md-state-layer" id="eventDeleteHereBtn" type="button" data-i18n="cp.delete_here_only">Удалить только здесь</button>
+        <button class="md-btn md-btn-filled md-state-layer" id="eventDeleteEverywhereBtn" type="button" data-i18n="cp.delete_everywhere">Удалить везде</button>
+        <button class="md-btn md-btn-text md-state-layer" id="eventDeleteCancelBtn" type="button" data-i18n="common.cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
   <div class="modal" id="remindersModal" hidden>
     <div class="modal-card">
       <div class="modal-head"><div><h3 data-i18n="cp.reminders_title" id="remindersModalTitle">Что нужно отправить</h3><div data-i18n="cp.reminders_subtitle" class="modal-sub" id="remindersModalSub">Ближайшие визиты, которые ждут S302 или письма</div></div><button class="icon-btn" id="remindersModalCloseBtn" type="button" aria-label="Закрыть" data-i18n-aria-label="cp.a_close">✕</button></div>
