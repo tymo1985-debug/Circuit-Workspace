@@ -39,4 +39,12 @@ initState().then(()=>{load();initMobile()}).catch(e=>{let b=$("#errorBox");if(b)
 // запуск модуля его НЕ ждёт: до готовности pickTemplate() читает прежний
 // источник, поэтому письмо в этот момент всё равно печатается верным текстом.
 // Перенос запускается сразу после готовности и только один раз.
-self.CWTemplates?.init?.().then(()=>adoptTemplates()).catch(e=>console.error("Конгрессы: хранилище шаблонов недоступно",e))}catch(e){let b=$("#errorBox");b.textContent="Ошибка запуска: "+e.message+"\n"+e.stack;b.classList.remove("hidden")}})
+self.CWTemplates?.init?.().then(()=>adoptTemplates()).catch(e=>console.error("Конгрессы: хранилище шаблонов недоступно",e));
+// Общий справочник собраний (фаза 5, шаг 5) подпитывает автодополнение поля
+// собрания. Запуск его НЕ ждёт: до готовности datalist ровно прежний, а после
+// перерисовывается. Модуль в справочник не пишет — обратная запись выключена
+// намеренно, иначе опечатки из свободного поля утекали бы в общий слой.
+self.CWDirectory?.init?.().then(ok=>{if(ok)renderLists()}).catch(e=>console.error("Конгрессы: справочник собраний недоступен",e));
+// Соседняя вкладка или Клиндарий поправили карточку — список обновляется без
+// перезагрузки. Событие приходит через маячок cw-directory-rev.
+self.CWDirectory?.onChange?.(()=>renderLists())}catch(e){let b=$("#errorBox");b.textContent="Ошибка запуска: "+e.message+"\n"+e.stack;b.classList.remove("hidden")}})
