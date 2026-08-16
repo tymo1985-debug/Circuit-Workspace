@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.77.0',
+      version: '9.78.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -922,7 +922,9 @@
           if (oldName !== null && oldName !== name) {
             App.state.app.entries.forEach((entry) => { if (entry.eventId === payload.id && entry.title === oldName) entry.title = name; });
           }
-          App.store.save(); this.resetEventForm(); App.ui.renderAll(); App.utils.toast(App.utils.t('event_template_saved'));
+          App.store.save();
+          App.shared.directory.mirror(payload);
+          this.resetEventForm(); App.ui.renderAll(); App.utils.toast(App.utils.t('event_template_saved'));
           App.ui.closeModal(App.els.eventEditorModal);
         } catch (err) {
           console.error('saveEventTemplate failed:', err);
@@ -933,6 +935,8 @@
         const total = App.state.app.events.length;
         if (!total) return;
         if (!window.confirm(App.utils.t('delete_all_events_confirm'))) return;
+        // Идентификаторы снимаются ДО очистки: после неё отвязывать нечего.
+        App.state.app.events.forEach((item) => App.shared.directory.forget(item.id));
         App.state.app.events = [];
         App.state.app.entries = [];
         Object.values(App.state.app.serviceYears || {}).forEach((sy) => {
@@ -952,6 +956,7 @@
         if (!event) return;
         if (!window.confirm(`${App.utils.t('delete_template_confirm')}: ${event.name}?`)) return;
         App.state.app.events = App.state.app.events.filter((item) => item.id !== eventId);
+        App.shared.directory.forget(eventId);
         App.state.app.entries = App.state.app.entries.filter((item) => item.eventId !== eventId);
         Object.values(App.state.app.serviceYears).forEach((sy) => {
           Object.values(sy.weeks || {}).forEach((week) => { if (week.eventId === eventId) week.eventId = ''; });
@@ -4517,6 +4522,91 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (typeof CWDocLang !== 'undefined') return CWDocLang.get();
         return App.state.app.settings.language || 'ru';
       },
+      /**
+       * Общий справочник собраний (фаза 5, шаг 3 — 16.08.2026).
+       *
+       * Модуль пишет в ДВА места: `app.events[]` остаётся единственным
+       * источником ЧТЕНИЯ, а сюда уходит зеркало идентификации. Именно это
+       * делает шаг обратимым: перестать зеркалить — и ничего не сломается.
+       *
+       * ⚠️ ГРАНИЦА: наверх уходят только название, номер, адрес, контакт и
+       * координаты. `color`, `schedule`, `visitType`, `formLanguage`
+       * остаются здесь — это про календарь, а не про собрание
+       * (решение Алекса 16.08.2026, разбор в docs/db-migration/02-*.md).
+       * Слой отбрасывает лишние поля и сам, но передавать их незачем.
+       *
+       * Отказ записи НЕ мешает работе модуля: собрание уже сохранено у себя,
+       * ронять правку из-за общего слоя нельзя. То же правило, что у
+       * CWDocs.save() и CWSnapshots.add().
+       */
+      directory: {
+        MODULE: 'circuit-planner',
+
+        ready() { return typeof CWDirectory !== 'undefined' && typeof CWDB !== 'undefined'; },
+
+        /** Только поля идентификации — остальное принадлежит модулю. */
+        identity(event) {
+          if (!event || !event.id) return null;
+          return {
+            id: event.id,
+            name: event.name || '',
+            congNumber: event.congNumber || '',
+            address: event.address || '',
+            contactName: event.contactName || '',
+            contactPhone: event.contactPhone || '',
+            contactEmail: event.contactEmail || '',
+            contactNote: event.contactNote || '',
+            lat: typeof event.lat === 'number' ? event.lat : null,
+            lng: typeof event.lng === 'number' ? event.lng : null,
+          };
+        },
+
+        /** Создать/обновить запись справочника по событию модуля. */
+        mirror(event) {
+          if (!this.ready()) return;
+          const payload = this.identity(event);
+          if (!payload) return;
+          Promise.resolve(CWDirectory.upsert(payload, this.MODULE))
+            .catch((err) => console.error('CWDirectory: зеркало собрания не записалось', err));
+        },
+
+        /**
+         * Событие удалено в модуле. Запись справочника стирается целиком
+         * только если её больше не знает ни один модуль — иначе удаление
+         * здесь унесло бы собрание из-под ссылок соседа.
+         */
+        forget(eventId) {
+          if (!this.ready() || !eventId) return;
+          Promise.resolve(CWDirectory.detach(eventId, this.MODULE))
+            .catch((err) => console.error('CWDirectory: отвязка собрания не удалась', err));
+        },
+
+        /**
+         * Разовое досеивание при старте: события, которых в справочнике ещё
+         * нет или чья идентификация разошлась, уезжают наверх.
+         *
+         * Идемпотентно и дёшево: сравнение идёт по памяти, запись — только
+         * при реальном расхождении. Отдельной «миграции» поэтому не нужно,
+         * а повторный запуск во второй вкладке не плодит дублей — ключ
+         * записи равен `id` события.
+         */
+        seed() {
+          if (!this.ready() || !CWDirectory.ready) return;
+          const events = App.state.app?.events || [];
+          events.forEach((event) => {
+            const payload = this.identity(event);
+            if (!payload) return;
+            const existing = CWDirectory.get(event.id);
+            if (existing) {
+              const same = Object.keys(payload).every((key) => (existing[key] ?? '') === (payload[key] ?? ''));
+              const known = (existing.sources || []).indexOf(this.MODULE) >= 0;
+              if (same && known) return;
+            }
+            this.mirror(event);
+          });
+        },
+      },
+
       // Разовый перенос своих данных в общий слой. CWSender.adopt() запишет
       // их, только если общая запись ещё пуста, поэтому порядок открытия
       // модулей не важен и повторный вызов безвреден.
@@ -4537,6 +4627,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           // им общий язык документа, чтобы обновление ничего не переключило.
           CWDocLang.adopt(App.state.app.settings.language);
         }
+        // Справочник уже прочитан загрузчиком внизу файла, поэтому досеивание
+        // может опираться на синхронный CWDirectory.get().
+        App.shared.directory.seed();
       },
     },
 
@@ -4735,9 +4828,14 @@ if (self.CWState && self.CWDB) {
       },
     });
   }
+  /* Справочник собраний поднимается ВМЕСТЕ с состоянием: досеивание в
+     App.shared.adopt() опирается на синхронный CWDirectory.get(), а adopt()
+     зовётся уже внутри App.init(). Промис не отклоняется — недоступный
+     справочник означает работу без зеркала, а не отказ запуска. */
   Promise.all([
     App.store.remote.init(),
     App.store.history ? App.store.history.init() : Promise.resolve(false),
+    self.CWDirectory ? self.CWDirectory.init() : Promise.resolve(false),
   ]).then(() => App.init());
 } else {
   App.init();

@@ -118,7 +118,15 @@
          предупреждение ниже. До фазы 4 они ехали ключом
          `service-year-planner-v9-4-2-history`; ключ оставлен в `local`, потому
          что при недоступной базе модуль по-прежнему пишет туда. */
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['circuit-planner'] }, { store: 'snapshots', prefix: 'circuit-planner:' }] },
+      /* С 16.08.2026 (фаза 5, шаг 3) модуль зеркалит собрания в общий
+         справочник `communities`. Без него копия модуля восстановилась бы с
+         пустым справочником — бесшумно, ровно как это было с `cw-sender`.
+         Хранилище выгружается целиком: ключ записи — собственный id собрания,
+         без префикса модуля, поэтому адресный отбор здесь неприменим. Копия
+         одного модуля везёт и чужие карточки; при восстановлении секция
+         `partial` СЛИВАЕТСЯ, поэтому чужого она не стирает — тот же
+         осознанный размен, что у `documents`. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', 'communities', { store: 'state', ids: ['circuit-planner'] }, { store: 'snapshots', prefix: 'circuit-planner:' }] },
     },
     'pioneer-school': {
       local: [],

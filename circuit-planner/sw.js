@@ -60,6 +60,7 @@ const APP_SHELL_URLS = [
   '../shared/documents.js',
   '../shared/print.js',
   '../shared/db.js',
+  '../shared/directory.js',
   '../shared/doclang.js',
   '../shared/i18n/common.js',
   // Словарь модуля: с фазы 5 он живёт отдельным файлом, а не внутри app.js.

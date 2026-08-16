@@ -275,9 +275,22 @@
     /**
      * Импорт из старой структуры events[] (Клиндарий) в communities.
      * Не удаляет существующие данные модуля — только копирует в общий слой.
+     *
+     * ⚠️ ПЕРЕНОСЯТСЯ ТОЛЬКО ПОЛЯ ИДЕНТИФИКАЦИИ (решение Алекса 16.08.2026).
+     * `color`, `schedule`, `visitType`, `formLanguage` НАМЕРЕННО отброшены:
+     * это свойства представления собрания в конкретном модуле, а не самого
+     * собрания. До 16.08.2026 функция копировала их тоже — и была готовой
+     * ловушкой: выглядела штатным путём миграции и при первом же вызове
+     * занесла бы в общий слой ровно то, что решено там не держать.
+     * Граница и обоснование — docs/db-migration/02-communities-audit.md.
+     *
+     * Предпочтительный путь — CWDirectory.upsert() (shared/directory.js).
+     * Эта функция остаётся как разовый импорт для служебных сценариев.
+     *
      * @param {Array} legacyEvents — массив в формате events[] Клиндария
+     * @param {string} [moduleId] — кто импортирует; попадёт в sources[]
      */
-    async importLegacyCommunities(legacyEvents) {
+    async importLegacyCommunities(legacyEvents, moduleId) {
       const results = [];
       for (const ev of legacyEvents || []) {
         // put, а не add: повторный импорт того же набора раньше падал
@@ -286,18 +299,15 @@
         const id = await CWDB.communities.put({
           id: ev.id,
           name: ev.name || '',
-          color: ev.color || '',
+          congNumber: ev.congNumber || '',
           address: ev.address || '',
-          schedule: ev.schedule || '',
-          visitType: ev.visitType || '',
           contactName: ev.contactName || '',
           contactPhone: ev.contactPhone || '',
           contactEmail: ev.contactEmail || '',
           contactNote: ev.contactNote || '',
-          congNumber: ev.congNumber || '',
           lat: typeof ev.lat === 'number' ? ev.lat : null,
           lng: typeof ev.lng === 'number' ? ev.lng : null,
-          formLanguage: ev.formLanguage || '',
+          sources: moduleId ? [moduleId] : [],
         });
         results.push(id);
       }
