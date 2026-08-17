@@ -71,11 +71,8 @@
       'hub.version_label': 'Версия хаба',
       'hub.update_label': 'Проверить обновления',
 
-      /* Обновление приложения (shared/update.js).
-         Ключи заведены только для ru и en. Это НЕ забывчивость: t() при
-         отсутствии ключа берёт запасной язык FALLBACK='ru', поэтому в uk/pl/de
-         строки показываются по-русски и видно, что перевода ещё нет. Машинный
-         перевод сюда не кладём — ждём носителей (записано в TODO.md). */
+      /* Обновление приложения (shared/update.js). Переведено на все пять
+         языков 17.08.2026. */
       'update.available': 'Доступна новая версия приложения.',
       'update.apply': 'Обновить',
       'update.later': 'Позже',
@@ -131,17 +128,22 @@
       'common.export': 'Експорт',
       'common.import': 'Імпорт',
       'common.print': 'Друк',
-
       'status.live': 'працює',
       'status.soon': 'скоро',
       'status.dev': 'у розробці',
-
       'hub.title': 'Один вхід до всіх інструментів округу',
       'hub.subtitle': 'Кожна плитка — самостійний модуль. Спільні дані вводяться один раз і поступово стають доступними в усіх модулях.',
       'hub.footer': 'Circuit Workspace · єдина точка входу над незалежними модулями',
       'hub.language_label': 'Мова інтерфейсу',
       'hub.version_label': 'Версія хаба',
-
+      'hub.update_label': 'Перевірити оновлення',
+      'update.available': 'Доступна нова версія додатку.',
+      'update.apply': 'Оновити',
+      'update.later': 'Пізніше',
+      'update.checking': 'Перевіряю оновлення…',
+      'update.current': 'Встановлена остання версія.',
+      'update.others': 'Модулі оновлені — зміни з’являться при наступному відкритті.',
+      'update.offline': 'Немає з’єднання — перевірити оновлення не вдалося.',
       'module.congress-project.title': 'Конгреси',
       'module.congress-project.desc': 'Програма конгресів, розподіл завдань і створення листів учасникам у PDF.',
       'module.circuit-planner.title': 'Кліндарій',
@@ -150,8 +152,8 @@
       'module.pioneer-school.desc': 'Учні та класи, розклад уроків, підручники, формуляри S-253 і експорт списків.',
       'module.appointments.title': 'Призначення',
       'module.appointments.desc': 'Лист про призначення і викреслення старійшин та служителів збору.',
-      'module.documents.title': '',
-      'module.documents.desc': '',
+      'module.documents.title': 'Документи',
+      'module.documents.desc': 'Шаблони листів і документів: один текст на всю екосистему, редагується в одному місці.',
     },
 
     en: {
@@ -189,18 +191,15 @@
       'common.export': 'Export',
       'common.import': 'Import',
       'common.print': 'Print',
-
       'status.live': 'live',
       'status.soon': 'coming soon',
       'status.dev': 'in development',
-
       'hub.title': 'One entry point for every circuit tool',
       'hub.subtitle': 'Each tile is a standalone module. Shared data is entered once and gradually becomes available across all modules.',
       'hub.footer': 'Circuit Workspace · one entry point above independent modules',
       'hub.language_label': 'Interface language',
       'hub.version_label': 'Hub version',
       'hub.update_label': 'Check for updates',
-
       'update.available': 'A new version of the app is available.',
       'update.apply': 'Update',
       'update.later': 'Later',
@@ -208,7 +207,6 @@
       'update.current': 'You are on the latest version.',
       'update.others': 'Modules updated — changes appear the next time you open them.',
       'update.offline': 'No connection — could not check for updates.',
-
       'module.congress-project.title': 'Conventions',
       'module.congress-project.desc': 'Convention programme, task assignments and participant letters as PDF.',
       'module.circuit-planner.title': 'Klindariy',
@@ -217,8 +215,8 @@
       'module.pioneer-school.desc': 'Students and classes, lesson schedule, textbooks, S-253 forms and list export.',
       'module.appointments.title': 'Appointments',
       'module.appointments.desc': 'Letter about appointing and deleting elders and ministerial servants.',
-      'module.documents.title': '',
-      'module.documents.desc': '',
+      'module.documents.title': 'Documents',
+      'module.documents.desc': 'Templates of letters and documents: one text for the whole ecosystem, edited in one place.',
     },
 
     pl: {
@@ -256,17 +254,22 @@
       'common.export': 'Eksport',
       'common.import': 'Import',
       'common.print': 'Drukuj',
-
       'status.live': 'działa',
       'status.soon': 'wkrótce',
       'status.dev': 'w budowie',
-
       'hub.title': 'Jedno wejście do wszystkich narzędzi obwodu',
       'hub.subtitle': 'Każdy kafelek to samodzielny moduł. Wspólne dane wprowadzasz raz i stopniowo stają się dostępne we wszystkich modułach.',
       'hub.footer': 'Circuit Workspace · jedno wejście ponad niezależnymi modułami',
       'hub.language_label': 'Język interfejsu',
       'hub.version_label': 'Wersja centrum',
-
+      'hub.update_label': 'Sprawdź aktualizacje',
+      'update.available': 'Dostępna jest nowa wersja aplikacji.',
+      'update.apply': 'Aktualizuj',
+      'update.later': 'Później',
+      'update.checking': 'Sprawdzam aktualizacje…',
+      'update.current': 'Zainstalowana jest najnowsza wersja.',
+      'update.others': 'Moduły zaktualizowane — zmiany pojawią się przy następnym otwarciu.',
+      'update.offline': 'Brak połączenia — nie udało się sprawdzić aktualizacji.',
       'module.congress-project.title': 'Kongresy',
       'module.congress-project.desc': 'Program kongresu, przydział zadań i listy do uczestników w PDF.',
       'module.circuit-planner.title': 'Klindarium',
@@ -275,8 +278,8 @@
       'module.pioneer-school.desc': 'Uczniowie i klasy, plan lekcji, podręczniki, formularze S-253 i eksport list.',
       'module.appointments.title': 'Mianowania',
       'module.appointments.desc': 'List o mianowaniu i skreśleniu starszych oraz sług pomocniczych.',
-      'module.documents.title': '',
-      'module.documents.desc': '',
+      'module.documents.title': 'Dokumenty',
+      'module.documents.desc': 'Szablony wiadomości i dokumentów: jeden tekst dla całego ekosystemu, edytowany w jednym miejscu.',
     },
 
     de: {
@@ -314,17 +317,22 @@
       'common.export': 'Export',
       'common.import': 'Import',
       'common.print': 'Drucken',
-
       'status.live': 'aktiv',
       'status.soon': 'demnächst',
       'status.dev': 'in Arbeit',
-
       'hub.title': 'Ein Zugang zu allen Werkzeugen des Kreises',
       'hub.subtitle': 'Jede Kachel ist ein eigenständiges Modul. Gemeinsame Daten werden einmal erfasst und nach und nach in allen Modulen verfügbar.',
       'hub.footer': 'Circuit Workspace · ein Zugang über unabhängigen Modulen',
       'hub.language_label': 'Sprache der Oberfläche',
       'hub.version_label': 'Version der Zentrale',
-
+      'hub.update_label': 'Updates überprüfen',
+      'update.available': 'Eine neue Version der App ist verfügbar.',
+      'update.apply': 'Aktualisieren',
+      'update.later': 'Später',
+      'update.checking': 'Überprüfe Updates…',
+      'update.current': 'Die neueste Version ist installiert.',
+      'update.others': 'Module aktualisiert – Änderungen erscheinen beim nächsten Öffnen.',
+      'update.offline': 'Keine Verbindung – Updates konnten nicht überprüft werden.',
       'module.congress-project.title': 'Kongresse',
       'module.congress-project.desc': 'Kongressprogramm, Aufgabenverteilung und Teilnehmerbriefe als PDF.',
       'module.circuit-planner.title': 'Klindarium',
@@ -333,8 +341,8 @@
       'module.pioneer-school.desc': 'Schüler und Klassen, Stundenplan, Lehrbücher, S-253-Formulare und Listenexport.',
       'module.appointments.title': 'Ernennungen',
       'module.appointments.desc': 'Brief über Ernennung und Streichung von Ältesten und Dienstamtgehilfen.',
-      'module.documents.title': '',
-      'module.documents.desc': '',
+      'module.documents.title': 'Dokumente',
+      'module.documents.desc': 'Brief- und Dokumentenvorlagen: ein Text für das gesamte Ökosystem, wird an einer Stelle bearbeitet.',
     },
 
   });

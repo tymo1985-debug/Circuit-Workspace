@@ -112,14 +112,27 @@ console.log('\n2. Схема анкеты следует языку докуме
   ok('closingText — текст, а не ключ', s.closingText.startsWith('Пожалуйста, заполните и отправьте'));
 }
 {
-  // Непереведённый язык обязан отдавать РУССКИЙ ТЕКСТ, а не имя ключа:
-  // иначе польская анкета вышла бы набором doc.ps.*.
+  // С 17.08.2026 переведены все пять языков — польский обязан отдавать
+  // польский текст, а не русский запасной.
   const { ctx } = makeEnv({ docLang: 'pl' });
   ctx.PSDocLang.init();
   const s = ctx.RegistrationSchema;
-  ok('pl без перевода → русский текст, не ключ', s.sections[0].title === 'Личные данные', s.sections[0].title);
-  ok('pl помечен как непереведённый', ctx.PSDocLang.isTranslated('pl') === false);
+  ok('pl отдаёт польский текст', s.sections[0].title === 'Dane osobowe', s.sections[0].title);
+  ok('pl помечен как переведённый', ctx.PSDocLang.isTranslated('pl') === true);
   ok('ru помечен как переведённый', ctx.PSDocLang.isTranslated('ru') === true);
+}
+{
+  // Инвариант сам по себе никуда не делся и переживёт добавление новых ключей:
+  // ключ, которого в языке нет, обязан отдать РУССКИЙ ТЕКСТ, а не имя ключа —
+  // иначе анкета уйдёт пионеру набором doc.ps.*. Раньше это проверялось на
+  // целиком пустом польском блоке; теперь блок заполнен, поэтому пропуск
+  // одного ключа моделируем явно.
+  const { ctx } = makeEnv({ docLang: 'pl' });
+  ctx.PSDocLang.init();
+  ctx.CWI18n.register({ pl: { 'doc.ps.reg.section.personal': '' } });
+  const s = ctx.RegistrationSchema;
+  ok('ключ без перевода → русский текст, не имя ключа',
+    s.sections[0].title === 'Личные данные', s.sections[0].title);
 }
 {
   // Ловушка «застывшего массива»: sections должен пересчитываться.
@@ -230,7 +243,10 @@ console.log('\n6. Живой прогон публичной страницы');
   ctx.PSDocLang.init({ allowUrlOverride: true });
   ctx.PSDocLang.applyDoc();
   const title = w.document.getElementById('page-title').textContent;
-  ok('заголовок переведён через applyDoc', title === 'Формуляр для Школы пионерского служения', title);
+  // ?lang=pl — значит польский заголовок. До 17.08.2026 польский блок был
+  // пуст и здесь честно ждали русский запасной вариант; теперь перевод есть,
+  // и русский заголовок означал бы, что applyDoc не сработал.
+  ok('заголовок переведён через applyDoc', title === 'Formularz do Kursu Służby Pionierskiej', title);
   ok('язык страницы выставлен по ?lang=', w.document.documentElement.lang === 'pl', w.document.documentElement.lang);
 
   // Форма собирается ровно так же, как на живой странице.
@@ -241,7 +257,10 @@ console.log('\n6. Живой прогон публичной страницы');
   ok('разделов столько же, сколько в схеме',
     w.document.querySelectorAll('#reg-fields fieldset').length === schema.sections.length);
   const legend = w.document.querySelector('#reg-fields legend');
-  ok('легенда раздела с номером', legend.textContent === '1. Личные данные', legend.textContent);
+  // Номер приписывает схема, название берётся из словаря: если в словарь
+  // случайно зальют перевод вместе с номером, здесь вылезет «1. 1. …».
+  ok('легенда раздела с номером', legend.textContent === '1. Dane osobowe', legend.textContent);
+  ok('номер раздела не задвоен', !/^\d+\.\s*\d+\./.test(legend.textContent), legend.textContent);
 
   // Имена полей — контракт с FormData, PDF и резервной копией: запись строится
   // по name, и молчаливое переименование потеряло бы данные пионера.

@@ -54,9 +54,14 @@
           subject: null,
           body: "{{senderName}} / Alex Tymoshchuk\n{{senderCode}}\n{{senderAddress}}\n{{senderPhone1}}\n{{senderPhone2}}\n{{senderEmail}}\n\n**Запрошення до участі у виконанні завдання на районному конгресі:**\n\nДорогий брате **{{participantName}}**,\n\nЯ радий, що ти маєш нагоду виступити на наступному районному конгресі\nза темою:\n**«{{congressName}}»**.\n\nМісце: **{{congressPlace}}**. Дата: **{{congressDate}}**.\n\nЗавдання: № **{{assignmentNumber}}** «**{{assignmentTitle}}**»\n\nТвоє завдання починається о **{{assignmentTime}}**.\n\nЗверни увагу, що твоє завдання включає в себе **{{assignmentType}}**.\n\nРепетиція на сцені: **{{stageRehearsalDate}}** о **{{stageRehearsalTime}}**.\n\nБудь ласка, зроби {{recordingMedia}} запис {{recordingKind}} та надішли його мені на WhatsApp до **{{recordingDeadline}}**.\n\nБудь ласка, уважно ознайомся з формою CO-90, що додається. Не бери більше матеріалу, ніж ти можеш викласти у зрозумілій формі за відведений тобі час. Важливо, щоб ти точно дотримувався встановленого часу. Підготуйте твоє завдання у формі вільного виступу. Намагайся не зачитувати завдання перед аудиторією. Говори з ентузіазмом!\n\nДякую тобі за твою готовність і старанність! Бажаю тобі підтримки Єгови і його Святого Духа під час підготовки твого завдання!\n\nЯкщо у тебе виникнуть запитання, будь ласка, не соромся звертатися до мене по телефону або електронною поштою.\n\nТвій брат,\n{{senderName}},\n{{senderCode}}\n\nPS: Будь ласка, як можна швидше дай мені знати по електронній пошті або WhatsApp до **{{responseDeadline}}**, чи можеш ти взяти на себе це завдання. Щиро дякую!",
         },
-        /* Ждут носителя языка. До тех пор fallback отдаёт украинский. */
-        ru: { subject: null, body: '' },
-        de: { subject: null, body: '' },
+        ru: {
+          subject: null,
+          body: "{{senderName}} / Alex Tymoshchuk\n{{senderCode}}\n{{senderAddress}}\n{{senderPhone1}}\n{{senderPhone2}}\n{{senderEmail}}\n\n**Приглашение принять участие в выполнении задания на районном конгрессе:**\n\nДорогой брат **{{participantName}}**,\n\nРад, что у тебя будет возможность выступить на следующем районном конгрессе\nс темой:\n**«{{congressName}}»**.\n\nМесто: **{{congressPlace}}**. Дата: **{{congressDate}}**.\n\nЗадание: № **{{assignmentNumber}}** «**{{assignmentTitle}}**»\n\nТвоё задание начнётся в **{{assignmentTime}}**.\n\nОбрати внимание, что твоё задание включает **{{assignmentType}}**.\n\nРепетиция на сцене: **{{stageRehearsalDate}}** в **{{stageRehearsalTime}}**.\n\nПожалуйста, сделай {{recordingMedia}} запись {{recordingKind}} и отправь её мне по WhatsApp до **{{recordingDeadline}}**.\n\nПожалуйста, внимательно ознакомься с приложенным формуляром CO-90. Не бери больше материала, чем сможешь понятно изложить за отведённое время. Важно точно придерживаться установленного времени. Подготовь своё задание в форме свободного выступления. Старайся не зачитывать его перед аудиторией. Говори с энтузиазмом!\n\nСпасибо за твою готовность и усердие! Желаю тебе поддержки Иеговы и его святого духа во время подготовки задания!\n\nЕсли у тебя возникнут вопросы, пожалуйста, обращайся ко мне по телефону или электронной почте.\n\nТвой брат,\n{{senderName}},\n{{senderCode}}\n\nPS: Пожалуйста, как можно скорее сообщи мне по электронной почте или WhatsApp до **{{responseDeadline}}**, сможешь ли ты взять на себя это задание. Большое спасибо!",
+        },
+        de: {
+          subject: null,
+          body: "{{senderName}} / Alex Tymoshchuk\n{{senderCode}}\n{{senderAddress}}\n{{senderPhone1}}\n{{senderPhone2}}\n{{senderEmail}}\n\n**Einladung zur Mitwirkung an einer Aufgabe auf dem Kreiskongress:**\n\nLieber Bruder **{{participantName}}**,\n\nich freue mich, dass du Gelegenheit hast, auf dem nächsten Kreiskongress\nüber folgendes Thema zu sprechen:\n**„{{congressName}}“**.\n\nOrt: **{{congressPlace}}**. Datum: **{{congressDate}}**.\n\nAufgabe: Nr. **{{assignmentNumber}}** „**{{assignmentTitle}}**“\n\nDeine Aufgabe beginnt um **{{assignmentTime}}**.\n\nBitte beachte, dass deine Aufgabe **{{assignmentType}}** beinhaltet.\n\nBühnenprobe: **{{stageRehearsalDate}}** um **{{stageRehearsalTime}}**.\n\nBitte erstelle eine {{recordingMedia}}-Aufnahme von {{recordingKind}} und sende sie mir bis **{{recordingDeadline}}** über WhatsApp.\n\nBitte lies dir das beigefügte Formular CO-90 sorgfältig durch. Nimm nicht mehr Stoff, als du in der vorgegebenen Zeit verständlich behandeln kannst. Es ist wichtig, dass du dich genau an die vorgegebene Zeit hältst. Bereite deine Aufgabe als freien Vortrag vor. Versuch, sie vor den Zuhörern nicht abzulesen. Sprich mit Begeisterung!\n\nVielen Dank für deine Bereitschaft und deinen Fleiß! Ich wünsche dir Jehovas Unterstützung und seinen heiligen Geist bei der Vorbereitung deiner Aufgabe!\n\nFalls du Fragen hast, kannst du dich gern telefonisch oder per E-Mail an mich wenden.\n\nDein Bruder,\n{{senderName}},\n{{senderCode}}\n\nPS: Bitte teile mir so bald wie möglich bis **{{responseDeadline}}** per E-Mail oder WhatsApp mit, ob du diese Aufgabe übernehmen kannst. Vielen Dank!",
+        },
       },
     },
 
@@ -171,12 +176,22 @@
           subject: null,
           body: "Дорогой брат / дорогая сестра {{student.firstName}}!\n\nРад сообщить, что ты приглашён(а) на Школу пионерского служения.\n\nДаты: {{school.startDate}} — {{school.endDate}}\nМесто: {{school.place}}\nПреподаватели: {{school.teacherA}}, {{school.teacherB}}\n\nПожалуйста, заполни формуляр учащегося до {{school.registrationDeadline}} и отправь его на {{school.registrationEmail}} или через WhatsApp {{school.registrationWhatsapp}}.\n\nЕсли у тебя возникнут вопросы, пиши или звони мне.\n\nТвой брат,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
         },
-        /* Ждут носителя языка. До тех пор fallback отдаёт русский и помечает
-           результат `pending` — документ остаётся читаемым. */
-        uk: { subject: null, body: '' },
-        en: { subject: null, body: '' },
-        pl: { subject: null, body: '' },
-        de: { subject: null, body: '' },
+        uk: {
+          subject: null,
+          body: "Дорогий брате / Дорога сестро {{student.firstName}}!\n\nРадий повідомити, що тебе запрошено до Школи піонерського служіння.\n\nДати: {{school.startDate}} — {{school.endDate}}\nМісце: {{school.place}}\nВикладачі: {{school.teacherA}}, {{school.teacherB}}\n\nБудь ласка, заповни формуляр учня до {{school.registrationDeadline}} і надішли його на {{school.registrationEmail}} або через WhatsApp на {{school.registrationWhatsapp}}.\n\nЯкщо у тебе виникнуть запитання, напиши або зателефонуй мені.\n\nТвій брат,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        en: {
+          subject: null,
+          body: "Dear Brother / Dear Sister {{student.firstName}}!\n\nI am pleased to let you know that you have been invited to attend the Pioneer Service School.\n\nDates: {{school.startDate}} — {{school.endDate}}\nLocation: {{school.place}}\nInstructors: {{school.teacherA}}, {{school.teacherB}}\n\nPlease complete the student form by {{school.registrationDeadline}} and send it to {{school.registrationEmail}} or via WhatsApp at {{school.registrationWhatsapp}}.\n\nIf you have any questions, write or call me.\n\nYour brother,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        pl: {
+          subject: null,
+          body: "Drogi Bracie / Droga Siostro {{student.firstName}}!\n\nZ przyjemnością informuję, że zostałeś(-aś) zaproszony(-a) na Kurs Służby Pionierskiej.\n\nTerminy: {{school.startDate}} — {{school.endDate}}\nMiejsce: {{school.place}}\nWykładowcy: {{school.teacherA}}, {{school.teacherB}}\n\nProszę, wypełnij formularz uczestnika do {{school.registrationDeadline}} i wyślij go na adres {{school.registrationEmail}} lub przez WhatsApp na {{school.registrationWhatsapp}}.\n\nJeśli masz pytania, napisz lub zadzwoń do mnie.\n\nTwój brat,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        de: {
+          subject: null,
+          body: "Lieber Bruder / Liebe Schwester {{student.firstName}}!\n\nIch freue mich, dir mitzuteilen, dass du zur Pionierdienstschule eingeladen bist.\n\nZeitraum: {{school.startDate}} — {{school.endDate}}\nOrt: {{school.place}}\nUnterweiser: {{school.teacherA}}, {{school.teacherB}}\n\nBitte fülle das Schülerformular bis {{school.registrationDeadline}} aus und sende es an {{school.registrationEmail}} oder über WhatsApp an {{school.registrationWhatsapp}}.\n\nFalls du Fragen hast, schreib mir oder ruf mich an.\n\nDein Bruder,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
       },
     },
 
