@@ -79,7 +79,7 @@
       t(key) { return this.dict[key] || key; },
     };
   }
-  const VP_LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English', pl: 'Polski' };
+  const VP_LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English', pl: 'Polski', de: 'Deutsch' };
 
   /* Системные тексты писем живут в общем слое — shared/templates/builtin.js.
      Здесь остались только чтения: второго экземпляра текста в модуле нет, и
@@ -128,7 +128,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.82.0',
+      version: '9.83.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -201,13 +201,54 @@
         Object.keys(vars).forEach((k) => { value = value.replace(`{${k}}`, String(vars[k])); });
         return value;
       },
+      /* Названия месяцев и сокращения дней недели.
+
+         Своя таблица (App.config.monthNames/dayNames) имеет приоритет —
+         ru/uk/en/pl остаются ровно такими, какими были, и ни один
+         существующий экран не меняется. Нет таблицы для языка — берём
+         данные локали у браузера через Intl, а не падаем в русский.
+
+         ЗАЧЕМ ТАК, а не пятым блоком в таблице. Календарные названия —
+         не перевод в смысле «формулировка, которую пишет носитель», а
+         справочные данные локали, и они у браузера уже есть. Немецкий
+         запуск 18.08.2026 упирался в заголовок «Август 2026»; вместо
+         дописывания 19 строк вручную закрыт весь класс — следующий язык
+         получит календарь сразу и без правки кода.
+
+         Первое января взято опорной датой для месяцев, а 5 января 2026 —
+         это понедельник, отсюда порядок дней Пн→Вс, как в остальных
+         таблицах. Результат кэшируется: Intl.DateTimeFormat создаётся
+         недёшево, а сетка календаря зовёт dayNames() на каждую отрисовку. */
+      _intlNamesCache: {},
+      _intlNames(lang, kind) {
+        const cacheKey = lang + ':' + kind;
+        if (this._intlNamesCache[cacheKey]) return this._intlNamesCache[cacheKey];
+        let out;
+        try {
+          if (kind === 'month') {
+            const fmt = new Intl.DateTimeFormat(lang, { month: 'long' });
+            out = Array.from({ length: 12 }, (_, m) => {
+              const name = fmt.format(new Date(2026, m, 1));
+              return name.charAt(0).toUpperCase() + name.slice(1);
+            });
+          } else {
+            const fmt = new Intl.DateTimeFormat(lang, { weekday: 'short' });
+            out = Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2026, 0, 5 + i)));
+          }
+        } catch (e) {
+          // Неизвестный языковой тег — Intl бросает RangeError. Тогда уж русский.
+          out = kind === 'month' ? App.config.monthNames.ru : App.config.dayNames.ru;
+        }
+        this._intlNamesCache[cacheKey] = out;
+        return out;
+      },
       monthName(index) {
         const lang = this.lang();
-        return (App.config.monthNames[lang] || App.config.monthNames.ru)[index];
+        return (App.config.monthNames[lang] || this._intlNames(lang, 'month'))[index];
       },
       dayNames() {
         const lang = this.lang();
-        return App.config.dayNames[lang] || App.config.dayNames.ru;
+        return App.config.dayNames[lang] || this._intlNames(lang, 'day');
       },
       iso(date) {
         // Plain 'YYYY-MM-DD' strings must be parsed as LOCAL dates: `new Date(str)` treats
@@ -1565,7 +1606,7 @@
           // Раньше подписи ставились по индексу (opts[0..3]) — добавление
           // опции «Как в Circuit Workspace» сдвинуло бы их все. Теперь
           // сопоставление идёт по value и от порядка не зависит.
-          const NATIVE = { ru: 'Русский', en: 'English', uk: 'Українська', pl: 'Polski' };
+          const NATIVE = { ru: 'Русский', en: 'English', uk: 'Українська', pl: 'Polski', de: 'Deutsch' };
           Array.from(App.els.languageSelect.options).forEach((opt) => {
             if (opt.value === App.i18nBridge.HUB_VALUE) {
               opt.textContent = App.i18nBridge.ready() ? CWI18n.t('common.language_inherit') : 'Как в Circuit Workspace';
@@ -3087,7 +3128,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.state.visitFormEntryId = entry.id;
         const visitTypeMap = { congregation: 'meeting', group: 'group', pregroup: 'pregroup' };
         const saved = entry.visitForm;
-        const defaultLang = event?.formLanguage || App.shared.docLang() || 'ru';
+        // Язык документа общего слоя знает все пять языков экосистемы, а
+        // формуляр визита печатается только на четырёх (VP_I18N_DICTS вверху
+        // файла). Без нормализации немецкая установка получала бы state
+        // language='de', которого нет среди опций селекта: селект показал бы
+        // «Русский», состояние осталось бы 'de', а PDF всё равно вышел бы
+        // русским — подпись врала бы о содержимом. Появится немецкий блок в
+        // VP_I18N_DICTS — строка сработает сама, менять её не нужно.
+        const wantedLang = event?.formLanguage || App.shared.docLang() || 'ru';
+        const defaultLang = VP_I18N_DICTS[wantedLang] ? wantedLang : 'ru';
         const state = saved ? JSON.parse(JSON.stringify(saved)) : { visitType: visitTypeMap[event?.visitType] || 'meeting', language: defaultLang, meetings: [], servicePlan: [], pastoralVisits: [], meals: [], notes: '' };
         // Нужны формуляру: название собрания/группы в шапке PDF и период визита,
         // из которого считаются даты для каждого дня недели (визит стартует во вторник).
@@ -4737,9 +4786,20 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        от хаба включается только для новых установок и для тех, кто сам
        выберет «Как в Circuit Workspace».
 
-       Немецкого интерфейса у модуля нет (словари I18N — ru/uk/en/pl), поэтому
-       язык хаба 'de' отображается на ближайший доступный 'en'. Когда в модуле
-       появятся немецкие словари, достаточно добавить 'de' в SUPPORTED. */
+       Немецкий включён 18.08.2026 (решение Алекса). Словарь i18n/dict.js
+       носитель закрыл полностью. У модуля есть ещё ЧЕТЫРЕ инлайновые
+       языковые таблицы прямо в этом файле, и немецкого блока не было ни в
+       одной — живой прогон показал «Август 2026» и «Зелёный» посреди
+       немецкого экрана. Две из четырёх закрыты без перевода: месяцы и дни
+       недели берутся из Intl, когда своей таблицы нет (см. utils.monthName
+       и utils.dayNames). Остаются РУССКИМИ до допника №2:
+         • utils.colorName — 16 названий цветов (подпись цвета в списке);
+         • VP_I18N_DICTS — 46 строк формуляра визита (печатный документ).
+       Формуляр при этом не врёт: язык документа нормализуется по
+       VP_I18N_DICTS (см. openVisitForm), поэтому немецкая установка
+       получает формуляр на русском и селект честно показывает «Русский».
+       Эти таблицы не попали в таблицу переводов, потому что лежат в app.js,
+       а не в i18n/dict.js — сверка полноты шла по словарям. */
     /* Отправитель и язык документа живут в общем слое хаба, а не в данных
        модуля: те же имя/адрес/телефон печатают Конгрессы и Назначения, и до
        общего слоя их приходилось вводить в каждом модуле заново. */
@@ -4994,8 +5054,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
     i18nBridge: {
       MODULE: 'circuit-planner',
       HUB_VALUE: '__hub',
-      SUPPORTED: ['ru', 'uk', 'en', 'pl'],
-      NEAREST: { de: 'en' },
+      SUPPORTED: ['ru', 'uk', 'en', 'pl', 'de'],
+      // Отображение «нет такого языка → ближайший» осталось как механизм:
+      // сейчас все пять языков экосистемы поддержаны и карта пуста, но
+      // появится шестой — подхватится здесь, не трогая toSupported().
+      NEAREST: {},
       _busy: false,
 
       // shared/i18n.js может быть не подключён (например, модуль открыт
