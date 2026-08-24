@@ -67,6 +67,18 @@
       pdfMeetingsSchedule: 'Harmonogram spotkań', pdfServicePlan: 'Plan służby', pdfPastoralVisits: 'Odwiedziny pasterskie', pdfMeals: 'Posiłki', pdfNotes: 'Dodatkowe uwagi',
       pdfManualLinesTitle: 'Na notatki odręczne', pdfGeneratedOn: 'Dokument utworzono',
     },
+    de: {
+      visitTypeMeeting: 'Versammlung', visitTypeGroup: 'Gruppe', visitTypePregroup: 'Vorgruppe',
+      meetingTypeMidweek: 'Zusammenkunft unter der Woche', meetingTypeWeekend: 'Zusammenkunft am Wochenende', meetingTypeElders: 'Ältestensitzung', meetingTypeWithElders: 'Zusammenkunft mit den Ältesten', meetingTypePioneers: 'Zusammenkunft mit den Pionieren', meetingTypeOther: 'Sonstiges',
+      meetingTypeLabel: 'Art der Zusammenkunft', dayLabel: 'Wochentag', timeLabel: 'Uhrzeit', placeLabel: 'Ort',
+      weekdayMon: 'Montag', weekdayTue: 'Dienstag', weekdayWed: 'Mittwoch', weekdayThu: 'Donnerstag', weekdayFri: 'Freitag', weekdaySat: 'Samstag', weekdaySun: 'Sonntag',
+      serviceTableTime: 'Uhrzeit', serviceTablePlace: 'Treffpunkt', serviceTablePartner: 'Mit wem (Name/Telefon)', serviceTableKind: 'Art des Dienstes',
+      pastoralName: 'Name', pastoralDay: 'Tag', pastoralTime: 'Uhrzeit', pastoralReason: 'Grund für den Hirtenbesuch',
+      mealDay: 'Tag', mealTime: 'Uhrzeit', mealPlace: 'Ort', mealHost: 'Gastgeber', mealPhone: 'Telefon', mealNote: 'Anmerkung',
+      pdfPageForAlex: 'Formular für Alexej', pdfPageForLydia: 'Formular für Lydia', partnerNameAlex: 'Alexej', partnerNameLydia: 'Lydia', pdfVisitTypeLabel: 'Art des Besuchs:',
+      pdfMeetingsSchedule: 'Plan der Zusammenkünfte', pdfServicePlan: 'Predigtdienstplan', pdfPastoralVisits: 'Hirtenbesuche', pdfMeals: 'Mahlzeiten', pdfNotes: 'Zusätzliche Notizen',
+      pdfManualLinesTitle: 'Für handschriftliche Notizen', pdfGeneratedOn: 'Dokument erstellt am',
+    },
   };
   function buildVpI18n(lang) {
     const safeLang = VP_I18N_DICTS[lang] ? lang : 'ru';
@@ -128,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.83.0',
+      version: '9.84.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -335,22 +347,22 @@
 
       colorName(color) {
         const names = {
-          '#1f7a45': { ru:'Зелёный', en:'Green', uk:'Зелений', pl:'Zielony' },
-          '#2563eb': { ru:'Синий', en:'Blue', uk:'Синій', pl:'Niebieski' },
-          '#1976d2': { ru:'Голубой', en:'Sky blue', uk:'Блакитний', pl:'Błękitny' },
-          '#d32f2f': { ru:'Красный', en:'Red', uk:'Червоний', pl:'Czerwony' },
-          '#e53935': { ru:'Алый', en:'Scarlet', uk:'Яскраво-червоний', pl:'Szkarłatny' },
-          '#0097a7': { ru:'Бирюзовый', en:'Turquoise', uk:'Бірюзовий', pl:'Turkusowy' },
-          '#ef6c00': { ru:'Оранжевый', en:'Orange', uk:'Помаранчевий', pl:'Pomarańczowy' },
-          '#7b1fa2': { ru:'Фиолетовый', en:'Purple', uk:'Фіолетовий', pl:'Fioletowy' },
-          '#5d4037': { ru:'Коричневый', en:'Brown', uk:'Коричневий', pl:'Brązowy' },
-          '#00897b': { ru:'Тёмно-бирюзовый', en:'Teal', uk:'Темно-бірюзовий', pl:'Morski' },
-          '#6d4c41': { ru:'Кофейный', en:'Coffee', uk:'Кавовий', pl:'Kawowy' },
-          '#546e7a': { ru:'Серо-синий', en:'Blue gray', uk:'Сіро-синій', pl:'Niebieskoszary' },
-          '#3949ab': { ru:'Индиго', en:'Indigo', uk:'Індиго', pl:'Indygo' },
-          '#8e24aa': { ru:'Пурпурный', en:'Violet', uk:'Пурпуровий', pl:'Purpurowy' },
-          '#f4511e': { ru:'Рыжий', en:'Deep orange', uk:'Рудий', pl:'Rudy' },
-          '#43a047': { ru:'Светло-зелёный', en:'Light green', uk:'Світло-зелений', pl:'Jasnozielony' }
+          '#1f7a45': { ru:'Зелёный', en:'Green', uk:'Зелений', pl:'Zielony', de:'Grün' },
+          '#2563eb': { ru:'Синий', en:'Blue', uk:'Синій', pl:'Niebieski', de:'Blau' },
+          '#1976d2': { ru:'Голубой', en:'Sky blue', uk:'Блакитний', pl:'Błękitny', de:'Hellblau' },
+          '#d32f2f': { ru:'Красный', en:'Red', uk:'Червоний', pl:'Czerwony', de:'Rot' },
+          '#e53935': { ru:'Алый', en:'Scarlet', uk:'Яскраво-червоний', pl:'Szkarłatny', de:'Scharlachrot' },
+          '#0097a7': { ru:'Бирюзовый', en:'Turquoise', uk:'Бірюзовий', pl:'Turkusowy', de:'Türkis' },
+          '#ef6c00': { ru:'Оранжевый', en:'Orange', uk:'Помаранчевий', pl:'Pomarańczowy', de:'Orange' },
+          '#7b1fa2': { ru:'Фиолетовый', en:'Purple', uk:'Фіолетовий', pl:'Fioletowy', de:'Lila' },
+          '#5d4037': { ru:'Коричневый', en:'Brown', uk:'Коричневий', pl:'Brązowy', de:'Braun' },
+          '#00897b': { ru:'Тёмно-бирюзовый', en:'Teal', uk:'Темно-бірюзовий', pl:'Morski', de:'Dunkeltürkis' },
+          '#6d4c41': { ru:'Кофейный', en:'Coffee', uk:'Кавовий', pl:'Kawowy', de:'Kaffeebraun' },
+          '#546e7a': { ru:'Серо-синий', en:'Blue gray', uk:'Сіро-синій', pl:'Niebieskoszary', de:'Blaugrau' },
+          '#3949ab': { ru:'Индиго', en:'Indigo', uk:'Індиго', pl:'Indygo', de:'Indigo' },
+          '#8e24aa': { ru:'Пурпурный', en:'Violet', uk:'Пурпуровий', pl:'Purpurowy', de:'Purpur' },
+          '#f4511e': { ru:'Рыжий', en:'Deep orange', uk:'Рудий', pl:'Rudy', de:'Dunkelorange' },
+          '#43a047': { ru:'Светло-зелёный', en:'Light green', uk:'Світло-зелений', pl:'Jasnozielony', de:'Hellgrün' }
         };
         const key = String(color || '').toLowerCase();
         const lang = this.lang();
@@ -3128,13 +3140,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.state.visitFormEntryId = entry.id;
         const visitTypeMap = { congregation: 'meeting', group: 'group', pregroup: 'pregroup' };
         const saved = entry.visitForm;
-        // Язык документа общего слоя знает все пять языков экосистемы, а
-        // формуляр визита печатается только на четырёх (VP_I18N_DICTS вверху
-        // файла). Без нормализации немецкая установка получала бы state
-        // language='de', которого нет среди опций селекта: селект показал бы
-        // «Русский», состояние осталось бы 'de', а PDF всё равно вышел бы
-        // русским — подпись врала бы о содержимом. Появится немецкий блок в
-        // VP_I18N_DICTS — строка сработает сама, менять её не нужно.
+        // Язык документа общего слоя знает все пять языков экосистемы, и
+        // формуляр визита теперь тоже: немецкий блок VP_I18N_DICTS залит
+        // допником №2 (18.08.2026). Нормализация ОСТАЁТСЯ и снята быть не
+        // может — она страхует от языка, которого нет в таблице формуляра
+        // (следующий язык экосистемы придёт в общий слой раньше, чем в
+        // VP_I18N_DICTS). Без неё селект показал бы «Русский», состояние
+        // осталось бы чужим, а PDF вышел бы русским — подпись врала бы
+        // о содержимом.
         const wantedLang = event?.formLanguage || App.shared.docLang() || 'ru';
         const defaultLang = VP_I18N_DICTS[wantedLang] ? wantedLang : 'ru';
         const state = saved ? JSON.parse(JSON.stringify(saved)) : { visitType: visitTypeMap[event?.visitType] || 'meeting', language: defaultLang, meetings: [], servicePlan: [], pastoralVisits: [], meals: [], notes: '' };
@@ -4786,20 +4799,23 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        от хаба включается только для новых установок и для тех, кто сам
        выберет «Как в Circuit Workspace».
 
-       Немецкий включён 18.08.2026 (решение Алекса). Словарь i18n/dict.js
-       носитель закрыл полностью. У модуля есть ещё ЧЕТЫРЕ инлайновые
-       языковые таблицы прямо в этом файле, и немецкого блока не было ни в
-       одной — живой прогон показал «Август 2026» и «Зелёный» посреди
-       немецкого экрана. Две из четырёх закрыты без перевода: месяцы и дни
-       недели берутся из Intl, когда своей таблицы нет (см. utils.monthName
-       и utils.dayNames). Остаются РУССКИМИ до допника №2:
+       Немецкий включён 18.08.2026 (решение Алекса) и в тот же день закрыт
+       полностью допником №2. Словарь i18n/dict.js носитель закрыл сразу, но
+       у модуля есть ещё ЧЕТЫРЕ инлайновые языковые таблицы прямо в этом
+       файле, и немецкого блока не было ни в одной — живой прогон показал
+       «Август 2026» и «Зелёный» посреди немецкого экрана. Две из четырёх
+       закрыты без перевода: месяцы и дни недели берутся из Intl, когда своей
+       таблицы нет (см. utils.monthName и utils.dayNames). Две оставшиеся
+       закрыты текстом носителя (допник №2, 62 строки):
          • utils.colorName — 16 названий цветов (подпись цвета в списке);
          • VP_I18N_DICTS — 46 строк формуляра визита (печатный документ).
-       Формуляр при этом не врёт: язык документа нормализуется по
-       VP_I18N_DICTS (см. openVisitForm), поэтому немецкая установка
-       получает формуляр на русском и селект честно показывает «Русский».
+       Тем же релизом немецкая опция добавлена в оба селекта ЯЗЫКА ДОКУМЕНТА
+       (#eventFormLanguageSelect, #vfLanguageSelect): до допника её там не
+       было намеренно — опция врала бы о результате.
        Эти таблицы не попали в таблицу переводов, потому что лежат в app.js,
-       а не в i18n/dict.js — сверка полноты шла по словарям. */
+       а не в i18n/dict.js — сверка полноты шла по словарям. Урок общий: перед
+       объявлением языка готовым искать в КОДЕ модуля объекты, у которых
+       ключами стоят коды языков, а не сверяться только по i18n/. */
     /* Отправитель и язык документа живут в общем слое хаба, а не в данных
        модуля: те же имя/адрес/телефон печатают Конгрессы и Назначения, и до
        общего слоя их приходилось вводить в каждом модуле заново. */
