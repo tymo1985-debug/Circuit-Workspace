@@ -140,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.84.0',
+      version: '9.85.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -148,7 +148,13 @@
       snapshotIntervalMs: 5 * 60 * 1000, // at most one checkpoint every 5 minutes
       maxSnapshots: 15,
       twoMonthBreakpoint: 1700, // viewport width at which month view shows two months side by side
-      serviceYearStartMonth: 8,
+      /* Начало служебного года. Источник истины — `shared/serviceyear.js`;
+         число 8 здесь только запасное значение на случай, когда общий слой
+         не подключён. Читается один раз при построении App.config, поэтому
+         serviceyear.js обязан грузиться раньше app.js (см. index.html).
+         Само поле оставлено под прежним именем: семь мест внутри модуля
+         считают месяцы напрямую от него, и трогать их не потребовалось. */
+      serviceYearStartMonth: (typeof self !== 'undefined' && self.CWServiceYear) ? self.CWServiceYear.START_MONTH : 8,
       navItems: [
         { id: 'calendar', icon: '📆', tKey: 'nav_calendar' },
         { id: 'events', icon: '🎯', tKey: 'nav_events' },
@@ -278,7 +284,21 @@
       weekNumber(date) { const d = this.startOfWeek(date); d.setHours(0,0,0,0); d.setDate(d.getDate() + 3); const firstThursday = new Date(d.getFullYear(),0,4); return 1 + Math.round(((d - this.startOfWeek(firstThursday)) / 86400000 - 3) / 7); },
       daysDiff(a, b) { const da = this.parseLocalDate(this.iso(a)); const db = this.parseLocalDate(this.iso(b)); if (!da || !db) return 0; return Math.round((da - db) / 86400000); },
       overlaps(startA, endA, startB, endB) { return startA <= endB && endA >= startB; },
-      getServiceYearForDate(date) { const d = (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? this.parseLocalDate(date) : new Date(date); return d.getMonth() >= App.config.serviceYearStartMonth ? d.getFullYear() : d.getFullYear() - 1; },
+      /* Служебный год: три функции ниже (`getServiceYearForDate`,
+         `serviceYearLabel`, `serviceYearBounds`) и константа
+         `App.config.serviceYearStartMonth` переехали в `shared/serviceyear.js`
+         24.08.2026. Имена и сигнатуры сохранены НАМЕРЕННО: так все 34 места
+         вызова внутри модуля не потребовалось трогать — тот же приём и по той
+         же причине, что у `CWSender` и `CWTheme`.
+         Запасной путь на случай, если общий слой не подключён: прежняя
+         реализация здесь же. Она обязана оставаться зеркалом общего слоя —
+         правите там, поправьте и тут, иначе расхождение будет видно только
+         без общего файла, то есть практически никогда. */
+      getServiceYearForDate(date) {
+        if (window.CWServiceYear) return window.CWServiceYear.forDate(date);
+        const d = (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? this.parseLocalDate(date) : new Date(date);
+        return d.getMonth() >= App.config.serviceYearStartMonth ? d.getFullYear() : d.getFullYear() - 1;
+      },
       haversineKm(lat1, lng1, lat2, lng2) {
         if ([lat1, lng1, lat2, lng2].some((v) => typeof v !== 'number' || Number.isNaN(v))) return null;
         const R = 6371;
@@ -330,7 +350,7 @@
         if (!this.holidaysCache[year]) this.holidaysCache[year] = this.holidaysForYear(year);
         return this.holidaysCache[year][dateIso] || null;
       },
-      serviceYearLabel(year) { return `${year}/${year + 1}`; },
+      serviceYearLabel(year) { return window.CWServiceYear ? window.CWServiceYear.label(year) : `${year}/${year + 1}`; },
       pdfFilenameSuffix(entry, event) {
         if (event?.visitType === 'congregation') {
           const start = this.parseLocalDate(entry?.start);
@@ -342,7 +362,7 @@
         const sy = this.getServiceYearForDate(entry?.start || new Date());
         return this.serviceYearLabel(sy).replace('/', '-');
       },
-      serviceYearBounds(year) { return { start: new Date(year, App.config.serviceYearStartMonth, 1), end: new Date(year + 1, App.config.serviceYearStartMonth, 0) }; },
+      serviceYearBounds(year) { return window.CWServiceYear ? window.CWServiceYear.bounds(year) : { start: new Date(year, App.config.serviceYearStartMonth, 1), end: new Date(year + 1, App.config.serviceYearStartMonth, 0) }; },
       clampColor(color, fallback = '#1f7a45') { return /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : fallback; },
 
       colorName(color) {

@@ -366,6 +366,9 @@ body::before{display:none !important}
 <script src="../shared/print.js"></script>
 <!-- Язык документа (формуляр визита, письмо) — отдельно от языка интерфейса. -->
 <script src="../shared/doclang.js"></script>
+<!-- Служебный год (сентябрь–август). Обязан грузиться ДО app.js: модуль читает
+     CWServiceYear.START_MONTH прямо при построении App.config. -->
+<script src="../shared/serviceyear.js"></script>
 <script src="i18n/dict.js"></script>
 </head>
 <!-- data-module включает акцент модуля (--cw-module): индиго #4a3ab5 →
