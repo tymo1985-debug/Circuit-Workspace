@@ -227,7 +227,7 @@ export function load(){
      есть — ДО migrate(), чтобы в базу уехало ровно то, что лежало под ключом,
      и перенос нельзя было спутать с правкой данных. Снимок в собственные копии
      модуля снимается перед этим: операция необратимая. */
-  if(fromLegacy&&usable){makeBackup("Перед переносом в общую базу");remote.write(raw)}
+  if(fromLegacy&&usable){makeBackup(t("cong.backup.before_move_shared"));remote.write(raw)}
   migrate();adoptShared();
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
   render();store.lastSavedAt=new Date();updateSaveStatus()}
