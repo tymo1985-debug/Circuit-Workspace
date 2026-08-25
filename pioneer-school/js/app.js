@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.13.4';
+const APP_VERSION = '1.13.5';
 
 let LESSONS_SEED = null;
 
@@ -124,7 +124,7 @@ async function renderDocsArchive() {
       /* Тостов у модуля нет, как и в Конгрессах: копирование подтверждается
          самим фактом, что текст оказался в буфере. Заводить ради этого
          механизм уведомлений — отдельная задача, не эта. */
-      onToast: () => {},
+      onCopied: () => {},
       onRemoved: () => { docsArchive.rows = null; renderDocsArchive(); },
     });
   }

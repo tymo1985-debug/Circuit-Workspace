@@ -79,9 +79,25 @@
       return box.innerText || box.textContent || '';
     },
 
-    /** Разметка одной карточки снимка. */
-    cardHtml: function (doc) {
+    /**
+     * Разметка одной карточки снимка.
+     *
+     * @param {Object} doc
+     * @param {Object} [opts] — { kindLabel: (doc) => string }
+     *
+     * `kindLabel` существует ради Клиндария и подобных случаев. Общий слой
+     * выводит вид документа из контекста шаблона и отдаёт нейтральные
+     * «Тело письма» / «Письмо». Клиндарий знает свои документы точнее и
+     * называет их «Текст email-сообщения» и «Письмо перед визитом» — и терять
+     * эту точность при переезде на общий слой нельзя: рефакторинг обязан быть
+     * визуально нулевым, иначе потом не отличить «изменилось от переноса» от
+     * «изменилось от правки». Дублирования это не возвращает: общими остаются
+     * разметка, обработчики и остальные семь подписей, своей у модуля —
+     * одна строка выбора названия.
+     */
+    cardHtml: function (doc, opts) {
       if (!doc) return '';
+      var kind = (opts && typeof opts.kindLabel === 'function') ? opts.kindLabel(doc) : kindLabel(doc);
       var when = doc.lastAt || doc.createdAt;
       var meta = [
         when ? new Date(when).toLocaleString(lang()) : '',
@@ -105,7 +121,7 @@
       }).join('');
 
       return '<article class="cwdoc">'
-        + '<header class="cwdoc__head"><strong class="cwdoc__kind">' + escapeHtml(kindLabel(doc)) + '</strong>'
+        + '<header class="cwdoc__head"><strong class="cwdoc__kind">' + escapeHtml(kind) + '</strong>'
         + '<span class="cwdoc__meta">' + escapeHtml(meta) + '</span></header>'
         + (doc.subject ? '<p class="cwdoc__subject">' + escapeHtml(doc.subject) + '</p>' : '')
         + '<details class="cwdoc__text"><summary>' + escapeHtml(t('doc.show_text')) + '</summary>'
@@ -137,7 +153,7 @@
      *
      * @param {Element} root       контейнер со списком карточек
      * @param {Function} getRows   () => массив снимков, показанных сейчас
-     * @param {Object} hooks       { onToast, onRemoved, confirm }
+     * @param {Object} hooks       { onCopied, onRemoved, confirm }
      * @returns {Function}         отписка
      */
     bind: function (root, getRows, hooks) {
@@ -157,7 +173,15 @@
         if (copyBtn) {
           var plain = CWDocsView.plainText(doc);
           var text = doc.subject ? doc.subject + '\n\n' + plain : plain;
-          var done = function () { if (hooks.onToast) hooks.onToast(t('doc.copy')); };
+          /* Хук зовётся БЕЗ аргумента и называется `onCopied`, а не `onToast`.
+             Первая редакция передавала сюда `t('doc.copy')` — подпись кнопки
+             «Копировать», а не сообщение «Скопировано». Пока оба потребителя
+             передавали пустышку, ошибка не проявлялась; она вскрылась при
+             переносе «Документов» на слой 25.08.2026, где хук впервые
+             показывает текст пользователю. Сообщение выбирает модуль: у него
+             свой способ уведомления (строка состояния, подпись на кнопке или
+             ничего), и общий слой не должен решать это за него. */
+          var done = function () { if (hooks.onCopied) hooks.onCopied(); };
           /* Буфер обмена может быть недоступен (нет разрешения, не защищённый
              контекст). Это не повод показывать ошибку: сообщаем как об успехе
              тем же способом, что и модули до общего слоя. */

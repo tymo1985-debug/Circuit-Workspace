@@ -300,7 +300,7 @@ export function openDocsArchive() {
   if (docsArchive.unbind) docsArchive.unbind();
   docsArchive.unbind = self.CWDocsView.bind(docsArchiveList(), () => docsArchive.rows || [], {
     /* Тостов у модуля нет — подтверждение даёт сама кнопка карточки. */
-    onToast: () => {},
+    onCopied: () => {},
     onRemoved: () => { loadDocsArchive(); },
   });
   dlg.addEventListener("close", () => { if (docsArchive.unbind) { docsArchive.unbind(); docsArchive.unbind = null; } }, { once: true });

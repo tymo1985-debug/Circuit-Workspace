@@ -58,6 +58,7 @@ const APP_SHELL_URLS = [
   '../shared/snapshots.js',
   '../shared/templates.js','../shared/templates/namespaces.js','../shared/templates/builtin.js',
   '../shared/documents.js',
+  '../shared/docsview.js',
   '../shared/print.js',
   '../shared/db.js',
   '../shared/directory.js',

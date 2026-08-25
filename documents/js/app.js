@@ -187,20 +187,6 @@
     }).join('');
   }
 
-  /** Вид документа — из контекста, как и в библиотеке. Своей таблицы нет. */
-  function docKind(doc) {
-    var ctx = String(doc.context || doc.templateId || '');
-    if (/\.email$/.test(ctx)) return t('doc.kind.email');
-    if (/\.salutation$/.test(ctx)) return t('doc.kind.salutation');
-    return doc.title || t('doc.kind.letter');
-  }
-
-  function reasonLabel(doc) {
-    var reasons = (doc.reasons && doc.reasons.length ? doc.reasons : [doc.reason]).filter(Boolean);
-    var map = { print: 'doc.reason_print', send: 'doc.reason_send', manual: 'doc.reason_manual' };
-    return reasons.map(function (r) { return t(map[r] || 'doc.reason_manual'); }).join(' · ');
-  }
-
   function archiveMatches(doc) {
     if (archive.filter !== 'all' && (doc.module || '') !== archive.filter) return false;
     if (!archive.search) return true;
@@ -210,43 +196,12 @@
       || String(doc.body || '').toLowerCase().indexOf(q) >= 0;
   }
 
-  /** Снимок в виде обычного текста — для копирования. */
-  function docPlainText(doc) {
-    if (doc.format !== 'html') return doc.body || '';
-    var box = document.createElement('div');
-    box.innerHTML = doc.body || '';
-    return box.innerText || box.textContent || '';
-  }
-
-  function docCardHtml(doc) {
-    var when = doc.lastAt || doc.createdAt;
-    var meta = [
-      when ? new Date(when).toLocaleString(self.CWI18n ? self.CWI18n.getLang() : 'ru') : '',
-      reasonLabel(doc),
-      String(doc.lang || '').toUpperCase(),
-      (doc.count || 1) > 1 ? t('doc.times', { n: doc.count }) : '',
-      doc.edited ? t('doc.edited_mark') : '',
-    ].filter(Boolean).join(' · ');
-    /* html-снимок показываем разметкой: она пришла из собственного редактора
-       писем модуля-владельца, а не извне. */
-    var body = doc.format === 'html'
-      ? (doc.body || '')
-      : '<div class="arc-plain">' + escapeHtml(doc.body || '') + '</div>';
-    var pages = (doc.pages || []).map(function (page, i) {
-      return '<div class="arc-page"><div class="doc-hint">' + escapeHtml(page.title || t('doc.page_n', { n: i + 2 })) + '</div>'
-        + (page.html || '') + '</div>';
-    }).join('');
-    return '<article class="arc-doc">'
-      + '<header class="arc-doc__head"><strong>' + escapeHtml(docKind(doc)) + '</strong>'
-      + '<span class="arc-doc__meta">' + escapeHtml(meta) + '</span></header>'
-      + (doc.subject ? '<p class="arc-doc__subject">' + escapeHtml(doc.subject) + '</p>' : '')
-      + '<details class="arc-doc__text"><summary>' + escapeHtml(t('doc.show_text')) + '</summary>'
-      + '<div class="arc-doc__body">' + body + pages + '</div></details>'
-      + '<div class="arc-doc__actions">'
-      + '<button type="button" class="md-btn md-btn-text md-state-layer" data-copy-doc="' + escapeHtml(doc.id) + '">' + escapeHtml(t('doc.copy')) + '</button>'
-      + '<button type="button" class="md-btn md-btn-text md-state-layer" data-del-doc="' + escapeHtml(doc.id) + '">' + escapeHtml(t('doc.delete_doc')) + '</button>'
-      + '</div></article>';
-  }
+  /* Вид документа, подпись причины, текст для копирования и сама карточка
+     снимка живут в общем `CWDocsView` (shared/docsview.js). Здесь эти
+     четыре функции были СВОЕЙ копией — второй в проекте после Клиндария,
+     и копии уже разошлись по вёрстке. 25.08.2026 модуль переведён на
+     общий слой; отбор (`archiveMatches`) и группировка по сущностям
+     остались здесь, потому что они принадлежат этому экрану. */
 
   function renderArchive() {
     var box = $('#archiveList');
@@ -277,7 +232,7 @@
       return '<section class="arc-group">'
         + '<h3 class="arc-group__title">' + escapeHtml(title) + '</h3>'
         + '<p class="arc-group__meta">' + escapeHtml(meta) + '</p>'
-        + group.docs.map(docCardHtml).join('')
+        + group.docs.map(self.CWDocsView.cardHtml).join('')
         + '</section>';
     }).join('');
   }
@@ -765,21 +720,13 @@
       renderArchive();
     });
 
-    $('#archiveList').addEventListener('click', function (e) {
-      var copyBtn = e.target.closest('[data-copy-doc]');
-      if (copyBtn) {
-        var doc = (archive.rows || []).filter(function (d) { return d.id === copyBtn.dataset.copyDoc; })[0];
-        if (!doc) return;
-        var plain = docPlainText(doc);
-        var text = doc.subject ? doc.subject + '\n\n' + plain : plain;
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text);
-        status('doc.copied');
-        return;
-      }
-      var delBtn = e.target.closest('[data-del-doc]');
-      if (!delBtn) return;
-      if (!window.confirm(t('doc.confirm_delete_doc'))) return;
-      self.CWDocs.remove(delBtn.dataset.delDoc).then(function () { loadArchive(true); });
+    /* Копирование и удаление карточек — тоже общий слой: он же и рисует
+       кнопки, поэтому имена data-атрибутов знает только он. Подтверждение
+       удаления и сообщение об успехе остаются за модулем — у каждого свой
+       способ уведомления. */
+    self.CWDocsView.bind($('#archiveList'), function () { return archive.rows || []; }, {
+      onCopied: function () { status('doc.copied'); },
+      onRemoved: function () { loadArchive(true); },
     });
 
     $('#newTypeTplBtn').addEventListener('click', createTypeTemplate);

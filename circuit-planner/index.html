@@ -229,6 +229,21 @@ body::before{display:none !important}
 /* v9.5.9-year-week-bars: stable popover + sending workflow */
 .day-popover{pointer-events:auto !important}
 .day-popover.is-hovered{box-shadow:0 24px 60px rgba(0,0,0,.26) !important}
+/* Карточка снимка архива: рисует общий shared/docsview.js классами `.cwdoc-*`.
+   Оформление повторяет прежний вид модуля (`.send-control`) — переезд на общий
+   слой обязан быть визуально нулевым. */
+.cwdoc{margin-bottom:10px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface2)}
+.cwdoc__head{display:flex;flex-direction:column;gap:2px}
+.cwdoc__kind{font-weight:600}
+.cwdoc__meta{font-size:12.5px;color:var(--muted)}
+.cwdoc__subject{margin:8px 0 0}
+.cwdoc__text{margin-top:8px}
+.cwdoc__text summary{cursor:pointer}
+.cwdoc__body{margin-top:8px}
+.cwdoc-plain{white-space:pre-wrap}
+.cwdoc-page{margin-top:10px}
+.cwdoc-page__title{font-size:12.5px;color:var(--muted)}
+.cwdoc__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .send-control{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface2)}
 .send-control-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
 .send-control-title{font-weight:800;font-size:13px}
@@ -363,6 +378,7 @@ body::before{display:none !important}
 <script src="../shared/templates.js"></script>
 <!-- Архив выданных документов: снимок письма в момент печати и отправки. -->
 <script src="../shared/documents.js"></script>
+<script src="../shared/docsview.js"></script>
 <script src="../shared/print.js"></script>
 <!-- Язык документа (формуляр визита, письмо) — отдельно от языка интерфейса. -->
 <script src="../shared/doclang.js"></script>

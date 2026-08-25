@@ -140,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.86.1',
+      version: '9.87.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -3629,54 +3629,20 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         });
       },
       /* ─── Экран «Документы визита» ─── */
-      docReasonLabel(doc) {
-        const reasons = (doc.reasons && doc.reasons.length ? doc.reasons : [doc.reason]).filter(Boolean);
-        const map = { print: 'docs_reason_print', send: 'docs_reason_send', manual: 'docs_reason_manual' };
-        return reasons.map((r) => App.utils.t(map[r] || 'docs_reason_manual')).join(' · ');
-      },
-      /** Вид документа выводится из контекста — своей таблицы модуль не заводит. */
+      /* Подпись причины, текст для копирования и сама карточка снимка живут
+         в общем `CWDocsView` (shared/docsview.js). Здесь они были ПЕРВОЙ из
+         двух копий в проекте; вторая была в «Документах», и обе успели
+         разойтись по вёрстке. 25.08.2026 обе сняты.
+
+         Остался только `docKindLabel`: модуль называет свои документы точнее
+         общего слоя («Текст email-сообщения» вместо «Тело письма», «Письмо
+         перед визитом» вместо «Письма»), и терять эту точность при переезде
+         нельзя. Слой принимает подпись через `opts.kindLabel`. */
       docKindLabel(doc) {
         const ctx = String(doc.context || doc.templateId || '');
         if (/\.email$/.test(ctx)) return App.utils.t('docs_kind_email');
         if (/\.salutation$/.test(ctx)) return App.utils.t('docs_kind_salutation');
         return App.utils.t('docs_kind_letter');
-      },
-      docCardHtml(doc) {
-        const esc = App.utils.escapeHtml;
-        const when = doc.lastAt || doc.createdAt;
-        const meta = [
-          new Date(when).toLocaleString(App.utils.lang()),
-          this.docReasonLabel(doc),
-          String(doc.lang || '').toUpperCase(),
-          (doc.count || 1) > 1 ? App.utils.t('docs_times', { n: doc.count }) : '',
-          doc.edited ? App.utils.t('docs_edited_mark') : '',
-        ].filter(Boolean).join(' · ');
-        /* Текст показываем в том виде, в каком он ушёл: html — как разметку
-           (она пришла из собственного редактора писем), текст — как есть. */
-        const bodyHtml = doc.format === 'html'
-          ? (doc.body || '')
-          : `<div style="white-space:pre-wrap">${esc(doc.body || '')}</div>`;
-        const pages = (doc.pages || []).map((page, i) => `<div style="margin-top:10px"><div class="small">${esc(page.title || App.utils.t('page_no', { n: i + 2 }))}</div>${page.html || ''}</div>`).join('');
-        /* Тема отдельной строкой, а не `.side-row`: тот кладёт подпись слева, а
-           значение прижимает вправо — в узкой модалке тема оказывалась оторвана
-           от своей подписи. */
-        const subject = doc.subject ? `<div style="margin-top:8px"><div class="small">${App.utils.t('letter_subject')}</div><div>${esc(doc.subject)}</div></div>` : '';
-        return `<div class="send-control" style="margin-bottom:10px">
-          <div class="send-control-head"><div><div class="send-control-title">${esc(this.docKindLabel(doc))}</div><div class="send-control-hint">${esc(meta)}</div></div></div>
-          ${subject}
-          <details style="margin-top:8px"><summary>${App.utils.t('docs_show_text')}</summary><div class="doc-snapshot" style="margin-top:8px">${bodyHtml}${pages}</div></details>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-            <button class="md-btn md-btn-outlined md-state-layer" type="button" data-copy-doc="${App.utils.escapeAttr(doc.id)}">${App.utils.t('copy')}</button>
-            <button class="md-btn md-btn-outlined md-state-layer" type="button" data-remove-doc="${App.utils.escapeAttr(doc.id)}">${App.utils.t('docs_delete')}</button>
-          </div>
-        </div>`;
-      },
-      /** Текст снимка для копирования: html разворачиваем в обычный текст. */
-      docPlainText(doc) {
-        if (doc.format !== 'html') return doc.body || '';
-        const box = document.createElement('div');
-        box.innerHTML = doc.body || '';
-        return box.innerText || box.textContent || '';
       },
       openVisitDocsModal(itemId) {
         const item = App.data.getCalendarItemById(itemId);
@@ -3706,27 +3672,24 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           if (App.state.visitDocsEntryId !== entryId) return; // модалку успели переключить
           App.state.visitDocsRows = rows;
           list.innerHTML = rows.length
-            ? rows.map((doc) => this.docCardHtml(doc)).join('')
+            ? rows.map((doc) => self.CWDocsView.cardHtml(doc, { kindLabel: (d) => App.ui.docKindLabel(d) })).join('')
             : `<div class="md-empty">${App.utils.t('docs_empty')}</div>`;
           /* Текст берём из памяти по id, а не из data-атрибута: письмо целиком
              в атрибуте — это килобайты разметки и потерянные переносы строк
              (парсер HTML нормализует их в атрибутах). */
-          list.querySelectorAll('[data-copy-doc]').forEach((btn) => btn.addEventListener('click', () => {
-            const doc = (App.state.visitDocsRows || []).find((d) => d.id === btn.dataset.copyDoc);
-            if (!doc) return;
-            const plain = App.ui.docPlainText(doc);
-            const text = doc.subject ? doc.subject + '\n\n' + plain : plain;
-            const done = () => App.utils.toast(App.utils.t('copied'));
-            if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(() => done());
-            else done();
-          }));
-          list.querySelectorAll('[data-remove-doc]').forEach((btn) => btn.addEventListener('click', () => {
-            if (!window.confirm(App.utils.t('docs_delete_confirm'))) return;
-            self.CWDocs.remove(btn.dataset.removeDoc).then(() => {
-              App.utils.toast(App.utils.t('docs_deleted'));
-              App.ui.renderVisitDocs();
+          /* Кнопки рисует общий слой, поэтому имена data-атрибутов знает
+             только он — свои обработчики сняты вместе с копией рендерера.
+             Тост и подтверждение остаются за модулем. */
+          if (App.state.visitDocsUnbind) App.state.visitDocsUnbind();
+          App.state.visitDocsUnbind = self.CWDocsView.bind(list,
+            () => App.state.visitDocsRows || [], {
+              onCopied: () => App.utils.toast(App.utils.t('copied')),
+              onRemoved: () => {
+                App.utils.toast(App.utils.t('docs_deleted'));
+                App.ui.renderVisitDocs();
+              },
+              confirm: (message) => window.confirm(message),
             });
-          }));
         });
       },
       /* ═══════════════════════════════════════════════════════════════════
