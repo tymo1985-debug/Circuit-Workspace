@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.13.2';
+const APP_VERSION = '1.13.3';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -25,6 +25,7 @@ const ASSETS = [
   '../shared/version.js',
   '../shared/update.js',
   '../shared/i18n.js',
+  '../shared/docsview.js',
   '../shared/i18n/common.js',
   '../shared/doclang.js',
   // Общий слой документов (фаза 6): письмо учащемуся собирается из общего

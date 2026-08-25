@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.13.2';
+const APP_VERSION = '1.13.3';
 
 let LESSONS_SEED = null;
 
@@ -17,7 +17,8 @@ function esc(value) {
 }
 
 const ROUTES = ['dashboard', 'anketa', 'assignment', 'registration', 'substitutes', 'students',
-  'textbooks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup'];
+  'textbooks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup',
+  'docsarchive'];
 const DEFAULT_ROUTE = 'dashboard';
 
 function showRoute(route) {
@@ -66,7 +67,76 @@ async function renderRouteInner(route) {
     case 'afterschool': return renderAfterSchool();
     case 'signlanguage': return renderSignLanguage();
     case 'backup': return; // static
+    case 'docsarchive': return renderDocsArchive();
   }
+}
+
+/* ---------- АРХИВ ВЫДАННЫХ ДОКУМЕНТОВ (задача Б3, 25.08.2026) ----------
+
+   Модуль писал снимки в общий архив, но своего экрана не имел: увидеть
+   выданное можно было только из «Документов». Карточку рисует общий
+   `CWDocsView` — тот же, что в Конгрессах; модуль отвечает за отбор и за то,
+   что вокруг карточки.
+
+   Отбор — `listAll({module:'pioneer-school'})`: приглашения учащихся этого
+   модуля, свежие сверху. Подпись учащегося стоит НАД карточкой, потому что
+   сама карточка общая и про сущность-владельца ничего не знает. */
+const docsArchive = { rows: null, search: '', bound: false };
+
+function docsArchiveBox() { return document.getElementById('docs-archive-list'); }
+
+function renderDocsArchiveList() {
+  const box = docsArchiveBox();
+  if (!box || !self.CWDocsView) return;
+  if (!docsArchive.rows) { box.innerHTML = self.CWDocsView.stateHtml('loading'); return; }
+  if (!docsArchive.rows.length) { box.innerHTML = self.CWDocsView.stateHtml('empty'); return; }
+  const q = docsArchive.search.trim().toLowerCase();
+  const rows = q ? docsArchive.rows.filter((d) =>
+    String(d.entityTitle || '').toLowerCase().includes(q)
+    || String(d.subject || '').toLowerCase().includes(q)
+    || String(d.body || '').toLowerCase().includes(q)) : docsArchive.rows;
+  if (!rows.length) { box.innerHTML = self.CWDocsView.stateHtml('nothing'); return; }
+  box.innerHTML = rows.map((d) => '<div class="docs-arc__item"><div class="docs-arc__owner">'
+    + esc(d.entityTitle || T('doc.archive_entity_gone'))
+    + '</div>' + self.CWDocsView.cardHtml(d) + '</div>').join('');
+}
+
+async function renderDocsArchive() {
+  const box = docsArchiveBox();
+  if (!box) return;
+  if (!self.CWDocs || !self.CWDocs.available() || !self.CWDocsView) {
+    docsArchive.rows = [];
+    renderDocsArchiveList();
+    return;
+  }
+  /* Обработчики вешаются ОДИН раз за жизнь страницы: экран здесь не
+     уничтожается при уходе, а только прячется классом `hidden`, поэтому
+     повторный вход не должен добавлять второй слушатель — иначе удаление
+     снимка сработало бы столько раз, сколько раз заходили на экран. */
+  if (!docsArchive.bound) {
+    docsArchive.bound = true;
+    const search = document.getElementById('docs-archive-search');
+    if (search) search.addEventListener('input', () => {
+      docsArchive.search = search.value;
+      renderDocsArchiveList();
+    });
+    self.CWDocsView.bind(box, () => docsArchive.rows || [], {
+      /* Тостов у модуля нет, как и в Конгрессах: копирование подтверждается
+         самим фактом, что текст оказался в буфере. Заводить ради этого
+         механизм уведомлений — отдельная задача, не эта. */
+      onToast: () => {},
+      onRemoved: () => { docsArchive.rows = null; renderDocsArchive(); },
+    });
+  }
+  docsArchive.rows = null;
+  renderDocsArchiveList();
+  try {
+    docsArchive.rows = await self.CWDocs.listAll({ module: 'pioneer-school' }) || [];
+  } catch (error) {
+    console.error('Школа: не удалось прочитать архив документов', error);
+    docsArchive.rows = [];
+  }
+  renderDocsArchiveList();
 }
 
 // ---------- DASHBOARD ----------

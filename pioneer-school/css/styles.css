@@ -511,3 +511,20 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   background: var(--status-important-bg, var(--md-surface-container-highest));
   font-size: 12.5px;
 }
+
+/* ── Архив выданных документов ─────────────────────────────────────────────
+   Карточку рисует общий shared/docsview.js классами .cwdoc-*; здесь только
+   оформление под этот модуль — ровно так же, как в Конгрессах. */
+.docs-arc { display: grid; gap: 14px; margin-top: 6px; }
+.docs-arc__owner { font-weight: 600; margin-bottom: 6px; }
+.cwdoc { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
+.cwdoc__head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.cwdoc__meta { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.cwdoc__subject { margin: 8px 0 0; font-weight: 500; }
+.cwdoc__text { margin-top: 8px; }
+.cwdoc__text summary { cursor: pointer; color: var(--md-primary); }
+.cwdoc__body { margin-top: 8px; }
+.cwdoc-plain { white-space: pre-wrap; }
+.cwdoc-page { margin-top: 10px; }
+.cwdoc-page__title { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.cwdoc__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
