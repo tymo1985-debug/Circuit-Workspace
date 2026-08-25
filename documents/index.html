@@ -28,6 +28,7 @@
 <script src="../shared/templates/namespaces.js"></script>
 <script src="../shared/templates/builtin.js"></script>
 <script src="../shared/templates.js"></script>
+<script src="../shared/directory.js"></script>
 <script src="../shared/documents.js"></script>
 </head>
 <!-- data-module у модуля НЕТ намеренно: «Документы» держат общую фирменную
@@ -63,6 +64,7 @@
   <nav class="doc-screens" id="screens" role="group" aria-labelledby="screensLabel">
     <button type="button" class="md-chip md-chip-full" data-screen="library" aria-pressed="true" data-i18n="doc.tab_library">Шаблоны</button>
     <button type="button" class="md-chip" data-screen="archive" aria-pressed="false" data-i18n="doc.tab_archive">Архив</button>
+    <button type="button" class="md-chip" data-screen="directory" aria-pressed="false" data-i18n="cong.btn.groups">Собрания / группы</button>
   </nav>
   <span class="sr-only" id="screensLabel" data-i18n="doc.screens_label">Раздел модуля</span>
 
@@ -109,7 +111,20 @@
   </section>
 
   <!-- ═══════════ Редактор ═══════════ -->
-  <section id="screenEditor" hidden>
+  <!-- ═══════════ Общий справочник собраний ═══════════
+     ТОЛЬКО ПРОСМОТР. Правка и удаление сделали бы «Документы» вторым
+     ПИШУЩИМ модулем справочника — это отдельное решение с последствиями
+     (см. IDEAS.md, «Главный риск»), а не побочный эффект экрана. -->
+<section id="screenDirectory" hidden>
+  <!-- Подписи-пояснения тут НЕТ намеренно: строки «общий справочник, только
+       просмотр» в словарях не существует, а сочинять её нельзя — перевод
+       пишет носитель. Ключ заказан вместе с остальным долгом (см. TODO). -->
+  <label class="md-field"><span data-i18n="doc.search_label">Поиск по названию и тексту</span>
+    <input id="dirSearch" type="search" autocomplete="off"></label>
+  <div id="dirList" class="dir-list"></div>
+</section>
+
+<section id="screenEditor" hidden>
     <div class="ed__head">
       <button type="button" class="md-btn md-btn-text md-state-layer" id="backBtn">
         <span aria-hidden="true">←</span> <span data-i18n="doc.back_to_list">К списку</span>

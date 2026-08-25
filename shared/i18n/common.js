@@ -116,6 +116,22 @@
       'doc.tab_archive': 'Архив',
       'doc.archive_hint': 'Здесь то, что уже покинуло приложение: напечатанные и отправленные документы. Текст сохранён таким, каким он ушёл, и правка шаблона его не меняет.',
       'doc.archive_search_label': 'Поиск по тексту и получателю',
+      /* Справочник собраний: подписи для экрана просмотра в «Документах».
+         Строки переехали 25.08.2026 из словарей Клиндария (`cp.*`) и
+         Конгрессов (`cong.*`) БЕЗ ИЗМЕНЕНИЯ ТЕКСТА — их писали носители.
+         Префиксы `cp.`/`cong.` сохранены НАМЕРЕННО: переименование ключа
+         означало бы правку всех мест вызова в модулях-donorах ради
+         косметики, а риск опечатки при этом реальный. Префикс здесь
+         читается как «откуда строка родом», а не «кому принадлежит». */
+      'cp.name': 'Название',
+      'cp.address': 'Адрес',
+      'cp.contact_name': 'Имя',
+      'cp.contact_phone': 'Телефон',
+      'cp.contact_email': 'E-mail',
+      'cp.contact_note': 'Заметка',
+      'cong.btn.groups': 'Собрания / группы',
+      'cong.field.number': '№',
+      'cong.dlg.directory': 'Справочник',
     },
 
     uk: {
@@ -204,6 +220,22 @@
       'doc.tab_archive': 'Архів',
       'doc.archive_hint': 'Тут те, що вже покинуло додаток: надруковані та надіслані документи. Текст збережений таким, яким він пішов, і редагування шаблону його не змінює.',
       'doc.archive_search_label': 'Пошук за текстом та отримувачем',
+      /* Справочник собраний: подписи для экрана просмотра в «Документах».
+         Строки переехали 25.08.2026 из словарей Клиндария (`cp.*`) и
+         Конгрессов (`cong.*`) БЕЗ ИЗМЕНЕНИЯ ТЕКСТА — их писали носители.
+         Префиксы `cp.`/`cong.` сохранены НАМЕРЕННО: переименование ключа
+         означало бы правку всех мест вызова в модулях-donorах ради
+         косметики, а риск опечатки при этом реальный. Префикс здесь
+         читается как «откуда строка родом», а не «кому принадлежит». */
+      'cp.name': 'Назва',
+      'cp.address': 'Адреса',
+      'cp.contact_name': 'Ім’я',
+      'cp.contact_phone': 'Телефон',
+      'cp.contact_email': 'E-mail',
+      'cp.contact_note': 'Нотатка',
+      'cong.btn.groups': 'Збори / групи',
+      'cong.field.number': '№',
+      'cong.dlg.directory': 'Довідник',
     },
 
     en: {
@@ -292,6 +324,22 @@
       'doc.tab_archive': 'Archive',
       'doc.archive_hint': 'Here is what has already left the app: printed and sent documents. The text is saved as it was sent, and editing the template does not change it.',
       'doc.archive_search_label': 'Search by text and recipient',
+      /* Справочник собраний: подписи для экрана просмотра в «Документах».
+         Строки переехали 25.08.2026 из словарей Клиндария (`cp.*`) и
+         Конгрессов (`cong.*`) БЕЗ ИЗМЕНЕНИЯ ТЕКСТА — их писали носители.
+         Префиксы `cp.`/`cong.` сохранены НАМЕРЕННО: переименование ключа
+         означало бы правку всех мест вызова в модулях-donorах ради
+         косметики, а риск опечатки при этом реальный. Префикс здесь
+         читается как «откуда строка родом», а не «кому принадлежит». */
+      'cp.name': 'Name',
+      'cp.address': 'Address',
+      'cp.contact_name': 'Name',
+      'cp.contact_phone': 'Phone',
+      'cp.contact_email': 'E-mail',
+      'cp.contact_note': 'Note',
+      'cong.btn.groups': 'Congregations / groups',
+      'cong.field.number': '№',
+      'cong.dlg.directory': 'Directory',
     },
 
     pl: {
@@ -380,6 +428,22 @@
       'doc.tab_archive': 'Archiwum',
       'doc.archive_hint': 'Tutaj są rzeczy, które opuściły już aplikację: wydrukowane i wysłane dokumenty. Tekst jest zapisany taki, jaki był wysłany, a zmiana szablonu go nie zmienia.',
       'doc.archive_search_label': 'Szukaj po tekście i odbiorcy',
+      /* Справочник собраний: подписи для экрана просмотра в «Документах».
+         Строки переехали 25.08.2026 из словарей Клиндария (`cp.*`) и
+         Конгрессов (`cong.*`) БЕЗ ИЗМЕНЕНИЯ ТЕКСТА — их писали носители.
+         Префиксы `cp.`/`cong.` сохранены НАМЕРЕННО: переименование ключа
+         означало бы правку всех мест вызова в модулях-donorах ради
+         косметики, а риск опечатки при этом реальный. Префикс здесь
+         читается как «откуда строка родом», а не «кому принадлежит». */
+      'cp.name': 'Nazwa',
+      'cp.address': 'Adres',
+      'cp.contact_name': 'Imię',
+      'cp.contact_phone': 'Telefon',
+      'cp.contact_email': 'E-mail',
+      'cp.contact_note': 'Notatka',
+      'cong.btn.groups': 'Zbory / grupy',
+      'cong.field.number': '№',
+      'cong.dlg.directory': 'Katalog',
     },
 
     de: {
@@ -468,6 +532,22 @@
       'doc.tab_archive': 'Archiv',
       'doc.archive_hint': 'Hier ist, was die Anwendung bereits verlassen hat: gedruckte und gesendete Dokumente. Der Text ist so gespeichert, wie er gesendet wurde, und eine Vorlagenbearbeitung ändert ihn nicht.',
       'doc.archive_search_label': 'Suche nach Text und Empfänger',
+      /* Справочник собраний: подписи для экрана просмотра в «Документах».
+         Строки переехали 25.08.2026 из словарей Клиндария (`cp.*`) и
+         Конгрессов (`cong.*`) БЕЗ ИЗМЕНЕНИЯ ТЕКСТА — их писали носители.
+         Префиксы `cp.`/`cong.` сохранены НАМЕРЕННО: переименование ключа
+         означало бы правку всех мест вызова в модулях-donorах ради
+         косметики, а риск опечатки при этом реальный. Префикс здесь
+         читается как «откуда строка родом», а не «кому принадлежит». */
+      'cp.name': 'Name',
+      'cp.address': 'Adresse',
+      'cp.contact_name': 'Vorname',
+      'cp.contact_phone': 'Telefon',
+      'cp.contact_email': 'E-Mail',
+      'cp.contact_note': 'Notiz',
+      'cong.btn.groups': 'Versammlungen / Gruppen',
+      'cong.field.number': '№',
+      'cong.dlg.directory': 'Verzeichnis',
     },
 
   });

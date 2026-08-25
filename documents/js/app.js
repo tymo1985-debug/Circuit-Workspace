@@ -314,12 +314,81 @@
     $('#screenLibrary').hidden = name !== 'library' || !!state.id;
     $('#screenEditor').hidden = !(name === 'library' && state.id);
     $('#screenArchive').hidden = name !== 'archive';
+    $('#screenDirectory').hidden = name !== 'directory';
     Array.prototype.forEach.call(document.querySelectorAll('[data-screen]'), function (btn) {
       var on = btn.dataset.screen === name;
       btn.classList.toggle('md-chip-full', on);
       btn.setAttribute('aria-pressed', String(on));
     });
     if (name === 'archive') loadArchive(false);
+    if (name === 'directory') loadDirectory();
+  }
+
+  /* ───────────────────  Общий справочник собраний  ───────────────────
+
+     ТОЛЬКО ПРОСМОТР. Правка и удаление отсюда сделали бы «Документы» вторым
+     ПИШУЩИМ модулем справочника — отдельное решение с последствиями (окно
+     выбора области удаления Клиндария впервые начало бы срабатывать, четыре
+     ключа `cp.delete_*` стали бы видимы на разрушительном действии), а не
+     побочный эффект экрана просмотра.
+
+     Экран нужен потому, что до него ВЕСЬ справочник не был виден нигде:
+     Клиндарий строит список из своих событий, Конгрессы подмешивают записи
+     только в подсказки поля «Собрание». Карточка без своего события в
+     Клиндарии не показывалась ни в одном модуле — а появиться она может,
+     например, при восстановлении старой резервной копии, где раздел
+     `communities` сливается, а не заменяется. */
+  var directory = { rows: null, search: '' };
+
+  function dirCardHtml(record) {
+    var rows = [
+      [t('cong.field.number'), record.congNumber],
+      [t('cp.address'), record.address],
+      [t('cp.contact_name'), record.contactName],
+      [t('cp.contact_phone'), record.contactPhone],
+      [t('cp.contact_email'), record.contactEmail],
+      [t('cp.contact_note'), record.contactNote],
+    ].filter(function (pair) { return String(pair[1] || '').trim(); });
+    /* Источники показываем названиями модулей из общего словаря, а не
+       идентификаторами: `circuit-planner` в интерфейсе — это протечка
+       внутреннего имени наружу. */
+    var sources = (record.sources || []).map(function (id) {
+      return t('module.' + id + '.title');
+    }).filter(Boolean).join(' · ');
+    return '<article class="dir-card">'
+      + '<h3 class="dir-card__name">' + escapeHtml(record.name || '') + '</h3>'
+      + (sources ? '<p class="dir-card__sources">' + escapeHtml(sources) + '</p>' : '')
+      + (rows.length ? '<dl class="dir-card__rows">' + rows.map(function (pair) {
+          return '<dt>' + escapeHtml(pair[0]) + '</dt><dd>' + escapeHtml(pair[1]) + '</dd>';
+        }).join('') + '</dl>' : '')
+      + '</article>';
+  }
+
+  function renderDirectory() {
+    var box = $('#dirList');
+    if (!box) return;
+    if (!directory.rows) { box.innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.archive_loading')) + '</div>'; return; }
+    if (!directory.rows.length) { box.innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.archive_nothing_found')) + '</div>'; return; }
+    var q = directory.search.trim().toLowerCase();
+    var rows = q ? directory.rows.filter(function (r) {
+      return String(r.name || '').toLowerCase().indexOf(q) >= 0
+        || String(r.congNumber || '').toLowerCase().indexOf(q) >= 0
+        || String(r.address || '').toLowerCase().indexOf(q) >= 0;
+    }) : directory.rows;
+    if (!rows.length) { box.innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.archive_nothing_found')) + '</div>'; return; }
+    box.innerHTML = rows.map(dirCardHtml).join('');
+  }
+
+  function loadDirectory() {
+    if (!self.CWDirectory || !self.CWDirectory.ready) { directory.rows = []; renderDirectory(); return; }
+    /* Сортировка по названию, а не по времени правки: справочник читают как
+       список, а не как ленту. Пустое имя вниз — такая карточка это сбой,
+       и прятать её в середине списка незачем. */
+    directory.rows = self.CWDirectory.all().sort(function (a, b) {
+      return String(a.name || '\uffff').localeCompare(String(b.name || '\uffff'),
+        self.CWI18n ? self.CWI18n.getLang() : 'ru');
+    });
+    renderDirectory();
   }
 
   /* ─────────────────────────  Редактор  ───────────────────────── */
@@ -678,6 +747,11 @@
       if (btn) showScreen(btn.dataset.screen);
     });
 
+    $('#dirSearch').addEventListener('input', function (e) {
+      directory.search = e.target.value;
+      renderDirectory();
+    });
+
     $('#archiveFilters').addEventListener('click', function (e) {
       var btn = e.target.closest('[data-afilter]');
       if (!btn) return;
@@ -793,6 +867,21 @@
       console.error('Документы: хранилище недоступно', error);
       $('#list').innerHTML = '<div class="md-banner md-banner--error">' + escapeHtml(t('doc.storage_failed')) + '</div>';
     });
+
+    /* Справочник читается отдельно от шаблонов и НЕ блокирует их: экран
+       «Собрания» — третий по счёту, а библиотека нужна сразу при открытии.
+       `init()` обязателен — без него `CWDirectory.ready` остаётся false и
+       `all()` отдавать нечего. Поймано живым прогоном: слой был подключён и
+       разметка готова, а список выходил пустым.
+       Отказ справочника не роняет модуль: экран просто покажет «ничего не
+       найдено», как и при пустом справочнике. */
+    if (self.CWDirectory) {
+      self.CWDirectory.init().then(function () {
+        if (state.screen === 'directory') loadDirectory();
+      }).catch(function (error) {
+        console.error('Документы: общий справочник недоступен', error);
+      });
+    }
 
     if (typeof self.CWUpdate !== 'undefined') self.CWUpdate.init({ swUrl: './sw.js' });
   }

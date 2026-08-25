@@ -178,3 +178,12 @@ body {
 .arc-plain { white-space: pre-wrap; }
 .arc-page { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
 .arc-doc__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* ── Общий справочник собраний (только просмотр) ───────────────────────── */
+.dir-list { display: grid; gap: 12px; margin-top: 10px; }
+.dir-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
+.dir-card__name { margin: 0; font: 600 15px/20px var(--md-font-family); }
+.dir-card__sources { margin: 4px 0 0; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.dir-card__rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
+.dir-card__rows dt { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.dir-card__rows dd { margin: 0; }
