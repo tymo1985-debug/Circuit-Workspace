@@ -140,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.85.0',
+      version: '9.86.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -4878,6 +4878,25 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         /** Только поля идентификации — остальное принадлежит модулю. */
         identity(event) {
           if (!event || !event.id) return null;
+          /* В общий справочник попадают только собрания, группы и предгруппы.
+             Признак — непустой `visitType`, и это НЕ эвристика: в форме события
+             пустое значение подписано «Не визит (обычная запись)», то есть сам
+             модуль устами пользователя говорит, что запись не про собрание.
+             Подтверждение рядом: блок `#eventVisitOnlyFields` с номером
+             собрания, адресом и контактами показывается только при непустом
+             типе — у обычной записи идентификации нет и быть не может.
+
+             До 25.08.2026 фильтра не было вовсе, и `createDefaultData()`
+             отправляла наверх два своих шаблона — `evt_midweek` («Серединное
+             собрание», «Ср 19:00») и `evt_weekend` («Выходное служение»), —
+             которые ложились в `CWDB.communities` карточками наравне с
+             настоящими собраниями и всплывали в подсказках Конгрессов.
+
+             По id фильтровать НЕЛЬЗЯ, хотя соблазн есть: пользователь вправе
+             переименовать шаблон в настоящее собрание и проставить ему тип —
+             тогда карточка нужна, а id остался прежним. Тип отражает намерение,
+             id — только происхождение записи. */
+          if (!event.visitType) return null;
           return {
             id: event.id,
             name: event.name || '',
@@ -5054,6 +5073,41 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               if (same && known) return;
             }
             this.mirror(event);
+          });
+          this.sweepNonCongregations(events);
+        },
+
+        /**
+         * Убрать из справочника карточки, которые туда попали до появления
+         * фильтра в `identity()` (25.08.2026): обычные записи календаря вроде
+         * стандартных `evt_midweek` и `evt_weekend`.
+         *
+         * Отвязываем ТОЛЬКО свой модуль, через тот же `detach()`, что и штатное
+         * удаление. Политика «запись исчезает, когда её не знает никто»
+         * остаётся одна: если карточку знает кто-то ещё, она останется жить —
+         * решать за соседа мы не вправе.
+         *
+         * Проходим по событиям модуля, а НЕ по всему справочнику: карточка без
+         * своего события могла прийти из чужого модуля или из слияния при
+         * восстановлении резервной копии (раздел `communities` помечен
+         * `partial` и при восстановлении сливается, а не заменяется). Чистить
+         * такое вслепую значит удалять чужое.
+         *
+         * Уборка идёт при каждом `seed()`, а не одним разовым флагом миграции:
+         * повторный проход по уже чистому справочнику ничего не находит и
+         * ничего не пишет, зато карточка, вернувшаяся из старой резервной
+         * копии, будет убрана и во второй раз. Флаг «уже мигрировали» такой
+         * возврат пропустил бы навсегда.
+         */
+        sweepNonCongregations(events) {
+          if (!this.ready() || !CWDirectory.ready) return;
+          (events || []).forEach((event) => {
+            if (!event || !event.id || event.visitType) return;
+            const record = CWDirectory.get(event.id);
+            if (!record) return;
+            if ((record.sources || []).indexOf(this.MODULE) < 0) return;
+            Promise.resolve(CWDirectory.detach(event.id, this.MODULE))
+              .catch((err) => console.error('CWDirectory: карточка обычной записи не отвязалась', err));
           });
         },
       },
