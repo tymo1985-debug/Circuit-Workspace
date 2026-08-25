@@ -314,8 +314,8 @@
     'cong.msg.autobackup': 'Автокопия',
     /* Подписи автокопий. Заведены 25.08.2026: до этого обе были написаны
        прямо в коде мимо i18n и показывались по-русски в любом интерфейсе.
-       ЖДУТ НОСИТЕЛЯ: uk/en/pl/de намеренно не заполнены — запасной вариант
-       CWI18n русский, поэтому до перевода поведение ровно прежнее. */
+       Переведены носителем 25.08.2026 — заполнены все пять языков.
+       Подпись замерзает в момент создания копии (кандидат в IDEAS.md). */
     'cong.backup.before_delete_congress': 'Перед удалением конгресса',
     'cong.backup.before_move_shared': 'Перед переносом в общую базу',
     'cong.msg.before_reset': 'Перед сбросом',
@@ -639,6 +639,8 @@
     'cong.msg.copy_suffix': ' — копія',
     'cong.msg.first_congress': 'Обласний конгрес 2027 Стокгольм',
     'cong.msg.autobackup': 'Автокопія',
+    'cong.backup.before_delete_congress': 'Перед видаленням конгресу',
+    'cong.backup.before_move_shared': 'Перед перенесенням до спільної бази',
     'cong.msg.before_reset': 'Перед скиданням',
     'cong.msg.before_import': 'Перед імпортом',
     'cong.msg.before_restore': 'Перед відновленням',
@@ -956,6 +958,8 @@
     'cong.msg.copy_suffix': ' — copy',
     'cong.msg.first_congress': 'Circuit convention 2027 Stockholm',
     'cong.msg.autobackup': 'Automatic backup',
+    'cong.backup.before_delete_congress': 'Before deleting the convention',
+    'cong.backup.before_move_shared': 'Before moving to the shared database',
     'cong.msg.before_reset': 'Before reset',
     'cong.msg.before_import': 'Before import',
     'cong.msg.before_restore': 'Before restore',
@@ -1273,6 +1277,8 @@
     'cong.msg.copy_suffix': ' — kopia',
     'cong.msg.first_congress': 'Kongres obwodowy 2027 Sztokholm',
     'cong.msg.autobackup': 'Kopia automatyczna',
+    'cong.backup.before_delete_congress': 'Przed usunięciem kongresu',
+    'cong.backup.before_move_shared': 'Przed przeniesieniem do wspólnej bazy',
     'cong.msg.before_reset': 'Przed resetem',
     'cong.msg.before_import': 'Przed importem',
     'cong.msg.before_restore': 'Przed przywróceniem',
@@ -1590,6 +1596,8 @@
     'cong.msg.copy_suffix': ' — Kopie',
     'cong.msg.first_congress': 'Kreiskongress 2027 Stockholm',
     'cong.msg.autobackup': 'Automatische Sicherung',
+    'cong.backup.before_delete_congress': 'Vor dem Löschen des Kongresses',
+    'cong.backup.before_move_shared': 'Vor der Übertragung in die gemeinsame Datenbank',
     'cong.msg.before_reset': 'Vor dem Zurücksetzen',
     'cong.msg.before_import': 'Vor dem Import',
     'cong.msg.before_restore': 'Vor der Wiederherstellung',
