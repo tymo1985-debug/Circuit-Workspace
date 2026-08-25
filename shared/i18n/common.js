@@ -89,8 +89,8 @@
       'module.pioneer-school.desc': 'Учащиеся и классы, расписание уроков, учебники, формуляры S-253 и экспорт списков.',
       'module.appointments.title': 'Назначения',
       'module.appointments.desc': 'Письмо о назначении и вычёркивании старейшин и служителей собрания.',
-      'module.documents.title': 'Документы',
-      'module.documents.desc': 'Шаблоны писем и документов: один текст на всю экосистему, правится в одном месте.',
+      'module.documents.title': 'Документы и данные',
+      'module.documents.desc': 'Шаблоны писем и общие справочники.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -132,6 +132,7 @@
       'cong.btn.groups': 'Собрания / группы',
       'cong.field.number': '№',
       'cong.dlg.directory': 'Справочник',
+      'doc.dir_hint': 'Общий справочник собраний. Здесь можно только просматривать записи — редактировать и удалять их нельзя.',
     },
 
     uk: {
@@ -193,8 +194,8 @@
       'module.pioneer-school.desc': 'Учні та класи, розклад уроків, підручники, формуляри S-253 і експорт списків.',
       'module.appointments.title': 'Призначення',
       'module.appointments.desc': 'Лист про призначення і викреслення старійшин та служителів збору.',
-      'module.documents.title': 'Документи',
-      'module.documents.desc': 'Шаблони листів і документів: один текст на всю екосистему, редагується в одному місці.',
+      'module.documents.title': 'Документи й дані',
+      'module.documents.desc': 'Шаблони листів і спільні довідники.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -236,6 +237,7 @@
       'cong.btn.groups': 'Збори / групи',
       'cong.field.number': '№',
       'cong.dlg.directory': 'Довідник',
+      'doc.dir_hint': 'Спільний довідник зборів. Тут записи можна лише переглядати — редагувати й видаляти їх не можна.',
     },
 
     en: {
@@ -297,8 +299,8 @@
       'module.pioneer-school.desc': 'Students and classes, lesson schedule, textbooks, S-253 forms and list export.',
       'module.appointments.title': 'Appointments',
       'module.appointments.desc': 'Letter about appointing and deleting elders and ministerial servants.',
-      'module.documents.title': 'Documents',
-      'module.documents.desc': 'Templates of letters and documents: one text for the whole ecosystem, edited in one place.',
+      'module.documents.title': 'Documents and Data',
+      'module.documents.desc': 'Letter templates and shared directories.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -340,6 +342,7 @@
       'cong.btn.groups': 'Congregations / groups',
       'cong.field.number': '№',
       'cong.dlg.directory': 'Directory',
+      'doc.dir_hint': 'Shared congregation directory. Entries here are read-only—they cannot be edited or deleted.',
     },
 
     pl: {
@@ -401,8 +404,8 @@
       'module.pioneer-school.desc': 'Uczniowie i klasy, plan lekcji, podręczniki, formularze S-253 i eksport list.',
       'module.appointments.title': 'Mianowania',
       'module.appointments.desc': 'List o mianowaniu i skreśleniu starszych oraz sług pomocniczych.',
-      'module.documents.title': 'Dokumenty',
-      'module.documents.desc': 'Szablony wiadomości i dokumentów: jeden tekst dla całego ekosystemu, edytowany w jednym miejscu.',
+      'module.documents.title': 'Dokumenty i dane',
+      'module.documents.desc': 'Szablony listów i wspólne spisy.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -444,6 +447,7 @@
       'cong.btn.groups': 'Zbory / grupy',
       'cong.field.number': '№',
       'cong.dlg.directory': 'Katalog',
+      'doc.dir_hint': 'Wspólny spis zborów. Wpisy można tu tylko przeglądać — nie można ich edytować ani usuwać.',
     },
 
     de: {
@@ -505,8 +509,8 @@
       'module.pioneer-school.desc': 'Schüler und Klassen, Stundenplan, Lehrbücher, S-253-Formulare und Listenexport.',
       'module.appointments.title': 'Ernennungen',
       'module.appointments.desc': 'Brief über Ernennung und Streichung von Ältesten und Dienstamtgehilfen.',
-      'module.documents.title': 'Dokumente',
-      'module.documents.desc': 'Brief- und Dokumentenvorlagen: ein Text für das gesamte Ökosystem, wird an einer Stelle bearbeitet.',
+      'module.documents.title': 'Dokumente und Daten',
+      'module.documents.desc': 'Briefvorlagen und gemeinsame Verzeichnisse.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -548,6 +552,7 @@
       'cong.btn.groups': 'Versammlungen / Gruppen',
       'cong.field.number': '№',
       'cong.dlg.directory': 'Verzeichnis',
+      'doc.dir_hint': 'Gemeinsames Versammlungsverzeichnis. Die Einträge können hier nur angesehen, aber nicht bearbeitet oder gelöscht werden.',
     },
 
   });

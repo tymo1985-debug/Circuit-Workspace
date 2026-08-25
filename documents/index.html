@@ -3,7 +3,7 @@
 <head>
   <script src="../shared/theme.js"></script>
 <meta charset="utf-8">
-<title data-i18n="module.documents.title">Документы</title>
+<title data-i18n="module.documents.title">Документы и данные</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#6a45c9">
 <link rel="manifest" href="manifest.json">
@@ -43,7 +43,7 @@
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg>
     </div>
     <div class="md-topbar-v2__titles">
-      <p class="md-topbar-v2__title" data-i18n="module.documents.title">Документы</p>
+      <p class="md-topbar-v2__title" data-i18n="module.documents.title">Документы и данные</p>
       <p class="md-topbar-v2__sub">
         <span id="moduleVersion"></span>
         <span class="md-savestatus" id="saveStatus"></span>
@@ -117,9 +117,7 @@
      ПИШУЩИМ модулем справочника — это отдельное решение с последствиями
      (см. IDEAS.md, «Главный риск»), а не побочный эффект экрана. -->
 <section id="screenDirectory" hidden>
-  <!-- Подписи-пояснения тут НЕТ намеренно: строки «общий справочник, только
-       просмотр» в словарях не существует, а сочинять её нельзя — перевод
-       пишет носитель. Ключ заказан вместе с остальным долгом (см. TODO). -->
+  <p class="doc-hint" data-i18n="doc.dir_hint">Общий справочник собраний. Здесь можно только просматривать записи — редактировать и удалять их нельзя.</p>
   <label class="md-field"><span data-i18n="doc.search_label">Поиск по названию и тексту</span>
     <input id="dirSearch" type="search" autocomplete="off"></label>
   <div id="dirList" class="dir-list"></div>
