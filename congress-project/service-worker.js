@@ -2,7 +2,7 @@
 // Имя кэша привязано к версии модуля: при выпуске новой версии достаточно
 // поднять APP_VERSION, и вернувшийся пользователь получит свежую оболочку,
 // а не бесконечно закэшированную старую.
-const APP_VERSION='4.42.2';
+const APP_VERSION='4.43.0';
 const CACHE='congress-pwa-v'+APP_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
 // активация этого SW стирала офлайн-кэши хаба и остальных модулей.
@@ -28,7 +28,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
   '../shared/documents.js','../shared/print.js',
   '../shared/db.js',
   '../shared/directory.js',
-  '../shared/doclang.js','../shared/i18n/common.js','../shared/version.js',
+  '../shared/doclang.js','../shared/docsview.js','../shared/i18n/common.js','../shared/version.js',
   '../shared/update.js'];
 
 self.addEventListener('install',e=>e.waitUntil(

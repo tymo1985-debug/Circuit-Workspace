@@ -91,6 +91,31 @@
       'module.appointments.desc': 'Письмо о назначении и вычёркивании старейшин и служителей собрания.',
       'module.documents.title': 'Документы',
       'module.documents.desc': 'Шаблоны писем и документов: один текст на всю экосистему, правится в одном месте.',
+      /* Архив выданных документов. Строки переехали сюда из
+         documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
+         снимка рисует общий shared/docsview.js, и подписи к ней нужны
+         каждому модулю, а не одному. Тексты писал носитель 17.08.2026. */
+      'doc.archive_loading': 'Загружаем архив…',
+      'doc.archive_empty': 'Архив пуст. Записи появляются, когда документ напечатан, выгружен в PDF или отправлен.',
+      'doc.archive_nothing_found': 'Ничего не найдено.',
+      'doc.archive_entity_gone': 'запись удалена',
+      'doc.archive_docs_count': 'документов: {n}',
+      'doc.reason_print': 'выгружено в PDF',
+      'doc.reason_send': 'отправлено',
+      'doc.reason_manual': 'сохранено вручную',
+      'doc.show_text': 'Показать текст',
+      'doc.copy': 'Копировать',
+      'doc.delete_doc': 'Удалить из архива',
+      'doc.confirm_delete_doc': 'Удалить этот документ из архива? Отменить это действие нельзя.',
+      'doc.times': 'выдач: {n}',
+      'doc.edited_mark': 'правлено вручную',
+      'doc.page_n': 'Страница {n}',
+      'doc.kind.email': 'Тело письма',
+      'doc.kind.salutation': 'Обращение',
+      'doc.kind.letter': 'Письмо',
+      'doc.tab_archive': 'Архив',
+      'doc.archive_hint': 'Здесь то, что уже покинуло приложение: напечатанные и отправленные документы. Текст сохранён таким, каким он ушёл, и правка шаблона его не меняет.',
+      'doc.archive_search_label': 'Поиск по тексту и получателю',
     },
 
     uk: {
@@ -154,6 +179,31 @@
       'module.appointments.desc': 'Лист про призначення і викреслення старійшин та служителів збору.',
       'module.documents.title': 'Документи',
       'module.documents.desc': 'Шаблони листів і документів: один текст на всю екосистему, редагується в одному місці.',
+      /* Архив выданных документов. Строки переехали сюда из
+         documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
+         снимка рисует общий shared/docsview.js, и подписи к ней нужны
+         каждому модулю, а не одному. Тексты писал носитель 17.08.2026. */
+      'doc.archive_loading': 'Завантажуємо архів…',
+      'doc.archive_empty': 'Архів порожній. Записи з\'являються, коли документ надруковано, вивантажено у PDF або надіслано.',
+      'doc.archive_nothing_found': 'Нічого не знайдено.',
+      'doc.archive_entity_gone': 'запис видалено',
+      'doc.archive_docs_count': 'документів: {n}',
+      'doc.reason_print': 'вивантажено в PDF',
+      'doc.reason_send': 'надіслано',
+      'doc.reason_manual': 'збережено вручну',
+      'doc.show_text': 'Показати текст',
+      'doc.copy': 'Копіювати',
+      'doc.delete_doc': 'Видалити з архіву',
+      'doc.confirm_delete_doc': 'Видалити цей документ з архіву? Скасувати цю дію неможливо.',
+      'doc.times': 'видач: {n}',
+      'doc.edited_mark': 'відредаговано вручну',
+      'doc.page_n': 'Сторінка {n}',
+      'doc.kind.email': 'Тіло листа',
+      'doc.kind.salutation': 'Звернення',
+      'doc.kind.letter': 'Лист',
+      'doc.tab_archive': 'Архів',
+      'doc.archive_hint': 'Тут те, що вже покинуло додаток: надруковані та надіслані документи. Текст збережений таким, яким він пішов, і редагування шаблону його не змінює.',
+      'doc.archive_search_label': 'Пошук за текстом та отримувачем',
     },
 
     en: {
@@ -217,6 +267,31 @@
       'module.appointments.desc': 'Letter about appointing and deleting elders and ministerial servants.',
       'module.documents.title': 'Documents',
       'module.documents.desc': 'Templates of letters and documents: one text for the whole ecosystem, edited in one place.',
+      /* Архив выданных документов. Строки переехали сюда из
+         documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
+         снимка рисует общий shared/docsview.js, и подписи к ней нужны
+         каждому модулю, а не одному. Тексты писал носитель 17.08.2026. */
+      'doc.archive_loading': 'Loading archive…',
+      'doc.archive_empty': 'The archive is empty. Entries appear when a document is printed, exported to PDF, or sent.',
+      'doc.archive_nothing_found': 'Nothing found.',
+      'doc.archive_entity_gone': 'entry deleted',
+      'doc.archive_docs_count': 'documents: {n}',
+      'doc.reason_print': 'exported to PDF',
+      'doc.reason_send': 'sent',
+      'doc.reason_manual': 'saved manually',
+      'doc.show_text': 'Show text',
+      'doc.copy': 'Copy',
+      'doc.delete_doc': 'Remove from archive',
+      'doc.confirm_delete_doc': 'Delete this document from the archive? This action cannot be undone.',
+      'doc.times': 'issues: {n}',
+      'doc.edited_mark': 'edited manually',
+      'doc.page_n': 'Page {n}',
+      'doc.kind.email': 'Email body',
+      'doc.kind.salutation': 'Salutation',
+      'doc.kind.letter': 'Email',
+      'doc.tab_archive': 'Archive',
+      'doc.archive_hint': 'Here is what has already left the app: printed and sent documents. The text is saved as it was sent, and editing the template does not change it.',
+      'doc.archive_search_label': 'Search by text and recipient',
     },
 
     pl: {
@@ -280,6 +355,31 @@
       'module.appointments.desc': 'List o mianowaniu i skreśleniu starszych oraz sług pomocniczych.',
       'module.documents.title': 'Dokumenty',
       'module.documents.desc': 'Szablony wiadomości i dokumentów: jeden tekst dla całego ekosystemu, edytowany w jednym miejscu.',
+      /* Архив выданных документов. Строки переехали сюда из
+         documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
+         снимка рисует общий shared/docsview.js, и подписи к ней нужны
+         каждому модулю, а не одному. Тексты писал носитель 17.08.2026. */
+      'doc.archive_loading': 'Ładujemy archiwum…',
+      'doc.archive_empty': 'Archiwum jest puste. Rekordy pojawiają się, gdy dokument zostanie wydrukowany, zapisany do PDF lub wysłany.',
+      'doc.archive_nothing_found': 'Nic nie znaleziono.',
+      'doc.archive_entity_gone': 'rekord usunięty',
+      'doc.archive_docs_count': 'dokumenty: {n}',
+      'doc.reason_print': 'wyeksportowano do PDF',
+      'doc.reason_send': 'wysłano',
+      'doc.reason_manual': 'zapisano ręcznie',
+      'doc.show_text': 'Pokaż tekst',
+      'doc.copy': 'Kopiuj',
+      'doc.delete_doc': 'Usuń z archiwum',
+      'doc.confirm_delete_doc': 'Usunąć ten dokument z archiwum? Nie można cofnąć tej akcji.',
+      'doc.times': 'wydania: {n}',
+      'doc.edited_mark': 'edytowano ręcznie',
+      'doc.page_n': 'Strona {n}',
+      'doc.kind.email': 'Treść wiadomości',
+      'doc.kind.salutation': 'Zwrócenie się',
+      'doc.kind.letter': 'List',
+      'doc.tab_archive': 'Archiwum',
+      'doc.archive_hint': 'Tutaj są rzeczy, które opuściły już aplikację: wydrukowane i wysłane dokumenty. Tekst jest zapisany taki, jaki był wysłany, a zmiana szablonu go nie zmienia.',
+      'doc.archive_search_label': 'Szukaj po tekście i odbiorcy',
     },
 
     de: {
@@ -343,6 +443,31 @@
       'module.appointments.desc': 'Brief über Ernennung und Streichung von Ältesten und Dienstamtgehilfen.',
       'module.documents.title': 'Dokumente',
       'module.documents.desc': 'Brief- und Dokumentenvorlagen: ein Text für das gesamte Ökosystem, wird an einer Stelle bearbeitet.',
+      /* Архив выданных документов. Строки переехали сюда из
+         documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
+         снимка рисует общий shared/docsview.js, и подписи к ней нужны
+         каждому модулю, а не одному. Тексты писал носитель 17.08.2026. */
+      'doc.archive_loading': 'Archiv wird geladen…',
+      'doc.archive_empty': 'Archiv ist leer. Einträge erscheinen, wenn das Dokument gedruckt, als PDF exportiert oder versendet wurde.',
+      'doc.archive_nothing_found': 'Nichts gefunden.',
+      'doc.archive_entity_gone': 'Eintrag gelöscht',
+      'doc.archive_docs_count': 'dokumente: {n}',
+      'doc.reason_print': 'als PDF exportiert',
+      'doc.reason_send': 'gesendet',
+      'doc.reason_manual': 'manuell gespeichert',
+      'doc.show_text': 'Text anzeigen',
+      'doc.copy': 'Kopieren',
+      'doc.delete_doc': 'Aus dem Archiv löschen',
+      'doc.confirm_delete_doc': 'Dieses Dokument aus dem Archiv löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+      'doc.times': 'Ausweise: {n}',
+      'doc.edited_mark': 'manuell bearbeitet',
+      'doc.page_n': 'Seite {n}',
+      'doc.kind.email': 'E-Mail-Text',
+      'doc.kind.salutation': 'Anrede',
+      'doc.kind.letter': 'Brief',
+      'doc.tab_archive': 'Archiv',
+      'doc.archive_hint': 'Hier ist, was die Anwendung bereits verlassen hat: gedruckte und gesendete Dokumente. Der Text ist so gespeichert, wie er gesendet wurde, und eine Vorlagenbearbeitung ändert ihn nicht.',
+      'doc.archive_search_label': 'Suche nach Text und Empfänger',
     },
 
   });

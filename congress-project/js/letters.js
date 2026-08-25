@@ -236,3 +236,74 @@ export function snapshotLetter(task,reason,congress){
   })).catch(e=>{console.warn("Конгрессы: снимок документа не сохранён",e);return null})}
 /** Снимки для пакетной печати. Дедупликация в архиве схлопнет повторы сама. */
 export function snapshotLetters(tasks,reason){let c=A();(tasks||[]).forEach(x=>snapshotLetter(x,reason,c))}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   АРХИВ ВЫДАННЫХ ДОКУМЕНТОВ (задача Б, 24.08.2026)
+
+   Модуль писал снимки в общий архив с 13.08.2026, но своего экрана не имел:
+   увидеть отправленное можно было только зайдя в «Документы». Здесь экран
+   появляется на месте — список писем ЭТОГО модуля, свежие сверху.
+
+   Карточку рисует общий `CWDocsView`, а не местный код: до 24.08.2026
+   рендерер существовал в проекте дважды (Клиндарий и Документы) и копии уже
+   разошлись по вёрстке. Модуль отвечает только за отбор и за то, что вокруг.
+
+   Отбор — `listAll({module:'congress-project'})`. Чужие письма сюда не
+   попадают: у секретаря конгрессов нет причин видеть архив Школы, а общий
+   взгляд на всё уже есть в «Документах».
+
+   Группировки по заданиям здесь НЕТ намеренно, в отличие от «Документов».
+   Там архив общий и без группировки превращается в кашу; здесь список уже
+   сужен до одного модуля, а плоский список свежими сверху отвечает на главный
+   вопрос секретаря — «что я отправлял последним». */
+let docsArchive = { rows: null, search: "", loading: false, unbind: null };
+
+function docsArchiveList() { return $("#docsArchiveList"); }
+
+function renderDocsArchive() {
+  let box = docsArchiveList(); if (!box) return;
+  if (docsArchive.loading) { box.innerHTML = self.CWDocsView.stateHtml("loading"); return; }
+  if (!docsArchive.rows || !docsArchive.rows.length) { box.innerHTML = self.CWDocsView.stateHtml("empty"); return; }
+  let q = docsArchive.search.trim().toLowerCase();
+  let rows = q ? docsArchive.rows.filter(d =>
+    String(d.entityTitle || "").toLowerCase().includes(q)
+    || String(d.subject || "").toLowerCase().includes(q)
+    || String(d.body || "").toLowerCase().includes(q)) : docsArchive.rows;
+  if (!rows.length) { box.innerHTML = self.CWDocsView.stateHtml("nothing"); return; }
+  /* Подпись задания над карточкой: сама карточка её не показывает — она общая
+     и про сущность-владельца ничего не знает. Удалённое задание помечается,
+     а снимок остаётся: письмо уже ушло людям (см. shared/documents.js). */
+  box.innerHTML = rows.map(d =>
+    '<div class="docs-arc__item"><div class="docs-arc__owner">'
+    + esc(d.entityTitle || t("doc.archive_entity_gone"))
+    + '</div>' + self.CWDocsView.cardHtml(d) + '</div>').join("");
+}
+
+function loadDocsArchive() {
+  if (!docsAvailable()) { docsArchive.rows = []; renderDocsArchive(); return; }
+  docsArchive.loading = true; renderDocsArchive();
+  self.CWDocs.listAll({ module: "congress-project" }).then(rows => {
+    docsArchive.loading = false; docsArchive.rows = rows || []; renderDocsArchive();
+  }).catch(e => {
+    console.warn("Конгрессы: не удалось прочитать архив документов", e);
+    docsArchive.loading = false; docsArchive.rows = []; renderDocsArchive();
+  });
+}
+
+export function openDocsArchive() {
+  let dlg = $("#docsArchiveDialog"); if (!dlg) return;
+  let search = $("#docsArchiveSearch");
+  if (search) { search.value = docsArchive.search; search.oninput = () => { docsArchive.search = search.value; renderDocsArchive(); }; }
+  /* Обработчики вешаются на контейнер один раз за открытие и снимаются при
+     закрытии: иначе каждое открытие добавляло бы ещё один слушатель, и
+     удаление снимка срабатывало бы столько раз, сколько раз открывали окно. */
+  if (docsArchive.unbind) docsArchive.unbind();
+  docsArchive.unbind = self.CWDocsView.bind(docsArchiveList(), () => docsArchive.rows || [], {
+    /* Тостов у модуля нет — подтверждение даёт сама кнопка карточки. */
+    onToast: () => {},
+    onRemoved: () => { loadDocsArchive(); },
+  });
+  dlg.addEventListener("close", () => { if (docsArchive.unbind) { docsArchive.unbind(); docsArchive.unbind = null; } }, { once: true });
+  loadDocsArchive();
+  dlg.showModal();
+}
