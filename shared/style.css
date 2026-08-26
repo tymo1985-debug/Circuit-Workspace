@@ -5,18 +5,29 @@
    ────────────────────────────────────────────────────────────────
    Структура файла:
      1. Шрифты (локальные, для офлайн-PWA)
-     2. Фирменные токены --cw-* и компоненты .cw-*  — БЕЗ ИЗМЕНЕНИЙ
-     3. Слой Material Design 3: токены --md-* и компоненты .md-*
+     2. Фирменные имена --cw-* и компоненты .cw-*  — АЛИАСЫ, не значения
+     3. Слой Material Design 3: токены --md-* — ИСТОЧНИК ПРАВДЫ
    ────────────────────────────────────────────────────────────────
+   ИСТОЧНИК ЗНАЧЕНИЙ — РОЛИ --md-*. Цветовые --cw-* значений не держат,
+   они ссылаются на роли (--cw-bg: var(--md-surface) и т.д.) и постепенно
+   вымываются из модулей. Раньше было наоборот: роли выводились из
+   фирменного слоя. Инверсия сделана 26.08.2026 по решению Алекса,
+   разбор — docs/design-tokens/01-audit.md и 02-token-registry.md.
+   Нецветовые --cw-* (отступы, размеры, z-index) к палитре отношения
+   не имеют и остаются самостоятельными.
+
    MD3-палитра сгенерирована библиотекой Material Color Utilities
    от seed-цвета #6a45c9 — центрального цвета градиента логотипа
    (shared/brand/icon-source.svg, bgGrad 45%). Поверхности намеренно
    взяты не нейтрально-серые (как даёт алгоритм по умолчанию), а
-   фиолетово-подкрашенные из фирменной палитры — MD3 это допускает
-   через концепцию surface tint, и так сохраняется узнаваемость бренда.
+   фиолетово-подкрашенные — MD3 это допускает через концепцию surface
+   tint, и так сохраняется узнаваемость бренда. С 26.08.2026 это верно
+   и для СВЕТЛОЙ темы: до того она стояла на нейтральных значениях
+   алгоритма, и фон менялся при переходе хаб → модуль.
 
-   ВАЖНО: раздел 2 менять нельзя без проверки — от него зависят
-   index.html хаба и index.html всех трёх модулей.
+   СМЕНА ФИРМЕННОГО ЦВЕТА — ручная процедура, скрипта нет намеренно.
+   Зависит от него не вся палитра, а семейство primary (~12 значений
+   в двух темах). Порядок записан в TODO.md, раздел Next.
 */
 
 /* ═══ 1. ШРИФТЫ ═══════════════════════════════════════════════ */
@@ -65,26 +76,23 @@
   /* --- Палитра: тёмная плата в тонах логотипа (icon-source.svg) ---
      Взято напрямую из градиента и акцентов иконки: bgGrad (#3d2470→#6a45c9→#2a3f8f),
      glow1 (#c9a3ff), боковые пятна (#a24bd6 фиолетовое, #4be0d0 бирюзовое). */
-  --cw-bg:        #140d28;
-  --cw-bg-raised: #1c1338;
-  --cw-surface:   #221947;
-  --cw-surface-2: #2b2058;
-  --cw-line:      #3a2d73;
-  --cw-line-soft: #291f52;
+  --cw-bg:        var(--md-surface);
+  --cw-bg-raised: var(--md-surface-container-low);
+  --cw-surface:   var(--md-surface-container);
+  --cw-surface-2: var(--md-surface-container-high);
+  --cw-line:      var(--md-outline-variant);
+  --cw-line-soft: var(--md-surface-variant);
 
-  --cw-text:      #f1eefb;
-  --cw-text-dim:  #c6bce3;
-  --cw-muted:     #8c7fb5;
+  --cw-text:      var(--md-on-surface);
+  --cw-text-dim:  var(--md-on-surface-variant);
+  --cw-muted:     var(--md-outline);
 
-  --cw-violet:     #8a5cf6;
-  --cw-violet-dim: #6a45c9;
-  --cw-lavender:   #c9a3ff;
-  --cw-indigo:     #2a3f8f;
-  --cw-magenta:    #a24bd6;
-  --cw-teal:      #4be0d0;
-  --cw-teal-dim:  #2fb3a5;
-  --cw-amber:     #e8b34a;
-  --cw-red:       #e2634f;
+  --cw-violet:     var(--md-primary);
+  --cw-violet-dim: var(--md-primary-container);
+  --cw-lavender:   var(--md-primary);
+  --cw-magenta:    var(--md-secondary);
+  --cw-teal:      var(--md-tertiary);
+  --cw-amber:     var(--status-important);
 
   --cw-radius-sm: 8px;
   --cw-radius:    14px;
@@ -304,23 +312,23 @@ body.cw-root {
   --md-on-error-container: #ffb4ab;
 
   /* Поверхности — фирменные фиолетовые, разложенные по ролям MD3 */
-  --md-background: var(--cw-bg);
-  --md-on-background: var(--cw-text);
-  --md-surface: var(--cw-bg);
-  --md-on-surface: var(--cw-text);
+  --md-background: #140d28;
+  --md-on-background: #f1eefb;
+  --md-surface: #140d28;
+  --md-on-surface: #f1eefb;
   --md-surface-dim: #0f0920;
   --md-surface-bright: #3a2d73;
   --md-surface-container-lowest: #0f0920;
-  --md-surface-container-low: var(--cw-bg-raised);
-  --md-surface-container: var(--cw-surface);
-  --md-surface-container-high: var(--cw-surface-2);
+  --md-surface-container-low: #1c1338;
+  --md-surface-container: #221947;
+  --md-surface-container-high: #2b2058;
   --md-surface-container-highest: #342765;
-  --md-surface-variant: var(--cw-line-soft);
-  --md-on-surface-variant: var(--cw-text-dim);
-  --md-outline: var(--cw-muted);
-  --md-outline-variant: var(--cw-line);
-  --md-inverse-surface: var(--cw-text);
-  --md-inverse-on-surface: var(--cw-bg);
+  --md-surface-variant: #291f52;
+  --md-on-surface-variant: #c6bce3;
+  --md-outline: #8c7fb5;
+  --md-outline-variant: #3a2d73;
+  --md-inverse-surface: #f1eefb;
+  --md-inverse-on-surface: #140d28;
   --md-scrim: #000000;
   --md-shadow: #000000;
 
@@ -328,9 +336,9 @@ body.cw-root {
      приоритеты из модели данных Клиндария; не роль MD3) */
   --status-critical: #ffb4ab;
   --status-critical-bg: #5c1310;
-  --status-important: var(--cw-amber);
+  --status-important: #e8b34a;
   --status-important-bg: #4a3400;
-  --status-normal: var(--cw-text-dim);
+  --status-normal: var(--md-on-surface-variant);
   --status-normal-bg: var(--cw-surface-2);
   --status-success: #7ee0b0;
   --status-success-bg: #10402c;
@@ -384,23 +392,31 @@ body.cw-root {
   --md-error-container: #ffdad6;
   --md-on-error-container: #410002;
 
-  --md-background: #fffbff;
-  --md-on-background: #1c1b1e;
-  --md-surface: #fdf8fd;
-  --md-on-surface: #1c1b1e;
-  --md-surface-dim: #ddd8dd;
-  --md-surface-bright: #fdf8fd;
+  /* Поверхности светлой темы — фирменные, а не нейтральные (решение Алекса
+     26.08.2026, вариант А: тон задаёт хаб). До этого светлая тема жила на
+     нейтральных значениях алгоритма (#fffbff, #fdf8fd, #f7f2f7…), а хаб — на
+     подкрашенных --cw-*, и при переходе хаб → модуль фон менялся с лавандового
+     на белый. Теперь то же, что в тёмной теме: поверхности подкрашены
+     фиолетовым из фирменной палитры. Лестница контейнеров СОХРАНЕНА — просто
+     скопировать фирменные значения было нельзя, там --cw-bg-raised и
+     --cw-surface оба #ffffff, и MD3-компоненты потеряли бы различие уровней. */
+  --md-background: #f6f3fd;
+  --md-on-background: #1a1230;
+  --md-surface: #f6f3fd;
+  --md-on-surface: #1a1230;
+  --md-surface-dim: #ddd6ee;
+  --md-surface-bright: #f6f3fd;
   --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f7f2f7;
-  --md-surface-container: #f1ecf1;
-  --md-surface-container-high: #ece7eb;
-  --md-surface-container-highest: #e6e1e6;
-  --md-surface-variant: #e6e0ec;
-  --md-on-surface-variant: #49454e;
-  --md-outline: #7a757f;
-  --md-outline-variant: #cac4cf;
-  --md-inverse-surface: #313033;
-  --md-inverse-on-surface: #f4eff4;
+  --md-surface-container-low: #f1ecfb;
+  --md-surface-container: #ece5f8;
+  --md-surface-container-high: #e6def4;
+  --md-surface-container-highest: #e0d8f0;
+  --md-surface-variant: #e9e3f8;
+  --md-on-surface-variant: #4b4069;
+  --md-outline: #6f6493;
+  --md-outline-variant: #d7cdef;
+  --md-inverse-surface: #2b2058;
+  --md-inverse-on-surface: #f1ecfb;
 
   --status-critical: #ba1a1a;
   --status-critical-bg: #ffdad6;
@@ -419,26 +435,23 @@ body.cw-root {
    Акценты сдвинуты в сторону насыщенности — лаванда #c9a3ff на белом
    нечитаема, поэтому в светлой теме её роль играет более плотный тон. */
 [data-theme="light"] {
-  --cw-bg:        #f6f3fd;
-  --cw-bg-raised: #ffffff;
-  --cw-surface:   #ffffff;
-  --cw-surface-2: #f1ecfb;
-  --cw-line:      #d7cdef;
-  --cw-line-soft: #e9e3f8;
+  --cw-bg:        var(--md-surface);
+  --cw-bg-raised: var(--md-surface-container-lowest);
+  --cw-surface:   var(--md-surface-container-lowest);
+  --cw-surface-2: var(--md-surface-container-low);
+  --cw-line:      var(--md-outline-variant);
+  --cw-line-soft: var(--md-surface-variant);
 
-  --cw-text:      #1a1230;
-  --cw-text-dim:  #4b4069;
-  --cw-muted:     #6f6493;
+  --cw-text:      var(--md-on-surface);
+  --cw-text-dim:  var(--md-on-surface-variant);
+  --cw-muted:     var(--md-outline);
 
-  --cw-violet:     #6a45c9;
-  --cw-violet-dim: #5433ab;
-  --cw-lavender:   #7b52d8;
-  --cw-indigo:     #2a3f8f;
-  --cw-magenta:    #8f3ec0;
-  --cw-teal:       #1c8478;
-  --cw-teal-dim:   #12706f;
-  --cw-amber:      #8a6100;
-  --cw-red:        #b3261e;
+  --cw-violet:     var(--md-primary);
+  --cw-violet-dim: var(--md-primary);
+  --cw-lavender:   var(--md-primary);
+  --cw-magenta:    var(--md-secondary);
+  --cw-teal:       var(--md-tertiary);
+  --cw-amber:      var(--status-important);
 
   --cw-shadow:    0 8px 30px rgba(45, 28, 92, 0.12);
   --cw-shadow-sm: 0 2px 10px rgba(45, 28, 92, 0.08);
