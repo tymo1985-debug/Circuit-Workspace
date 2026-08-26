@@ -318,10 +318,10 @@
        Подпись замерзает в момент создания копии (кандидат в IDEAS.md). */
     'cong.backup.before_delete_congress': 'Перед удалением конгресса',
     'cong.backup.before_move_shared': 'Перед переносом в общую базу',
-    /* ЖДЁТ НОСИТЕЛЯ: 1 ключ x 4 языка. Заведён 26.08.2026 вместе с починкой
-       переноса: до неё ветка не исполнялась, и подпись не видел НИ ОДИН
-       пользователь — поэтому взят вид соседних подписей (с прописной), а не
-       строчная буква прежнего литерала. Отменяется правкой этой ячейки. */
+    /* Заведён 26.08.2026 вместе с починкой переноса: до неё ветка не
+       исполнялась, и подпись не видел НИ ОДИН пользователь — поэтому взят вид
+       соседних подписей (с прописной), а не строчная буква прежнего литерала.
+       Переведён носителем 26.08.2026, заполнены все пять языков. */
     'cong.backup.before_move_templates': 'Перед переносом шаблонов в общее хранилище',
     'cong.msg.before_reset': 'Перед сбросом',
     'cong.msg.before_import': 'Перед импортом',
@@ -646,6 +646,7 @@
     'cong.msg.autobackup': 'Автокопія',
     'cong.backup.before_delete_congress': 'Перед видаленням конгресу',
     'cong.backup.before_move_shared': 'Перед перенесенням до спільної бази',
+    'cong.backup.before_move_templates': 'Перед перенесенням шаблонів до спільного сховища',
     'cong.msg.before_reset': 'Перед скиданням',
     'cong.msg.before_import': 'Перед імпортом',
     'cong.msg.before_restore': 'Перед відновленням',
@@ -965,6 +966,7 @@
     'cong.msg.autobackup': 'Automatic backup',
     'cong.backup.before_delete_congress': 'Before deleting the convention',
     'cong.backup.before_move_shared': 'Before moving to the shared database',
+    'cong.backup.before_move_templates': 'Before moving templates to shared storage',
     'cong.msg.before_reset': 'Before reset',
     'cong.msg.before_import': 'Before import',
     'cong.msg.before_restore': 'Before restore',
@@ -1284,6 +1286,7 @@
     'cong.msg.autobackup': 'Kopia automatyczna',
     'cong.backup.before_delete_congress': 'Przed usunięciem kongresu',
     'cong.backup.before_move_shared': 'Przed przeniesieniem do wspólnej bazy',
+    'cong.backup.before_move_templates': 'Przed przeniesieniem szablonów do wspólnego repozytorium',
     'cong.msg.before_reset': 'Przed resetem',
     'cong.msg.before_import': 'Przed importem',
     'cong.msg.before_restore': 'Przed przywróceniem',
@@ -1603,6 +1606,7 @@
     'cong.msg.autobackup': 'Automatische Sicherung',
     'cong.backup.before_delete_congress': 'Vor dem Löschen des Kongresses',
     'cong.backup.before_move_shared': 'Vor der Übertragung in die gemeinsame Datenbank',
+    'cong.backup.before_move_templates': 'Vor der Übertragung der Vorlagen in den gemeinsamen Speicher',
     'cong.msg.before_reset': 'Vor dem Zurücksetzen',
     'cong.msg.before_import': 'Vor dem Import',
     'cong.msg.before_restore': 'Vor der Wiederherstellung',
