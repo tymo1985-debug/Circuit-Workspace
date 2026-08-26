@@ -35,9 +35,9 @@ self.CW_VERSION = '0.37.6';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы',       version: '4.46.1' },
+  'congress-project': { title: 'Конгрессы',       version: '4.46.2' },
   'circuit-planner':  { title: 'Клиндарий',       version: '9.88.0' },
-  'pioneer-school':   { title: 'Школа пионеров',  version: '1.13.8' },
+  'pioneer-school':   { title: 'Школа пионеров',  version: '1.13.9' },
   'appointments':     { title: 'Назначения',      version: '5.5.19'  },
-  'documents':        { title: 'Документы и данные', version: '1.5.2'  },
+  'documents':        { title: 'Документы и данные', version: '1.5.3'  },
 };

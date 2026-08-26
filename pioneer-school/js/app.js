@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.13.8';
+const APP_VERSION = '1.13.9';
 
 let LESSONS_SEED = null;
 
@@ -45,7 +45,7 @@ async function renderRoute(route) {
     if (target) {
       const box = document.createElement('p');
       box.className = 'hint';
-      box.style.color = 'var(--warn)';
+      box.style.color = 'var(--md-error)';
       box.textContent = T('ps.app.load_failed', { error: error.message });
       target.prepend(box);
     }
@@ -407,7 +407,7 @@ function renderRegistrationsTable(list) {
       <td>${esc(T('ps.app.reg_transport', { car: Registration.YES_NO_LABELS[r.transport] || '—', lodging: Registration.YES_NO_LABELS[r.lodging] || '—' }))}</td>
       <td>${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
       <td>
-        ${r.convertedToStudentId ? '' : `<button class="md-btn md-btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--accent);">${T('ps.app.v_uchaschiesya')}</button>`}
+        ${r.convertedToStudentId ? '' : `<button class="md-btn md-btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--md-primary);">${T('ps.app.v_uchaschiesya')}</button>`}
         <button class="md-btn md-btn-text remove-reg" data-id="${esc(r.id)}">${T('ps.app.udalit')}</button>
       </td>
     </tr>`).join('');
@@ -799,8 +799,8 @@ function renderStudentsTable(students, classes, columns) {
       ${cells}
       <td><select class="row-class-select" data-id="${esc(s.id)}">${classOptions}</select></td>
       <td>
-        <button class="md-btn md-btn-text row-doc" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.docs.document')}</button>
-        <button class="md-btn md-btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--accent);">${T('ps.app.formulyar')}</button>
+        <button class="md-btn md-btn-text row-doc" data-id="${esc(s.id)}" style="color:var(--md-primary);">${T('ps.docs.document')}</button>
+        <button class="md-btn md-btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--md-primary);">${T('ps.app.formulyar')}</button>
         <button class="md-btn md-btn-text remove-student" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button>
       </td>
     </tr>`;
@@ -915,7 +915,7 @@ function renderImportModal(existingColumns, resultPanelHtml) {
   const headerRow = headers.map((h, i) => `
     <th>
       <div contenteditable="true" class="import-header-edit" data-idx="${i}">${esc(h)}</div>
-      <select class="import-mapping-select" data-idx="${i}" style="width:100%;font-size:11px;border:none;border-top:1px solid var(--line);">
+      <select class="import-mapping-select" data-idx="${i}" style="width:100%;font-size:11px;border:none;border-top:1px solid var(--md-outline-variant);">
         ${mappingOptions(mappings[i])}
       </select>
       <button class="md-btn md-btn-text import-remove-col" data-idx="${i}" style="font-size:10px;">${T('ps.app.udalit_stolbec')}</button>
@@ -936,8 +936,8 @@ function renderImportModal(existingColumns, resultPanelHtml) {
   openModal(`
     <h2>${T('ps.app.proverte_raspoznannuyu_tablicu')}</h2>
     <p class="hint">${T('ps.app.avtomaticheskoe_raspoznavanie_mozhet_o')}</p>
-    ${anyAnomalies ? `<p class="hint" style="color:var(--warn);">${T('ps.app.yacheyki_s_oranzhevym_fonom')}</p>` : ''}
-    ${!hasNameMapping ? `<p class="hint" style="color:var(--warn);">${T('ps.app.sopostavte_odin_iz_stolbcov')}</p>` : ''}
+    ${anyAnomalies ? `<p class="hint" style="color:var(--md-error);">${T('ps.app.yacheyki_s_oranzhevym_fonom')}</p>` : ''}
+    ${!hasNameMapping ? `<p class="hint" style="color:var(--md-error);">${T('ps.app.sopostavte_odin_iz_stolbcov')}</p>` : ''}
     <div class="editable-table-wrap">
       <table class="editable-table">
         <thead><tr>${headerRow}</tr></thead>

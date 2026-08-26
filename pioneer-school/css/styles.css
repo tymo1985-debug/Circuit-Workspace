@@ -5,25 +5,11 @@
 :root {
   /* Мост на общие MD3-токены (shared/style.css). Имена переменных
      сохранены без изменений — на них ссылается ~500 правил ниже. */
-  --bg: var(--md-surface-container);
-  --panel-bg: var(--md-surface-container-lowest);
-  --ink: var(--md-on-surface);
-  --ink-soft: var(--md-on-surface-variant);
   /* Сайдбар следует теме приложения. Раньше здесь стоял жёсткий #221947:
      тёмная панель внутри светлого модуля не подчинялась ни одной теме и
      оставалась тёмной даже когда всё остальное светлело. Узнаваемость
      модуля теперь несёт акцент (--cw-module из data-module), а не заливка. */
-  --sidebar-bg: var(--md-surface-container-low);
-  --sidebar-ink: var(--md-on-surface);
-  --sidebar-ink-soft: var(--md-on-surface-variant);
-  --accent: var(--md-primary);
-  --accent-soft: var(--md-secondary-container);
-  --line: var(--md-outline-variant);
-  --warn: var(--md-error);
-  --radius: var(--md-radius-md);
   /* Шрифты — локальные (офлайн-PWA), вместо Google Fonts CDN */
-  --font-display: var(--md-font-family);
-  --font-body: var(--md-font-family);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -32,9 +18,9 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-body);
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+  font-family: var(--md-font-family);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -52,8 +38,8 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 .sidebar {
   width: var(--cw-sidebar-w);
   flex-shrink: 0;
-  background: var(--sidebar-bg);
-  color: var(--sidebar-ink);
+  background: var(--md-surface-container-low);
+  color: var(--md-on-surface);
   border-right: 1px solid var(--md-outline-variant);
   display: flex;
   flex-direction: column;
@@ -89,7 +75,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   font-size: 10.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--sidebar-ink-soft);
+  color: var(--md-on-surface-variant);
   margin: 16px 8px 6px;
 }
 .nav-group-label:first-child { margin-top: 0; }
@@ -103,7 +89,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   height: 40px;
   border-radius: var(--md-radius-full);
   cursor: pointer;
-  font: 500 14px/20px var(--font-body);
+  font: 500 14px/20px var(--md-font-family);
   letter-spacing: 0.1px;
   transition: background var(--md-dur-short) var(--md-ease-standard);
 }
@@ -116,7 +102,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .sidebar-footer {
   font-size: 10.5px;
-  color: var(--sidebar-ink-soft);
+  color: var(--md-on-surface-variant);
   padding: 10px 8px 0;
   border-top: 1px solid var(--md-outline-variant);
   margin-top: 16px;
@@ -135,28 +121,28 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 .route-header { margin-bottom: 24px; }
 
 .route-header h1 {
-  font-family: var(--font-display);
+  font-family: var(--md-font-family);
   font-size: 26px;
   font-weight: 500;
   margin: 0 0 4px;
 }
 
 .route-sub {
-  color: var(--ink-soft);
+  color: var(--md-on-surface-variant);
   font-size: 14px;
   margin: 0;
 }
 
 .panel {
-  background: var(--panel-bg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--md-surface-container-lowest);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
   padding: 20px 22px;
   margin-bottom: 18px;
 }
 
 .panel h3 {
-  font-family: var(--font-display);
+  font-family: var(--md-font-family);
   font-size: 15.5px;
   margin: 0 0 10px;
 }
@@ -172,13 +158,13 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   padding-left: 20px;
   font-size: 13.5px;
   line-height: 1.6;
-  color: var(--ink-soft);
+  color: var(--md-on-surface-variant);
 }
 .fact-list li { margin-bottom: 4px; }
 
 .hint {
   font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--md-on-surface-variant);
   font-style: italic;
 }
 
@@ -189,25 +175,25 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 
 .stat-card {
-  background: var(--panel-bg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--md-surface-container-lowest);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
   padding: 18px;
 }
 .stat-title {
   font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--ink-soft);
+  color: var(--md-on-surface-variant);
   font-family: var(--font-mono);
 }
 .stat-value {
-  font-family: var(--font-display);
+  font-family: var(--md-font-family);
   font-size: 26px;
   font-weight: 500;
   margin: 6px 0 2px;
 }
-.stat-sub { font-size: 12.5px; color: var(--ink-soft); }
+.stat-sub { font-size: 12.5px; color: var(--md-on-surface-variant); }
 
 .form-grid {
   display: grid;
@@ -221,15 +207,15 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   flex-direction: column;
   gap: 5px;
   font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--md-on-surface-variant);
 }
 
 input[type=text], input[type=number], input[type=date], select, textarea {
   padding: 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--md-outline-variant);
   border-radius: 7px;
   background: var(--md-surface-container-lowest);
-  color: var(--ink);
+  color: var(--md-on-surface);
 }
 
 .checkbox-label {
@@ -258,14 +244,14 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--md-outline-variant);
   font-size: 13.5px;
 }
 .list-row:last-child { border-bottom: none; }
 
 
 .badge-warn {
-  background: var(--warn);
+  background: var(--md-error);
   color: var(--md-on-error);
   font-size: 10px;
   padding: 2px 6px;
@@ -279,12 +265,12 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   gap: 12px;
 }
 .result-number {
-  font-family: var(--font-display);
+  font-family: var(--md-font-family);
   font-size: 44px;
   font-weight: 500;
-  color: var(--accent);
+  color: var(--md-primary);
 }
-.result-label { color: var(--ink-soft); font-size: 14px; }
+.result-label { color: var(--md-on-surface-variant); font-size: 14px; }
 
 .lesson-card { }
 .lesson-head {
@@ -297,24 +283,24 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .lesson-number {
   font-family: var(--font-mono);
   font-weight: 500;
-  background: var(--accent-soft);
+  background: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 13px;
 }
-.lesson-teacher { font-size: 12.5px; color: var(--ink-soft); }
+.lesson-teacher { font-size: 12.5px; color: var(--md-on-surface-variant); }
 .lesson-done { margin-left: auto; }
 
 .media-block {
-  background: var(--bg);
-  border-left: 3px solid var(--accent);
+  background: var(--md-surface-container);
+  border-left: 3px solid var(--md-primary);
   padding: 8px 12px;
   margin-top: 8px;
   border-radius: 0 6px 6px 0;
 }
 .media-label { font-size: 13px; font-weight: 500; }
-.media-cue { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.media-cue { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
 
 .simple-list { padding-left: 18px; font-size: 13.5px; }
 
@@ -339,7 +325,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--md-primary);
   outline-offset: 2px;
 }
 
@@ -348,35 +334,35 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .pill-option { position: relative; }
 .pill-option input { position: absolute; opacity: 0; width: 0; height: 0; }
 .pill-option span {
-  display: inline-block; padding: 9px 18px; border: 1px solid var(--line); border-radius: 20px;
-  font-size: 13.5px; cursor: pointer; background: var(--md-surface-container-lowest); color: var(--ink-soft); transition: all .15s ease;
+  display: inline-block; padding: 9px 18px; border: 1px solid var(--md-outline-variant); border-radius: 20px;
+  font-size: 13.5px; cursor: pointer; background: var(--md-surface-container-lowest); color: var(--md-on-surface-variant); transition: all .15s ease;
 }
-.pill-option input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--md-on-primary); font-weight: 500; }
-.pill-option input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pill-option input:checked + span { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); font-weight: 500; }
+.pill-option input:focus-visible + span { outline: 2px solid var(--md-primary); outline-offset: 2px; }
 
 .conditional {
-  margin-top: 10px; padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--bg);
+  margin-top: 10px; padding: 12px 14px; border-left: 3px solid var(--md-primary); background: var(--md-surface-container);
   border-radius: 0 8px 8px 0; display: none;
 }
 .conditional.show { display: block; }
 
 .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
 .check-card {
-  display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--md-outline-variant);
   border-radius: 8px; background: var(--md-surface-container-lowest); font-size: 13.5px; cursor: pointer;
 }
-.check-card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-.check-card input { accent-color: var(--accent); }
+.check-card:has(input:checked) { border-color: var(--md-primary); background: var(--md-secondary-container); }
+.check-card input { accent-color: var(--md-primary); }
 
-.closing-note { background: var(--panel-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); }
+.closing-note { background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); padding: 20px 22px; font-size: 13.5px; line-height: 1.6; color: var(--md-on-surface-variant); }
 .closing-note p { margin: 0 0 12px; }
-.closing-note .deadline-line, .closing-note .method-line { color: var(--ink); font-weight: 500; }
-.placeholder-empty { color: var(--warn); font-style: italic; font-weight: 400; }
+.closing-note .deadline-line, .closing-note .method-line { color: var(--md-on-surface); font-weight: 500; }
+.placeholder-empty { color: var(--md-error); font-style: italic; font-weight: 400; }
 
-.success-banner { display: none; background: var(--status-success-bg); color: var(--status-success); border: 1px solid var(--status-success); padding: 16px 20px; border-radius: var(--radius); font-size: 14px; }
+.success-banner { display: none; background: var(--status-success-bg); color: var(--status-success); border: 1px solid var(--status-success); padding: 16px 20px; border-radius: var(--md-radius-md); font-size: 14px; }
 .success-banner.show { display: block; }
 
-.required-mark { color: var(--warn); }
+.required-mark { color: var(--md-error); }
 
 .share-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
@@ -400,7 +386,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   align-items: center;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--md-outline-variant);
   flex-wrap: wrap;
 }
 .column-row:last-child { border-bottom: none; }
@@ -409,15 +395,15 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   font-family: var(--font-mono);
   font-size: 10.5px;
   text-transform: uppercase;
-  color: var(--ink-soft);
-  background: var(--bg);
-  border: 1px solid var(--line);
+  color: var(--md-on-surface-variant);
+  background: var(--md-surface-container);
+  border: 1px solid var(--md-outline-variant);
   padding: 2px 8px;
   border-radius: 10px;
 }
 .column-protected-badge {
   font-size: 10px;
-  background: var(--accent-soft);
+  background: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
   padding: 2px 8px;
   border-radius: 10px;
@@ -434,7 +420,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   max-width: 760px; width: 100%; box-shadow: var(--md-elevation-3);
 }
 .modal-box h2 {
-  font-family: var(--font-display); font-size: 19px; margin: 0 0 6px;
+  font-family: var(--md-font-family); font-size: 19px; margin: 0 0 6px;
 }
 .modal-close-row { display: flex; justify-content: flex-end; margin-top: 16px; gap: 10px; }
 
@@ -444,22 +430,22 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 }
 .export-col-check {
   display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-  border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--md-outline-variant); border-radius: 8px; font-size: 13px; cursor: pointer;
 }
-.export-col-check input { accent-color: var(--accent); }
+.export-col-check input { accent-color: var(--md-primary); }
 
 /* ---------- Редактируемая таблица предпросмотра импорта ---------- */
-.editable-table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; }
+.editable-table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--md-outline-variant); border-radius: 8px; margin: 12px 0; }
 .editable-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 .editable-table th, .editable-table td {
-  border: 1px solid var(--line); padding: 0; min-width: 120px;
+  border: 1px solid var(--md-outline-variant); padding: 0; min-width: 120px;
 }
-.editable-table th { background: var(--accent-soft); }
+.editable-table th { background: var(--md-secondary-container); }
 .editable-table [contenteditable] {
   padding: 6px 8px; outline: none; min-height: 20px; white-space: pre-wrap;
 }
 .editable-table [contenteditable]:focus { background: var(--md-primary-container); }
-.editable-table .row-remove-cell, .editable-table .col-remove-cell { text-align: center; background: var(--bg); }
+.editable-table .row-remove-cell, .editable-table .col-remove-cell { text-align: center; background: var(--md-surface-container); }
 .editable-table .import-anomaly-cell { background: var(--status-important-bg); }
 .editable-table .import-anomaly-cell [contenteditable]:focus { background: var(--md-primary-container); }
 
@@ -517,7 +503,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
    оформление под этот модуль — ровно так же, как в Конгрессах. */
 .docs-arc { display: grid; gap: 14px; margin-top: 6px; }
 .docs-arc__owner { font-weight: 600; margin-bottom: 6px; }
-.cwdoc { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
+.cwdoc { border: 1px solid var(--md-outline-variant); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
 .cwdoc__head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .cwdoc__meta { font-size: 12.5px; color: var(--md-on-surface-variant); }
 .cwdoc__subject { margin: 8px 0 0; font-weight: 500; }

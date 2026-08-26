@@ -23,18 +23,18 @@
 <link rel="stylesheet" href="css/styles.css">
 <style>
   /* Лёгкая обёртка отдельно от основного приложения — без сайдбара, одна колонка */
-  body { background: var(--bg); }
+  body { background: var(--md-surface-container); }
   .wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
   header.top { margin-bottom: 24px; }
-  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-  header.top h1 { font-family: var(--font-display); font-size: 26px; font-weight: 600; margin: 6px 0 6px; }
-  .lead { color: var(--ink-soft); font-size: 14px; line-height: 1.5; margin: 0; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--md-primary); }
+  header.top h1 { font-family: var(--md-font-family); font-size: 26px; font-weight: 600; margin: 6px 0 6px; }
+  .lead { color: var(--md-on-surface-variant); font-size: 14px; line-height: 1.5; margin: 0; }
   form { display: flex; flex-direction: column; gap: 18px; }
-  fieldset { background: var(--panel-bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
-  legend { font-family: var(--font-display); font-size: 15.5px; font-weight: 600; padding: 0 6px; }
+  fieldset { background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); padding: 20px 22px; }
+  legend { font-family: var(--md-font-family); font-size: 15.5px; font-weight: 600; padding: 0 6px; }
   .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .field:last-child { margin-bottom: 0; }
-  .field label, .group-label { font-size: 13px; color: var(--ink-soft); font-weight: 500; }
+  .field label, .group-label { font-size: 13px; color: var(--md-on-surface-variant); font-weight: 500; }
   /* В css/styles.css у всех label задано display:flex;flex-direction:column —
      это нужно админским формам, где подпись стоит над полем. Здесь подпись и
      сама лежит над полем (его держит .field), а колонка внутри label уводила
@@ -52,7 +52,7 @@
 <noscript>
   <style>#reg-form, .success-banner { display: none !important; }</style>
   <div class="wrap">
-    <p style="padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel-bg);">
+    <p style="padding:16px;border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-md);background:var(--md-surface-container-lowest);">
       Для заполнения формуляра нужно включить JavaScript в браузере.
       Если это невозможно, попросите у районного старейшины бумажный бланк.
     </p>
