@@ -140,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.87.1',
+      version: '9.88.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -2879,11 +2879,22 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        * другого.
        */
       docText(kind, suffix, settingsKey, fallback) {
+        let found = null;
         if (this.docsReady()) {
-          const found = self.CWTemplates.text(this.docCtx(kind, suffix), this.docLang());
-          if (found && found.body) return found.body;
+          found = self.CWTemplates.text(this.docCtx(kind, suffix), this.docLang());
+          /* Признак «правил пользователь» — `custom`, а НЕ непустое тело:
+             `CWTemplates.text()` идёт через `effective()` и при отсутствии
+             пользовательской записи отдаёт СИСТЕМНЫЙ шаблон, тело у которого
+             непустое всегда. Проверка «if (found.body)» пропускала системный
+             текст вперёд настроек и делала откат ниже недостижимым — у
+             Клиндария дыра латентная (перенос обычно проходит), у Конгрессов
+             была вскрыта. См. docs/documents/02-templates-migration-audit.md. */
+          if (found && found.body && found.custom) return found.body;
         }
-        return App.state.app.settings[settingsKey + suffix] || fallback;
+        const legacy = App.state.app.settings[settingsKey + suffix];
+        if (legacy) return legacy;
+        if (found && found.body) return found.body;
+        return fallback;
       },
       /** Записать текст документа. Возвращает промис — вызывающему ждать не обязательно. */
       docSave(kind, suffix, settingsKey, html) {
@@ -2915,15 +2926,23 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
       /** Дополнительные страницы письма (памятка координатору и прочее). */
       docPages(suffix) {
+        let found = null;
         if (this.docsReady()) {
-          const found = self.CWTemplates.text(this.docCtx('letter', suffix), this.docLang());
-          if (found && Array.isArray(found.pages)) return found.pages;
+          found = self.CWTemplates.text(this.docCtx('letter', suffix), this.docLang());
+          /* Только ПОЛЬЗОВАТЕЛЬСКАЯ запись важнее настроек. У системных
+             шаблонов страницы есть всегда (памятка координатору лежит в
+             builtin.js), поэтому прежняя проверка «Array.isArray(found.pages)»
+             отдавала системную памятку вперёд правленой пользователем —
+             и увидеть подмену можно было только на бумаге. */
+          if (found && found.custom && Array.isArray(found.pages) && found.pages.length) return found.pages;
         }
         /* Запасной путь: свои страницы, если они есть, иначе системные.
            Пустой массив здесь недопустим — письмо ушло бы БЕЗ памятки
            координатору, и заметить это можно было бы только на бумаге. */
         const own = App.state.app.settings.letterPages && App.state.app.settings.letterPages[suffix];
-        return (Array.isArray(own) && own.length) ? own : builtinPages(suffix);
+        if (Array.isArray(own) && own.length) return own;
+        if (found && Array.isArray(found.pages) && found.pages.length) return found.pages;
+        return builtinPages(suffix);
       },
       docSavePages(suffix, pages) {
         if (!this.docsReady()) {
@@ -3570,6 +3589,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       docActualLang(kind, suffix) {
         if (this.docsReady() && self.CWTemplates) {
           const found = self.CWTemplates.text(this.docCtx(kind, suffix), this.docLang());
+          /* Отвечать обязан ТОТ ЖЕ источник, из которого собран текст, иначе
+             архив соврёт. Пользовательская запись — её язык; иначе, если текст
+             взят из настроек модуля, язык там только запрошенный (колонок
+             перевода у настроек нет); и лишь затем язык системного шаблона. */
+          if (found && found.custom && found.lang) return found.lang;
+          const legacyKey = { letter: 'letterTemplate', email: 'emailBody', salutation: 'letterSalutation' }[kind];
+          if (legacyKey && App.state.app.settings[legacyKey + suffix]) return this.docLang();
           if (found && found.lang) return found.lang;
         }
         return this.docLang();

@@ -73,7 +73,7 @@ export function adoptTemplates(){
     // Правок не было — просто убираем пустые ключи, копия не нужна.
     if(byLang||byType){delete s.templates;delete s.templatesByType;save()}
     return Promise.resolve(false)}
-  makeBackup("перед переносом шаблонов в общее хранилище");
+  makeBackup(t("cong.backup.before_move_templates"));
   return Promise.all(jobs).then(()=>{
     delete s.templates;delete s.templatesByType;save();
     return touched}).catch(e=>{

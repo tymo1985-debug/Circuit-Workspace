@@ -76,17 +76,31 @@ export function pickTemplate(t){return pickTemplateInfo(t).body}
  * Клиндарии (`docActualLang`).
  */
 export function pickTemplateInfo(t){
-  let s=S(),lang=docLang();
+  let s=S(),lang=docLang(),ctxType=CONGRESS_CONTEXT+":"+t.type,
+      byType=null,main=null;
   if(self.CWTemplates&&self.CWTemplates.stored){
-    if(t.type){let byType=self.CWTemplates.text(CONGRESS_CONTEXT+":"+t.type,lang);
-      if(byType&&byType.body)return{body:byType.body,lang:byType.lang||lang,id:byType.id||CONGRESS_TEMPLATE_ID,context:CONGRESS_CONTEXT+":"+t.type,updatedAt:templateUpdatedAt(byType.id)}}
-    let main=self.CWTemplates.text(CONGRESS_CONTEXT,lang);
-    if(main&&main.body)return{body:main.body,lang:main.lang||lang,id:main.id||CONGRESS_TEMPLATE_ID,context:CONGRESS_CONTEXT,updatedAt:templateUpdatedAt(main.id)};
+    if(t.type)byType=self.CWTemplates.text(ctxType,lang);
+    main=self.CWTemplates.text(CONGRESS_CONTEXT,lang);
   }
-  /* Хранилище ещё не прочитано или перенос не выполнен — прежний источник.
-     Язык здесь только запрошенный: у настроек модуля колонок перевода нет. */
-  let legacy=(s.templatesByType&&s.templatesByType[t.type])||(s.templates&&s.templates[lang])||builtinTemplate(lang);
-  return{body:legacy,lang:lang,id:CONGRESS_TEMPLATE_ID,context:CONGRESS_CONTEXT,updatedAt:null}}
+  let info=(x,ctx)=>({body:x.body,lang:x.lang||lang,id:x.id||CONGRESS_TEMPLATE_ID,context:ctx,updatedAt:templateUpdatedAt(x.id)});
+  /* 1. Правка пользователя в общем хранилище. Признак — `custom`, а НЕ
+     непустое тело: `CWTemplates.text()` идёт через `effective()` и при
+     отсутствии пользовательской записи отдаёт СИСТЕМНЫЙ шаблон, тело у
+     которого непустое всегда. Проверка «if(body)» пропускала системный текст
+     вперёд настроек модуля и делала откат ниже недостижимым — см.
+     docs/documents/02-templates-migration-audit.md. */
+  if(byType&&byType.body&&byType.custom)return info(byType,ctxType);
+  if(main&&main.body&&main.custom)return info(main,CONGRESS_CONTEXT);
+  /* 2. Прежнее место хранения — путь отката фазы 2б. Работает, пока перенос
+     не выполнен или хранилище ещё не прочитано. Язык здесь только
+     запрошенный: у настроек модуля колонок перевода нет. */
+  let legacy=(s.templatesByType&&s.templatesByType[t.type])||(s.templates&&s.templates[lang]);
+  if(legacy)return{body:legacy,lang:lang,id:CONGRESS_TEMPLATE_ID,context:CONGRESS_CONTEXT,updatedAt:null};
+  /* 3. Системный текст. Берём его из хранилища, если оно прочитано: там он
+     той же версии, что показывают «Документы». */
+  if(byType&&byType.body)return info(byType,ctxType);
+  if(main&&main.body)return info(main,CONGRESS_CONTEXT);
+  return{body:builtinTemplate(lang),lang:lang,id:CONGRESS_TEMPLATE_ID,context:CONGRESS_CONTEXT,updatedAt:null}}
 function templateUpdatedAt(id){let tpl=id&&self.CWTemplates&&self.CWTemplates.get?self.CWTemplates.get(id):null;return(tpl&&tpl.updatedAt)||null}
 export function letterHTML(t,congress){let s=S(),tpl=fill(pickTemplate(t),values(t,congress));return`<article class="letter-page" style="font-family:${esc(s.font)};font-size:${(+s.fontSize||17)}px">${renderPlain(tpl)}</article>`}
 /**
