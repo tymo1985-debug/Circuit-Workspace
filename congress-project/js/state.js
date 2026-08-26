@@ -73,7 +73,7 @@ export function adoptTemplates(){
     // Правок не было — просто убираем пустые ключи, копия не нужна.
     if(byLang||byType){delete s.templates;delete s.templatesByType;save()}
     return Promise.resolve(false)}
-  makeBackup(t("cong.backup.before_move_templates"));
+  makeBackup("cong.backup.before_move_templates");
   return Promise.all(jobs).then(()=>{
     delete s.templates;delete s.templatesByType;save();
     return touched}).catch(e=>{
@@ -81,7 +81,14 @@ export function adoptTemplates(){
     // продолжают печататься его текстом, перенос повторится при следующем
     // запуске.
     console.error("Конгрессы: перенос шаблонов не выполнен, данные не тронуты",e);
-    return false})}
+    /* Отдельное значение, а не общий `false`: тем же `false` отвечает случай
+       «правок не было», и различить их вызывающему иначе нечем. Он показывает
+       сообщение — молчаливый отказ здесь и был дефектом. Повторной попытки в
+       этой сессии по-прежнему НЕТ: превращать необратимую операцию над данными
+       пользователя в «пробуем, пока не выйдет» — отдельное решение со своим
+       разбором. Перенос повторится при следующем запуске модуля.
+       Интерфейс из этого файла не трогаем: state.js про данные. */
+    return "failed"})}
 
 export function adoptShared(){let s=S();if(self.CWSender){self.CWSender.adopt({name:s.senderName,code:s.senderCode,address:s.senderAddress,phone1:s.senderPhone1,phone2:s.senderPhone2,email:s.senderEmail});["senderName","senderCode","senderAddress","senderPhone1","senderPhone2","senderEmail"].forEach(k=>delete s[k])}if(self.CWDocLang){if(s.language)self.CWDocLang.adopt(s.language);delete s.language}save()}
 
@@ -186,19 +193,24 @@ export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSa
  * у архива документов: страховка не имеет права ронять то, ради чего заведена.
  * Признак отказа — `null` в результате промиса.
  */
-export function makeBackup(label){
-  let lbl=label||t("cong.msg.autobackup"),at=Date.now();
-  if(backups&&backups.available())return backups.add({at:at,label:lbl,payload:JSON.stringify(store.st)});
-  try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date(at).toISOString(),label:lbl,data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,MAX_BACKUPS)))}
+export function makeBackup(labelKey){
+  let key=labelKey||"cong.msg.autobackup",lbl=t(key),at=Date.now();
+  if(backups&&backups.available())return backups.add({at:at,label:lbl,labelKey:key,payload:JSON.stringify(store.st)});
+  try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date(at).toISOString(),label:lbl,labelKey:key,data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,MAX_BACKUPS)))}
   catch(e){console.error("Конгрессы: автокопия не сохранена",e);return Promise.resolve(null)}
   return Promise.resolve("legacy")}
 
-/** Шапки автокопий, НОВЫЕ → СТАРЫЕ: `{id, at, label}`. Состояний в память не
- *  поднимает — список окна автокопий их и не показывает. */
+/** Шапки автокопий, НОВЫЕ → СТАРЫЕ: `{id, at, label, labelKey}`. Состояний в
+ *  память не поднимает — список окна автокопий их и не показывает.
+ *  `labelKey` обязан доехать до вызывающего: подпись рисуется ИЗ КЛЮЧА
+ *  (`backupLabel()` в `backup.js`), а `label` — это текст, замёрзший на языке
+ *  момента снятия. Пока ключ здесь терялся, механизм перевода подписей был
+ *  недостижим для основного хранилища: копия, снятая при русском интерфейсе,
+ *  оставалась русской в немецком списке, хотя ключ лежал в записи. */
 export function listBackups(){
-  if(backups&&backups.available())return backups.list().map(b=>({id:b.id,at:b.at,label:b.label}));
+  if(backups&&backups.available())return backups.list().map(b=>({id:b.id,at:b.at,label:b.label,labelKey:b.labelKey||""}));
   try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");if(!Array.isArray(a))return[];
-    return a.map(x=>({id:"legacy:"+x.id,at:Date.parse(x.date)||0,label:x.label||""}))}
+    return a.map(x=>({id:"legacy:"+x.id,at:Date.parse(x.date)||0,label:x.label||"",labelKey:x.labelKey||""}))}
   catch(e){console.error(t("cong.alert.backups_corrupt"),e);return[]}}
 
 /** Состояние из автокопии по её id. `null` = копии нет или она нечитаема. */
@@ -227,7 +239,7 @@ export function load(){
      есть — ДО migrate(), чтобы в базу уехало ровно то, что лежало под ключом,
      и перенос нельзя было спутать с правкой данных. Снимок в собственные копии
      модуля снимается перед этим: операция необратимая. */
-  if(fromLegacy&&usable){makeBackup(t("cong.backup.before_move_shared"));remote.write(raw)}
+  if(fromLegacy&&usable){makeBackup("cong.backup.before_move_shared");remote.write(raw)}
   migrate();adoptShared();
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
   render();store.lastSavedAt=new Date();updateSaveStatus()}

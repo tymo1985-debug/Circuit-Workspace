@@ -113,7 +113,7 @@
   function renderFilters() {
     $('#filters').innerHTML = FILTERS.map(function (f) {
       var on = state.filter === f.key;
-      return '<button type="button" class="md-chip' + (on ? ' md-chip-full' : '') + '"'
+      return '<button type="button" class="md-chip' + (on ? ' selected' : '') + '"'
         + ' aria-pressed="' + on + '" data-filter="' + f.key + '">' + escapeHtml(t(f.label)) + '</button>';
     }).join('');
   }
@@ -182,7 +182,7 @@
   function renderArchiveFilters() {
     $('#archiveFilters').innerHTML = ARCHIVE_FILTERS.map(function (f) {
       var on = archive.filter === f.key;
-      return '<button type="button" class="md-chip' + (on ? ' md-chip-full' : '') + '"'
+      return '<button type="button" class="md-chip' + (on ? ' selected' : '') + '"'
         + ' aria-pressed="' + on + '" data-afilter="' + f.key + '">' + escapeHtml(t(f.label)) + '</button>';
     }).join('');
   }
@@ -272,7 +272,7 @@
     $('#screenDirectory').hidden = name !== 'directory';
     Array.prototype.forEach.call(document.querySelectorAll('[data-screen]'), function (btn) {
       var on = btn.dataset.screen === name;
-      btn.classList.toggle('md-chip-full', on);
+      btn.classList.toggle('selected', on);
       btn.setAttribute('aria-pressed', String(on));
     });
     if (name === 'archive') loadArchive(false);
@@ -395,7 +395,7 @@
     $('#edLangs').innerHTML = Object.keys(tr).map(function (lang) {
       var on = state.lang === lang;
       var filled = !!(tr[lang] && tr[lang].body);
-      return '<button type="button" class="md-chip' + (on ? ' md-chip-full' : '') + '"'
+      return '<button type="button" class="md-chip' + (on ? ' selected' : '') + '"'
         + ' aria-pressed="' + on + '" data-lang="' + lang + '">' + lang.toUpperCase()
         + (filled ? '' : ' · ' + escapeHtml(t('doc.lang_empty'))) + '</button>';
     }).join('');

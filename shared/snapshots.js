@@ -85,9 +85,18 @@
    * @param {number} options.limit — сколько снимков хранить (старые удаляются).
    * @param {string} [options.legacyKey] — ключ localStorage со старым массивом.
    * @param {function(string):Array} [options.readLegacy] — разбор старого
-   *   массива в записи `{at, label, meta, payload}`. Формат у модулей разный
-   *   (у одного `{at,data}`, у другого `{date,label,data}`), поэтому разбор
-   *   принадлежит модулю, а не общему слою.
+   *   массива в записи `{at, label, labelKey, meta, payload}`. Формат у модулей
+   *   разный (у одного `{at,data}`, у другого `{date,label,data}`), поэтому
+   *   разбор принадлежит модулю, а не общему слою.
+   *
+   * `label` — ГОТОВЫЙ текст подписи, `labelKey` — ключ локализации, из которого
+   * этот текст получен. Хранятся оба, и это не избыточность: у записей, снятых
+   * до 26.08.2026, ключа нет физически, поэтому рисовать список можно только
+   * как `labelKey ? t(labelKey) : label`. Убрать запасную ветку нельзя никогда —
+   * старые записи живут в базе и в резервных копиях пользователей. Ключ нужен
+   * потому, что готовый текст замерзает на языке, который был в момент снимка:
+   * копия, снятая при русском интерфейсе, оставалась русской и после перехода
+   * на немецкий.
    */
   function create(options) {
     var moduleId = options.module;
@@ -151,12 +160,13 @@
           module: moduleId,
           at: at,
           label: item.label || '',
+          labelKey: item.labelKey || '',
           meta: item.meta || null,
           payload: String(item.payload == null ? '' : item.payload),
         };
         return db.put(record).then(function () {
           if (!known[record.id]) {
-            index.push({ id: record.id, at: record.at, label: record.label, meta: record.meta });
+            index.push({ id: record.id, at: record.at, label: record.label, labelKey: record.labelKey, meta: record.meta });
             known[record.id] = true;
           }
         });
@@ -185,7 +195,7 @@
         if (!db) { ready = true; return Promise.resolve(false); }
         return db.eachByIndex('module', moduleId, function (record) {
           /* Из записи берём ТОЛЬКО шапку: payload остаётся в базе. */
-          return { id: record.id, at: Number(record.at) || 0, label: record.label || '', meta: record.meta || null };
+          return { id: record.id, at: Number(record.at) || 0, label: record.label || '', labelKey: record.labelKey || '', meta: record.meta || null };
         }).then(function (heads) {
           index = heads;
           sortIndex();
@@ -207,7 +217,7 @@
       /** Шапки снимков, НОВЫЕ → СТАРЫЕ. Копии: список наружу не редактируется. */
       list: function () {
         return index.slice().reverse().map(function (item) {
-          return { id: item.id, at: item.at, label: item.label, meta: item.meta };
+          return { id: item.id, at: item.at, label: item.label, labelKey: item.labelKey, meta: item.meta };
         });
       },
 
@@ -231,10 +241,11 @@
           module: moduleId,
           at: Number(entry && entry.at) || Date.now(),
           label: (entry && entry.label) || '',
+          labelKey: (entry && entry.labelKey) || '',
           meta: (entry && entry.meta) || null,
           payload: String(entry && entry.payload == null ? '' : entry.payload),
         };
-        index.push({ id: record.id, at: record.at, label: record.label, meta: record.meta });
+        index.push({ id: record.id, at: record.at, label: record.label, labelKey: record.labelKey, meta: record.meta });
         sortIndex();
         chain = chain.then(function () {
           return db.put(record).then(function () { return trim(); }).then(function () { return record.id; });

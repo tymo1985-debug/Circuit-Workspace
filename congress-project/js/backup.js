@@ -6,19 +6,32 @@ import { getBackup, listBackups, makeBackup, row, save, store } from "./state.js
 import { esc, today } from "./utils.js";
 import { t } from "./i18n.js";
 
+/* Подпись копии рисуется ИЗ КЛЮЧА, а не из сохранённого текста: готовый текст
+   замерзал на языке, который был в момент снятия, и копия, сделанная при
+   русском интерфейсе, оставалась русской в немецком списке. Запасная ветка на
+   `x.label` обязательна и убирать её нельзя НИКОГДА: у записей, снятых до
+   26.08.2026, ключа нет физически — они лежат в базе, в старом ключе
+   localStorage и в резервных копиях пользователей. Неизвестный ключ так же
+   уходит в запасную ветку: `t()` вернул бы сам ключ, а сырой `cong.msg.*`
+   в списке хуже устаревшей подписи. */
+function backupLabel(x){
+  if(!x||!x.labelKey)return (x&&x.label)||"";
+  let text=t(x.labelKey);
+  return text&&text!==x.labelKey?text:(x.label||"")}
+
 /* Список автокопий с фазы 4 приходит из общей базы шапками — без самих
    состояний. Поэтому «Восстановить» и «Скачать» читают копию по требованию,
    и оба обработчика асинхронные. Порядок восстановления прежний: сначала
    копия ТЕКУЩЕГО состояния (makeBackup снимает нагрузку синхронно), потом
    замена. */
 export function openBackup(){let a=listBackups(),by={};a.forEach(x=>{by[x.id]=x});
-$("#backupList").innerHTML=a.length?a.map(x=>`<div class="backup-row"><div><b>${esc(x.label)}</b><br><span class="muted">${esc(new Date(x.at).toLocaleString())}</span></div><button type="button" data-restore="${esc(x.id)}" class="light icon-text-btn" title="${esc(t("cong.title.restore_backup"))}">${icon("restore")}<span>${esc(t("cong.btn.restore"))}</span></button><button type="button" data-download="${esc(x.id)}" class="icon-text-btn" title="${esc(t("cong.title.download_json"))}">${icon("download")}<span>${esc(t("cong.btn.download"))}</span></button></div>`).join(""):`<p class="hint">${esc(t("cong.hint.no_backups"))}</p>`;
+$("#backupList").innerHTML=a.length?a.map(x=>`<div class="backup-row"><div><b>${esc(backupLabel(x))}</b><br><span class="muted">${esc(new Date(x.at).toLocaleString())}</span></div><button type="button" data-restore="${esc(x.id)}" class="light icon-text-btn" title="${esc(t("cong.title.restore_backup"))}">${icon("restore")}<span>${esc(t("cong.btn.restore"))}</span></button><button type="button" data-download="${esc(x.id)}" class="icon-text-btn" title="${esc(t("cong.title.download_json"))}">${icon("download")}<span>${esc(t("cong.btn.download"))}</span></button></div>`).join(""):`<p class="hint">${esc(t("cong.hint.no_backups"))}</p>`;
 $$("[data-restore]").forEach(b=>b.onclick=()=>{if(!confirm(t("cong.confirm.restore_backup")))return;
 // Кнопку гасим на время чтения: второй клик запустил бы второе
 // восстановление поверх первого.
 b.disabled=true;getBackup(b.dataset.restore).then(data=>{
 if(!data){b.disabled=false;alert(t("cong.alert.backup_unreadable"));return}
-makeBackup(t("cong.msg.before_restore"));store.st=data;save();render();$("#backupDialog").close()})});
+makeBackup("cong.msg.before_restore");store.st=data;save();render();$("#backupDialog").close()})});
 $$("[data-download]").forEach(b=>b.onclick=()=>{let x=by[b.dataset.download];b.disabled=true;
 getBackup(b.dataset.download).then(data=>{b.disabled=false;
 if(!data){alert(t("cong.alert.backup_unreadable"));return}
