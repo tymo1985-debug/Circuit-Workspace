@@ -11,8 +11,8 @@
   <link rel="icon" href="favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <style>
-  :root{--accent:#6a45c9;--accent2:#3d2470;--accent-rgb:106,69,201;--danger-rgb:186,26,26;--cal-header-bg:rgba(var(--accent-rgb),.05);--cal-weeknum-bg:rgba(var(--accent-rgb),.04);--cal-weekend-bg:rgba(var(--accent-rgb),.06);--cal-inactive-bg:transparent}
-  [data-theme="dark"]{--accent:#8a5cf6;--accent-rgb:138,92,246;--danger-rgb:255,180,171;--cal-header-bg:rgba(138,92,246,.10);--cal-weeknum-bg:rgba(138,92,246,.10);--cal-weekend-bg:rgba(138,92,246,.12);--cal-inactive-bg:rgba(42,42,45,.30)}
+  :root{--accent:#6a45c9;--accent2:#3d2470;--cal-header-bg:color-mix(in srgb, var(--md-primary) 5%, transparent);--cal-weeknum-bg:color-mix(in srgb, var(--md-primary) 4%, transparent);--cal-weekend-bg:color-mix(in srgb, var(--md-primary) 6%, transparent);--cal-inactive-bg:transparent}
+  [data-theme="dark"]{--accent:#8a5cf6;--cal-header-bg:color-mix(in srgb, var(--md-primary) 10%, transparent);--cal-weeknum-bg:color-mix(in srgb, var(--md-primary) 10%, transparent);--cal-weekend-bg:color-mix(in srgb, var(--md-primary) 12%, transparent);--cal-inactive-bg:rgba(42,42,45,.30)}
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--md-background);color:var(--md-on-surface);font-family:var(--md-font-family);overflow-x:hidden} body{display:flex;flex-direction:column}
   body::before{content:'';position:fixed;left:0;top:0;bottom:0;width:280px;background:linear-gradient(180deg,var(--accent),var(--accent2));z-index:0}
   h1,h2,h3,h4,p{margin:0} .brand h1{font-size:20px;margin-bottom:6px}
@@ -50,7 +50,7 @@
   .weeks-toolbar{display:grid;grid-template-columns:1fr 220px 220px;gap:10px}
   @media (max-width:767px){.weeks-toolbar{grid-template-columns:1fr !important}.icon-btn{width:44px !important;height:44px !important;font-size:16px}}
   .event-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(170px,230px) auto;gap:10px;align-items:center;margin-bottom:14px}.event-tools .small{justify-self:start}.event-tools .md-btn-danger{white-space:nowrap}@media (max-width:760px){.event-tools{grid-template-columns:1fr}.event-tools .small{justify-self:start}}
-  .week-item,.event-row,.note-row{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--accent);outline:2px solid rgba(20,83,45,.20)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+  .week-item,.event-row,.note-row{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--md-primary);outline:2px solid color-mix(in srgb, var(--md-primary) 20%, transparent)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
   .calendar-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}.calendar-layout.team-hidden{grid-template-columns:minmax(0,1fr)}.calendar-layout.team-hidden .calendar-side{display:none}
   .calendar-shell{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);box-shadow:var(--md-elevation-2);overflow:visible;position:relative}
   .calendar-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding:22px 24px 16px;border-bottom:1px solid rgba(216,226,219,.85)}
@@ -63,7 +63,7 @@
   .month-grid-title{font-size:15px;font-weight:600;color:var(--md-on-surface);margin-bottom:8px}
   .dow-row,.week-row{display:grid;grid-template-columns:46px 1fr}
   .dow-row{background:var(--cal-header-bg);border-bottom:1px solid var(--md-outline-variant)}.dow-corner,.week-num{border-right:1px solid var(--md-outline-variant)}.dow-corner{min-height:34px}.dow-days,.week-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:relative}.dow{min-height:34px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px 0 6px;color:var(--md-on-surface-variant);font-size:12px}.week-row{min-height:112px;border-bottom:1px solid var(--md-outline-variant)}.week-row:last-child{border-bottom:0}.week-num{display:flex;align-items:flex-start;justify-content:center;padding-top:10px;color:var(--md-on-surface-variant);font-size:12px;background:var(--cal-weeknum-bg);min-height:112px}
-  .day-cell{position:relative;min-height:112px;padding:8px 8px 8px 10px;border-right:1px solid var(--md-outline-variant)}.day-cell:last-child{border-right:0}.day-cell.inactive{background:var(--cal-inactive-bg)}.day-cell.weekend{background:var(--cal-weekend-bg)}.day-cell.inactive.weekend{background:rgba(20,83,45,.04)}.day-cell.today .day-num{background:var(--accent);color:#fff}.day-num{display:inline-flex;min-width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;font-size:13px}.day-month{color:var(--md-on-surface-variant);font-size:11px;margin-left:2px}
+  .day-cell{position:relative;min-height:112px;padding:8px 8px 8px 10px;border-right:1px solid var(--md-outline-variant)}.day-cell:last-child{border-right:0}.day-cell.inactive{background:var(--cal-inactive-bg)}.day-cell.weekend{background:var(--cal-weekend-bg)}.day-cell.inactive.weekend{background:color-mix(in srgb, var(--md-primary) 4%, transparent)}.day-cell.today .day-num{background:var(--md-primary);color:var(--md-on-primary)}.day-num{display:inline-flex;min-width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;font-size:13px}.day-month{color:var(--md-on-surface-variant);font-size:11px;margin-left:2px}
   .event-bar{position:absolute;min-height:18px;border-radius:999px;color:#fff;padding:2px 10px;display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 5px rgba(0,0,0,.08);cursor:pointer;border:0}.event-bar::before{content:'';width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.92);flex:0 0 auto}
   .calendar-side{display:grid;gap:18px}.side-card{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);box-shadow:var(--md-elevation-2);padding:18px}.side-card h4{margin:0 0 10px;font-size:18px}.side-list{display:grid;gap:8px}.side-item{padding:10px 12px;border-radius:14px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);text-align:left;cursor:pointer}.side-item strong{display:block;margin-bottom:4px}.side-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(216,226,219,.72)}.side-row:last-child{border-bottom:0}.side-label{color:var(--md-on-surface-variant);font-size:12px}.side-value{font-weight:600}
   /* Карточка ближайшего визита в шапке календаря. Раньше это был однострочный
@@ -73,7 +73,7 @@
      отрабатывать после каждой перерисовки (см. renderNextVisitCard). */
   #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;max-width:520px;padding:12px 14px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
   .nv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--accent);color:#fff;font-size:13px;font-weight:600}
+  .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:13px;font-weight:600}
   .nv-type{display:inline-flex;padding:4px 10px;border-radius:10px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px;color:var(--md-on-surface-variant)}
   .nv-type:empty{display:none}
   .nv-name{font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
@@ -81,8 +81,8 @@
   .nv-flags{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
   .nv-flag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:10px;border:1px solid var(--md-outline-variant);font-size:12px}
   .nv-flag:empty{display:none}
-  .nv-flag.is-pending{border-color:rgba(var(--danger-rgb),.45);background:rgba(var(--danger-rgb),.07)}
-  .nv-flag.is-done{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08)}
+  .nv-flag.is-pending{border-color:color-mix(in srgb, var(--md-error) 45%, transparent);background:color-mix(in srgb, var(--md-error) 7%, transparent)}
+  .nv-flag.is-done{border-color:color-mix(in srgb, var(--md-primary) 35%, transparent);background:color-mix(in srgb, var(--md-primary) 8%, transparent)}
   .toolbar-more{position:relative}
   .toolbar-more summary{list-style:none;cursor:pointer}
   .toolbar-more summary::-webkit-details-marker{display:none}
@@ -97,11 +97,11 @@
   .more-actions .actions-grid{display:grid;gap:8px;margin-top:8px}
   .more-actions .actions-grid .md-btn{height:auto;min-height:44px;padding:8px 18px;justify-content:flex-start;text-align:left;line-height:1.3;white-space:normal}
   .editor-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.editor-title{margin:0;font-size:16px}.editor-sub{color:var(--md-on-surface-variant);font-size:12px;margin-top:4px}.editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.editor-grid label{display:grid;gap:6px;font-size:12px;color:var(--md-on-surface-variant)}.editor-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.editor-meta{margin-top:10px;padding:10px 12px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:14px;font-size:12px;color:var(--md-on-surface-variant)}
-  .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-xl);box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--md-on-surface-variant);font-size:13px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--md-outline-variant);border-radius:18px;padding:14px;background:var(--md-surface-container);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(20,83,45,.50)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--md-outline-variant);color:var(--md-on-surface-variant);font-size:13px}
+  .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-xl);box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--md-on-surface-variant);font-size:13px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--md-outline-variant);border-radius:18px;padding:14px;background:var(--md-surface-container);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--md-primary);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--md-primary) 50%, transparent)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--md-outline-variant);color:var(--md-on-surface-variant);font-size:13px}
   .toast-wrap{position:fixed;top:18px;right:18px;display:grid;gap:10px;z-index:1600}.version-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px;color:var(--md-on-surface-variant)}
   .layout-help{margin-top:8px;font-size:12px;color:var(--md-on-surface-variant)} .calendar-layout-select{min-width:170px}
   .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1550;background:var(--md-surface-container-low);border-top:1px solid var(--md-outline-variant);box-shadow:0 -8px 20px rgba(0,0,0,.08);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));transform:translateZ(0);will-change:transform}
-  .offline-banner{display:none;position:sticky;top:0;z-index:1300;padding:10px 12px;border:1px solid var(--md-outline-variant);border-radius:14px;background:rgba(var(--danger-rgb),.10);color:var(--md-on-surface);margin-bottom:12px}
+  .offline-banner{display:none;position:sticky;top:0;z-index:1300;padding:10px 12px;border:1px solid var(--md-outline-variant);border-radius:14px;background:color-mix(in srgb, var(--md-error) 10%, transparent);color:var(--md-on-surface);margin-bottom:12px}
   .offline-banner.show{display:block}
   .app.menu-open .bottom-nav{display:none !important}
   .app.menu-open .sidebar{z-index:1501 !important}
@@ -112,29 +112,29 @@
   .day-cell.holiday .day-num{color:var(--md-error);font-weight:800}
   .settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
   .md-chip.settings-tab{opacity:.65}
-  .settings-tab.active{opacity:1;background:var(--accent);color:#fff;border-color:var(--accent)}
+  .settings-tab.active{opacity:1;background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
   .settings-panel{display:grid;gap:16px}
   .rte-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
   .md-btn.rte-btn{min-width:40px;padding:8px 12px;height:auto}
-  .rte-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .rte-btn.active{background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
   .rte-font-note{color:var(--md-on-surface-variant)}
   .rte-editor{min-height:220px;max-height:420px;overflow:auto;border:1px solid var(--md-outline-variant);border-radius:14px;padding:12px 14px;background:var(--md-surface-container-low)}
   .rte-editor div{margin-bottom:10px}
-  .rte-editor:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .rte-editor:focus{outline:2px solid var(--md-primary);outline-offset:1px}
   .session-toggle{display:flex;gap:4px;margin-bottom:4px}
   .session-toggle-btn{font-size:11px;padding:3px 7px;border-radius:8px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);color:var(--md-on-surface-variant);cursor:pointer}
-  .session-toggle-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .session-toggle-btn.active{background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
   [hidden]{display:none !important}
   .sy-day.holiday:not(.today) span{color:var(--md-error);font-weight:800}
   .holiday-mark{font-size:10px;margin-left:3px}
-  .day-cell.drag-over{outline:2px dashed var(--accent);outline-offset:-3px;background:rgba(20,83,45,.08)}
-  .sy-day.drag-over{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(20,83,45,.12)}
+  .day-cell.drag-over{outline:2px dashed var(--md-primary);outline-offset:-3px;background:color-mix(in srgb, var(--md-primary) 8%, transparent)}
+  .sy-day.drag-over{outline:2px dashed var(--md-primary);outline-offset:-2px;background:color-mix(in srgb, var(--md-primary) 12%, transparent)}
   @media (min-width:1201px){.app{grid-template-columns:280px 1fr !important}.sidebar{display:flex !important;position:relative !important;left:auto !important;top:auto !important;width:auto !important;z-index:1 !important}.bottom-nav{display:none !important}.mobile-menu-btn{display:none !important}.mobile-overlay{display:none !important}}
   @media (min-width:768px) and (max-width:1200px){body::before{display:none!important}.app{grid-template-columns:1fr!important}.sidebar{position:fixed;left:-296px;top:0;bottom:0;width:280px;transition:left .24s ease;z-index:1501}.mobile-menu-btn{display:inline-flex!important}.app.menu-open .sidebar{left:0}.main{padding:18px}.dow-row,.week-row{grid-template-columns:38px 1fr}.topbar h2{font-size:24px}}
   @media (max-width:767px){body::before{display:none !important}.app{grid-template-columns:1fr !important}.sidebar{display:flex !important;position:fixed !important;top:0 !important;left:-296px !important;bottom:0 !important;width:280px !important;z-index:1501 !important;transition:left .24s ease !important;filter:none !important;opacity:1 !important;pointer-events:auto !important}.app.menu-open .sidebar{left:0 !important}.mobile-menu-btn{display:inline-flex !important}.mobile-overlay.show{display:block !important}.bottom-nav{display:block !important}.main{padding:16px 16px 96px !important}.topbar{position:sticky;top:0;z-index:1200;background:var(--md-background);padding-top:4px}.actions{gap:8px}.actions .md-btn,.actions label.md-btn,.mobile-menu-btn{padding:10px 12px}.form-grid,.pdf-grid{grid-template-columns:1fr !important}.dow-row,.week-row{display:grid;grid-template-columns:46px 1fr}.topbar h2{font-size:24px}}
-  .week-row:hover .week-days{background: rgba(20,83,45,.06)}
-  .day-cell.today-col{background: linear-gradient(to bottom, rgba(20,83,45,.08), transparent 55%)}
-  .day-cell.today-col.weekend{background: linear-gradient(to bottom, rgba(20,83,45,.10), transparent 55%)}
+  .week-row:hover .week-days{background: color-mix(in srgb, var(--md-primary) 6%, transparent)}
+  .day-cell.today-col{background: linear-gradient(to bottom, color-mix(in srgb, var(--md-primary) 8%, transparent), transparent 55%)}
+  .day-cell.today-col.weekend{background: linear-gradient(to bottom, color-mix(in srgb, var(--md-primary) 10%, transparent), transparent 55%)}
   .day-add-btn{position:absolute;right:6px;bottom:6px;width:22px;height:22px;border-radius:999px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface);display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow: var(--md-elevation-2);font-size:14px;line-height:1}
   .day-cell:hover .day-add-btn{display:flex} @media (hover:none){.day-add-btn{display:flex;opacity:.78}}
   @media (max-width:767px){.day-add-btn{right:4px;bottom:4px;width:20px;height:20px;font-size:13px}}
@@ -150,10 +150,10 @@
  .calendar-layout.team-hidden .calendar-side{display:block !important}
  .calendar-side{display:block !important;position:sticky;top:var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px));align-self:start;max-height:calc(100dvh - var(--topbar-h, 88px) - 24px);overflow:auto;-webkit-overflow-scrolling:touch}
  .calendar-side .team-panel-card{display:none !important}
- .day-cell{cursor:pointer}.day-cell.selected-day{outline:2px solid var(--accent);outline-offset:-2px;background:rgba(var(--accent-rgb),.10)}
- .week-row:hover .week-days{background:rgba(var(--accent-rgb),.06)}
- .day-cell.today-col{background:linear-gradient(to bottom, rgba(var(--accent-rgb),.08), transparent 55%)}
- .day-cell.today-col.weekend{background:linear-gradient(to bottom, rgba(var(--accent-rgb),.10), transparent 55%)}
+ .day-cell{cursor:pointer}.day-cell.selected-day{outline:2px solid var(--md-primary);outline-offset:-2px;background:color-mix(in srgb, var(--md-primary) 10%, transparent)}
+ .week-row:hover .week-days{background:color-mix(in srgb, var(--md-primary) 6%, transparent)}
+ .day-cell.today-col{background:linear-gradient(to bottom, color-mix(in srgb, var(--md-primary) 8%, transparent), transparent 55%)}
+ .day-cell.today-col.weekend{background:linear-gradient(to bottom, color-mix(in srgb, var(--md-primary) 10%, transparent), transparent 55%)}
  .modal{overflow:auto;-webkit-overflow-scrolling:touch;align-items:flex-start}.modal-card{max-height:calc(100dvh - 36px);overflow:auto}
  .accent-preview{display:inline-flex;gap:6px;align-items:center;margin-top:8px;color:var(--md-on-surface-variant);font-size:12px}.accent-preview span{width:16px;height:16px;border-radius:999px;background:var(--accent);border:1px solid var(--md-outline-variant)}
  @media (max-width:820px){.calendar-layout{grid-template-columns:1fr !important}.calendar-side{position:static;max-height:none;overflow:visible}.calendar-side .side-card{margin-top:12px}}
@@ -222,7 +222,7 @@ body::before{display:none !important}
 .day-popover-event span{display:block;color:var(--md-on-surface-variant);font-size:12px;margin-top:2px}
 .day-popover-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .day-popover-actions .md-btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}
-.sy-day.has-events:hover{outline:2px solid var(--accent);outline-offset:1px}
+.sy-day.has-events:hover{outline:2px solid var(--md-primary);outline-offset:1px}
 @media (max-width:680px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .md-btn{flex:1 1 auto}}
 
 
@@ -256,7 +256,7 @@ body::before{display:none !important}
 .cp-doc-paper{background:#fff;color:#16251d;border-radius:12px;padding:22px 24px;margin-top:12px;
   font:13.5px/1.62 Georgia,"Times New Roman",serif;box-shadow:0 2px 10px rgba(0,0,0,.18);
   overflow-wrap:anywhere;max-height:52vh;overflow-y:auto}
-.cp-doc-paper #composerPaper[contenteditable="true"]{outline:2px solid var(--accent, #6a45c9);outline-offset:4px}
+.cp-doc-paper #composerPaper[contenteditable="true"]{outline:2px solid var(--md-primary, #6a45c9);outline-offset:4px}
 /* Шесть кнопок в ряд на телефон не помещаются: без переноса «Править разово»
    уезжала за левый край карточки. Свой класс, чтобы не трогать .editor-actions
    в остальных модалках модуля. */
@@ -281,12 +281,12 @@ body::before{display:none !important}
 .doc-snapshot{padding:10px 12px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .send-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}
-.send-card.is-pending{border-color:rgba(var(--danger-rgb),.45);background:rgba(var(--danger-rgb),.07)}
-.send-card.is-done{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08)}
+.send-card.is-pending{border-color:color-mix(in srgb, var(--md-error) 45%, transparent);background:color-mix(in srgb, var(--md-error) 7%, transparent)}
+.send-card.is-done{border-color:color-mix(in srgb, var(--md-primary) 35%, transparent);background:color-mix(in srgb, var(--md-primary) 8%, transparent)}
 .send-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:12px}
 .send-status{font-size:11px;color:var(--md-on-surface-variant)}
 .send-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none}
-.send-toggle input{width:auto;margin:0;accent-color:var(--accent)}
+.send-toggle input{width:auto;margin:0;accent-color:var(--md-primary)}
 @media (max-width:680px){.send-control-grid{grid-template-columns:1fr}}
 
 .calendar-details-card #calendarSideDetails .side-item-card:has(.entry-actions){display:none !important}
@@ -295,8 +295,8 @@ body::before{display:none !important}
 .sync-card h4{margin:0 0 8px;font-size:16px}.sync-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}.sync-actions .md-btn{box-shadow:none}.sync-status{margin-top:10px;color:var(--md-on-surface-variant);font-size:12px}
 
 /* v9.5.8: annual view keeps current day/event visible in the side panel */
-.sy-day.selected{outline:2px solid var(--accent) !important;outline-offset:1px !important;background:rgba(var(--accent-rgb),.14) !important}
-.sy-day.today.selected{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18) !important}
+.sy-day.selected{outline:2px solid var(--md-primary) !important;outline-offset:1px !important;background:color-mix(in srgb, var(--md-primary) 14%, transparent) !important}
+.sy-day.today.selected{box-shadow:0 0 0 3px color-mix(in srgb, var(--md-primary) 18%, transparent) !important}
 
 /* v9.5.9: year view shows weekly event bars instead of dots */
 .sy-days,.sy-event-dots,.sy-event-dot{display:none !important}
@@ -605,7 +605,7 @@ body::before{display:none !important}
             <div data-i18n="cp.history_hint" class="small" style="margin-bottom:10px">Программа автоматически сохраняет контрольные точки (не чаще одной раз в несколько минут) — если что-то пошло не так, можно откатиться к одной из последних версий данных.</div>
             <button data-i18n="cp.history_show" class="md-btn md-btn-outlined md-state-layer" id="openHistoryBtn" type="button">🕒 Показать историю изменений</button>
           </div>
-          <div class="md-card" style="margin-top:14px;box-shadow:none;border:1px dashed var(--md-error);border-radius:18px;padding:14px;background:rgba(var(--danger-rgb),.06)">
+          <div class="md-card" style="margin-top:14px;box-shadow:none;border:1px dashed var(--md-error);border-radius:18px;padding:14px;background:color-mix(in srgb, var(--md-error) 6%, transparent)">
             <div data-i18n="cp.danger_zone" class="small" style="color:var(--md-error);font-weight:700;margin-bottom:8px">Опасная зона</div>
             <div data-i18n="cp.danger_hint" class="small" style="margin-bottom:10px">Необратимое действие: все локальные данные приложения будут удалены безвозвратно. Перед этим рекомендуем создать backup.</div>
             <button data-i18n="cp.reset_app" class="md-btn md-btn-danger md-state-layer" id="resetAppBtn" type="button">Сбросить приложение</button>
