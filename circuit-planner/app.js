@@ -140,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.91.2',
+      version: '9.91.3',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -488,7 +488,7 @@
 
     store: {
       ensureSettingsDefaults(settings = {}) {
-        const out = { ...settings }; if (typeof out.showTeamPanel !== 'boolean') out.showTeamPanel = true; if (typeof out.showHolidays !== 'boolean') out.showHolidays = true; if (!out.language) out.language = 'ru'; if (!out.theme) out.theme = 'light'; if (!out.layoutPreset || !['classic','compact','spacious'].includes(out.layoutPreset)) out.layoutPreset = 'classic'; if (!out.calendarView) out.calendarView = 'month'; if (!out.accentColor) out.accentColor = 'purple'; if (!out.fontSize) out.fontSize = '100';
+        const out = { ...settings }; if (typeof out.showTeamPanel !== 'boolean') out.showTeamPanel = true; if (typeof out.showHolidays !== 'boolean') out.showHolidays = true; if (!out.language) out.language = 'ru'; if (!out.theme) out.theme = 'light'; if (!out.layoutPreset || !['classic','compact','spacious'].includes(out.layoutPreset)) out.layoutPreset = 'classic'; if (!out.calendarView) out.calendarView = 'month'; if (!out.fontSize) out.fontSize = '100';
         /* Системные тексты в настройки больше НЕ вписываются — они живут в общем
            слое, и материализовать их здесь значило бы заморозить: обновление
            приложения перестало бы менять текст у тех, кто его не правил.
@@ -5198,7 +5198,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       this.state.calendarView = this.state.app.settings.calendarView || 'month';
       this.state.app.settings.showTeamPanel = true;
       if (!this.state.app.settings.fontSize) this.state.app.settings.fontSize = '100';
-      try { if (!this.state.app.settings.accentColor) this.state.app.settings.accentColor = localStorage.getItem('service-year-planner-accent') || 'purple'; } catch (_) { if (!this.state.app.settings.accentColor) this.state.app.settings.accentColor = 'purple'; }
       this.ui.closeMobileMenu();
       this.ui.renderAll();
       this.bind();

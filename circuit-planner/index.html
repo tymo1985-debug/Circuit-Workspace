@@ -24,7 +24,7 @@
     /* .small красится в --muted — тёмный токен, рассчитанный на светлую
        поверхность. Внутри цветного сайдбара он давал тёмный текст на
        фиолетовом: «Быстрый статус» читался, а цифры под ним — нет. */
-    .sidebar .small{color:color-mix(in srgb, var(--md-on-primary-container) 82%, transparent)}
+    .sidebar .small{color:color-mix(in srgb, var(--md-on-primary-container) 88%, transparent)}
     .sidebar .summary strong{color:var(--md-on-primary-container)}.summary strong{display:block;margin-bottom:8px}
   .main{padding:28px;min-width:0}.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.topbar h2{margin:0;font-size:28px}.topbar p{margin:6px 0 0;color:var(--md-on-surface-variant)}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   /* Единая левая кромка. Кнопка «Меню» — постоянный элемент (с v9.5.2 боковое
@@ -629,7 +629,7 @@ body::before{display:none !important}
       <div class="editor-actions"><button data-i18n="cp.reminders_close" class="md-btn md-btn-outlined md-state-layer" id="plannerCancelBtn" type="button">Закрыть</button><button data-i18n="cp.autoplan_run" class="md-btn md-btn-filled md-state-layer" id="plannerApplyBtn" type="button">Распределить и создать</button></div>
     </div>
   </div>
-  <div id="pinOverlay" hidden style="position:fixed;inset:0;z-index:99999;background:var(--md-background,#f2f6f3)">
+  <div id="pinOverlay" hidden style="position:fixed;inset:0;z-index:99999;background:var(--md-background)">
     <div style="display:grid;place-items:center;height:100%">
     <div class="md-card" style="width:min(340px,90vw);text-align:center">
       <h3 data-i18n="cp.pin_enter" style="margin-top:0">🔒 Введите PIN</h3>
