@@ -140,7 +140,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.88.0',
+      version: '9.89.0',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -1787,32 +1787,32 @@
         const style = document.createElement('style');
         style.id = 'calendarViewStyles';
         style.textContent = `
-          .service-year-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:18px;background:var(--surface2)}
-          .sy-month-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:12px;min-width:0}
+          .service-year-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:18px;background:var(--md-surface-container)}
+          .sy-month-card{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:20px;box-shadow:var(--md-elevation-2);padding:12px;min-width:0}
           .sy-month-title{font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
-          .sy-month-title small{color:var(--muted);font-weight:500}
+          .sy-month-title small{color:var(--md-on-surface-variant);font-weight:500}
           .sy-dow,.sy-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-          .sy-dow span{font-size:10px;color:var(--muted);text-align:center;padding:2px 0}
-          .sy-day{appearance:none;border:1px solid transparent;background:transparent;color:var(--text);border-radius:9px;min-height:30px;padding:2px;display:grid;place-items:center;gap:1px;cursor:pointer;font:inherit;font-size:11px;position:relative}
-          .sy-day:hover{background:var(--surface2);border-color:var(--line)}
+          .sy-dow span{font-size:10px;color:var(--md-on-surface-variant);text-align:center;padding:2px 0}
+          .sy-day{appearance:none;border:1px solid transparent;background:transparent;color:var(--md-on-surface);border-radius:9px;min-height:30px;padding:2px;display:grid;place-items:center;gap:1px;cursor:pointer;font:inherit;font-size:11px;position:relative}
+          .sy-day:hover{background:var(--md-surface-container);border-color:var(--md-outline-variant)}
           .sy-day.today{background:var(--accent);color:#fff}
           .sy-day.weekend:not(.today){background:var(--cal-weekend-bg)}
           .sy-day.has-events:not(.today){border-color:rgba(var(--accent-rgb,20,83,45),.25)}
           .sy-event-dots{display:flex;gap:2px;justify-content:center;min-height:4px}
           .sy-event-dot{width:4px;height:4px;border-radius:999px;display:block}
           .sy-empty{min-height:30px}
-          .sy-day.sy-outside{color:var(--muted);opacity:.55}
-          .sy-day.sy-outside:hover{opacity:.85;background:var(--surface2)}
+          .sy-day.sy-outside{color:var(--md-on-surface-variant);opacity:.55}
+          .sy-day.sy-outside:hover{opacity:.85;background:var(--md-surface-container)}
           .sy-day.selected{outline:2px solid var(--accent);outline-offset:1px;background:rgba(var(--accent-rgb,20,83,45),.10)}
-          .sy-day .sy-count{position:absolute;right:3px;top:2px;font-size:9px;color:var(--muted)}
+          .sy-day .sy-count{position:absolute;right:3px;top:2px;font-size:9px;color:var(--md-on-surface-variant)}
           .sy-month-summary{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;min-height:16px}
           .sy-month-summary .dot{width:7px;height:7px}
-          .sy-legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 18px 0;background:var(--surface2)}
-          .sy-legend-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--text)}
+          .sy-legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 18px 0;background:var(--md-surface-container)}
+          .sy-legend-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--md-on-surface)}
           .sy-legend-sample{width:12px;height:12px;border-radius:999px;display:inline-block;background:var(--accent)}
           .sy-legend-sample.outline{background:transparent;border:2px solid rgba(var(--accent-rgb,20,83,45),.35)}
           .sy-legend-sample.today{background:var(--accent)}
-          .sy-compact-hint{display:none;padding:8px 18px 0;background:var(--surface2)}
+          .sy-compact-hint{display:none;padding:8px 18px 0;background:var(--md-surface-container)}
           @media (max-width:1100px){.service-year-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
           @media (max-width:680px){.service-year-grid{grid-template-columns:1fr;padding:10px;gap:10px}.sy-month-card{padding:10px;border-radius:16px}.sy-day{min-height:30px;font-size:10px}.sy-dow span{font-size:9px}.sy-legend{padding:10px 10px 0;gap:6px}.sy-legend-chip{font-size:11px;padding:5px 8px}.sy-compact-hint{display:block;padding:8px 10px 0}.calendar-side{gap:10px}.side-card{padding:14px}}
           @media (max-width:420px){.sy-days,.sy-dow{gap:2px}.sy-day{min-height:26px;border-radius:7px}.sy-month-title{font-size:13px;margin-bottom:6px}.sy-event-dot{width:3px;height:3px}.sy-day .sy-count{display:none}.service-year-grid{padding:8px}.sy-month-card{padding:8px}}
@@ -1862,7 +1862,7 @@
           body::before{display:none !important}
           .app{grid-template-columns:1fr !important}
           .main{padding:18px 22px 30px !important;width:100%;max-width:none !important}
-          .topbar{display:grid !important;grid-template-columns:minmax(160px,1fr) auto !important;align-items:start !important;gap:12px !important;margin-bottom:10px !important;padding:8px 0 8px !important;position:sticky;top:0;z-index:1200;background:var(--bg)}
+          .topbar{display:grid !important;grid-template-columns:minmax(160px,1fr) auto !important;align-items:start !important;gap:12px !important;margin-bottom:10px !important;padding:8px 0 8px !important;position:sticky;top:0;z-index:1200;background:var(--md-background)}
           .topbar h2{font-size:1.55rem !important;line-height:1.12 !important;margin-top:4px !important}
           .topbar p{display:none !important}
           .mobile-menu-btn{display:inline-flex !important;padding:10px 14px !important;border-radius:18px !important;white-space:nowrap !important}
@@ -1927,22 +1927,22 @@
  #events .event-templates-title{display:none !important}
  /* v9.5.2 sent flags and calendar actions */
  .sent-flags{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
- .flag-toggle{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:7px 10px;font-size:12px;color:var(--text);cursor:pointer;user-select:none}
+ .flag-toggle{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);border-radius:999px;padding:7px 10px;font-size:12px;color:var(--md-on-surface);cursor:pointer;user-select:none}
  .flag-toggle input{width:auto;margin:0;accent-color:var(--accent)}
  .flag-badges{display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:6px;vertical-align:middle}
- .flag-badge{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:2px 6px;font-size:10px;font-weight:700;color:var(--text)}
- .calendar-action-grid{display:grid;gap:8px;margin-top:12px}.entry-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.entry-actions .btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}.side-item-card{padding:10px 12px;border-radius:14px;background:var(--surface2);border:1px solid var(--line)}
+ .flag-badge{display:inline-flex;align-items:center;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);border-radius:999px;padding:2px 6px;font-size:10px;font-weight:700;color:var(--md-on-surface)}
+ .calendar-action-grid{display:grid;gap:8px;margin-top:12px}.entry-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.entry-actions .btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}.side-item-card{padding:10px 12px;border-radius:14px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant)}
  
  /* v9.5.9-year-week-bars: day popover for service-year mini calendar */
- .day-popover{position:fixed;z-index:3200;min-width:260px;max-width:min(340px,calc(100vw - 24px));background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;box-shadow:0 22px 55px rgba(0,0,0,.22);padding:14px;font-size:13px;line-height:1.35}
+ .day-popover{position:fixed;z-index:3200;min-width:260px;max-width:min(340px,calc(100vw - 24px));background:var(--md-surface-container-low);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:18px;box-shadow:0 22px 55px rgba(0,0,0,.22);padding:14px;font-size:13px;line-height:1.35}
  .day-popover[hidden]{display:none !important}
  .day-popover-title{font-weight:800;font-size:14px;margin-bottom:3px}
- .day-popover-meta{color:var(--muted);font-size:12px;margin-bottom:10px}
+ .day-popover-meta{color:var(--md-on-surface-variant);font-size:12px;margin-bottom:10px}
  .day-popover-list{display:grid;gap:8px;margin-top:8px}
- .day-popover-event{display:grid;grid-template-columns:10px 1fr;gap:8px;align-items:start;padding:8px;border:1px solid var(--line);background:var(--surface2);border-radius:13px}
+ .day-popover-event{display:grid;grid-template-columns:10px 1fr;gap:8px;align-items:start;padding:8px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);border-radius:13px}
  .day-popover-dot{width:10px;height:10px;border-radius:999px;margin-top:4px;display:block}
  .day-popover-event strong{display:block;font-size:13px}
- .day-popover-event span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+ .day-popover-event span{display:block;color:var(--md-on-surface-variant);font-size:12px;margin-top:2px}
  .day-popover-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
  .day-popover-actions .btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}
  .sy-day.has-events:hover{outline:2px solid var(--accent);outline-offset:1px}
@@ -1952,16 +1952,16 @@
 
  .day-popover{pointer-events:auto !important}
  .day-popover.is-hovered{box-shadow:0 24px 60px rgba(0,0,0,.26) !important}
- .send-control{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface2)}
+ .send-control{margin-top:12px;padding:12px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container)}
  .send-control-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
  .send-control-title{font-weight:800;font-size:13px}
- .send-control-hint{color:var(--muted);font-size:11px;margin-top:2px}
+ .send-control-hint{color:var(--md-on-surface-variant);font-size:11px;margin-top:2px}
  .send-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
- .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+ .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}
  .send-card.is-pending{border-color:rgba(185,28,28,.45);background:rgba(185,28,28,.07)}
  .send-card.is-done{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08)}
  .send-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;font-size:12px}
- .send-status{font-size:11px;color:var(--muted)}
+ .send-status{font-size:11px;color:var(--md-on-surface-variant)}
  .send-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none}
  .send-toggle input{width:auto;margin:0;accent-color:var(--accent)}
  @media (max-width:680px){.send-control-grid{grid-template-columns:1fr}}
@@ -2412,8 +2412,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
               const hasHome = typeof settings.homeLat === 'number' && typeof settings.homeLng === 'number';
               const hasCoords = typeof ev.lat === 'number' && typeof ev.lng === 'number';
               const km = (hasHome && hasCoords) ? App.utils.haversineKm(settings.homeLat, settings.homeLng, ev.lat, ev.lng) : null;
-              const distLabel = km !== null ? `<span class="small" style="color:var(--muted)">${App.utils.t('dist_km', { km: Math.round(km) })}</span>` : `<span class="small" style="color:var(--muted)">${App.utils.t('dist_none')}</span>`;
-              return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:12px"><input type="checkbox" data-planner-event="${App.utils.escapeAttr(ev.id)}" style="width:auto" checked /><span class="dot" style="background:${App.utils.clampColor(ev.color)}"></span><span style="flex:1">${App.utils.escapeHtml(ev.name)}</span>${distLabel}</label>`;
+              const distLabel = km !== null ? `<span class="small" style="color:var(--md-on-surface-variant)">${App.utils.t('dist_km', { km: Math.round(km) })}</span>` : `<span class="small" style="color:var(--md-on-surface-variant)">${App.utils.t('dist_none')}</span>`;
+              return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--md-outline-variant);border-radius:12px"><input type="checkbox" data-planner-event="${App.utils.escapeAttr(ev.id)}" style="width:auto" checked /><span class="dot" style="background:${App.utils.clampColor(ev.color)}"></span><span style="flex:1">${App.utils.escapeHtml(ev.name)}</span>${distLabel}</label>`;
             }).join('')
           : `<div class="md-empty">${App.utils.t('unvisited_none')}</div>`;
         if (App.els.plannerPreview) App.els.plannerPreview.textContent = '';
@@ -4235,9 +4235,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           const summary = snap.meta
             ? App.utils.t('history_summary', { events: snap.meta.events, entries: snap.meta.entries })
             : '';
-          return `<div class="md-card" style="padding:12px;box-shadow:none;border:1px solid var(--line)">
+          return `<div class="md-card" style="padding:12px;box-shadow:none;border:1px solid var(--md-outline-variant)">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <div><strong>${App.utils.escapeHtml(label)}</strong><div class="small" style="color:var(--muted)">${App.utils.escapeHtml(summary)}</div></div>
+              <div><strong>${App.utils.escapeHtml(label)}</strong><div class="small" style="color:var(--md-on-surface-variant)">${App.utils.escapeHtml(summary)}</div></div>
               <button class="md-btn md-btn-danger md-state-layer" type="button" data-restore-snapshot="${App.utils.escapeHtml(snap.id)}">${App.utils.t('history_restore')}</button>
             </div>
           </div>`;
