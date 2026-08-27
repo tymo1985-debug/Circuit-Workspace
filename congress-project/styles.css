@@ -1200,8 +1200,8 @@ dialog {
   margin-left: 6px;
   padding: 0 6px;
   border-radius: var(--cw-radius-sm);
-  background: color-mix(in srgb, var(--cw-violet) 16%, transparent);
-  color: var(--cw-lavender);
+  background: color-mix(in srgb, var(--md-primary) 16%, transparent);
+  color: var(--md-primary);
   font-size: .78rem;
   line-height: 1.6;
   vertical-align: 1px;
@@ -1215,36 +1215,36 @@ dialog {
   margin-bottom: 14px;
   padding: 10px 12px;
   border-radius: var(--cw-radius-sm);
-  background: color-mix(in srgb, var(--cw-violet) 14%, transparent);
+  background: color-mix(in srgb, var(--md-primary) 14%, transparent);
 }
 .link-banner[hidden] { display: none; }
-.link-banner-icon { flex: none; color: var(--cw-lavender); line-height: 0; }
+.link-banner-icon { flex: none; color: var(--md-primary); line-height: 0; }
 .link-banner-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.link-banner-text b { color: var(--cw-lavender); font-weight: 600; font-size: .9rem; }
-.link-banner-text span { color: var(--cw-text-dim); font-size: .82rem; }
+.link-banner-text b { color: var(--md-primary); font-weight: 600; font-size: .9rem; }
+.link-banner-text span { color: var(--md-on-surface-variant); font-size: .82rem; }
 
 /* Подпись у полей, которые остаются своими у каждого конгресса связки. */
-.own-hint { margin-left: 6px; color: var(--cw-muted); font-size: .78rem; font-weight: 400; }
+.own-hint { margin-left: 6px; color: var(--md-outline); font-size: .78rem; font-weight: 400; }
 .own-hint[hidden] { display: none; }
 
 /* Диалог связывания заданий уже существующей серии. */
 .ls-base { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
-.ls-base > span { flex: none; color: var(--cw-text-dim); font-size: .85rem; }
+.ls-base > span { flex: none; color: var(--md-on-surface-variant); font-size: .85rem; }
 .ls-base select { flex: 1; }
 .ls-rows { max-height: 46vh; overflow: auto; }
-.ls-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--cw-line-soft); }
+.ls-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--md-surface-variant); }
 .ls-row > input { flex: none; margin-top: 3px; }
 .ls-off { opacity: .55; }
 .ls-body { flex: 1; min-width: 0; }
 .ls-title { font-size: .92rem; }
 .ls-meta { margin-top: 2px; }
-.ls-vals { margin-top: 2px; color: var(--cw-text-dim); font-size: .8rem; }
-.ls-align { display: flex; gap: 6px; align-items: center; margin-top: 6px; color: var(--cw-text-dim); font-size: .8rem; }
+.ls-vals { margin-top: 2px; color: var(--md-on-surface-variant); font-size: .8rem; }
+.ls-align { display: flex; gap: 6px; align-items: center; margin-top: 6px; color: var(--md-on-surface-variant); font-size: .8rem; }
 .ls-tag { display: inline-block; padding: 1px 7px; border-radius: var(--cw-radius-sm); font-size: .78rem; }
 .ls-tag.ok { background: color-mix(in srgb, var(--status-success) 18%, transparent); color: var(--status-success); }
 .ls-tag.warn { background: color-mix(in srgb, var(--status-important) 18%, transparent); color: var(--status-important); }
-.ls-tag.mute { background: color-mix(in srgb, var(--cw-muted) 16%, transparent); color: var(--cw-muted); }
-.ls-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cw-line-soft); }
+.ls-tag.mute { background: color-mix(in srgb, var(--md-outline) 16%, transparent); color: var(--md-outline); }
+.ls-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--md-surface-variant); }
 .ls-foot-actions { display: flex; gap: 8px; }
 
 /* ══ МОБИЛЬНАЯ ОБОЛОЧКА ═════════════════════════════════════════════════════

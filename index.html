@@ -29,7 +29,7 @@
     position: absolute;
     top: -60px; left: 8%;
     width: 420px; height: 420px;
-    background: radial-gradient(circle, var(--cw-lavender) 0%, transparent 70%);
+    background: radial-gradient(circle, var(--md-primary) 0%, transparent 70%);
     opacity: 0.14;
     pointer-events: none;
     z-index: -1;
@@ -56,7 +56,7 @@
     font-weight: 500;
     letter-spacing: 0;
   }
-  .cw-logo__text span { color: var(--cw-lavender); }
+  .cw-logo__text span { color: var(--md-primary); }
   .cw-hub-header h1 {
     font-family: var(--md-font-family);
     font-size: clamp(28px, 4vw, 36px);
@@ -66,7 +66,7 @@
     letter-spacing: 0;
   }
   .cw-hub-header p {
-    color: var(--cw-text-dim);
+    color: var(--md-on-surface-variant);
     font: 400 16px/24px var(--md-font-family);
     letter-spacing: 0.5px;
     max-width: 56ch;
@@ -75,9 +75,9 @@
   .cw-version {
     font: 500 12px/16px var(--md-font-family);
     letter-spacing: 0.5px;
-    color: var(--cw-muted);
-    border: 1px solid var(--cw-line);
-    background: var(--cw-surface);
+    color: var(--md-outline);
+    border: 1px solid var(--md-outline-variant);
+    background: var(--md-surface-container);
     border-radius: 999px;
     padding: 5px 12px;
     white-space: nowrap;
@@ -110,35 +110,35 @@
     left: 10px;
     width: 16px; height: 16px;
     pointer-events: none;
-    color: var(--cw-muted);
+    color: var(--md-outline);
   }
   .cw-lang__select {
     appearance: none;
     -webkit-appearance: none;
     height: 32px;
     padding: 0 28px 0 32px;
-    border: 1px solid var(--cw-line);
+    border: 1px solid var(--md-outline-variant);
     border-radius: 999px;
-    background: var(--cw-surface);
-    color: var(--cw-text);
+    background: var(--md-surface-container);
+    color: var(--md-on-surface);
     font: 500 12px/16px var(--md-font-family);
     letter-spacing: 0.5px;
     cursor: pointer;
   }
-  .cw-lang__select:hover { border-color: var(--cw-violet-dim); }
+  .cw-lang__select:hover { border-color: var(--md-primary); }
   .cw-lang__select:focus-visible {
-    outline: 3px solid var(--cw-lavender);
+    outline: 3px solid var(--md-primary);
     outline-offset: 2px;
   }
   /* Список опций рисует ОС — на тёмном фоне системная палитра может дать
      белый текст на белом. Задаём цвета явно. */
-  .cw-lang__select option { background: var(--cw-bg-raised); color: var(--cw-text); }
+  .cw-lang__select option { background: var(--md-surface-container-low); color: var(--md-on-surface); }
   .cw-lang__arrow {
     position: absolute;
     right: 10px;
     width: 12px; height: 12px;
     pointer-events: none;
-    color: var(--cw-muted);
+    color: var(--md-outline);
   }
 
   /* --- Кнопка проверки обновлений ------------------------------------
@@ -153,18 +153,18 @@
     gap: 6px;
     height: 32px;
     padding: 0 14px 0 10px;
-    border: 1px solid var(--cw-line);
+    border: 1px solid var(--md-outline-variant);
     border-radius: 999px;
-    background: var(--cw-surface);
-    color: var(--cw-text);
+    background: var(--md-surface-container);
+    color: var(--md-on-surface);
     font: 500 12px/16px var(--md-font-family);
     letter-spacing: 0.5px;
     cursor: pointer;
   }
-  .cw-update-btn:hover { border-color: var(--cw-violet-dim); }
-  .cw-update-btn:focus-visible { outline: 3px solid var(--cw-lavender); outline-offset: 2px; }
+  .cw-update-btn:hover { border-color: var(--md-primary); }
+  .cw-update-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
   .cw-update-btn[disabled] { opacity: .6; cursor: progress; }
-  .cw-update-btn__icon { width: 16px; height: 16px; color: var(--cw-muted); }
+  .cw-update-btn__icon { width: 16px; height: 16px; color: var(--md-outline); }
   /* Вращение только на время проверки. prefers-reduced-motion уважаем:
      статичная иконка + заблокированная кнопка сами по себе показывают,
      что идёт работа. */
@@ -226,7 +226,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: var(--cw-line);
+    background: var(--md-outline-variant);
   }
   /* Крайние ячейки: линия доходит только до своей площадки, а не торчит
      за пределы крайних плиток. */
@@ -240,8 +240,8 @@
     box-sizing: border-box;
     width: 16px; height: 16px;
     border-radius: 50%;
-    background: var(--cw-bg-raised);
-    border: 2px solid var(--cw-line);
+    background: var(--md-surface-container-low);
+    border: 2px solid var(--md-outline-variant);
   }
   .cw-bus__pad::after {
     content: "";
@@ -249,10 +249,10 @@
     top: 100%; left: 50%;
     transform: translateX(-50%);
     width: 2px; height: 23px;
-    background: var(--cw-line);
+    background: var(--md-outline-variant);
   }
-  .cw-bus__pad--live { border-color: var(--cw-violet); background: var(--cw-violet-dim); }
-  .cw-bus__pad--live::after { background: var(--cw-violet-dim); }
+  .cw-bus__pad--live { border-color: var(--md-primary); background: var(--md-primary-container); }
+  .cw-bus__pad--live::after { background: var(--md-primary-container); }
 
   .cw-grid {
     position: relative;
@@ -273,7 +273,7 @@
     border-radius: var(--cw-radius);
   }
   .cw-tile-link:focus-visible {
-    outline: 3px solid var(--cw-lavender);
+    outline: 3px solid var(--md-primary);
     outline-offset: 3px;
   }
 
@@ -294,10 +294,10 @@
        (--cw-radius), смешение двух шкал давало разный «характер» углов. */
     border-radius: var(--cw-radius-sm);
     display: flex; align-items: center; justify-content: center;
-    background: var(--cw-surface-2);
-    border: 1px solid var(--cw-line);
+    background: var(--md-surface-container-high);
+    border: 1px solid var(--md-outline-variant);
     margin-bottom: 16px;
-    color: var(--cw-violet);
+    color: var(--md-primary);
   }
   /* Цвет иконки наследуется от .cw-tile__icon (currentColor в разметке),
      а не задаётся хексом в каждом <svg> — тема остаётся управляемой. */
@@ -308,7 +308,7 @@
     margin: 0 0 8px;
   }
   .cw-tile p {
-    color: var(--cw-text-dim);
+    color: var(--md-on-surface-variant);
     font: 400 14px/20px var(--md-font-family);
     letter-spacing: 0.25px;
     margin: 0 0 16px;
@@ -335,13 +335,13 @@
     .cw-tile-link .cw-card:hover {
       transform: none;
       box-shadow: var(--cw-shadow-sm);
-      border-color: var(--cw-line);
+      border-color: var(--md-outline-variant);
     }
   }
   /* Видимый фокус для навигации с клавиатуры: раньше плитки фокусировались
      без какого-либо визуального отклика. */
   .cw-tile-link:focus-visible {
-    outline: 3px solid var(--cw-lavender);
+    outline: 3px solid var(--md-primary);
     outline-offset: 3px;
   }
 
@@ -369,34 +369,34 @@
     font: 500 16px/24px var(--md-font-family);
     letter-spacing: 0.15px; margin: 0;
   }
-  .cw-backup__hint { color: var(--cw-text-dim); font: 400 13px/20px var(--md-font-family); margin: 0 0 16px; }
+  .cw-backup__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 0 0 16px; }
   .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
   .cw-btn {
     display: inline-flex; align-items: center; gap: 8px;
     height: 40px; padding: 0 18px;
-    border-radius: 999px; border: 1px solid var(--cw-line);
-    background: var(--cw-surface); color: var(--cw-text);
+    border-radius: 999px; border: 1px solid var(--md-outline-variant);
+    background: var(--md-surface-container); color: var(--md-on-surface);
     font: 500 14px/20px var(--md-font-family); cursor: pointer;
   }
-  .cw-btn:hover { border-color: var(--cw-violet-dim); }
-  .cw-btn:focus-visible { outline: 3px solid var(--cw-lavender); outline-offset: 2px; }
-  .cw-btn--primary { background: var(--cw-violet); border-color: var(--cw-violet); color: #fff; }
+  .cw-btn:hover { border-color: var(--md-primary); }
+  .cw-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+  .cw-btn--primary { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
   .cw-btn svg { width: 18px; height: 18px; }
   .cw-backup__table { width: 100%; border-collapse: collapse; font: 400 13px/20px var(--md-font-family); }
   .cw-backup__table th {
-    text-align: left; color: var(--cw-muted); font-weight: 500;
-    padding: 6px 8px; border-bottom: 1px solid var(--cw-line);
+    text-align: left; color: var(--md-outline); font-weight: 500;
+    padding: 6px 8px; border-bottom: 1px solid var(--md-outline-variant);
   }
-  .cw-backup__table td { padding: 8px; border-bottom: 1px solid var(--cw-line); }
+  .cw-backup__table td { padding: 8px; border-bottom: 1px solid var(--md-outline-variant); }
   .cw-backup__table td:last-child, .cw-backup__table th:last-child { text-align: right; white-space: nowrap; }
-  .cw-backup__never { color: var(--cw-muted); }
-  .cw-backup__status { margin: 12px 0 0; font: 400 13px/20px var(--md-font-family); color: var(--cw-text-dim); min-height: 20px; }
+  .cw-backup__never { color: var(--md-outline); }
+  .cw-backup__status { margin: 12px 0 0; font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); min-height: 20px; }
 
   .cw-footer {
     position: relative; z-index: 1;
     padding: 24px 0 48px;
     text-align: center;
-    color: var(--cw-muted);
+    color: var(--md-outline);
     font-size: 12.5px;
   }
 </style>
