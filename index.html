@@ -461,9 +461,7 @@
      а не инструмент. */
   .cw-syscard {
     position: relative;
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
+    display: block;
     padding: 20px 24px;
     background: var(--md-surface-container-low);
     box-shadow: none;
@@ -474,6 +472,17 @@
     transform: none;
     box-shadow: none;
     border-color: var(--md-outline-variant);
+  }
+  /* Иконка стоит в строке заголовка, а не отдельной колонкой слева.
+     Колонка забирала 64px у ВСЕГО содержимого, а не только у заголовка:
+     при двух карточках в ряду тело сжималось до 373px, и две кнопки
+     резервного копирования (408px вместе) переставали помещаться в строку.
+     В строке заголовка та же иконка не стоит ничего. */
+  .cw-syscard__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
   }
   .cw-syscard__icon {
     flex: 0 0 auto;
@@ -487,8 +496,7 @@
     color: var(--md-on-surface-variant);
   }
   .cw-syscard__icon svg { width: 24px; height: 24px; }
-  .cw-syscard__body { flex: 1 1 auto; min-width: 0; }
-  .cw-syscard__body h3 {
+  .cw-syscard__head h3 {
     font: 500 16px/24px var(--md-font-family);
     letter-spacing: 0.15px;
     margin: 0;
@@ -628,6 +636,28 @@
     border-color: var(--md-primary);
   }
   @media (max-width: 900px) { .cw-form { grid-template-columns: 1fr; } }
+
+  /* --- Шапка письма: показываем ровно то, что напечатается --------------
+     Строка состояния говорит, заполнено ли; этот блок говорит, ЧЕМ именно.
+     Без него человек узнаёт состав шапки только из готового документа. */
+  .cw-sender-preview {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: var(--cw-radius-sm);
+    border: 1px solid var(--md-outline-variant);
+    background: var(--md-surface-container-lowest);
+  }
+  .cw-sender-preview p {
+    margin: 0;
+    font: 400 13px/20px var(--md-font-family);
+    color: var(--md-on-surface);
+  }
+  .cw-sender-preview p:first-child { font-weight: 500; }
+  .cw-sender-preview__missing {
+    margin-top: 8px !important;
+    color: var(--md-outline) !important;
+    font-size: 12px !important;
+  }
 
   .cw-footer {
     position: relative; z-index: 1;
@@ -820,11 +850,12 @@
 
       <div class="cw-grid cw-grid--system">
         <article class="cw-card cw-syscard" id="backupCard" aria-labelledby="backupHeading">
-          <div class="cw-syscard__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
-          </div>
-          <div class="cw-syscard__body">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
+            </div>
             <h3 id="backupHeading" data-i18n="backup.title">Резервное копирование</h3>
+          </div>
 
             <!-- Возраст копии — текстом, а не только цветом: то же состояние
                  читается при дальтонизме и в чёрно-белой печати. Строка стоит
@@ -863,16 +894,16 @@
               </table>
             </details>
 
-            <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
-          </div>
+          <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
         </article>
 
         <article class="cw-card cw-syscard" id="senderCard" aria-labelledby="senderHeading">
-          <div class="cw-syscard__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2"/><path d="M14.5 10h4M14.5 13.5h4"/></svg>
-          </div>
-          <div class="cw-syscard__body">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2"/><path d="M14.5 10h4M14.5 13.5h4"/></svg>
+            </div>
             <h3 id="senderHeading" data-i18n="sender.title">Отправитель</h3>
+          </div>
 
             <!-- Пустой отправитель — не мелочь: письма всех модулей печатают
                  шапку и подпись из этой записи, и при пустых полях документ
@@ -884,6 +915,8 @@
             </p>
 
             <p class="cw-syscard__hint" data-i18n="sender.hint">Имя, код района и контакты подставляются в шапку и подпись писем во всех модулях. Данные общие: правка здесь видна и в модулях.</p>
+
+            <div class="cw-sender-preview" id="senderPreview" aria-live="polite"></div>
 
             <details class="cw-disclose">
               <summary data-i18n="sender.edit">Изменить данные</summary>
@@ -913,8 +946,7 @@
                     <textarea id="sender-address" rows="2" autocomplete="street-address"></textarea>
                   </label>
               </div>
-            </details>
-          </div>
+          </details>
         </article>
       </div>
     </section>
@@ -1278,6 +1310,7 @@
       // но испортит первый же напечатанный документ. Красный оставлен потере
       // данных.
       var level = name ? 'ok' : 'warn';
+      renderPreview(data);
       stateSlot.textContent = name
         ? (code ? name + ' · ' + code : name)
         : CWI18n.t('sender.state_empty');
@@ -1285,6 +1318,35 @@
       card.classList.add('cw-syscard--' + level);
       card.setAttribute('data-pad', level);
       if (window.CWHubBoard) window.CWHubBoard.refresh();
+    }
+
+    var preview = document.getElementById('senderPreview');
+
+    // Шапка письма собирается в том же порядке, что и CWSender.FIELDS —
+    // порядок полей там и означает порядок строк документа.
+    function renderPreview(data) {
+      if (!preview) return;
+      var lines = [];
+      var missing = [];
+      CWSender.FIELDS.forEach(function (field) {
+        var value = String(data[field] || '').trim();
+        if (value) lines.push(value);
+        else missing.push(CWI18n.t('sender.f_' + field));
+      });
+
+      preview.innerHTML = '';
+      lines.forEach(function (line) {
+        var p = document.createElement('p');
+        // Адрес может быть многострочным — переносы сохраняем как есть.
+        p.textContent = line;
+        preview.appendChild(p);
+      });
+      if (missing.length) {
+        var note = document.createElement('p');
+        note.className = 'cw-sender-preview__missing';
+        note.textContent = CWI18n.t('sender.missing', { fields: missing.join(', ') });
+        preview.appendChild(note);
+      }
     }
 
     function fill() {
