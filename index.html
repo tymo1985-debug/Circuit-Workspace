@@ -295,7 +295,11 @@
   .cw-rib__cell::before {
     content: "";
     position: absolute;
-    top: 12px; left: 0; right: 0;
+    top: 12px; left: 0;
+    /* Ячейки разделены зазором колонок, и линия, нарисованная строго внутри
+       ячейки, обрывалась на каждом зазоре — ребро читалось пунктиром.
+       Перекрываем зазор: линия каждой ячейки заходит на следующую. */
+    right: calc(-1 * var(--cw-gap));
     height: 2px;
     background: var(--md-outline-variant);
   }
@@ -528,6 +532,63 @@
   .cw-backup__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 10px 0 0; }
   .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
+  /* Кнопки хаба. Локальные правила НУЖНЫ: общий .cw-btn из shared/style.css
+     имеет другой радиус, другой вес шрифта и не ограничивает размер иконки —
+     без этих строк значки уезжают на свои 24px, а подписи ломаются на две
+     строки. Геометрия совпадает с .cw-lang__select шапки (скругление 999),
+     чтобы органы управления читались одной семьёй. */
+  .cw-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0 18px;
+    border-radius: 999px; border: 1px solid var(--md-outline-variant);
+    background: var(--md-surface-container); color: var(--md-on-surface);
+    font: 500 14px/20px var(--md-font-family); cursor: pointer;
+    white-space: nowrap;
+  }
+  .cw-btn:hover { border-color: var(--md-primary); background: var(--md-surface-container); }
+  .cw-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+  .cw-btn--primary { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
+  .cw-btn--primary:hover { background: var(--md-primary); }
+  .cw-btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+  .cw-backup__table { width: 100%; border-collapse: collapse; font: 400 13px/20px var(--md-font-family); }
+  .cw-backup__table th {
+    text-align: left; color: var(--md-outline); font-weight: 500;
+    padding: 6px 8px; border-bottom: 1px solid var(--md-outline-variant);
+  }
+  .cw-backup__table td { padding: 8px; border-bottom: 1px solid var(--md-outline-variant); }
+  .cw-backup__table td:last-child, .cw-backup__table th:last-child { text-align: right; white-space: nowrap; }
+  .cw-backup__never { color: var(--md-outline); }
+  .cw-backup__status { margin: 12px 0 0; font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); min-height: 20px; }
+
+  /* Таблица по модулям — под раскрытием: она нужна редко, а на главном экране
+     постоянно занимала пять строк. Диалог здесь был бы лишним механизмом
+     (в хабе нет ни одного), <details> ничего не прячет безвозвратно и
+     работает без скрипта. */
+  .cw-backup__details { margin-top: 16px; }
+  .cw-backup__details > summary {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer; list-style: none;
+    font: 500 13px/20px var(--md-font-family);
+    color: var(--md-on-surface-variant);
+    border-radius: var(--cw-radius-sm);
+  }
+  .cw-backup__details > summary::-webkit-details-marker { display: none; }
+  .cw-backup__details > summary:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 3px; }
+  .cw-backup__details > summary::before {
+    content: "";
+    width: 0; height: 0;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform 0.15s ease;
+  }
+  .cw-backup__details[open] > summary::before { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .cw-backup__details > summary::before { transition: none; }
+  }
+  .cw-backup__details .cw-backup__table { margin-top: 12px; }
+
   .cw-footer {
     position: relative; z-index: 1;
     padding: 24px 0 48px;
@@ -720,7 +781,7 @@
       <div class="cw-grid cw-grid--system">
         <article class="cw-card cw-syscard" id="backupCard" aria-labelledby="backupHeading">
           <div class="cw-syscard__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7"/><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><path d="M9 12h6"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
           </div>
           <div class="cw-syscard__body">
             <h3 id="backupHeading" data-i18n="backup.title">Резервное копирование</h3>
