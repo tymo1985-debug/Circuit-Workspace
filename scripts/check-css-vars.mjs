@@ -62,7 +62,13 @@ const PAGES = [
 ];
 
 const EXTS = ['.css', '.html', '.js'];
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'docs', 'scripts']);
+/* `vendor` — чужие библиотеки, положенные в репозиторий как есть (28.08.2026).
+   Их переменные объявляет сама библиотека в рантайме: pdf.js, например,
+   выставляет `--scale-factor` на контейнере из JS. Разбирать их как код
+   модуля значит требовать объявления того, чем мы не управляем, и получать
+   красный гейт на месте, где ничего не сломано. Область проверки — код
+   проекта, а не всё, что лежит в его папках. */
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'docs', 'scripts', 'vendor']);
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {

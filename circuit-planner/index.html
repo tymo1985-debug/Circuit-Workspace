@@ -805,10 +805,21 @@ body::before{display:none !important}
     </div>
   </div>
   <div class="toast-wrap" id="toastWrap"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+  <!-- ВНЕШНИЕ БИБЛИОТЕКИ ПОДКЛЮЧАЮТСЯ ТОЛЬКО С `integrity` (28.08.2026).
+       Это единственный путь, которым в приложение может попасть чужой код:
+       компрометация CDN или подмена на пути (чужая сеть) дала бы исполнение
+       произвольного кода с полным доступом к обеим базам и localStorage —
+       адреса, телефоны, почта собраний, весь архив писем. Усугубляло то, что
+       service worker кладёт ответ CDN в свой кэш: подменённый один раз файл
+       остался бы в офлайн-кэше навсегда.
+       `crossorigin="anonymous"` обязателен рядом с `integrity` — без него
+       браузер не сможет проверить ответ и заблокирует скрипт.
+       Хеши сверять при любой смене версии библиотеки:
+       `node scripts/build-sri.mjs --check`. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js" integrity="sha384-2p6U+1mmqF10USehFeRiyG2ESG9FwIqN+jxULn5w9jjQIihSn9Pt13dVCn/Hawjn" crossorigin="anonymous"></script>
   <script src="forms/s302-form.js"></script>
   <script src="fonts/fonts-aptos-regular.js"></script>
   <script src="fonts/fonts-aptos-bold.js"></script>

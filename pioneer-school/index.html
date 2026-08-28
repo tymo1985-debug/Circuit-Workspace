@@ -439,12 +439,22 @@
   <div id="modal-root"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Внешние библиотеки — только с `integrity` и `crossorigin` (28.08.2026),
+     см. подробное обоснование в circuit-planner/index.html.
+     Хеши сверять: `node scripts/build-sri.mjs --check`. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" integrity="sha384-uLiAv4VcjM5H2Jsqzl8EajEaxPugj1CIzQaCjQ8c5//vC+elhxO5pZfXGxoLQi1W" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <script>
   if (window.pdfjsLib) {
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    /* ВОРКЕР ЛЕЖИТ ЛОКАЛЬНО, И ЭТО НЕ ПРИДИРКА. `integrity` работает только
+       для тега <script>; здесь же адрес подставляется строкой, и проверить
+       ответ браузеру нечем. То есть воркер остался бы единственным файлом, в
+       котором подмена по-прежнему исполнялась бы — рядом с шестью
+       защищёнными. Локальная копия снимает вопрос целиком.
+       Версия обязана совпадать с pdf.min.js выше (2.16.105): pdf.js
+       отказывается работать с воркером другой версии. */
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/vendor/pdf.worker.min.js';
   }
 </script>
 <!-- Общий слой локализации хаба: подключается до модулей, чтобы T() был

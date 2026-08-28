@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.13.15';
+const APP_VERSION = '1.13.16';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -75,6 +75,11 @@ const ASSETS = [
   // должна собираться и без сети.
   './js/vendor/pdf-lib.min.js',
   './js/vendor/fontkit.umd.min.js',
+  /* Воркер pdf.js: `integrity` его не защищает (адрес подставляется строкой в
+     workerSrc, а не тегом), поэтому копия лежит в репозитории. Здесь же он
+     переехал из CDN_ASSETS в обязательный прекэш: свой файл обязан доехать,
+     а не кэшироваться «мягко». */
+  './js/vendor/pdf.worker.min.js',
   './data/seed-lessons.json'
 ];
 
@@ -86,7 +91,6 @@ const ASSETS = [
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
 
