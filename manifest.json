@@ -2,6 +2,7 @@
   "name": "Circuit Workspace",
   "short_name": "Circuit WS",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#140d28",
   "theme_color": "#140d28",

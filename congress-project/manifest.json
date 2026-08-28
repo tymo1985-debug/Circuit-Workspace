@@ -2,6 +2,7 @@
   "name": "Конгрессы — программа и задания",
   "short_name": "Конгрессы",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f1ecf1",
   "theme_color": "#6a45c9",

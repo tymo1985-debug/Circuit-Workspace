@@ -3,7 +3,6 @@
   "short_name": "Клиндарий",
   "description": "Планировщик служебного года. Работает офлайн, хранит данные локально.",
   "lang": "ru",
-  "id": "./",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",

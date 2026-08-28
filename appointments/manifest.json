@@ -3,6 +3,7 @@
   "short_name": "Назначения",
   "description": "Письмо о назначении и вычёркивании старейшин и служителей собрания",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fffbff",
   "theme_color": "#6a45c9",

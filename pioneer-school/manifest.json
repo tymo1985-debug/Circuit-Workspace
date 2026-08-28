@@ -3,6 +3,7 @@
   "short_name": "ШПС",
   "description": "Организация Школы пионерского служения по руководству S-255-U",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f1ecf1",
   "theme_color": "#6a45c9",

@@ -3,6 +3,7 @@
   "short_name": "Документы",
   "description": "Библиотека шаблонов писем и документов Circuit Workspace",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fffbff",
   "theme_color": "#6a45c9",
