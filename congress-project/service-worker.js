@@ -2,7 +2,7 @@
 // Имя кэша привязано к версии модуля: при выпуске новой версии достаточно
 // поднять APP_VERSION, и вернувшийся пользователь получит свежую оболочку,
 // а не бесконечно закэшированную старую.
-const APP_VERSION='4.46.4';
+const APP_VERSION='4.46.5';
 const CACHE='congress-pwa-v'+APP_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
 // активация этого SW стирала офлайн-кэши хаба и остальных модулей.
@@ -48,6 +48,23 @@ self.addEventListener('activate',e=>e.waitUntil(
     .then(()=>self.clients.claim())
 ));
 
+// Чтение строго из СВОЕГО кэша.
+//
+// Раньше здесь стоял глобальный `caches.match()`, который перебирает ВСЕ кэши
+// origin в порядке их создания. Общие файлы (`../shared/style.css` и остальной
+// общий слой) лежат под тем же URL ещё и в кэше хаба, и в кэшах соседних
+// модулей — модуль мог получить чужую копию. Это подрывало правило «поднял
+// `shared/*` — патч-бампи модули»: бамп меняет имя СВОЕГО кэша, а глобальный
+// поиск всё равно мог отдать старый файл соседа.
+//
+// Условие корректности: каждый общий файл, который модуль подключает, обязан
+// лежать в его собственном прекэше — это стережёт `check-shared-precache.mjs`.
+// Образец — `matchOwn` в `circuit-planner/sw.js` (там кэшей два, здесь один).
+async function matchOwn(request) {
+  const cache = await caches.open(CACHE);
+  return cache.match(request);
+}
+
 self.addEventListener('fetch',e=>{
   const request=e.request;
   if(request.method!=='GET')return;
@@ -55,7 +72,7 @@ self.addEventListener('fetch',e=>{
   if(url.origin!==self.location.origin)return;
 
   e.respondWith((async()=>{
-    const cached=await caches.match(request);
+    const cached=await matchOwn(request);
     if(cached)return cached;
     try{
       return await fetch(request);
@@ -65,7 +82,7 @@ self.addEventListener('fetch',e=>{
       // из-за чего браузер получал HTML вместо скрипта и приложение падало
       // с невнятной ошибкой парсинга вместо честной сетевой ошибки.
       if(request.mode==='navigate'){
-        const shell=await caches.match('./index.html');
+        const shell=await matchOwn('./index.html');
         if(shell)return shell;
       }
       return Response.error();

@@ -1,5 +1,5 @@
 // Школа пионеров — service worker модуля.
-const APP_VERSION = '1.13.11';
+const APP_VERSION = '1.13.12';
 const CACHE_PREFIX = 'pioneer-school-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
@@ -122,6 +122,23 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+// Чтение строго из СВОЕГО кэша.
+//
+// Раньше здесь стоял глобальный `caches.match()`, который перебирает ВСЕ кэши
+// origin в порядке их создания. Общие файлы (`../shared/style.css` и остальной
+// общий слой) лежат под тем же URL ещё и в кэше хаба, и в кэшах соседних
+// модулей — модуль мог получить чужую копию. Это подрывало правило «поднял
+// `shared/*` — патч-бампи модули»: бамп меняет имя СВОЕГО кэша, а глобальный
+// поиск всё равно мог отдать старый файл соседа.
+//
+// Условие корректности: каждый общий файл, который модуль подключает, обязан
+// лежать в его собственном прекэше — это стережёт `check-shared-precache.mjs`.
+// Образец — `matchOwn` в `circuit-planner/sw.js` (там кэшей два, здесь один).
+async function matchOwn(request) {
+  const cache = await caches.open(CACHE_NAME);
+  return cache.match(request);
+}
+
 // Cache-first для оболочки, сеть — как запасной вариант.
 self.addEventListener('fetch', (event) => {
   const request = event.request;
@@ -131,7 +148,7 @@ self.addEventListener('fetch', (event) => {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   event.respondWith((async () => {
-    const cached = await caches.match(request);
+    const cached = await matchOwn(request);
     if (cached) return cached;
     try {
       const response = await fetch(request);
@@ -144,7 +161,7 @@ self.addEventListener('fetch', (event) => {
       // Раньше здесь возвращался уже проверенный на пустоту `cached`, то есть
       // undefined, и respondWith падал с TypeError вместо сетевой ошибки.
       if (request.mode === 'navigate') {
-        const shell = await caches.match('./index.html');
+        const shell = await matchOwn('./index.html');
         if (shell) return shell;
       }
       return Response.error();
