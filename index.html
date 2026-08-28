@@ -18,6 +18,7 @@
 <script src="shared/i18n.js"></script>
 <script src="shared/i18n/common.js"></script>
 <script src="shared/backup.js"></script>
+<script src="shared/sender.js"></script>
 <style>
   .cw-hub-header {
     position: relative;
@@ -529,7 +530,7 @@
   }
 
   /* --- Резервное копирование -------------------------------------------- */
-  .cw-backup__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 10px 0 0; }
+  .cw-syscard__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 10px 0 0; }
   .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
   /* Кнопки хаба. Локальные правила НУЖНЫ: общий .cw-btn из shared/style.css
@@ -565,17 +566,17 @@
      постоянно занимала пять строк. Диалог здесь был бы лишним механизмом
      (в хабе нет ни одного), <details> ничего не прячет безвозвратно и
      работает без скрипта. */
-  .cw-backup__details { margin-top: 16px; }
-  .cw-backup__details > summary {
+  .cw-disclose { margin-top: 16px; }
+  .cw-disclose > summary {
     display: inline-flex; align-items: center; gap: 8px;
     cursor: pointer; list-style: none;
     font: 500 13px/20px var(--md-font-family);
     color: var(--md-on-surface-variant);
     border-radius: var(--cw-radius-sm);
   }
-  .cw-backup__details > summary::-webkit-details-marker { display: none; }
-  .cw-backup__details > summary:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 3px; }
-  .cw-backup__details > summary::before {
+  .cw-disclose > summary::-webkit-details-marker { display: none; }
+  .cw-disclose > summary:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 3px; }
+  .cw-disclose > summary::before {
     content: "";
     width: 0; height: 0;
     border-left: 5px solid currentColor;
@@ -583,11 +584,50 @@
     border-bottom: 4px solid transparent;
     transition: transform 0.15s ease;
   }
-  .cw-backup__details[open] > summary::before { transform: rotate(90deg); }
+  .cw-disclose[open] > summary::before { transform: rotate(90deg); }
   @media (prefers-reduced-motion: reduce) {
-    .cw-backup__details > summary::before { transition: none; }
+    .cw-disclose > summary::before { transition: none; }
   }
-  .cw-backup__details .cw-backup__table { margin-top: 12px; }
+  .cw-disclose .cw-backup__table { margin-top: 12px; }
+
+  /* --- Форма в системной карточке ---------------------------------------
+     Две колонки на широком экране, одна на узком. Поля подписаны словами,
+     а не только иконкой: в шапке хаба у селекта языка подписи нет вовсе,
+     и это терпимо для двух общеизвестных органов управления, но не для
+     шести полей документа. */
+  .cw-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .cw-form__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .cw-form__field--wide { grid-column: 1 / -1; }
+  .cw-form__label {
+    font: 400 12px/16px var(--md-font-family);
+    letter-spacing: 0.4px;
+    color: var(--md-outline);
+  }
+  .cw-form input,
+  .cw-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    border: 1px solid var(--md-outline-variant);
+    border-radius: var(--cw-radius-sm);
+    background: var(--md-surface-container-lowest);
+    color: var(--md-on-surface);
+    font: 400 14px/20px var(--md-font-family);
+  }
+  .cw-form textarea { resize: vertical; min-height: 60px; }
+  .cw-form input:hover, .cw-form textarea:hover { border-color: var(--md-outline); }
+  .cw-form input:focus-visible,
+  .cw-form textarea:focus-visible {
+    outline: 3px solid var(--md-primary);
+    outline-offset: 2px;
+    border-color: var(--md-primary);
+  }
+  @media (max-width: 900px) { .cw-form { grid-template-columns: 1fr; } }
 
   .cw-footer {
     position: relative; z-index: 1;
@@ -795,7 +835,7 @@
               <span id="backupAge"></span>
             </p>
 
-            <p class="cw-backup__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
+            <p class="cw-syscard__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
 
             <div class="cw-backup__actions">
               <button type="button" class="cw-btn cw-btn--primary" id="backupSaveAll">
@@ -809,7 +849,7 @@
               <input type="file" id="backupFile" accept=".json,application/json" hidden />
             </div>
 
-            <details class="cw-backup__details">
+            <details class="cw-disclose">
               <summary data-i18n="backup.details">Подробнее по модулям</summary>
               <table class="cw-backup__table">
                 <thead>
@@ -824,6 +864,56 @@
             </details>
 
             <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
+          </div>
+        </article>
+
+        <article class="cw-card cw-syscard" id="senderCard" aria-labelledby="senderHeading">
+          <div class="cw-syscard__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2"/><path d="M14.5 10h4M14.5 13.5h4"/></svg>
+          </div>
+          <div class="cw-syscard__body">
+            <h3 id="senderHeading" data-i18n="sender.title">Отправитель</h3>
+
+            <!-- Пустой отправитель — не мелочь: письма всех модулей печатают
+                 шапку и подпись из этой записи, и при пустых полях документ
+                 молча уходит без шапки. Поэтому у карточки есть состояние,
+                 как у резервной копии. -->
+            <p class="cw-syscard__state">
+              <span class="cw-syscard__dot" aria-hidden="true"></span>
+              <span id="senderState"></span>
+            </p>
+
+            <p class="cw-syscard__hint" data-i18n="sender.hint">Имя, код района и контакты подставляются в шапку и подпись писем во всех модулях. Данные общие: правка здесь видна и в модулях.</p>
+
+            <details class="cw-disclose">
+              <summary data-i18n="sender.edit">Изменить данные</summary>
+              <div class="cw-form">
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_name">Имя и фамилия</span>
+                    <input id="sender-name" type="text" autocomplete="name">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_code">Код района</span>
+                    <input id="sender-code" type="text" autocomplete="off">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_phone1">Телефон</span>
+                    <input id="sender-phone1" type="tel" autocomplete="tel">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_phone2">Второй телефон</span>
+                    <input id="sender-phone2" type="tel" autocomplete="tel">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_email">E-mail</span>
+                    <input id="sender-email" type="email" autocomplete="email">
+                  </label>
+                  <label class="cw-form__field cw-form__field--wide">
+                    <span class="cw-form__label" data-i18n="sender.f_address">Адрес</span>
+                    <textarea id="sender-address" rows="2" autocomplete="street-address"></textarea>
+                  </label>
+              </div>
+            </details>
           </div>
         </article>
       </div>
@@ -1161,6 +1251,63 @@
     renderRows();
     renderState();
     CWI18n.onChange(function () { renderRows(); renderState(); });
+  })();
+
+  // --- Отправитель ------------------------------------------------------
+  // Хаб — первое место, где общую запись можно увидеть и править: до сих пор
+  // она редактировалась только внутри трёх модулей, каждым своей формой.
+  // Хранилище общее (CWSender), поэтому правка здесь и правка в модуле — это
+  // одна и та же запись; подписка onChange держит открытые вкладки в согласии.
+  (function () {
+    var card = document.getElementById('senderCard');
+    var stateSlot = document.getElementById('senderState');
+    if (!card || !stateSlot || typeof CWSender === 'undefined') return;
+
+    var inputs = {};
+    CWSender.FIELDS.forEach(function (field) {
+      var el = document.getElementById('sender-' + field);
+      if (el) inputs[field] = el;
+    });
+
+    var LEVELS = ['cw-syscard--ok', 'cw-syscard--warn', 'cw-syscard--alert'];
+
+    function renderState(data) {
+      var name = String(data.name || '').trim();
+      var code = String(data.code || '').trim();
+      // Жёлтый, а не красный: незаполненный отправитель ещё ничего не испортил,
+      // но испортит первый же напечатанный документ. Красный оставлен потере
+      // данных.
+      var level = name ? 'ok' : 'warn';
+      stateSlot.textContent = name
+        ? (code ? name + ' · ' + code : name)
+        : CWI18n.t('sender.state_empty');
+      LEVELS.forEach(function (cls) { card.classList.remove(cls); });
+      card.classList.add('cw-syscard--' + level);
+      card.setAttribute('data-pad', level);
+      if (window.CWHubBoard) window.CWHubBoard.refresh();
+    }
+
+    function fill() {
+      var data = CWSender.get();
+      Object.keys(inputs).forEach(function (field) {
+        // Сравнение до присваивания: иначе перерисовка по onChange сбрасывала
+        // бы каретку в поле, в котором пользователь сейчас печатает.
+        if (inputs[field].value !== data[field]) inputs[field].value = data[field];
+      });
+      renderState(data);
+    }
+
+    Object.keys(inputs).forEach(function (field) {
+      inputs[field].addEventListener('input', function () {
+        var patch = {};
+        patch[field] = inputs[field].value;
+        renderState(CWSender.set(patch));
+      });
+    });
+
+    CWSender.onChange(fill);
+    CWI18n.onChange(function () { renderState(CWSender.get()); });
+    fill();
   })();
 
   // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js),

@@ -24,6 +24,7 @@ const SHELL_FILES = [
   './shared/nav.js',
   './shared/theme.js',
   './shared/backup.js',
+  './shared/sender.js',
   './shared/version.js',
   './shared/update.js',
   // Локализация: без неё офлайн-хаб остался бы без переводов и упал бы
