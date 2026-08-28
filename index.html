@@ -182,60 +182,131 @@
     .cw-hub-header__tools { flex: 1 1 100%; }
   }
 
-  /* --- Плата модулей: шина-коннектор + плитки ---
-     Каждая плитка "запитана" от общей шины сверху: горизонтальная линия
-     соединяет три контактные площадки (pad), от каждой вниз идёт дорожка
-     к соответствующей плитке. Цвет площадки отражает статус модуля. */
+  /* --- Плата модулей: ствол, рёбра, ярусы ---
+     Раньше шина была одна: горизонтальная планка НАД первым рядом, четыре
+     ячейки жёстко в разметке, и ниже 1240px она пряталась целиком. Модулей
+     стало пять, пятая плитка уехала во второй ряд и осталась ни к чему не
+     подключённой; число ячеек шины при этом ничем не было связано с числом
+     плиток — шестой модуль разошёлся бы молча.
+
+     Теперь контур один на всю плату: вертикальный СТВОЛ вдоль левого края,
+     от него на каждый ряд отходит РЕБРО с контактными площадками, от каждой
+     площадки — дорожка вниз в плитку. Рёбра строит скрипт по фактическому
+     числу плиток в ряду и по фактическому числу колонок (читает computed
+     grid-template-columns, а не дублирует брейкпоинты в JS), поэтому шина
+     не может разойтись с сеткой и не исчезает на узком экране: в одну
+     колонку ствол остаётся слева, а площадки становятся отметками напротив
+     карточек. */
   .cw-board {
     position: relative;
     z-index: 1;
     padding: 12px 0 64px;
 
-    /* Число колонок и зазор объявлены ОДИН раз и используются и сеткой,
-       и шиной-коннектором. Раньше площадки шины стояли на 16,666%/50%/
-       83,333%, а реальные центры колонок из-за зазора приходятся на
-       15,76%/50%/84,24% — крайние дорожки всегда промахивались мимо
-       плиток ровно на gap/3 (≈9px). Теперь шина — такая же сетка, и
-       попадание в центр обеспечено на любой ширине и при любом числе
-       модулей. */
-    --cw-cols: 4;
+    /* Зазор колонок и число колонок объявлены ОДИН раз и используются и
+       сеткой, и рёбрами — попадание дорожки в центр плитки обеспечено на
+       любой ширине. Вертикальный зазор меньше горизонтального: расстояние
+       между рядами набирается из зазора + высоты ребра + зазора. */
     --cw-gap: 28px;
+    --cw-row-gap: 12px;
+    /* Отступ ствола от контента = длина «хвоста» ребра влево. */
+    --cw-spine: 28px;
+    /* Число колонок для широкого экрана ставит скрипт от числа плиток
+       (правило «ряда из одной плитки не бывает»): 5 → 3+2, 6 → 3+3,
+       7 → 4+3, 8 → 4+4, 9 → 3+3+3. Запасное значение — на случай,
+       если скрипт не отработал. */
+    --cw-cols: var(--cw-cols-wide, 4);
   }
   /* Ступени рассчитаны от читаемой ширины плитки (~230px минимум с учётом
-     зазора), а не от числа модулей: четыре в ряд имеют смысл только на
-     широком экране, ниже 1240px плитки сжимались бы до нечитаемых. */
+     зазора), а не от числа модулей. */
   @media (max-width: 1240px) { .cw-board { --cw-cols: 3; } }
   @media (max-width: 1000px) { .cw-board { --cw-cols: 2; } }
-  @media (max-width: 700px)  { .cw-board { --cw-cols: 1; } }
+  @media (max-width: 700px)  { .cw-board { --cw-cols: 1; --cw-spine: 18px; --cw-gap: 16px; } }
 
-  .cw-bus {
-    display: grid;
-    grid-template-columns: repeat(var(--cw-cols), minmax(0, 1fr));
-    gap: var(--cw-gap);
-    height: 32px;
-    margin-bottom: 2px;
+  /* --- Ярус ------------------------------------------------------------
+     Два яруса: рабочие модули (у каждого своя страница, своя версия, свой
+     service worker) и система (действия и настройки самого хаба, без своей
+     версии). Ствол — общий: он проходит через оба яруса и заканчивается
+     «землёй» — короткой поперечиной, чтобы линия завершалась, а не
+     обрывалась. */
+  .cw-tier {
+    position: relative;
+    padding-left: var(--cw-spine);
   }
-  /* Шина осмысленна только когда все модули стоят в один ряд. Порог
-     совпадает с первой ступенью сетки: как только колонок стало меньше,
-     чем модулей, дорожки уже никуда не ведут. */
-  @media (max-width: 1240px) { .cw-bus { display: none; } }
-
-  .cw-bus__cell { position: relative; }
-  .cw-bus__cell::before {
+  .cw-tier::before {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--md-outline-variant);
+  }
+  .cw-tier--work { padding-bottom: 44px; }
+  .cw-tier--system::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: 0;
+    width: 14px; height: 2px;
+    border-radius: 1px;
+    background: var(--md-outline-variant);
+  }
+  .cw-tier__label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 14px;
+    font: 500 13px/20px var(--md-font-family);
+    letter-spacing: 0.5px;
+    color: var(--md-outline);
+  }
+  .cw-tier__count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+  }
+
+  /* Группы внутри рабочего яруса — точка расширения. Пока группа одна,
+     заголовок не рисуется (его просто нет в разметке); при семи и более
+     модулях добавляется второй .cw-group со своим .cw-group__label, и
+     каждая группа получает собственные рёбра от того же ствола. Стили
+     заголовка объявлены заранее, чтобы добавление группы было правкой
+     разметки, а не вёрстки. */
+  .cw-group + .cw-group { margin-top: 32px; }
+  .cw-group__label {
+    margin: 0 0 12px;
+    font: 500 14px/20px var(--md-font-family);
+    letter-spacing: 0.15px;
+    color: var(--md-on-surface-variant);
+  }
+
+  /* --- Ребро -----------------------------------------------------------
+     Ребро — обычный элемент сетки во всю ширину ряда (grid-column: 1/-1),
+     поэтому оно само делит сетку на ряды и не может «промахнуться» мимо
+     границы ряда. Внутри — такая же сетка колонок, что и у плиток, но
+     ячеек ровно столько, сколько плиток в этом ряду: у неполного ряда
+     линия заканчивается на последней площадке, а не уходит в пустоту. */
+  .cw-rib {
+    grid-column: 1 / -1;
+    position: relative;
+    height: 26px;
+    display: grid;
+    grid-template-columns: repeat(var(--cw-cols), minmax(0, 1fr));
+    column-gap: var(--cw-gap);
+  }
+  .cw-rib__cell { position: relative; }
+  .cw-rib__cell::before {
+    content: "";
+    position: absolute;
+    top: 12px; left: 0; right: 0;
     height: 2px;
     background: var(--md-outline-variant);
   }
-  /* Крайние ячейки: линия доходит только до своей площадки, а не торчит
-     за пределы крайних плиток. */
-  .cw-bus__cell:first-child::before { left: 50%; }
-  .cw-bus__cell:last-child::before  { right: 50%; }
+  /* Первая ячейка дотягивает линию до ствола, последняя — обрывает её
+     ровно на своей площадке. */
+  .cw-rib__cell:first-child::before { left: calc(-1 * var(--cw-spine)); }
+  .cw-rib__cell:last-child::before  { right: 50%; }
 
-  .cw-bus__pad {
+  .cw-rib__pad {
     position: absolute;
-    top: -7px; left: 50%;
+    top: 5px; left: 50%;
     transform: translateX(-50%);
     box-sizing: border-box;
     width: 16px; height: 16px;
@@ -243,22 +314,40 @@
     background: var(--md-surface-container-low);
     border: 2px solid var(--md-outline-variant);
   }
-  .cw-bus__pad::after {
+  .cw-rib__pad::after {
     content: "";
     position: absolute;
     top: 100%; left: 50%;
     transform: translateX(-50%);
-    width: 2px; height: 23px;
+    width: 2px;
+    /* От низа площадки до верха плитки: остаток ребра + вертикальный зазор. */
+    height: calc(5px + var(--cw-row-gap));
     background: var(--md-outline-variant);
   }
-  .cw-bus__pad--live { border-color: var(--md-primary); background: var(--md-primary-container); }
-  .cw-bus__pad--live::after { background: var(--md-primary-container); }
+  .cw-rib__pad--live { border-color: var(--md-primary); background: var(--md-primary-container); }
+  .cw-rib__pad--live::after { background: var(--md-primary-container); }
+  /* Статус площадки системной карточки: индикатор — это сам контакт,
+     а не наклейка поверх интерфейса. */
+  .cw-rib__pad--ok    { border-color: var(--status-success);   background: var(--md-surface-container-low); }
+  .cw-rib__pad--warn  { border-color: var(--status-important); background: var(--md-surface-container-low); }
+  .cw-rib__pad--alert { border-color: var(--status-critical);  background: var(--md-surface-container-low); }
+  .cw-rib__pad--ok::after    { background: var(--status-success); }
+  .cw-rib__pad--warn::after  { background: var(--status-important); }
+  .cw-rib__pad--alert::after { background: var(--status-critical); }
+
+  /* Системный ярус живёт на своей ступени колонок: карточки там широкие,
+     четыре в ряд им не нужны. Значение ставит скрипт от числа карточек
+     (сейчас одна → одна колонка), медиазапрос ниже перекрывает его на узком
+     экране. */
+  .cw-grid--system { --cw-cols: var(--cw-cols-system, 2); }
+  @media (max-width: 900px) { .cw-grid--system { --cw-cols: 1; } }
 
   .cw-grid {
     position: relative;
     display: grid;
     grid-template-columns: repeat(var(--cw-cols), minmax(0, 1fr));
-    gap: var(--cw-gap);
+    column-gap: var(--cw-gap);
+    row-gap: var(--cw-row-gap);
     align-items: stretch;
   }
 
@@ -357,40 +446,87 @@
     border: 0;
   }
 
-  /* --- Резервное копирование ------------------------------------------
-     Отдельная карточка под плитками: это не модуль, а действие над всем
-     рабочим пространством, и его место — рядом с модулями, но не среди них. */
-  .cw-backup { margin-top: 40px; }
-  .cw-backup__head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+  /* --- Системная карточка ----------------------------------------------
+     Анатомия намеренно ДРУГАЯ, чем у плитки модуля: плитка вертикальная
+     (иконка сверху, ссылка целиком), системная карточка — широкая строка
+     (иконка слева, содержимое справа, не ссылка). Разная форма — самый
+     сильный сигнал различия ярусов: он не зависит ни от цвета, ни от темы.
+     Поверхность утоплена на ступень (surface-container-low вместо
+     surface-container), тени и подъёма на hover нет — это фундамент,
+     а не инструмент. */
+  .cw-syscard {
+    position: relative;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 20px 24px;
+    background: var(--md-surface-container-low);
+    box-shadow: none;
   }
-  .cw-backup__head h2 {
+  /* .cw-card поднимает карточку на hover — но системная карточка никуда не
+     ведёт, поднимать её значит обещать переход, которого нет. */
+  .cw-syscard:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--md-outline-variant);
+  }
+  .cw-syscard__icon {
+    flex: 0 0 auto;
+    width: 48px; height: 48px;
+    border-radius: var(--cw-radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--md-surface-container);
+    border: 1px solid var(--md-outline-variant);
+    /* Не --md-primary, как у модулей: системный ярус не претендует
+       на внимание. */
+    color: var(--md-on-surface-variant);
+  }
+  .cw-syscard__icon svg { width: 24px; height: 24px; }
+  .cw-syscard__body { flex: 1 1 auto; min-width: 0; }
+  .cw-syscard__body h3 {
     font: 500 16px/24px var(--md-font-family);
-    letter-spacing: 0.15px; margin: 0;
+    letter-spacing: 0.15px;
+    margin: 0;
   }
-  .cw-backup__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 0 0 16px; }
-  .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
-  .cw-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    height: 40px; padding: 0 18px;
-    border-radius: 999px; border: 1px solid var(--md-outline-variant);
-    background: var(--md-surface-container); color: var(--md-on-surface);
-    font: 500 14px/20px var(--md-font-family); cursor: pointer;
+
+  /* Строка состояния: точка + возраст копии. Точка того же размера, что
+     .cw-tile__dot у модулей — экран остаётся однородным. Цвет НЕ единственный
+     носитель смысла: текст рядом говорит то же самое словами, поэтому
+     состояние читается и при дальтонизме, и в чёрно-белой печати. */
+  .cw-syscard__state {
+    display: flex; align-items: center; gap: 8px;
+    margin: 6px 0 0;
+    font: 400 13px/20px var(--md-font-family);
+    color: var(--md-on-surface-variant);
   }
-  .cw-btn:hover { border-color: var(--md-primary); }
-  .cw-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
-  .cw-btn--primary { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
-  .cw-btn svg { width: 18px; height: 18px; }
-  .cw-backup__table { width: 100%; border-collapse: collapse; font: 400 13px/20px var(--md-font-family); }
-  .cw-backup__table th {
-    text-align: left; color: var(--md-outline); font-weight: 500;
-    padding: 6px 8px; border-bottom: 1px solid var(--md-outline-variant);
+  .cw-syscard__dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    background: var(--status-normal);
   }
-  .cw-backup__table td { padding: 8px; border-bottom: 1px solid var(--md-outline-variant); }
-  .cw-backup__table td:last-child, .cw-backup__table th:last-child { text-align: right; white-space: nowrap; }
-  .cw-backup__never { color: var(--md-outline); }
-  .cw-backup__status { margin: 12px 0 0; font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); min-height: 20px; }
+  .cw-syscard--ok    .cw-syscard__dot { background: var(--status-success); }
+  .cw-syscard--warn  .cw-syscard__dot { background: var(--status-important); }
+  .cw-syscard--alert .cw-syscard__dot { background: var(--status-critical); }
+  .cw-syscard--alert .cw-syscard__state { color: var(--status-critical); }
+
+  /* Красный статус получает дополнительно тонкую полосу слева — но ВНУТРИ
+     карточки, а не border-left: односторонняя рамка ломает скругление углов.
+     Заливать карточку целиком не нужно ни при каком статусе: просроченная
+     копия — это напоминание, а не авария. */
+  .cw-syscard--alert { padding-left: 32px; }
+  .cw-syscard--alert::before {
+    content: "";
+    position: absolute;
+    left: 12px; top: 20px; bottom: 20px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--status-critical);
+  }
+
+  /* --- Резервное копирование -------------------------------------------- */
+  .cw-backup__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 10px 0 0; }
+  .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 
   .cw-footer {
     position: relative; z-index: 1;
@@ -454,15 +590,29 @@
 
 <main class="cw-board">
   <div class="cw-container">
-    <!-- Ячеек ровно столько же, сколько плиток: площадка каждой ячейки
-         центрируется гридом, а не процентами. -->
-    <div class="cw-bus" aria-hidden="true">
-      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
-      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
-      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
-      <div class="cw-bus__cell"><span class="cw-bus__pad cw-bus__pad--live"></span></div>
-    </div>
-    <div class="cw-grid" id="moduleGrid">
+
+    <!-- ЯРУС 1: рабочие модули. Признак яруса формальный, а не вкусовой:
+         у рабочего модуля есть собственная страница, собственная версия в
+         CW_MODULES и собственный service worker. «Документы» этому отвечают
+         (v1.5.5, своя страница) — то, что у них нет своего хранилища, на
+         принадлежность к ярусу не влияет.
+
+         Рёбра шины в разметке отсутствуют намеренно: их строит скрипт по
+         фактическому числу плиток и колонок. Вписывать их руками означало бы
+         снова завести второй источник правды о числе модулей. -->
+    <section class="cw-tier cw-tier--work" aria-labelledby="tierWork">
+      <h2 class="cw-tier__label" id="tierWork">
+        <span data-i18n="hub.tier_work">Рабочие модули</span>
+        <span class="cw-tier__count" data-tier-count></span>
+      </h2>
+
+      <!-- Группа — точка расширения на будущее. Пока модулей меньше семи,
+           группа одна и без заголовка: однородная сетка ещё читается.
+           При семи и более добавляется второй .cw-group с
+           <h3 class="cw-group__label">, и каждая группа получает свои рёбра
+           от того же ствола — стили для этого уже объявлены. -->
+      <div class="cw-group">
+        <div class="cw-grid" id="moduleGrid">
 
       <a class="cw-tile-link" href="congress-project/index.html" data-module="congress-project">
         <article class="cw-card cw-tile">
@@ -554,35 +704,68 @@
         </article>
       </a>
 
-    </div>
+        </div>
+      </div>
+    </section>
 
-    <section class="cw-backup cw-card" aria-labelledby="backupHeading">
-      <div class="cw-backup__head">
-        <h2 id="backupHeading" data-i18n="backup.title">Резервное копирование</h2>
+    <!-- ЯРУС 2: система. Действия и настройки самого хаба — без собственной
+         страницы и без версии. Сейчас здесь одна карточка; «Настройки»
+         (отправитель, язык, тема) — следующий кандидат, место под них
+         оставлено: число колонок яруса скрипт считает от числа карточек. -->
+    <section class="cw-tier cw-tier--system" aria-labelledby="tierSystem">
+      <h2 class="cw-tier__label" id="tierSystem">
+        <span data-i18n="hub.tier_system">Система</span>
+      </h2>
+
+      <div class="cw-grid cw-grid--system">
+        <article class="cw-card cw-syscard" id="backupCard" aria-labelledby="backupHeading">
+          <div class="cw-syscard__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7"/><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/><path d="M9 12h6"/></svg>
+          </div>
+          <div class="cw-syscard__body">
+            <h3 id="backupHeading" data-i18n="backup.title">Резервное копирование</h3>
+
+            <!-- Возраст копии — текстом, а не только цветом: то же состояние
+                 читается при дальтонизме и в чёрно-белой печати. Строка стоит
+                 на одном месте при любом статусе, меняется только формулировка
+                 (констатация → называние проблемы). -->
+            <p class="cw-syscard__state">
+              <span class="cw-syscard__dot" aria-hidden="true"></span>
+              <span id="backupAge"></span>
+            </p>
+
+            <p class="cw-backup__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
+
+            <div class="cw-backup__actions">
+              <button type="button" class="cw-btn cw-btn--primary" id="backupSaveAll">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                <span data-i18n="backup.save_all">Сохранить всё</span>
+              </button>
+              <button type="button" class="cw-btn" id="backupRestoreBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"/><path d="M7 14l5-5 5 5"/><path d="M12 9v12"/></svg>
+                <span data-i18n="backup.restore">Восстановить из файла</span>
+              </button>
+              <input type="file" id="backupFile" accept=".json,application/json" hidden />
+            </div>
+
+            <details class="cw-backup__details">
+              <summary data-i18n="backup.details">Подробнее по модулям</summary>
+              <table class="cw-backup__table">
+                <thead>
+                  <tr>
+                    <th data-i18n="backup.col_module">Модуль</th>
+                    <th data-i18n="backup.col_version">Версия</th>
+                    <th data-i18n="backup.col_last">Последняя копия</th>
+                  </tr>
+                </thead>
+                <tbody id="backupRows"></tbody>
+              </table>
+            </details>
+
+            <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
+          </div>
+        </article>
       </div>
-      <p class="cw-backup__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
-      <div class="cw-backup__actions">
-        <button type="button" class="cw-btn cw-btn--primary" id="backupSaveAll">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-          <span data-i18n="backup.save_all">Сохранить всё</span>
-        </button>
-        <button type="button" class="cw-btn" id="backupRestoreBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"/><path d="M7 14l5-5 5 5"/><path d="M12 9v12"/></svg>
-          <span data-i18n="backup.restore">Восстановить из файла</span>
-        </button>
-        <input type="file" id="backupFile" accept=".json,application/json" hidden />
-      </div>
-      <table class="cw-backup__table">
-        <thead>
-          <tr>
-            <th data-i18n="backup.col_module">Модуль</th>
-            <th data-i18n="backup.col_version">Версия</th>
-            <th data-i18n="backup.col_last">Последняя копия</th>
-          </tr>
-        </thead>
-        <tbody id="backupRows"></tbody>
-      </table>
-      <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
     </section>
   </div>
 </main>
@@ -614,6 +797,104 @@
     var version = self.CW_MODULES[key].version;
     if (slot && version) slot.textContent = '· v' + version;
   });
+
+  // --- Плата: рёбра шины ------------------------------------------------
+  // Рёбра не лежат в разметке намеренно: иначе число площадок стало бы вторым
+  // источником правды о числе модулей и разошлось бы при добавлении шестого
+  // (ровно так разошлась прежняя статичная .cw-bus на четыре ячейки).
+  // Число колонок скрипт НЕ вычисляет по ширине окна, а читает у сетки уже
+  // посчитанным (getComputedStyle → gridTemplateColumns): брейкпоинты
+  // остаются в CSS в одном экземпляре.
+  (function () {
+    var board = document.querySelector('.cw-board');
+    var work = document.getElementById('moduleGrid');
+    var system = document.querySelector('.cw-grid--system');
+    if (!board) return;
+
+    function items(grid) {
+      return [].slice.call(grid.children).filter(function (el) {
+        return el.className.indexOf('cw-rib') === -1;
+      });
+    }
+
+    // Ряда из одной плитки не бывает: при N % 4 == 1 колонок становится три.
+    // 5 → 3+2, 6 → 3+3, 7 → 4+3, 8 → 4+4, 9 → 3+3+3.
+    function wideCols(n) { return n % 4 === 1 ? 3 : 4; }
+
+    function makeRib(row) {
+      var rib = document.createElement('div');
+      rib.className = 'cw-rib';
+      rib.setAttribute('aria-hidden', 'true');
+      row.forEach(function (tile) {
+        var cell = document.createElement('div');
+        cell.className = 'cw-rib__cell';
+        var pad = document.createElement('span');
+        // Состояние площадки берётся у самой карточки: у модулей это 'live',
+        // у системной карточки — уровень статуса, который она себе проставила.
+        pad.className = 'cw-rib__pad cw-rib__pad--' + (tile.getAttribute('data-pad') || 'live');
+        cell.appendChild(pad);
+        rib.appendChild(cell);
+      });
+      return rib;
+    }
+
+    // Одного правила колонок мало: при тринадцати модулях и четыре, и три
+    // колонки дают в остатке единицу. Поэтому последний ряд, если он выродился
+    // в одну плитку, занимает одну у предыдущего: 4+4+4+1 → 4+4+3+2. При одной
+    // и двух колонках правило не применяется — там ряд из одной плитки либо
+    // норма (одна колонка), либо перестановка сделала бы только хуже.
+    function rowSizes(total, cols) {
+      var sizes = [];
+      for (var left = total; left > 0; left -= cols) sizes.push(Math.min(cols, left));
+      if (cols >= 3 && sizes.length > 1 && sizes[sizes.length - 1] === 1) {
+        sizes[sizes.length - 2] -= 1;
+        sizes[sizes.length - 1] = 2;
+      }
+      return sizes;
+    }
+
+    function build(grid) {
+      [].slice.call(grid.querySelectorAll('.cw-rib')).forEach(function (r) {
+        r.parentNode.removeChild(r);
+      });
+      var tiles = items(grid);
+      if (!tiles.length) return;
+      var tracks = window.getComputedStyle(grid).gridTemplateColumns;
+      var cols = (tracks && tracks !== 'none') ? tracks.split(' ').filter(Boolean).length : 1;
+      if (cols < 1) cols = 1;
+      var at = 0;
+      rowSizes(tiles.length, cols).forEach(function (size) {
+        var row = tiles.slice(at, at + size);
+        at += size;
+        grid.insertBefore(makeRib(row), row[0]);
+      });
+    }
+
+    function refresh() {
+      if (work) {
+        var n = items(work).length;
+        board.style.setProperty('--cw-cols-wide', wideCols(n));
+        var counter = document.querySelector('[data-tier-count]');
+        if (counter) counter.textContent = '· ' + n;
+        build(work);
+      }
+      if (system) {
+        system.style.setProperty('--cw-cols-system', Math.min(2, items(system).length));
+        build(system);
+      }
+    }
+
+    // Смена числа колонок происходит только на брейкпоинтах, но пересчёт
+    // дешёвый, поэтому проще пересобрать после любого изменения размера.
+    var timer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(timer);
+      timer = setTimeout(refresh, 150);
+    });
+
+    refresh();
+    window.CWHubBoard = { refresh: refresh };
+  })();
 
   // --- Язык интерфейса ------------------------------------------------
   // Хаб задаёт язык по умолчанию для всей экосистемы: CWI18n.setLang здесь
@@ -702,6 +983,61 @@
       });
     }
 
+    var card = document.getElementById('backupCard');
+    var ageSlot = document.getElementById('backupAge');
+
+    // Возраст считается от ПОЛНОЙ копии (scope: 'full'), а не от последней
+    // копии любого модуля: копия одного модуля не должна гасить предупреждение,
+    // пока данные остальных не сохранены. Журнал уже различает эти случаи —
+    // note() пишет scope, отдельного хранилища заводить не нужно.
+    function lastFullAt(log) {
+      return Object.keys(log).reduce(function (best, id) {
+        var entry = log[id];
+        if (!entry || entry.scope !== 'full' || !entry.at) return best;
+        return (!best || entry.at > best) ? entry.at : best;
+      }, null);
+    }
+
+    // Склонение числа дней отдаём Intl.PluralRules: он знает категории всех
+    // пяти языков, а словарь хранит только сами формы. Иначе пришлось бы
+    // держать в словаре по три-четыре готовые фразы на язык и помнить о
+    // правилах ru/uk/pl при каждой правке.
+    function days(n) {
+      var category = 'other';
+      try { category = new Intl.PluralRules(CWI18n.getLang()).select(n); } catch (e) { /* старый браузер */ }
+      var word = CWI18n.t('unit.days.' + category);
+      if (word === 'unit.days.' + category) word = CWI18n.t('unit.days.other');
+      return n + ' ' + word;
+    }
+
+    var LEVELS = ['cw-syscard--ok', 'cw-syscard--warn', 'cw-syscard--alert'];
+
+    function renderState() {
+      if (!card || !ageSlot) return;
+      var at = lastFullAt(CWBackup.log());
+      var level, text;
+
+      if (!at) {
+        level = 'alert';
+        text = CWI18n.t('backup.age_never');
+      } else {
+        var age = Math.floor((Date.now() - new Date(at).getTime()) / 86400000);
+        if (!(age >= 0)) age = 0;
+        level = age > 30 ? 'alert' : (age > 10 ? 'warn' : 'ok');
+        if (age === 0) text = CWI18n.t('backup.age_today');
+        else if (level === 'alert') text = CWI18n.t('backup.age_stale', { age: days(age) });
+        else text = CWI18n.t('backup.age_last', { age: days(age) });
+      }
+
+      ageSlot.textContent = text;
+      LEVELS.forEach(function (cls) { card.classList.remove(cls); });
+      card.classList.add('cw-syscard--' + level);
+      // Площадка на ребре — тот же индикатор, что и точка в карточке:
+      // состояние читается ещё до того, как взгляд дошёл до текста.
+      card.setAttribute('data-pad', level);
+      if (window.CWHubBoard) window.CWHubBoard.refresh();
+    }
+
     function renderRows() {
       var log = CWBackup.log();
       rows.innerHTML = Object.keys(CWBackup.MODULES).map(function (id) {
@@ -718,6 +1054,7 @@
       say('backup.working');
       CWBackup.saveAll().then(function (snap) {
         renderRows();
+        renderState();
         say('backup.saved', { count: snap.modules.length });
       }).catch(function (e) {
         console.error(e);
@@ -761,7 +1098,8 @@
     });
 
     renderRows();
-    CWI18n.onChange(renderRows);
+    renderState();
+    CWI18n.onChange(function () { renderRows(); renderState(); });
   })();
 
   // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js),
