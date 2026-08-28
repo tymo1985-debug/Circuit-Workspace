@@ -350,5 +350,97 @@ await CWBackup.restore(wrap('shared', DB, {
 ok('штатное восстановление не поднимает версию базы', await versionOf(DB) === SCHEMA);
 ok('штатное восстановление положило данные', (await rows(DB, 'templates')).some((r) => r.id === 'tpl_plain'));
 
+/* --- 6. Порядок восстановления и предохранительный снимок (H-1, H-2) ----
+ *
+ * ПОЧЕМУ ЭТО ПРОВЕРЯЕТСЯ. IndexedDB и localStorage — разные хранилища без
+ * общей транзакции, полной атомарности между ними не бывает. Но отказ базы
+ * не имеет права оставлять localStorage уже переписанным: получилось бы
+ * состояние, которого у пользователя никогда не было — настройки из файла
+ * рядом с нетронутой базой, — и откатывать его нечем.
+ *
+ * До 28.08.2026 `restore()` писал localStorage синхронно в обходе секций, а
+ * задания IndexedDB копил на потом. Сценарий 6.1 падал.
+ */
+console.log('\nПорядок восстановления');
+
+/* 6.1. Отказ базы не оставляет localStorage переписанным.
+   Отказ вызывается тем же способом, что и в 5.3, — неизвестным хранилищем:
+   это единственный отказ, который можно воспроизвести детерминированно, не
+   подменяя реализацию IndexedDB. */
+await wipe(DB);
+let d6 = await open(DB, SCHEMA, (x) => { x.createObjectStore('templates', { keyPath: 'id' }); });
+d6.close();
+mem.set('cw-sender', JSON.stringify({ name: 'ДоВосстановления' }));
+let orderRefusal = null;
+try {
+  await CWBackup.restore({
+    format: CWBackup.FORMAT,
+    formatVersion: CWBackup.FORMAT_VERSION,
+    scope: 'full',
+    createdAt: new Date().toISOString(),
+    app: { hub: '0.0.0', modules: {} },
+    modules: [],
+    sections: {
+      shared: {
+        local: { 'cw-sender': JSON.stringify({ name: 'ИзКопии' }) },
+        idb: { [DB]: { version: SCHEMA, stores: {
+          templates: store([{ id: 'tpl_x' }]),
+          futureStore: store([{ id: 'f1' }]),
+        } } },
+      },
+    },
+  });
+} catch (e) { orderRefusal = e && e.message; }
+ok('отказ базы: восстановление отклонено', orderRefusal === 'backup-newer-schema', String(orderRefusal));
+ok('отказ базы: localStorage НЕ переписан из файла',
+  JSON.parse(mem.get('cw-sender')).name === 'ДоВосстановления',
+  'localStorage пишется только после успешной записи всех баз — иначе откатывать нечем');
+
+/* 6.2. Успешное восстановление localStorage всё-таки пишет — иначе фаза C
+   могла бы «пройти» просто потому, что её выкинули. */
+await wipe(DB);
+d6 = await open(DB, SCHEMA, (x) => { x.createObjectStore('templates', { keyPath: 'id' }); });
+d6.close();
+await CWBackup.restore({
+  format: CWBackup.FORMAT,
+  formatVersion: CWBackup.FORMAT_VERSION,
+  scope: 'full',
+  createdAt: new Date().toISOString(),
+  app: { hub: '0.0.0', modules: {} },
+  modules: [],
+  sections: {
+    shared: {
+      local: { 'cw-sender': JSON.stringify({ name: 'ИзКопии' }) },
+      idb: { [DB]: { version: SCHEMA, stores: { templates: store([{ id: 'tpl_ok' }]) } } },
+    },
+  },
+});
+ok('успешное восстановление: localStorage переписан', JSON.parse(mem.get('cw-sender')).name === 'ИзКопии');
+ok('успешное восстановление: база записана', (await rows(DB, 'templates')).some((r) => r.id === 'tpl_ok'));
+
+/* 6.3. Предохранительный снимок переживает полное восстановление.
+   Это и есть причина, по которой он лежит в отдельной базе, а не в хранилище
+   `snapshots` общей: полная копия заменяет общую базу целиком и стёрла бы
+   снимок ровно тем действием, от которого он страхует. */
+console.log('\nПредохранительный снимок');
+const before = await CWBackup.snapshot();
+const guardId = await CWBackup.guard.save(before);
+ok('снимок сохранён', typeof guardId === 'string' && guardId.indexOf('restore:') === 0, String(guardId));
+ok('снимок лежит НЕ в общей базе', CWBackup.guard.DB !== DB,
+  'иначе полное восстановление стёрло бы его тем же действием, от которого он страхует');
+
+await CWBackup.restore(before);
+const guards = await CWBackup.guard.list();
+ok('снимок пережил полное восстановление', guards.some((g) => g.id === guardId));
+const restored = await CWBackup.guard.get(guardId);
+ok('снимок читается целиком и годен к восстановлению',
+  !!restored && CWBackup.inspect(restored).ok === true,
+  'снимок обязан быть тем же форматом, что файл копии, — иначе откатиться им нельзя');
+
+/* 6.4. Предел числа снимков: слепок весит как все данные разом. */
+for (let i = 0; i < 4; i++) await CWBackup.guard.save(before);
+const many = await CWBackup.guard.list();
+ok('число предохранительных снимков ограничено', many.length <= 3, 'снимков ' + many.length);
+
 console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\nВсе проверки резервного копирования пройдены.');
 process.exit(failed ? 1 : 0);

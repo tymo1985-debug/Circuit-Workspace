@@ -546,6 +546,10 @@
      без этих строк значки уезжают на свои 24px, а подписи ломаются на две
      строки. Геометрия совпадает с .cw-lang__select шапки (скругление 999),
      чтобы органы управления читались одной семьёй. */
+  /* `display` у класса кнопки перебивает `display:none` браузерного правила
+     для [hidden] — атрибут молча перестаёт работать, и скрытая кнопка видна.
+     Правило по классу, а не по id: ловушка общая для всех кнопок хаба. */
+  .cw-btn[hidden] { display: none; }
   .cw-btn {
     display: inline-flex; align-items: center; gap: 8px;
     height: 40px; padding: 0 18px;
@@ -878,6 +882,13 @@
                 <span data-i18n="backup.restore">Восстановить из файла</span>
               </button>
               <input type="file" id="backupFile" accept=".json,application/json" hidden />
+              <!-- Откат к состоянию перед последним восстановлением. Кнопки нет,
+                   пока снимка нет: показывать неработающее действие хуже, чем
+                   не показывать никакого. -->
+              <button type="button" class="cw-btn" id="backupGuardBtn" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+                <span data-i18n="backup.guard_restore">Откатиться к состоянию перед восстановлением</span>
+              </button>
             </div>
 
             <details class="cw-disclose">
@@ -1271,10 +1282,19 @@
 
         // Перед заменой данных выгружаем текущее состояние: если файл окажется
         // не тем, откатиться будет нечем — модули уже перезаписаны.
+        //
+        // ФАЙЛА ОДНОГО МАЛО (исправлено 28.08.2026). `download()` кликает по
+        // `<a download>`, и браузер вправе отказать молча: блокировка
+        // автозагрузок, iOS Safari в режиме PWA, нет места, отменённый диалог.
+        // Функция ничего не возвращает и не бросает — обещанный откат мог
+        // просто не существовать. Поэтому тот же снимок кладётся в отдельную
+        // базу приложения, которую полное восстановление не заменяет.
         say('backup.working');
         CWBackup.snapshot().then(function (before) {
-          CWBackup.download(before, 'circuit-workspace-before-restore-' + before.createdAt.slice(0, 10) + '.json');
-          return CWBackup.restore(snap);
+          return CWBackup.guard.save(before).then(function (guardId) {
+            CWBackup.download(before, 'circuit-workspace-before-restore-' + before.createdAt.slice(0, 10) + '.json');
+            return CWBackup.restore(snap).then(function (r) { return { r: r, guardId: guardId }; });
+          });
         }).then(function () {
           say('backup.restored');
           setTimeout(function () { location.reload(); }, 1200);
@@ -1289,13 +1309,44 @@
           // моменту restore() уже переписал localStorage: он делает это до
           // заданий IndexedDB. Обещание стало бы ложью ровно в том сообщении,
           // которое человек читает в момент неудачного восстановления.
-          // Вернуть `too_new` сразу, как восстановление станет атомарным
-          // (сначала базы, потом localStorage) — это следующий заход.
-          say('backup.failed');
+          // Порядок операций исправлен 28.08.2026: localStorage пишется только
+          // после успешной записи всех баз, поэтому обещание «Данные не
+          // изменены» для отказов ОТКРЫТИЯ теперь правдиво.
+          //   `backup-newer-schema` — копия требует схемы новее нашей;
+          //   `db-blocked`          — база занята другой вкладкой.
+          // Оба наступают в фазе A, до первой записи.
+          var msg = 'backup.failed';
+          if (err && err.message === 'backup-newer-schema') msg = 'backup.too_new';
+          if (err && err.message === 'db-blocked') msg = 'backup.blocked';
+          say(msg);
         });
       };
       reader.readAsText(file);
     });
+
+    // Откат к состоянию перед восстановлением. Снимок лежит в отдельной базе
+    // приложения; кнопка отдаёт его файлом, а дальше работает обычный путь
+    // «Восстановить из файла». Отдельного пути восстановления намеренно нет:
+    // второй такой путь пришлось бы проверять и поддерживать наравне с первым.
+    (function () {
+      var guardBtn = document.getElementById('backupGuardBtn');
+      if (!guardBtn || !CWBackup.guard) return;
+      var newest = null;
+      CWBackup.guard.list().then(function (list) {
+        if (!list.length) return;
+        newest = list[0];
+        guardBtn.hidden = false;
+      });
+      guardBtn.addEventListener('click', function () {
+        if (!newest) return;
+        say('backup.working');
+        CWBackup.guard.get(newest.id).then(function (snap) {
+          if (!snap) { say('backup.failed'); return; }
+          CWBackup.download(snap, 'circuit-workspace-before-restore-' + String(newest.id).slice(8, 18) + '.json');
+          say('backup.guard_saved');
+        }).catch(function (e) { console.error(e); say('backup.failed'); });
+      });
+    })();
 
     renderRows();
     renderState();

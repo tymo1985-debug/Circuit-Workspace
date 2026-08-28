@@ -57,6 +57,20 @@
      баз модулей, есть известный этому коду потолок версии — CWDB.DB_VERSION. */
   var SHARED_DB = 'circuit-workspace-db';
 
+  /* Предохранительные снимки перед восстановлением живут в ОТДЕЛЬНОЙ базе.
+     Причина жёсткая: полное восстановление заменяет общую базу целиком, то
+     есть снимок, положенный в её хранилище `snapshots`, был бы стёрт ровно
+     тем действием, от которого страхует. Отдельная база не входит ни в один
+     реестр копий, и достать её не может ничто, кроме явного удаления. */
+  var GUARD_DB = 'circuit-workspace-guard';
+  var GUARD_STORE = 'guards';
+  var GUARD_LIMIT = 3;
+
+  /* Сколько ждём базу, прежде чем признать её занятой другой вкладкой.
+     Апгрейд здесь только заводит пустые хранилища и укладывается в миллисекунды;
+     всё, что дольше, — это `blocked`, о котором браузер мог и не сообщить. */
+  var OPEN_TIMEOUT_MS = 4000;
+
   /* Общий слой: настройки, не принадлежащие ни одному модулю. */
   var SHARED = {
     local: ['cw-lang', 'cw-doclang', 'cw-sender'],
@@ -366,7 +380,13 @@
       return Promise.resolve();
     }
     try {
-      return Promise.resolve(global.CWDB.init()).then(function () {}, function () {});
+      /* Предел ожидания обязателен: CWDB.init() на своём onblocked только пишет
+         в консоль и НИКОГДА не отклоняет промис. Без гонки с таймером занятая
+         база подвесила бы восстановление навсегда, показывая «Работаю…». */
+      return Promise.race([
+        Promise.resolve(global.CWDB.init()).then(function () {}, function () {}),
+        new Promise(function (resolve) { setTimeout(resolve, OPEN_TIMEOUT_MS); }),
+      ]);
     } catch (e) { return Promise.resolve(); }
   }
 
@@ -378,8 +398,18 @@
    *   частичной секции общего слоя: восстановление копии ОДНОГО модуля не
    *   имеет права стирать данные соседей из общей базы.
    */
-  function restoreDb(name, dump, merge) {
-    if (!dump || !dump.stores) return Promise.resolve();
+  /**
+   * ФАЗА A восстановления одной базы: подготовить схему, проверить потолок,
+   * ОТКРЫТЬ базу и вернуть соединение. Ни одной записи здесь не делается.
+   *
+   * Здесь же ловится «база занята другой вкладкой»: у пользователя PWA хаба и
+   * модуль часто открыты одновременно, и до 28.08.2026 такой отказ наступал
+   * уже после того, как localStorage был переписан из файла, — оставляя
+   * настройки из копии рядом с нетронутой базой, то есть состояние, которого
+   * у человека никогда не было.
+   */
+  function openForRestore(name, dump) {
+    if (!dump || !dump.stores) return Promise.resolve(null);
     return prepareSchema(name).then(function () {
       return openExisting(name);
     }).then(function (db) {
@@ -412,6 +442,14 @@
       }
 
       return new Promise(function (resolve, reject) {
+        var settled = false;
+        var timer = null;
+        var done = function (fn, arg) {
+          if (settled) return;
+          settled = true;
+          if (timer) clearTimeout(timer);
+          fn(arg);
+        };
         var r = global.indexedDB.open(name, version);
         r.onupgradeneeded = function () {
           var udb = r.result;
@@ -427,29 +465,55 @@
             });
           });
         };
-        r.onsuccess = function () { resolve(r.result); };
-        r.onerror = function () { reject(r.error); };
-        r.onblocked = function () {
-          reject(new Error('IndexedDB заблокирована другой вкладкой — закройте остальные вкладки приложения.'));
+        r.onsuccess = function () {
+          /* Отказались по таймеру, а база всё-таки открылась позже — соединение
+             надо закрыть, иначе оно останется висеть и заблокирует следующего. */
+          if (settled) { try { r.result.close(); } catch (e) { /* no-op */ } return; }
+          done(resolve, r.result);
         };
+        r.onerror = function () { done(reject, r.error); };
+        r.onblocked = function () { done(reject, new Error('db-blocked')); };
+        /* Браузер сообщает о блокировке не всегда (замороженная вкладка вообще
+           не отвечает), поэтому у ожидания есть предел. Без него восстановление
+           молча висело бы навсегда — а на экране в этот момент «Работаю…». */
+        if (version > current) {
+          timer = setTimeout(function () { done(reject, new Error('db-blocked')); }, OPEN_TIMEOUT_MS);
+        }
       });
-    }).then(function (db) {
-      var names = Object.keys(dump.stores).filter(function (s) { return db.objectStoreNames.contains(s); });
-      if (!names.length) { db.close(); return; }
-      var tx = db.transaction(names, 'readwrite');
-      return Promise.all(names.map(function (storeName) {
-        var store = tx.objectStore(storeName);
-        var rows = dump.stores[storeName].rows || [];
-        var write = function () {
-          return Promise.all(rows.map(function (row) { return req(store.put(row)); }));
-        };
-        return merge ? write() : req(store.clear()).then(write);
-      })).then(function () {
-        return new Promise(function (resolve, reject) {
-          tx.oncomplete = function () { db.close(); resolve(); };
-          tx.onerror = function () { db.close(); reject(tx.error); };
-        });
+    });
+  }
+
+  /**
+   * Записать данные в УЖЕ ОТКРЫТУЮ базу. Отделено от открытия намеренно:
+   * порядок «сначала открыть все базы, потом писать» — единственное, что даёт
+   * восстановлению шанс отказаться, не оставив систему в состоянии, которого
+   * у пользователя никогда не было (см. restore()).
+   */
+  function writeDb(db, dump, merge) {
+    var names = Object.keys(dump.stores).filter(function (s) { return db.objectStoreNames.contains(s); });
+    if (!names.length) { db.close(); return Promise.resolve(); }
+    var tx = db.transaction(names, 'readwrite');
+    return Promise.all(names.map(function (storeName) {
+      var store = tx.objectStore(storeName);
+      var rows = dump.stores[storeName].rows || [];
+      var write = function () {
+        return Promise.all(rows.map(function (row) { return req(store.put(row)); }));
+      };
+      return merge ? write() : req(store.clear()).then(write);
+    })).then(function () {
+      return new Promise(function (resolve, reject) {
+        tx.oncomplete = function () { db.close(); resolve(); };
+        tx.onerror = function () { db.close(); reject(tx.error); };
       });
+    });
+  }
+
+  /** Открыть и сразу записать. Оставлено для точечных вызовов и читаемости. */
+  function restoreDb(name, dump, merge) {
+    if (!dump || !dump.stores) return Promise.resolve();
+    return openForRestore(name, dump).then(function (db) {
+      if (!db) return;
+      return writeDb(db, dump, merge);
     });
   }
 
@@ -567,7 +631,27 @@
     var check = inspect(data);
     if (!check.ok) return Promise.reject(new Error(check.error));
     var snap = check.snapshot;
-    var jobs = [];
+
+    /* ПОРЯДОК ОПЕРАЦИЙ — не деталь реализации, а требование корректности
+       (исправлено 28.08.2026). Раньше localStorage переписывался синхронно в
+       обходе секций, а задания IndexedDB копились и выполнялись потом. Любой
+       отказ базы — занята другой вкладкой, потолок версии, ошибка транзакции —
+       заставал систему с настройками и легаси-ключами из файла рядом с
+       нетронутой базой. Хаб честно показывал «не удалось», но откатывать было
+       уже нечего.
+
+       Теперь три фазы:
+         A. открыть ВСЕ базы (здесь же ловится «занята» и потолок версии) —
+            ни одной записи;
+         B. записать данные в базы по очереди;
+         C. и только потом localStorage.
+
+       Полной атомарности это не даёт и не может дать: IndexedDB и localStorage
+       разные хранилища без общей транзакции. Но подавляющее большинство
+       отказов — именно отказы ОТКРЫТИЯ, и они теперь наступают до первой
+       записи, когда откатывать ещё нечего. */
+    var dbPlan = [];
+    var localPlan = [];
 
     Object.keys(snap.sections).forEach(function (id) {
       var sec = snap.sections[id] || {};
@@ -582,13 +666,134 @@
         // восстанавливаем — терять чужие данные хуже, чем принести лишние.
         Object.keys(sec.local || {}).forEach(function (k) { if (known.indexOf(k) < 0) known.push(k); });
       }
-      writeLocal(sec.local || {}, known);
+      localPlan.push({ map: sec.local || {}, known: known });
       Object.keys(sec.idb || {}).forEach(function (name) {
-        jobs.push(restoreDb(name, sec.idb[name], partial));
+        dbPlan.push({ name: name, dump: sec.idb[name], merge: partial });
       });
     });
 
-    return Promise.all(jobs).then(function () { return snap; });
+    var opened = [];
+    var closeAll = function () {
+      opened.forEach(function (item) {
+        if (item.db) { try { item.db.close(); } catch (e) { /* no-op */ } }
+      });
+    };
+
+    /* Фаза A. Последовательно, а не Promise.all: две базы, открываемые
+       одновременно, могут заблокировать друг друга апгрейдом, и разбирать
+       такой отказ было бы нечем. */
+    return dbPlan.reduce(function (chain, job) {
+      return chain.then(function () {
+        return openForRestore(job.name, job.dump).then(function (db) {
+          opened.push({ db: db, job: job });
+        });
+      });
+    }, Promise.resolve()).catch(function (e) {
+      closeAll();
+      throw e;
+    }).then(function () {
+      /* Фаза B. */
+      return opened.reduce(function (chain, item) {
+        return chain.then(function () {
+          if (!item.db) return;
+          var db = item.db;
+          item.db = null;            // writeDb закрывает соединение сам
+          return writeDb(db, item.job.dump, item.job.merge);
+        });
+      }, Promise.resolve()).catch(function (e) {
+        closeAll();
+        throw e;
+      });
+    }).then(function () {
+      /* Фаза C. */
+      localPlan.forEach(function (item) { writeLocal(item.map, item.known); });
+      return snap;
+    });
+  }
+
+  /* --- Предохранительный снимок перед восстановлением --------------------
+   *
+   * ЗАЧЕМ ОТДЕЛЬНАЯ БАЗА. Хаб перед восстановлением выгружает текущее
+   * состояние файлом. Но `download()` создаёт `<a download>` и кликает по
+   * нему — браузер вправе отказать молча: блокировка автозагрузок, iOS Safari
+   * в режиме PWA, нет места, пользователь отменил диалог. Функция ничего не
+   * возвращает и не бросает, поэтому обещанный откат мог просто не
+   * существовать — ровно в тот момент, когда он единственный.
+   *
+   * Почему не хранилище `snapshots` общей базы, где уже есть механизм: полное
+   * восстановление ЗАМЕНЯЕТ общую базу целиком, то есть стёрло бы снимок тем
+   * самым действием, от которого он страхует. Отдельная база не входит ни в
+   * один реестр копий и не попадает под замену.
+   */
+  function guardOpen() {
+    return new Promise(function (resolve, reject) {
+      var r = global.indexedDB.open(GUARD_DB, 1);
+      r.onupgradeneeded = function () {
+        var db = r.result;
+        if (!db.objectStoreNames.contains(GUARD_STORE)) {
+          db.createObjectStore(GUARD_STORE, { keyPath: 'id' });
+        }
+      };
+      r.onsuccess = function () { resolve(r.result); };
+      r.onerror = function () { reject(r.error); };
+      r.onblocked = function () { reject(new Error('db-blocked')); };
+    });
+  }
+
+  function guardSave(snap) {
+    var record = { id: 'restore:' + new Date().toISOString(), at: Date.now(), payload: snap };
+    return guardOpen().then(function (db) {
+      var tx = db.transaction([GUARD_STORE], 'readwrite');
+      var store = tx.objectStore(GUARD_STORE);
+      return req(store.put(record)).then(function () {
+        /* Держим только последние GUARD_LIMIT: снимок — это полный слепок всех
+           модулей, и хранить их без предела значит съесть место у самих данных. */
+        return req(store.getAllKeys());
+      }).then(function (keys) {
+        var extra = keys.sort().slice(0, Math.max(0, keys.length - GUARD_LIMIT));
+        return Promise.all(extra.map(function (k) { return req(store.delete(k)); }));
+      }).then(function () {
+        return new Promise(function (resolve, reject) {
+          tx.oncomplete = function () { db.close(); resolve(record.id); };
+          tx.onerror = function () { db.close(); reject(tx.error); };
+        });
+      });
+    }).catch(function (e) {
+      /* Не легло — не повод отменять восстановление: файл мог сохраниться.
+         Вызывающий видит null и решает сам, что сказать пользователю. */
+      console.error('CWBackup: предохранительный снимок не сохранён', e);
+      return null;
+    });
+  }
+
+  /** Шапки предохранительных снимков, НОВЫЕ → СТАРЫЕ. */
+  function guardList() {
+    return guardOpen().then(function (db) {
+      if (!db.objectStoreNames.contains(GUARD_STORE)) { db.close(); return []; }
+      var store = db.transaction([GUARD_STORE], 'readonly').objectStore(GUARD_STORE);
+      return req(store.getAll()).then(function (all) {
+        db.close();
+        return all.map(function (r) { return { id: r.id, at: r.at }; })
+          .sort(function (a, b) { return b.at - a.at; });
+      });
+    }).catch(function (e) {
+      console.error('CWBackup: список предохранительных снимков недоступен', e);
+      return [];
+    });
+  }
+
+  /** Полный снимок по id — годится прямо для download() и для restore(). */
+  function guardGet(id) {
+    return guardOpen().then(function (db) {
+      var store = db.transaction([GUARD_STORE], 'readonly').objectStore(GUARD_STORE);
+      return req(store.get(id)).then(function (rec) {
+        db.close();
+        return rec ? rec.payload : null;
+      });
+    }).catch(function (e) {
+      console.error('CWBackup: предохранительный снимок не прочитан', e);
+      return null;
+    });
   }
 
   /* --- Журнал последних копий (для таблицы на главной) ------------------- */
@@ -635,6 +840,15 @@
     snapshot: snapshot,
     inspect: inspect,
     restore: restore,
+
+    /** Предохранительный снимок перед восстановлением. Живёт в отдельной базе,
+     *  поэтому переживает даже полную замену общей — см. комментарий выше. */
+    guard: {
+      DB: GUARD_DB,
+      save: guardSave,
+      list: guardList,
+      get: guardGet,
+    },
     download: download,
     filename: filename,
     log: readLog,
