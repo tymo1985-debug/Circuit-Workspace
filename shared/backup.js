@@ -53,6 +53,9 @@
   var FORMAT = 'circuit-workspace-backup';
   var FORMAT_VERSION = 2;
   var LOG_KEY = 'cw-backup-log';
+  /* Общая база. Названа отдельной константой, потому что у неё, в отличие от
+     баз модулей, есть известный этому коду потолок версии — CWDB.DB_VERSION. */
+  var SHARED_DB = 'circuit-workspace-db';
 
   /* Общий слой: настройки, не принадлежащие ни одному модулю. */
   var SHARED = {
@@ -321,6 +324,53 @@
   }
 
   /**
+   * Потолок версии, выше которой поднимать базу нельзя.
+   *
+   * ЗАЧЕМ. Понизить версию IndexedDB невозможно. База, поднятая
+   * восстановлением выше той версии, которой её открывает рабочий код,
+   * перестаёт открываться НАВСЕГДА: данные на диске целы, приложение их
+   * больше не видит, а пользователь встречает это ровно в момент
+   * восстановления после потери устройства.
+   *
+   * Для общей базы потолок известен точно — CWDB.DB_VERSION (публикуется
+   * shared/db.js). Для баз модулей их собственная константа этому коду
+   * недоступна (она объявлена внутри модуля, например
+   * pioneer-school/js/db.js), поэтому потолком служит схема, на которой
+   * снята сама копия: выше неё подниматься незачем ни при каком раскладе.
+   */
+  function versionCeiling(name, dump, current) {
+    if (name === SHARED_DB && global.CWDB && typeof global.CWDB.DB_VERSION === 'number') {
+      return global.CWDB.DB_VERSION;
+    }
+    return Math.max(current, dump.version || 1);
+  }
+
+  /**
+   * Завести хранилища общей базы штатным путём ПЕРЕД восстановлением.
+   *
+   * ЗАЧЕМ. Единственная причина поднимать версию при восстановлении — попасть
+   * в onupgradeneeded и создать недостающие хранилища. Но CWDB умеет делать
+   * ровно это и делает правильно: своей схемой и своей версией. Позвав его
+   * первым, мы в подавляющем большинстве случаев получаем `missing` пустым, и
+   * версию трогать не приходится вовсе.
+   *
+   * Соединение НЕ закрывается намеренно: CWDB кэширует промис открытия, и
+   * закрытие снаружи оставило бы кэш с мёртвым соединением. Апгрейду это не
+   * мешает — у CWDB есть onversionchange, он освобождает базу сам.
+   *
+   * Отказ проглатывается: если базу подготовить не удалось, восстановление
+   * пойдёт прежним путём, а потолок выше всё равно не даст сломать базу.
+   */
+  function prepareSchema(name) {
+    if (name !== SHARED_DB || !global.CWDB || typeof global.CWDB.init !== 'function') {
+      return Promise.resolve();
+    }
+    try {
+      return Promise.resolve(global.CWDB.init()).then(function () {}, function () {});
+    } catch (e) { return Promise.resolve(); }
+  }
+
+  /**
    * @param {string} name — имя базы
    * @param {Object} dump — секция из файла копии
    * @param {boolean} [merge] — слияние вместо замены: строки дописываются
@@ -330,16 +380,37 @@
    */
   function restoreDb(name, dump, merge) {
     if (!dump || !dump.stores) return Promise.resolve();
-    return openExisting(name).then(function (db) {
+    return prepareSchema(name).then(function () {
+      return openExisting(name);
+    }).then(function (db) {
       var current = db.version;
       var existing = Array.prototype.slice.call(db.objectStoreNames);
       db.close();
       var needed = Object.keys(dump.stores);
       var missing = needed.filter(function (s) { return existing.indexOf(s) < 0; });
-      // Понижать версию IndexedDB нельзя — открываем не ниже текущей.
-      // Если каких-то хранилищ нет, версию поднимаем, чтобы попасть в
-      // onupgradeneeded и создать их по описанию из копии.
-      var version = Math.max(current, dump.version || 1) + (missing.length ? 1 : 0);
+
+      /* ВЕРСИЯ БАЗЫ ПОСЛЕ ВОССТАНОВЛЕНИЯ (исправлено 28.08.2026).
+         Прежняя формула была `max(current, dump.version) + (missing?1:0)` и
+         содержала необратимый дефект: копия, снятая на устройстве со схемой 5,
+         поднимала базу до 6, после чего shared/db.js, открывающий её версией 5,
+         получал VersionError навсегда. Та же формула убивала и базу Школы:
+         «призрачная» база v1 + копия v2 давали 3 при DB_VERSION модуля 2.
+
+         Номер версии из файла копии в вычислении не участвует вовсе, и это не
+         упрощение. Хранилища создаются по ОПИСАНИЮ из `dump.stores`, а не по
+         номеру версии; поднимать версию нужно ровно затем, чтобы попасть в
+         onupgradeneeded, и только когда чего-то не хватает. Побочный выигрыш:
+         копия, снятая на уже сломанной этим дефектом базе (version 6),
+         спокойно восстанавливается в здоровую базу версии 5. */
+      var version = missing.length ? current + 1 : current;
+
+      /* Выше потолка не поднимаемся: лучше честный отказ, чем база, которую
+         приложение больше никогда не откроет. Сюда попадает копия, где есть
+         хранилище, неизвестное схеме этой версии приложения. */
+      if (version > versionCeiling(name, dump, current)) {
+        return Promise.reject(new Error('backup-newer-schema'));
+      }
+
       return new Promise(function (resolve, reject) {
         var r = global.indexedDB.open(name, version);
         r.onupgradeneeded = function () {
@@ -462,6 +533,27 @@
       return { ok: false, error: 'too-new', found: data.formatVersion };
     }
     if (!data.sections || typeof data.sections !== 'object') return { ok: false, error: 'no-sections' };
+
+    /* СХЕМА ОБЩЕЙ БАЗЫ ПРОВЕРЯЕТСЯ ЗДЕСЬ, а не в restoreDb, потому что здесь
+       ещё ничего не изменено на устройстве — это единственное место, где
+       отказ бесплатен. restoreDb свой потолок тоже держит, но там отказ уже
+       застаёт localStorage переписанным.
+       Условие строгое: копия из более новой схемы означает, что приложение на
+       этом устройстве старее файла, и правильный ответ — «сначала обновите»,
+       а не попытка разобраться. */
+    var ceiling = global.CWDB && global.CWDB.DB_VERSION;
+    if (typeof ceiling === 'number') {
+      var found = null;
+      Object.keys(data.sections).forEach(function (id) {
+        var idb = (data.sections[id] || {}).idb || {};
+        var dump = idb[SHARED_DB];
+        if (dump && typeof dump.version === 'number' && dump.version > ceiling) {
+          found = dump.version;
+        }
+      });
+      if (found !== null) return { ok: false, error: 'schema-too-new', found: found };
+    }
+
     return { ok: true, snapshot: data };
   }
 

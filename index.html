@@ -1256,7 +1256,13 @@
       reader.onload = function () {
         var check = CWBackup.inspect(reader.result);
         if (!check.ok) {
-          say(check.error === 'too-new' ? 'backup.too_new' : 'backup.not_a_backup');
+          // `too-new` — слишком новый формат файла, `schema-too-new` — слишком
+          // новая схема общей базы внутри него. Для пользователя это один и тот
+          // же случай и один и тот же ответ: сначала обновить приложение.
+          // Оба отказа наступают до подтверждения и до первой записи, поэтому
+          // обещание «данные не изменены» в тексте правдиво.
+          var early = check.error === 'too-new' || check.error === 'schema-too-new';
+          say(early ? 'backup.too_new' : 'backup.not_a_backup');
           return;
         }
         var snap = check.snapshot;
@@ -1274,6 +1280,17 @@
           setTimeout(function () { location.reload(); }, 1200);
         }).catch(function (err) {
           console.error(err);
+          // Потолок версии базы срабатывает и внутри восстановления — на
+          // случай копии, прошедшей разбор (схема в норме), но содержащей
+          // хранилище, неизвестное этой версии приложения.
+          //
+          // ЗДЕСЬ НАМЕРЕННО `backup.failed`, а не `backup.too_new`, хотя причина
+          // та же. Текст `too_new` обещает «Данные не изменены», а к этому
+          // моменту restore() уже переписал localStorage: он делает это до
+          // заданий IndexedDB. Обещание стало бы ложью ровно в том сообщении,
+          // которое человек читает в момент неудачного восстановления.
+          // Вернуть `too_new` сразу, как восстановление станет атомарным
+          // (сначала базы, потом localStorage) — это следующий заход.
           say('backup.failed');
         });
       };

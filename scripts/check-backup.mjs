@@ -47,6 +47,10 @@ globalThis.localStorage = {
 globalThis.CW_VERSION = '0.0.0';
 globalThis.CW_MODULES = {};
 
+/* shared/db.js подгружается ради ОДНОЙ константы — DB_VERSION общей базы.
+   Читать её из живого файла, а не дублировать числом здесь: иначе проверка
+   начнёт подтверждать саму себя и переживёт следующий подъём схемы. */
+eval(readFileSync(join(ROOT, 'shared/db.js'), 'utf8'));
 eval(readFileSync(join(ROOT, 'shared/backup.js'), 'utf8'));
 
 let failed = 0;
@@ -69,6 +73,40 @@ const put = (db, store, rows) => new Promise((res, rej) => {
   tx.oncomplete = res;
   tx.onerror = () => rej(tx.error);
 });
+const wipe = (name) => new Promise((res, rej) => {
+  const r = indexedDB.deleteDatabase(name);
+  r.onsuccess = () => res();
+  r.onerror = () => rej(r.error);
+  /* Соединение CWDB освобождается его же обработчиком onversionchange —
+     если этого не случилось, молчать нельзя: следующий сценарий пойдёт по
+     непочищенной базе и «пройдёт» по чужим данным. */
+  r.onblocked = () => rej(new Error('deleteDatabase заблокирован: ' + name));
+});
+/* Открывается ли база ИМЕННО ТОЙ версией, которой её открывает рабочий код.
+   Возвращает имя ошибки, а не bool: VersionError и любую другую надо различать. */
+const opensAt = (name, version) => new Promise((res) => {
+  const r = indexedDB.open(name, version);
+  r.onsuccess = () => { r.result.close(); res('открылась'); };
+  r.onerror = () => res((r.error && r.error.name) || 'ошибка');
+  r.onblocked = () => res('blocked');
+});
+const versionOf = (name) => new Promise((res, rej) => {
+  const r = indexedDB.open(name);
+  r.onsuccess = () => { const v = r.result.version; r.result.close(); res(v); };
+  r.onerror = () => rej(r.error);
+});
+/* Файл копии вокруг одной секции IndexedDB — минимум, который принимает restore(). */
+const wrap = (sectionId, dbName, dump) => ({
+  format: CWBackup.FORMAT,
+  formatVersion: CWBackup.FORMAT_VERSION,
+  scope: 'full',
+  createdAt: new Date().toISOString(),
+  app: { hub: '0.0.0', modules: {} },
+  modules: [],
+  sections: { [sectionId]: { local: {}, idb: { [dbName]: dump } } },
+});
+const store = (rowsIn, indexes) => ({ keyPath: 'id', autoIncrement: false, indexes: indexes || [], rows: rowsIn });
+
 const rows = (name, store) => new Promise((res, rej) => {
   const r = indexedDB.open(name);
   r.onsuccess = () => {
@@ -159,7 +197,9 @@ if (!subject) {
 
   /* Портим состояние и восстанавливаем: сосед обязан уцелеть. */
   mem.set('cw-sender', JSON.stringify({ name: 'испорчено' }));
-  db = await open(DB, 1);
+  /* Без указания версии: восстановление заводит схему общей базы штатным путём
+     (CWDB.init), поэтому база законно стоит на DB_VERSION, а не на единице. */
+  db = await open(DB);
   await put(db, 'templates', [{ id: 'tpl_own', body: 'испорчено' }, { id: 'tpl_late', body: 'появился позже копии' }]);
   /* Сосед поработал уже ПОСЛЕ того, как сделана копия. Восстановление копии
      проверяемого модуля не должно откатить его состояние. */
@@ -188,7 +228,7 @@ console.log('\nПолная копия хаба');
 const full = await CWBackup.snapshot();
 ok('без пометки partial', full.sections.shared.partial === undefined);
 ok('берёт общую базу целиком', !!full.sections.shared.idb?.[DB]?.stores?.communities);
-db = await open(DB, 1);
+db = await open(DB);
 await put(db, 'templates', [{ id: 'tpl_stale', body: 'мусор' }]);
 db.close();
 await CWBackup.restore(full);
@@ -199,6 +239,116 @@ console.log('\nФормат файла');
 ok('формат не ниже 2 — частичная секция требует нового номера', CWBackup.FORMAT_VERSION >= 2,
   'иначе прежний код примет файл и сотрёт ключи, которых в частичной секции нет');
 ok('файлы прежнего формата всё ещё читаются', CWBackup.inspect({ ...full, formatVersion: 1 }).ok);
+
+/* --- 5. Потолок версии базы при восстановлении (C-1) --------------------
+ *
+ * ПОЧЕМУ ЭТО ПРОВЕРЯЕТСЯ. Понизить версию IndexedDB невозможно. Если
+ * восстановление откроет базу версией выше той, которой её открывает рабочий
+ * код, то рабочий код получит VersionError НАВСЕГДА: данные на диске целы, а
+ * приложение их больше не видит. Пользователь встречает этот отказ ровно
+ * тогда, когда восстанавливается после потери устройства.
+ *
+ * Три сценария ниже воспроизведены на fake-indexeddb и падали на коде до
+ * 28.08.2026: версия вычислялась как `max(current, dump.version) + (missing?1:0)`,
+ * то есть копия со схемой 5 поднимала базу до 6 при DB_VERSION = 5.
+ */
+console.log('\nПотолок версии базы');
+
+const SCHEMA = CWDB && CWDB.DB_VERSION;
+ok('shared/db.js публикует DB_VERSION наружу', typeof SCHEMA === 'number' && SCHEMA >= 1,
+  'без публичной константы механизм копирования не знает, выше какой отметки поднимать базу нельзя');
+
+const SCHOOL = 'pioneer-school-db';
+
+/* 5.1. База устройства СТАРЕЕ копии. Копия снята на устройстве со схемой
+   DB_VERSION, у восстанавливающего база отстала (кэш-фёрст service worker мог
+   оставить старый shared/db.js). После восстановления база обязана открываться
+   той версией, которой её открывает CWDB. */
+await wipe(DB);
+let d = await open(DB, 3, (x) => {
+  x.createObjectStore('templates', { keyPath: 'id' });
+  x.createObjectStore('communities', { keyPath: 'id' });
+});
+d.close();
+await CWBackup.restore(wrap('shared', DB, {
+  version: SCHEMA,
+  stores: {
+    templates: store([{ id: 'tpl_from_copy', body: 'из копии' }]),
+    /* Хранилища нет в базе устройства — именно эта ветка и поднимала версию. */
+    snapshots: store([{ id: 'own:s1', module: 'own', at: 1 }],
+      [{ name: 'module', keyPath: 'module', unique: false }]),
+  },
+}));
+ok('база старее копии: после восстановления открывается версией CWDB',
+  await opensAt(DB, SCHEMA) === 'открылась',
+  'версия базы превысила DB_VERSION — CWDB больше не откроет её никогда');
+ok('база старее копии: данные из копии на месте',
+  (await rows(DB, 'templates')).some((r) => r.id === 'tpl_from_copy'));
+ok('база старее копии: недостающее хранилище создано',
+  (await rows(DB, 'snapshots')).some((r) => r.id === 'own:s1'));
+
+/* 5.2. То же для базы модуля. Её версию общий слой не знает (она объявлена в
+   pioneer-school/js/db.js), поэтому потолок здесь берётся из самой копии:
+   выше схемы, на которой копия снята, подниматься незачем.
+   Исходное состояние — «призрачная» база v1 без хранилищ: ровно такую создаёт
+   openExisting(), когда копию хаба снимают на устройстве, где Школу ни разу
+   не открывали. */
+await wipe(SCHOOL);
+d = await open(SCHOOL);
+d.close();
+await CWBackup.restore(wrap('pioneer-school', SCHOOL, {
+  version: 2,
+  stores: { students: store([{ id: 's1', name: 'Учащийся' }]) },
+}));
+ok('база модуля: открывается собственной версией модуля после восстановления',
+  await opensAt(SCHOOL, 2) === 'открылась',
+  'pioneer-school/js/db.js открывает базу версией 2 — подняв её выше, восстановление убивает модуль');
+ok('база модуля: данные восстановлены', (await rows(SCHOOL, 'students')).length === 1);
+
+/* 5.3. Копия содержит хранилище, которого нет в схеме приложения. Создать его
+   можно только подняв версию выше DB_VERSION — то есть сломав базу. Механизм
+   обязан отказаться ДО того, как что-либо изменено, и назвать причину. */
+await wipe(DB);
+d = await open(DB, SCHEMA, (x) => { x.createObjectStore('templates', { keyPath: 'id' }); });
+await put(d, 'templates', [{ id: 'keep', body: 'было до восстановления' }]);
+d.close();
+let refusal = null;
+try {
+  await CWBackup.restore(wrap('shared', DB, {
+    version: SCHEMA,
+    stores: {
+      templates: store([{ id: 'tpl_from_copy', body: 'из копии' }]),
+      futureStore: store([{ id: 'f1' }]),
+    },
+  }));
+} catch (e) { refusal = e && e.message; }
+ok('копия с неизвестным хранилищем отклонена внятной причиной',
+  refusal === 'backup-newer-schema', refusal === null ? 'восстановление прошло молча' : refusal);
+ok('отклонённое восстановление не тронуло данные',
+  (await rows(DB, 'templates')).some((r) => r.id === 'keep'));
+ok('отклонённое восстановление не подняло версию базы', await versionOf(DB) === SCHEMA);
+
+/* 5.4. Копия, снятая более новой версией приложения, отсекается ещё разбором
+   файла — до подтверждения пользователем и до первой записи. Сообщение то же,
+   что и для слишком нового formatVersion: «сначала обновите приложение». */
+const tooNew = wrap('shared', DB, { version: SCHEMA + 1, stores: { templates: store([{ id: 't1' }]) } });
+const verdict = CWBackup.inspect(tooNew);
+ok('inspect отклоняет копию с более новой схемой базы', verdict.ok === false && verdict.error === 'schema-too-new',
+  'разбор файла — единственное место, где отказ ещё ничего не изменил на устройстве');
+ok('inspect по-прежнему принимает копию со схемой не выше текущей',
+  CWBackup.inspect(wrap('shared', DB, { version: SCHEMA, stores: { templates: store([]) } })).ok === true);
+
+/* 5.5. Регрессия: штатное восстановление (все хранилища на месте) версию базы
+   не трогает вовсе. Это и есть подавляющее большинство реальных случаев. */
+await wipe(DB);
+d = await open(DB, SCHEMA, (x) => { x.createObjectStore('templates', { keyPath: 'id' }); });
+d.close();
+await CWBackup.restore(wrap('shared', DB, {
+  version: SCHEMA,
+  stores: { templates: store([{ id: 'tpl_plain', body: 'штатный путь' }]) },
+}));
+ok('штатное восстановление не поднимает версию базы', await versionOf(DB) === SCHEMA);
+ok('штатное восстановление положило данные', (await rows(DB, 'templates')).some((r) => r.id === 'tpl_plain'));
 
 console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\nВсе проверки резервного копирования пройдены.');
 process.exit(failed ? 1 : 0);
