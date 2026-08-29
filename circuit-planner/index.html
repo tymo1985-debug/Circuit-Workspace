@@ -828,16 +828,17 @@ body::before{display:none !important}
        вовсе. Свой файл доезжает всегда.
        Версии сверены: байты в shared/vendor совпадают с тем, что отдавали
        cdnjs и jsdelivr (хеши снимались с живых ответов 28.08.2026). -->
-  <script src="../shared/vendor/jspdf.umd.min.js"></script>
-  <script src="../shared/vendor/jspdf.plugin.autotable.min.js"></script>
-  <script src="../shared/vendor/pdf-lib.min.js"></script>
-  <script src="../shared/vendor/fontkit.umd.min.js"></script>
-  <script src="forms/s302-form.js"></script>
-  <script src="fonts/fonts-aptos-regular.js"></script>
-  <script src="fonts/fonts-aptos-bold.js"></script>
-  <script src="fonts/fonts-aptos-italic.js"></script>
-  <script src="fonts/fonts-aptos-bolditalic.js"></script>
-  <script src="visit-pdf.js"></script>
+  <!-- ПДФ-СТЕК ЗДЕСЬ БОЛЬШЕ НЕ ПОДКЛЮЧАЕТСЯ (29.08.2026).
+       Десять файлов — библиотеки, четыре шрифта Aptos, бланк S-302 и
+       visit-pdf.js — весили ~3,4 МБ и разбирались браузером НА КАЖДОМ
+       ОТКРЫТИИ модуля, хотя нужны только в момент выдачи бумаги. Кэш снимает
+       загрузку по сети, но не снимает разбор и компиляцию — эту цену телефон
+       платил каждый раз, и это была самая заметная разница в отзывчивости
+       между Клиндарием и остальными модулями.
+       Теперь их догружает App.pdf.ensure() по требованию. Файлы ОСТАЛИСЬ в
+       прекэше service worker'а — офлайн не пострадал; за этим следит
+       scripts/check-lazy-pdf.mjs, иначе связь «догружается, но не кэшируется»
+       порвалась бы молча. -->
   <script src="app.js" defer></script>
   <script src="../shared/backup.js"></script>
 <!-- Общий слой обновления: регистрация SW и полоса «Доступна новая версия».

@@ -208,6 +208,91 @@
       eventColorFilter: 'all'
     },
 
+    /**
+     * ЛЕНИВАЯ ДОГРУЗКА ПДФ-СТЕКА (29.08.2026).
+     *
+     * Всё, что нужно только для выдачи бумаги, подключается по требованию, а
+     * не при старте модуля. Списки ниже — единственное место, где записано,
+     * что какому тракту нужно; `scripts/check-lazy-pdf.mjs` сверяет их с
+     * прекэшем service worker'а, потому что связь «догружается, но не
+     * кэшируется» иначе порвалась бы молча и обнаружилась бы только офлайн.
+     *
+     * Порядок внутри набора соблюдается СТРОГО и загрузка идёт по одному:
+     * autotable дописывает себя в уже существующий jsPDF, visit-pdf.js читает
+     * window.jspdf при разборе. Параллельная загрузка сэкономила бы доли
+     * секунды и стоила бы гонки, которая воспроизводится раз в сто запусков.
+     */
+    pdf: {
+      FONTS: [
+        'fonts/fonts-aptos-regular.js',
+        'fonts/fonts-aptos-bold.js',
+        'fonts/fonts-aptos-italic.js',
+        'fonts/fonts-aptos-bolditalic.js',
+      ],
+      SETS: {
+        /* Письмо и «просто текст на бумаге»: jsPDF, таблицы, все четыре
+           начертания Aptos. */
+        letter: [
+          '../shared/vendor/jspdf.umd.min.js',
+          '../shared/vendor/jspdf.plugin.autotable.min.js',
+        ],
+        /* Расписание визита: то же плюс сам генератор. */
+        visit: [
+          '../shared/vendor/jspdf.umd.min.js',
+          '../shared/vendor/jspdf.plugin.autotable.min.js',
+          'visit-pdf.js',
+        ],
+        /* Формуляр S-302 заполняется поверх настоящего бланка: pdf-lib,
+           fontkit для внедрения кириллического шрифта, сам бланк. */
+        s302: [
+          '../shared/vendor/pdf-lib.min.js',
+          '../shared/vendor/fontkit.umd.min.js',
+          'forms/s302-form.js',
+        ],
+      },
+
+      _pending: {},
+
+      _script(src) {
+        if (this._pending[src]) return this._pending[src];
+        this._pending[src] = new Promise((resolve, reject) => {
+          const el = document.createElement('script');
+          el.src = src;
+          el.onload = () => resolve(src);
+          el.onerror = () => {
+            /* Обещание снимается: иначе первая неудача (не было сети) навсегда
+               запомнилась бы отказом, и повторное нажатие уже ничего бы не
+               грузило. */
+            delete this._pending[src];
+            reject(new Error('не загрузился: ' + src));
+          };
+          document.head.appendChild(el);
+        });
+        return this._pending[src];
+      },
+
+      /**
+       * @param {'letter'|'visit'|'s302'} kind
+       * @returns {Promise<boolean>} удалось ли подготовить стек
+       */
+      async ensure(kind) {
+        const list = (this.SETS[kind] || []).concat(this.FONTS);
+        const missing = list.filter((src) => !this._pending[src]);
+        /* Сообщение показывается только когда что-то действительно предстоит
+           грузить: на втором нажатии стек уже в памяти и полоска «Готовлю…»
+           мигала бы впустую. */
+        if (missing.length) App.utils.toast(App.utils.t('pdf_preparing'));
+        try {
+          for (const src of list) await this._script(src);
+          return true;
+        } catch (err) {
+          console.error('Клиндарий: ПДФ-стек не догрузился', err);
+          App.utils.toast(App.utils.t('pdf_not_loaded'));
+          return false;
+        }
+      },
+    },
+
     utils: {
       uid(prefix = 'id') { return `${prefix}_${Math.random().toString(36).slice(2, 10)}`; },
       lang() {
@@ -3988,7 +4073,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
 
       /** PDF одного документа. Переиспользует проверенный сборщик письма. */
-      pdfComposerDoc() {
+      async pdfComposerDoc() {
         const state = App.state.composer;
         if (!state) return;
         const entry = App.state.app.entries.find((e) => e.id === state.entryId);
@@ -4003,6 +4088,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           ? doc.bodyHtml
           : String(doc.bodyText || '').split(/\n/).filter((line) => line.trim())
               .map((line) => '<div>' + App.utils.escapeHtml(line) + '</div>').join('');
+        if (!(await App.pdf.ensure('letter'))) return;
         const pdf = this.buildLetterPdfDoc(
           entry,
           event,
@@ -4087,6 +4173,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const entry = App.state.app.entries.find((e) => e.id === entryId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
+        /* Стек S-302 отличается от письма: pdf-lib и бланк вместо jsPDF. */
+        if (!(await App.pdf.ensure('s302'))) return;
         App.utils.toast(App.utils.t('s302_generating'));
         const bytes = await this.buildS302Pdf(entry, event);
         if (!bytes) return;
@@ -4117,6 +4205,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const to = event?.contactEmail || '';
         const files = [];
         const filenameSuffix = App.utils.pdfFilenameSuffix(entry, event);
+        /* Тракт цепляет ДВА документа — письмо и расписание визита, — поэтому
+           готовятся оба набора, а не один. */
+        if (!(await App.pdf.ensure('letter'))) return;
+        if (!(await App.pdf.ensure('visit'))) return;
         try {
           const letterDoc = this.buildLetterPdfDoc(entry, event);
           if (letterDoc) files.push(new File([letterDoc.output('blob')], `${App.utils.slug(entry.title || 'letter')}${filenameSuffix ? '-' + filenameSuffix : ''}-letter.pdf`, { type: 'application/pdf' }));
@@ -4576,8 +4668,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.state.visitFormData.meals.push({ id: App.utils.uid('vm'), day: '', time: '', place: '', host: '', phone: '', note: '' });
         App.ui.saveVisitFormState(); App.ui.renderVisitFormLists();
       });
-      App.els.vfGeneratePdfBtn?.addEventListener('click', () => {
+      App.els.vfGeneratePdfBtn?.addEventListener('click', async () => {
         App.ui.saveVisitFormState();
+        if (!(await App.pdf.ensure('visit'))) return;
         const doc = App.ui.buildVisitPdfDoc();
         if (!doc) return;
         const entry = App.state.app.entries.find((e) => e.id === App.state.visitFormEntryId);
@@ -4663,10 +4756,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         entry.subject = e.target.value;
         App.store.save();
       });
-      App.els.letterPreviewPdfBtn?.addEventListener('click', () => {
+      App.els.letterPreviewPdfBtn?.addEventListener('click', async () => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
+        if (!(await App.pdf.ensure('letter'))) return;
         const doc = App.ui.buildLetterPdfDoc(entry, event);
         if (!doc) return;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
@@ -4688,10 +4782,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.store.save();
         App.utils.toast(App.utils.t('letter_reset_done'));
       });
-      App.els.letterAttachPdfBtn?.addEventListener('click', () => {
+      App.els.letterAttachPdfBtn?.addEventListener('click', async () => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
         if (!entry?.visitForm) return App.utils.toast(App.utils.t('vf_fill_first'));
         App.state.visitFormData = JSON.parse(JSON.stringify(entry.visitForm));
+        if (!(await App.pdf.ensure('visit'))) return;
         const doc = App.ui.buildVisitPdfDoc();
         if (!doc) return;
         const event = App.data.getEventById(entry.eventId);
@@ -4710,13 +4805,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.senderEmailInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ email: e.target.value }); else { App.state.app.settings.senderEmail = e.target.value; App.store.save(); } });
       App.els.emailMethodSelect?.addEventListener('change', (e) => { App.state.app.settings.emailMethod = e.target.value; App.store.save(); if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = e.target.value === 'owa' ? '' : 'none'; });
       App.els.owaUrlInput?.addEventListener('input', (e) => { App.state.app.settings.owaUrl = e.target.value; App.store.save(); });
-      App.els.previewLetterPdfBtn?.addEventListener('click', () => {
+      App.els.previewLetterPdfBtn?.addEventListener('click', async () => {
         const type = App.state.letterEditingType || 'Congregation';
         const visitTypeMap = { Congregation: 'congregation', Group: 'group', Pregroup: 'pregroup' };
         const sampleEvent = { id: 'preview', name: 'Приклад — ' + { Congregation: 'Собрание', Group: 'Группа', Pregroup: 'Предгруппа' }[type], visitType: visitTypeMap[type], congNumber: '00000', address: '', schedule: '' };
         const today = new Date();
         const end = new Date(today); end.setDate(end.getDate() + 5);
         const sampleEntry = { id: 'preview', title: sampleEvent.name, start: App.utils.iso(today), end: App.utils.iso(end), note: '' };
+        if (!(await App.pdf.ensure('letter'))) return;
         const doc = App.ui.buildLetterPdfDoc(sampleEntry, sampleEvent);
         if (!doc) return;
         try {
