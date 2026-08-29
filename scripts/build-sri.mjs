@@ -26,6 +26,7 @@
  *
  *   node scripts/build-sri.mjs            — напечатать готовые теги
  *   node scripts/build-sri.mjs --check    — сверить хеши с теми, что уже в разметке
+ *   node scripts/build-sri.mjs --lock     — обновить scripts/sri-lock.json
  *
  * Нужна сеть. Скрипт ничего не правит: вывод копируется в разметку руками
  * либо передаётся тому, кто готовит выпуск. Так же устроен
@@ -39,7 +40,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -68,6 +69,8 @@ async function fetchBytes(url) {
 }
 
 const check = process.argv.includes('--check');
+const lock = process.argv.includes('--lock');
+const locked = {};
 let failed = 0;
 const seen = new Map();
 
@@ -83,6 +86,8 @@ for (const tag of TAGS) {
     }
     seen.set(tag.url, hash);
   }
+
+  locked[tag.url] = hash;
 
   if (check) {
     const html = readFileSync(join(ROOT, tag.file), 'utf8');
@@ -102,5 +107,15 @@ for (const tag of TAGS) {
 
 if (check) {
   console.log(failed ? `\nРасхождений: ${failed}` : '\nВсе integrity совпадают с тем, что отдаёт CDN.');
+}
+
+if (lock) {
+  if (failed) {
+    console.log('\nЗамок НЕ обновлён: часть файлов не скачалась, записывать неполный набор нельзя.');
+  } else {
+    writeFileSync(join(ROOT, 'scripts/sri-lock.json'), JSON.stringify(locked, null, 2) + '\n');
+    console.log('\nscripts/sri-lock.json обновлён, адресов: ' + Object.keys(locked).length);
+    console.log('Теперь проставить те же хеши в разметке — теги напечатаны выше.');
+  }
 }
 process.exit(failed ? 1 : 0);

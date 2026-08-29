@@ -36,6 +36,10 @@ import process from 'node:process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = await readFile(join(ROOT, 'shared/print.js'), 'utf8');
+/* shared/escape.js грузится рядом, потому что так устроена настоящая страница:
+   print.js зовёт CWEscape.html() без запасной ветки. Подставить сюда местную
+   заглушку значило бы проверять не тот код, что работает у пользователя. */
+const ESCAPE_SRC = await readFile(join(ROOT, 'shared/escape.js'), 'utf8');
 
 let passed = 0;
 const failures = [];
@@ -141,6 +145,7 @@ function loadPrint(clock, opener) {
   ctx.self = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
+  vm.runInContext(ESCAPE_SRC, ctx, { filename: 'shared/escape.js' });
   vm.runInContext(SRC, ctx, { filename: 'shared/print.js' });
   return ctx.CWPrint;
 }

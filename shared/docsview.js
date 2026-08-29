@@ -39,10 +39,11 @@
     return global.CWI18n ? global.CWI18n.getLang() : 'ru';
   }
 
+  /* Делегирование в общий слой (28.08.2026). Своя редакция убрана: их было
+     шесть, и они расходились — три экранировали апостроф, три нет.
+     Обоснование набора символов — в шапке shared/escape.js. */
   function escapeHtml(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return global.CWEscape.html(value);
   }
 
   /**

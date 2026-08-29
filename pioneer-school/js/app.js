@@ -1,5 +1,5 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.13.16';
+const APP_VERSION = '1.13.17';
 
 let LESSONS_SEED = null;
 
@@ -10,10 +10,9 @@ function $all(sel, root = document) { return Array.from(root.querySelectorAll(se
 // Без него введённые вручную или импортированные из PDF значения с символами
 // < > & " ' молча искажались при отображении (например, «Класс <b>А</b>»
 // показывался как «Класс А»), а незакрытый тег ломал вёрстку таблицы.
+/* Делегирование в общий слой (28.08.2026), см. shared/escape.js. */
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[ch]));
+  return self.CWEscape.html(value);
 }
 
 const ROUTES = ['dashboard', 'anketa', 'assignment', 'registration', 'substitutes', 'students',

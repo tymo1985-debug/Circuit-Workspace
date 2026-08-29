@@ -62,10 +62,11 @@
 
   /* ─────────────────────────  Вспомогательное  ───────────────────────── */
 
+  /* Делегирование в общий слой (28.08.2026). Своя редакция убрана: их было
+     шесть, и они расходились — три экранировали апостроф, три нет.
+     Обоснование набора символов — в шапке shared/escape.js. */
   function escapeHtml(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return self.CWEscape.html(s);
   }
 
   function status(key) {
@@ -467,8 +468,13 @@
   function renderPreview() {
     var tpl = currentTpl();
     if (!tpl) return;
-    var body = self.CWTemplates.render(editorValue(), demoData());
-    $('#edPreview').innerHTML = isHtml(tpl) ? body : plainToHtml(body);
+    /* Экранирование ЗНАЧЕНИЙ включается только для html-шаблонов: результат
+       текстового и так проходит через plainToHtml(), а двойное экранирование
+       показало бы `&amp;` вместо `&`. Флаг ставится по формату шаблона —
+       движку формат неизвестен. */
+    var html = isHtml(tpl);
+    var body = self.CWTemplates.render(editorValue(), demoData(), { escape: html });
+    $('#edPreview').innerHTML = html ? body : plainToHtml(body);
   }
 
   /* ─── Переменные ─── */

@@ -1,7 +1,9 @@
 // Auto-generated module: utils.js
 
 export const id=()=>crypto?.randomUUID?crypto.randomUUID():String(Date.now())+Math.random();
-export const esc=s=>String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
+/* Делегирование в общий слой (28.08.2026), см. shared/escape.js. Своя
+   редакция не экранировала апостроф — теперь экранирует. */
+export const esc=s=>self.CWEscape.html(s);
 export const clone=o=>JSON.parse(JSON.stringify(o));
 export function fmt(d){return d?new Date(d+"T00:00:00").toLocaleDateString("uk-UA"):""}
 export function today(){return new Date().toISOString().slice(0,10)}

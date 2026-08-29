@@ -21,6 +21,7 @@ const SHELL_FILES = [
   './manifest.json',
   './shared/style.css',
   './shared/db.js',
+  './shared/escape.js',
   './shared/nav.js',
   './shared/theme.js',
   './shared/backup.js',

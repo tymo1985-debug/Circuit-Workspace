@@ -97,8 +97,13 @@
      Здесь остались только чтения: второго экземпляра текста в модуле нет, и
      правка формулировки делается в одном месте, а не в двух.
 
-     `vpEscapeForHtml` оставлен: им пользуется не только шаблон. */
-  function vpEscapeForHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+     `vpEscapeForHtml` оставлен: им пользуется не только шаблон.
+
+     28.08.2026 переведён на общий слой. Это была САМАЯ СЛАБАЯ из семи
+     редакций — только `& < >`, без кавычек и апострофа, то есть значение,
+     подставленное в атрибут, разрывало его целиком. Нашлась она не глазами,
+     а проверкой check-escape.mjs при первом же прогоне. */
+  function vpEscapeForHtml(s) { return self.CWEscape.html(s); }
   function builtinDoc(kind, suffix) {
     const type = { Congregation: 'congregation', Group: 'group', Pregroup: 'pregroup' }[suffix] || 'congregation';
     const list = self.CW_BUILTIN_TEMPLATES || [];
@@ -140,7 +145,7 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.91.8',
+      version: '9.91.9',
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -395,8 +400,9 @@
         return colors.map((color) => `<option value="${color}" ${selected === color ? 'selected' : ''}>${icons[color]} ${this.escapeHtml(this.colorName(color))}</option>`).join('');
       },
       slug(value) { return String(value || '').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9\-а-яёіїєґ]/gi,''); },
-      escapeHtml(str) { return String(str ?? '').replace(/[&<>"']/g, (s) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s])); },
-      escapeAttr(str) { return App.utils.escapeHtml(str); },
+      /* Делегирование в общий слой (28.08.2026), см. shared/escape.js. */
+      escapeHtml(str) { return self.CWEscape.html(str); },
+      escapeAttr(str) { return self.CWEscape.attr(str); },
       prettyDate(date) { const d = new Date(date); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleDateString(this.lang(), { day:'2-digit', month:'short' }); },
       prettyDateLong(date) { const d = new Date(date); if (Number.isNaN(d.getTime())) return '—'; return d.toLocaleDateString(this.lang(), { day:'2-digit', month:'long', year:'numeric' }); },
       // Короткая дата с годом: нужна как правая граница диапазона («29 сент. — 4 окт. 2026»),
@@ -3529,7 +3535,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        */
       substitutePlaceholders(tpl, entry, event) {
         if (!self.CWTemplates) return String(tpl || '');
-        return self.CWTemplates.render(tpl, this.letterData(entry, event));
+        /* `escape: true` — результат уходит в innerHTML предпросмотра и в
+           document.write окна печати, а окно печати это тот же origin с
+           доступом к opener. Название собрания и адрес приходят в том числе
+           из восстановленной копии, то есть из файла, который пользователь
+           пересылал почтой. Экранируются ЗНАЧЕНИЯ; сам шаблон — авторская
+           разметка пользователя и остаётся нетронутым. */
+        return self.CWTemplates.render(tpl, this.letterData(entry, event), { escape: true });
       },
       /* ═══════════════════════════════════════════════════════════════════
          АРХИВ ВЫДАННЫХ ДОКУМЕНТОВ (фаза 4 общего слоя документов)
