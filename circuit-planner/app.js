@@ -145,7 +145,12 @@
     config: {
       // Single source of truth for the displayed/stored app version — bump this on
       // every meaningful update so the version badge always reflects what's actually live.
-      version: '9.91.9',
+      /* Из единого источника — shared/version.js подключён строкой 355,
+         то есть до app.js (он с defer). Литерал здесь был последним местом,
+         где версия модуля дублировалась вне реестра. */
+      version: (self.CW_MODULES && self.CW_MODULES['circuit-planner']
+        ? self.CW_MODULES['circuit-planner'].version
+        : ''),
       // NOTE: do NOT change this to match the app version — it is the localStorage key.
       // Changing it will make existing users lose all their saved data on next load.
       storageKey: 'service-year-planner-v9-4-2',
@@ -5325,7 +5330,18 @@ if (self.CWState && self.CWDB) {
     App.store.remote.init(),
     App.store.history ? App.store.history.init() : Promise.resolve(false),
     self.CWDirectory ? self.CWDirectory.init() : Promise.resolve(false),
-  ]).then(() => App.init());
+  ]).then(() => App.init(), (e) => {
+    /* МОДУЛЬ ОБЯЗАН ОТКРЫТЬСЯ В ЛЮБОМ СЛУЧАЕ (28.08.2026).
+       Сегодня все три init() ловят свои отказы и не отклоняются — но это
+       дисциплина трёх файлов общего слоя, а не гарантия. Один будущий throw
+       внутри CWDirectory.init() означал бы, что App.init() не вызовется
+       вообще: пустой экран и unhandled rejection в консоли. Самый дорогой
+       класс отказа в проекте, и стоит он одной строки.
+       Работать на прежнем ключе localStorage хуже, чем на общей базе, но
+       несравнимо лучше, чем не открыться. */
+    console.error('Клиндарий: подготовка общего слоя сорвалась, открываюсь на прежнем ключе', e);
+    App.init();
+  });
 } else {
   App.init();
 }

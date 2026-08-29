@@ -1,5 +1,9 @@
 // app.js — роутинг и рендеринг экранов
-const APP_VERSION = '1.13.17';
+/* Из единого источника, как уже читает js/i18n.js. Число здесь было третьим
+   местом объявления версии Школы. */
+const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['pioneer-school']
+  ? self.CW_MODULES['pioneer-school'].version
+  : '');
 
 let LESSONS_SEED = null;
 

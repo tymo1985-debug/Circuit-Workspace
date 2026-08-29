@@ -42,6 +42,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import vm from 'node:vm';
@@ -172,7 +173,8 @@ class FakeCacheStorage {
  * @param {object} scenario   { request, offline, seedForeign, seedOwn }
  * @returns {Promise<{body: string|null, cacheName: string}>}
  */
-async function runWorker(src, cacheVar, scenario) {
+async function runWorker(src, cacheVar, scenario, swFile) {
+  swFile = swFile || scenario.swFile;
   const base = SW_ORIGIN + '/module/sw.js';
   const storage = new FakeCacheStorage(base);
 
@@ -206,6 +208,18 @@ async function runWorker(src, cacheVar, scenario) {
   ctx.self.skipWaiting = () => {};
   ctx.self.addEventListener = (type, fn) => {
     (listeners[type] = listeners[type] || []).push(fn);
+  };
+  /* `importScripts` — настоящая функция окружения service worker'а, и с
+     28.08.2026 её зовут все шесть оболочек: версия модуля берётся из
+     shared/version.js, а не дублируется числом. Подставлять заглушку-пустышку
+     нельзя — APP_VERSION стал бы запасным «0», имя кэша перестало бы
+     совпадать с рабочим, и проверка мерила бы не тот кэш. Поэтому файл
+     реально исполняется в том же контексте, как это делает браузер. */
+  ctx.self.importScripts = (...paths) => {
+    paths.forEach((p) => {
+      const abs = join(dirname(join(ROOT, swFile)), p);
+      vm.runInContext(readFileSync(abs, 'utf8'), ctx, { filename: p });
+    });
   };
 
   vm.createContext(ctx);
@@ -246,6 +260,7 @@ async function behavioural(worker, src, label) {
 
   // (1) Общий файл есть и у соседа, и у себя — обязана прийти СВОЯ копия.
   const both = await runWorker(src, worker.cacheVar, {
+    swFile: worker.file,
     request: new FakeRequest(sharedAbs, { destination: 'style' }),
     seedForeign: { [sharedAbs]: 'ЧУЖАЯ-УСТАРЕВШАЯ' },
     seedOwn: { [sharedAbs]: 'СВОЯ-СВЕЖАЯ' },
@@ -255,6 +270,7 @@ async function behavioural(worker, src, label) {
   // (2) У себя копии НЕТ, у соседа есть, сети нет — чужую брать нельзя.
   //     Правильный ответ — сетевая ошибка, а не тихая подмена чужим файлом.
   const onlyForeign = await runWorker(src, worker.cacheVar, {
+    swFile: worker.file,
     offline: true,
     request: new FakeRequest(sharedAbs, { destination: 'style' }),
     seedForeign: { [sharedAbs]: 'ЧУЖАЯ-УСТАРЕВШАЯ' },
@@ -264,6 +280,7 @@ async function behavioural(worker, src, label) {
 
   // (3) Офлайн-переход по странице: оболочка берётся своя, а не чужой index.html.
   const nav = await runWorker(src, worker.cacheVar, {
+    swFile: worker.file,
     offline: true,
     request: new FakeRequest(SW_ORIGIN + '/module/', { mode: 'navigate', destination: 'document', headers: { accept: 'text/html' } }),
     seedForeign: { [shellAbs]: 'ЧУЖАЯ-ОБОЛОЧКА' },
