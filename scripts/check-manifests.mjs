@@ -82,6 +82,12 @@ async function findManifests() {
 }
 
 /** Разрешить относительный путь от каталога манифеста. */
+/* Адрес развёртывания. `id` в манифесте разрешается ОТ ORIGIN, поэтому он
+   единственное место в проекте, где путь установки приходится зафиксировать
+   явно — всё остальное живёт на относительных путях и переезжает свободно.
+   При смене адреса менять здесь И во всех шести манифестах одновременно. */
+const BASE = '/Circuit-Workspace/';
+
 function underDir(rel, target) {
   const dir = dirname(rel) === '.' ? '' : dirname(rel);
   return join(ROOT, dir, target.replace(/^\.\//, '').split('?')[0].split('#')[0]);
@@ -119,6 +125,29 @@ for (const rel of manifests) {
         `id = ${JSON.stringify(data.id)} — разрешается от ORIGIN, а не от папки модуля, ` +
         'то есть указывает на корень сайта. Нужен путь с ведущим «/»'
       );
+    } else if (typeof data.start_url === 'string') {
+      /* id ОБЯЗАН указывать на тот же ресурс, что и start_url, включая запрос
+         (28.08.2026). Личность уже установленного приложения выведена
+         браузером из разрешённого start_url; расхождение означает, что при
+         обновлении браузер сочтёт манифест ДРУГИМ приложением и осиротит
+         установленное — ровно тот вред, от которого id и защищает.
+         У Клиндария start_url несёт `?source=pwa`, и обрезать запрос нельзя. */
+      const dir = rel.includes('/') ? '/' + rel.slice(0, rel.lastIndexOf('/') + 1) : '/';
+      const tail = data.start_url.replace(/^\.\//, '');
+      if (!data.id.endsWith(dir + tail)) {
+        local.push(
+          `id = ${JSON.stringify(data.id)} не указывает на start_url ` +
+          `${JSON.stringify(data.start_url)} (ожидался хвост ${JSON.stringify(dir + tail)}) — ` +
+          'при обновлении браузер сочтёт это другим приложением и осиротит установленное'
+        );
+      }
+      if (!data.id.startsWith(BASE)) {
+        local.push(
+          `id = ${JSON.stringify(data.id)} не начинается с ${JSON.stringify(BASE)} — ` +
+          'адрес развёртывания сменился? id придётся пересматривать целиком, ' +
+          'иначе установленные приложения осиротеют'
+        );
+      }
     }
   } else {
     notes.push(`${rel}: id не объявлен — идентичностью служит start_url (допустимо)`);

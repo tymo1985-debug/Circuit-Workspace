@@ -202,10 +202,16 @@
             <button data-i18n="ps.ui.eksport_csv" class="md-btn md-btn-outlined" id="export-reg-csv">Экспорт CSV</button>
           </div>
         </div>
-        <table class="md-table" id="registrations-table">
+        <!-- .md-table-wrap + .md-table--cards — общий компонент из
+             shared/style.css, раздел 5.6. До 28.08.2026 у этой таблицы не было
+             обёртки вовсе: шесть колонок с контактами и транспортом просто
+             распирали страницу на телефоне. -->
+        <div class="md-table-wrap">
+        <table class="md-table md-table--cards" id="registrations-table">
           <thead><tr><th data-i18n="ps.ui.familiya_imya">Фамилия Имя</th><th data-i18n="ps.ui.kontakty">Контакты</th><th data-i18n="ps.ui.prisutstvie">Присутствие</th><th data-i18n="ps.ui.transport_nochleg">Транспорт/ночлег</th><th data-i18n="ps.ui.uchebnik">Учебник</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
+        </div>
       </div>
     </section>
 
@@ -287,7 +293,12 @@
             <button data-i18n="ps.ui.formulyary_vseh_pdf" class="md-btn md-btn-outlined" id="export-all-formulaires-btn">Формуляры всех (PDF)</button>
           </div>
         </div>
-        <div style="overflow-x:auto;">
+        <!-- Обёртка общего компонента вместо инлайнового overflow-x: прокрутка
+             та же, но приходит с рамкой, скруглением и фоном, как у остальных
+             таблиц проекта. Режим карточек здесь НЕ включён: состав колонок
+             задаётся пользователем и меняется на лету, а ячейки содержат поля
+             ввода — карточка из редактируемых полей читается хуже прокрутки. -->
+        <div class="md-table-wrap">
           <table class="md-table" id="students-table">
             <thead><tr id="students-table-head"></tr></thead>
             <tbody></tbody>

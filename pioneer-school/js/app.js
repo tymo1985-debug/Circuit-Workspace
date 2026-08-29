@@ -402,14 +402,27 @@ function renderRegistrationsTable(list) {
     tbody.innerHTML = `<tr><td colspan="6" class="hint">${T('ps.app.registraciy_poka_net')}</td></tr>`;
     return;
   }
+  /* Подписи для режима карточек (.md-table--cards): на узком экране шапка
+     таблицы скрыта, и каждая ячейка подписывается сама через
+     `td::before { content: attr(data-label) }`. Берутся из тех же ключей
+     перевода, что и <th>, — иначе на телефоне и на десктопе колонка
+     называлась бы по-разному, и это разошлось бы молча при первой же правке
+     формулировки. */
+  const L = {
+    name: T('ps.ui.familiya_imya'),
+    contacts: T('ps.ui.kontakty'),
+    attending: T('ps.ui.prisutstvie'),
+    transport: T('ps.ui.transport_nochleg'),
+    book: T('ps.ui.uchebnik'),
+  };
   tbody.innerHTML = list.map((r) => `
     <tr>
-      <td>${esc(r.lastName)} ${esc(r.firstName)}${r.convertedToStudentId ? ` <span class="badge-warn" style="background:#3E6B4F;">${T('ps.app.uchaschiysya')}</span>` : ''}</td>
-      <td>${esc(r.email || '')}<br>${esc(r.phone || '')}</td>
-      <td>${esc(Registration.YES_NO_LABELS[r.attending] || '—')}${r.attending === 'no' && r.attendReason ? ' — ' + esc(r.attendReason) : ''}</td>
-      <td>${esc(T('ps.app.reg_transport', { car: Registration.YES_NO_LABELS[r.transport] || '—', lodging: Registration.YES_NO_LABELS[r.lodging] || '—' }))}</td>
-      <td>${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
-      <td>
+      <td data-label="${esc(L.name)}">${esc(r.lastName)} ${esc(r.firstName)}${r.convertedToStudentId ? ` <span class="badge-warn" style="background:#3E6B4F;">${T('ps.app.uchaschiysya')}</span>` : ''}</td>
+      <td data-label="${esc(L.contacts)}">${esc(r.email || '')}<br>${esc(r.phone || '')}</td>
+      <td data-label="${esc(L.attending)}">${esc(Registration.YES_NO_LABELS[r.attending] || '—')}${r.attending === 'no' && r.attendReason ? ' — ' + esc(r.attendReason) : ''}</td>
+      <td data-label="${esc(L.transport)}">${esc(T('ps.app.reg_transport', { car: Registration.YES_NO_LABELS[r.transport] || '—', lodging: Registration.YES_NO_LABELS[r.lodging] || '—' }))}</td>
+      <td data-label="${esc(L.book)}">${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
+      <td class="md-table__rowactions">
         ${r.convertedToStudentId ? '' : `<button class="md-btn md-btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--md-primary);">${T('ps.app.v_uchaschiesya')}</button>`}
         <button class="md-btn md-btn-text remove-reg" data-id="${esc(r.id)}">${T('ps.app.udalit')}</button>
       </td>
