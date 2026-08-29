@@ -454,37 +454,28 @@
      собирать имя надо в момент печати. Пустой ответ = заголовок не трогаем. */
 
   /* --- Переключатель языка -------------------------------------------- */
+  /* Мост целиком в общем слое (29.08.2026): CWI18n.bindModule(). Заполнение
+     селектора, значение «как в хабе», обработчик change и подписка на
+     onChange были построчной копией того же кода в трёх других модулях.
+
+     Одна мелочь заодно перестала полагаться на умолчание: здесь `setLang()`
+     звался без `{ scope: 'module' }`. Дефекта в этом НЕ БЫЛО — проверено на
+     релизной сборке: `setLang` сам выбирает `module`, когда id модуля задан,
+     и общий ключ `cw-lang` оставался нетронутым. Но читалось это как запись в
+     язык всей экосистемы, а держаться на умолчании там, где остальные три
+     модуля пишут область явно, — лишний повод для сомнений при чтении. */
   function initLanguage() {
-    var select = $('#uiLanguage');
-    if (!select || !self.CWI18n) return;
-
-    var inherit = document.createElement('option');
-    inherit.value = '__hub';
-    inherit.textContent = t('common.language_inherit');
-    select.appendChild(inherit);
-
-    self.CWI18n.LANGS.forEach(function (lang) {
-      var option = document.createElement('option');
-      option.value = lang.code;
-      option.textContent = lang.label;
-      select.appendChild(option);
-    });
-
-    var active = self.CWI18n.init({ module: MODULE_ID });
-    select.value = self.CWI18n.isInherited() ? '__hub' : active;
-
-    select.addEventListener('change', function (e) {
-      if (e.target.value === '__hub') self.CWI18n.resetToHub();
-      else self.CWI18n.setLang(e.target.value);
-    });
-
-    /* Панель и списки строятся скриптом, а не разметкой, поэтому общий
-       apply() их не достаёт — перерисовываем сами. */
-    self.CWI18n.onChange(function () {
-      LISTS.forEach(renderList);
-      renderSenderPanel();
-      renderSignaturePanel();
-      select.value = self.CWI18n.isInherited() ? '__hub' : self.CWI18n.getLang();
+    if (!self.CWI18n) return;
+    self.CWI18n.bindModule({
+      module: MODULE_ID,
+      select: 'uiLanguage',
+      onChange: function () {
+        /* Панель и списки строятся скриптом, а не разметкой, поэтому общий
+           apply() их не достаёт — перерисовываем сами. */
+        LISTS.forEach(renderList);
+        renderSenderPanel();
+        renderSignaturePanel();
+      },
     });
   }
 

@@ -798,8 +798,20 @@
 
   function boot() {
     if (self.CWI18n) {
-      self.CWI18n.init({ selectEl: document.getElementById('uiLanguage') });
-      self.CWI18n.apply();
+      /* ИСПРАВЛЕНО 29.08.2026. Здесь стояло `init({ selectEl })` — опции с
+         таким именем у init() нет и не было, поэтому аргумент молча
+         игнорировался: `<select id="uiLanguage">` в разметке существовал, но
+         НИКОГДА не заполнялся. Переключатель языка Документов стоял пустым, и
+         поймать это можно было только глазами — ни одна проверка не смотрит
+         на содержимое селектора.
+         Заодно модуль впервые получил собственный язык: `init()` звался без
+         `module`, то есть выбор в Документах был невозможен в принципе. */
+      self.CWI18n.bindModule({
+        module: MODULE_ID,
+        select: 'uiLanguage',
+        versionSlot: 'moduleVersion',
+        onChange: function () { renderFilters(); renderArchiveFilters(); },
+      });
     }
     if (self.CWDocLang) self.CWDocLang.init({ module: MODULE_ID, langs: ['uk', 'ru', 'de', 'en', 'pl'], apply: false });
     var version = (self.CW_MODULES && self.CW_MODULES[MODULE_ID] || {}).version;

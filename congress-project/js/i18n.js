@@ -11,7 +11,14 @@
 // может работать в польском интерфейсе и рассылать украинские письма.
 
 export const MODULE = 'congress-project';
-export const HUB_VALUE = '__hub';
+
+/* Мост целиком в общем слое (29.08.2026): CWI18n.bindModule(). Здесь остаётся
+   только то, что у Конгрессов действительно своё, — перевод статусов. */
+let bridge = null;
+
+/* Константа общего слоя, а не своя копия: значение обязано совпадать с тем,
+   что кладёт в селектор bindModule, но раньше их ничто не связывало. */
+export const HUB_VALUE = (typeof CWI18n !== 'undefined' && CWI18n.HUB_VALUE) || '\u005f\u005fhub';
 
 export function ready() { return typeof CWI18n !== 'undefined'; }
 
@@ -39,26 +46,17 @@ export function tStatus(value) {
   return key ? t(key) : (value || '');
 }
 
-// Заголовок вкладки: название модуля переводится, номер версии — нет.
-function applyTitle() {
-  const version = (self.CW_MODULES && self.CW_MODULES[MODULE] && self.CW_MODULES[MODULE].version) || '';
-  document.title = t('cong.app.title') + (version ? ' v' + version : '');
-  const slot = document.getElementById('moduleVersion');
-  if (slot && version) slot.textContent = 'v' + version;
-}
-
 export function isInherited() { return ready() ? CWI18n.isInherited() : true; }
 
 // Смена языка: __hub — вернуться к наследованию от хаба, иначе собственный выбор.
 export function choose(value) {
-  if (!ready()) return;
-  if (value === HUB_VALUE) CWI18n.resetToHub();
-  else CWI18n.setLang(value, { scope: 'module' });
+  if (!bridge) return;
+  bridge.choose(value);
+  bridge.refresh();
 }
 
 export function currentValue() {
-  if (!ready()) return HUB_VALUE;
-  return CWI18n.isInherited() ? HUB_VALUE : CWI18n.getLang();
+  return bridge ? bridge.currentValue() : HUB_VALUE;
 }
 
 /**
@@ -71,34 +69,11 @@ export function init(rerender) {
     console.error('congress-project: shared/i18n.js не подключён — интерфейс останется русским');
     return;
   }
-  CWI18n.init({ module: MODULE });
-  applyTitle();
-  fillLanguageSelect();
-
-  CWI18n.onChange(() => {
-    applyTitle();
-    fillLanguageSelect();
-    if (typeof rerender === 'function') rerender();
+  bridge = CWI18n.bindModule({
+    module: MODULE,
+    select: 'uiLanguage',
+    titleKey: 'cong.app.title',
+    versionSlot: 'moduleVersion',
+    onChange: rerender,
   });
-
-  const select = document.getElementById('uiLanguage');
-  if (select) select.addEventListener('change', (e) => {
-    choose(e.target.value);
-    applyTitle();
-    fillLanguageSelect();
-    if (typeof rerender === 'function') rerender();
-  });
-}
-
-// Опции строятся из реестра языков хаба: добавление языка не требует правок
-// ни здесь, ни в разметке.
-function fillLanguageSelect() {
-  const select = document.getElementById('uiLanguage');
-  if (!select || !ready()) return;
-  const options = [{ code: HUB_VALUE, label: t('common.language_inherit') }]
-    .concat(CWI18n.LANGS.map((l) => ({ code: l.code, label: l.label })));
-  select.innerHTML = options
-    .map((o) => `<option value="${o.code}">${o.label}</option>`)
-    .join('');
-  select.value = currentValue();
 }

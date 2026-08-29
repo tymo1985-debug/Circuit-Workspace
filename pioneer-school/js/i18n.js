@@ -17,7 +17,8 @@
 
 const PSI18n = {
   MODULE: 'pioneer-school',
-  HUB_VALUE: '__hub',
+  /* Константа общего слоя, а не своя копия — см. shared/i18n.js. */
+  HUB_VALUE: (typeof CWI18n !== 'undefined' && CWI18n.HUB_VALUE) || '\u005f\u005fhub',
 
   ready() { return typeof CWI18n !== 'undefined'; },
 
@@ -42,19 +43,10 @@ const PSI18n = {
   // намеренно нет: у него приоритет был обратный (label раньше labelKey),
   // то есть перевод никогда бы не применился.
 
-  applyTitle() {
-    const version = (self.CW_MODULES && self.CW_MODULES[this.MODULE] && self.CW_MODULES[this.MODULE].version) || '';
-    document.title = this.t('module.pioneer-school.title') + (version ? ' v' + version : '');
-  },
-
-  fillSelect() {
-    const select = document.getElementById('ui-language');
-    if (!select || !this.ready()) return;
-    const options = [{ code: this.HUB_VALUE, label: this.t('common.language_inherit') }]
-      .concat(CWI18n.LANGS.map((l) => ({ code: l.code, label: l.label })));
-    select.innerHTML = options.map((o) => `<option value="${o.code}">${o.label}</option>`).join('');
-    select.value = this.currentValue();
-  },
+  /* Мост целиком в общем слое (29.08.2026): CWI18n.bindModule().
+     applyTitle() и fillSelect() удалены — они были построчной копией того,
+     что теперь делает общий слой. */
+  _bridge: null,
 
   /**
    * @param {Function} rerender — перерисовка текущего экрана. Статическую
@@ -66,20 +58,14 @@ const PSI18n = {
       console.error('pioneer-school: shared/i18n.js не подключён — интерфейс останется русским');
       return;
     }
-    CWI18n.init({ module: this.MODULE });
-    this.applyTitle();
-    this.fillSelect();
-
-    const apply = () => {
-      this.applyTitle();
-      this.fillSelect();
-      if (typeof rerender === 'function') rerender();
-    };
-
-    CWI18n.onChange(apply);
-
-    const select = document.getElementById('ui-language');
-    if (select) select.addEventListener('change', (e) => { this.choose(e.target.value); apply(); });
+    this._bridge = CWI18n.bindModule({
+      module: this.MODULE,
+      /* id селектора у Школы через дефис — это исторически её разметка, и
+         переименование ради единообразия сломало бы вёрстку без выигрыша. */
+      select: 'ui-language',
+      titleKey: 'module.pioneer-school.title',
+      onChange: rerender,
+    });
   },
 };
 

@@ -42,6 +42,10 @@
   'use strict';
 
   var HUB_KEY = 'cw-lang';
+  /* Значение «наследовать язык хаба» в селекторах модулей. До 29.08.2026
+     литерал '__hub' был объявлен в каждом модуле отдельно — четыре копии
+     одной константы, которые обязаны совпадать, но ничем не связаны. */
+  var HUB_VALUE = '__hub';
   var MODULE_KEY_PREFIX = 'cw-lang:';
   var FALLBACK = 'ru';
 
@@ -246,6 +250,123 @@
 
       return current;
     },
+
+    /**
+     * Мост модуля к общей локализации: одна функция вместо пяти копий.
+     *
+     * ─── ЗАЧЕМ (29.08.2026) ─────────────────────────────────────────────
+     *
+     * Один и тот же код жил в `congress-project/js/i18n.js`,
+     * `pioneer-school/js/i18n.js`, `appointments/js/app.js` и
+     * `documents/js/app.js`: константа `'__hub'`, `ready()`, `currentValue()`,
+     * `choose()`, `applyTitle()`, заполнение `<select>`, подписка на
+     * `onChange`, обработчик `change`. Различались только имя модуля, id
+     * селектора и ключ заголовка — то есть ПАРАМЕТРЫ, а не логика.
+     *
+     * Цена дубля здесь не «некрасиво»: правка разрешения языка требовала пяти
+     * правок, и гейт совпадение не сторожил. Документы это и показали — их
+     * `<select id="uiLanguage">` был объявлен в разметке, но НИКОГДА не
+     * заполнялся: модуль звал `init({ selectEl })`, а такой опции у init нет
+     * и не было. Переключатель языка стоял пустым, и заметить это можно было
+     * только глазами.
+     *
+     * ─── ЧТО СЮДА НЕ ПЕРЕЕХАЛО И ПОЧЕМУ ─────────────────────────────────
+     *
+     * `App.i18nBridge` Клиндария остаётся своим. Он не мост, а зеркало: язык
+     * дублируется в `settings.language` модуля, есть карта ближайших языков,
+     * `apply: false` (разметка без `data-i18n`, переводит собственный
+     * `renderAll()`) и флаг `_busy` против рекурсии. Свести его сюда значило
+     * бы затащить в общий слой частный случай одного модуля.
+     *
+     * Своё остаётся своим и у остальных: `tStatus()` Конгрессов, псевдоним
+     * `T()` Школы. Они действительно разные.
+     *
+     * @param {Object} opts
+     * @param {string} opts.module — id модуля, как в CW_MODULES
+     * @param {string|Element} [opts.select] — селектор языка: id или элемент
+     * @param {string} [opts.titleKey] — ключ названия для document.title
+     * @param {string} [opts.versionSlot] — id элемента для «v1.2.3»
+     * @param {Function} [opts.onChange] — перерисовка динамических экранов
+     * @param {boolean} [opts.apply] — как у init()
+     * @returns {Object} api моста
+     */
+    bindModule: function (opts) {
+      var o = opts || {};
+      if (!o.module) throw new Error('CWI18n.bindModule: нужен module');
+
+      var api = {
+        /** Значение «наследовать от хаба» в селекторе. */
+        HUB_VALUE: HUB_VALUE,
+        t: function (key, vars) { return CWI18n.t(key, vars); },
+        isInherited: function () { return CWI18n.isInherited(); },
+        currentValue: function () {
+          return CWI18n.isInherited() ? HUB_VALUE : CWI18n.getLang();
+        },
+        choose: function (value) {
+          if (value === HUB_VALUE) CWI18n.resetToHub();
+          else CWI18n.setLang(value, { scope: 'module' });
+        },
+      };
+
+      function el() {
+        if (!o.select) return null;
+        return typeof o.select === 'string' ? global.document.getElementById(o.select) : o.select;
+      }
+
+      /* Опции строятся из реестра языков хаба: добавление языка не требует
+         правок ни здесь, ни в разметке модуля. */
+      function fill() {
+        var select = el();
+        if (!select) return;
+        var options = [{ code: HUB_VALUE, label: CWI18n.t('common.language_inherit') }]
+          .concat(CWI18n.LANGS.map(function (l) { return { code: l.code, label: l.label }; }));
+        select.innerHTML = options.map(function (item) {
+          /* Значения — коды языков из реестра, но экранирование ставится по
+             правилу, а не по разбору: подписи приходят из словарей, а словарь
+             правят люди. */
+          return '<option value="' + CWEscape.attr(item.code) + '">'
+            + CWEscape.html(item.label) + '</option>';
+        }).join('');
+        select.value = api.currentValue();
+      }
+
+      /* Название модуля переводится, номер версии — нет. */
+      function title() {
+        var version = (global.CW_MODULES && global.CW_MODULES[o.module]
+          && global.CW_MODULES[o.module].version) || '';
+        if (o.titleKey) {
+          global.document.title = CWI18n.t(o.titleKey) + (version ? ' v' + version : '');
+        }
+        var slot = o.versionSlot && global.document.getElementById(o.versionSlot);
+        if (slot && version) slot.textContent = 'v' + version;
+      }
+
+      /** Перечитать заголовок и селектор — после смены языка или данных. */
+      api.refresh = function () { title(); fill(); };
+
+      CWI18n.init({ module: o.module, apply: o.apply });
+      api.refresh();
+
+      var after = function () {
+        api.refresh();
+        if (typeof o.onChange === 'function') o.onChange();
+      };
+      CWI18n.onChange(after);
+
+      var select = el();
+      if (select) {
+        select.addEventListener('change', function (e) {
+          api.choose(e.target.value);
+          after();
+        });
+      }
+
+      return api;
+    },
+
+    /** Значение «наследовать язык хаба» в селекторах модулей. Публично,
+     *  чтобы модуль мог сравнить с ним, не заводя своей копии литерала. */
+    HUB_VALUE: HUB_VALUE,
 
     getLang: function () { return current || (current = resolve()); },
 
