@@ -453,9 +453,20 @@
 <!-- Внешние библиотеки — только с `integrity` и `crossorigin` (28.08.2026),
      см. подробное обоснование в circuit-planner/index.html.
      Хеши сверять: `node scripts/build-sri.mjs --check`. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" integrity="sha384-uLiAv4VcjM5H2Jsqzl8EajEaxPugj1CIzQaCjQ8c5//vC+elhxO5pZfXGxoLQi1W" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+<!-- БИБЛИОТЕКИ PDF ЖИВУТ В РЕПОЗИТОРИИ (29.08.2026, shared/vendor/).
+     Раньше те же файлы приходили двумя путями сразу: Клиндарий тянул
+     pdf-lib и fontkit с CDN, а у Школы лежали их локальные копии — одна
+     версия, две поставки, два кэша у пользователя с обоими модулями и два
+     места правки при обновлении.
+     Вместе с дублем ушёл и CDN как таковой: `integrity` защищал от подмены
+     содержимого, но не от недоступности. Кэш service worker'а тянул CDN
+     «мягко», то есть на первом запуске без сети выгрузка PDF не работала
+     вовсе. Свой файл доезжает всегда.
+     Версии сверены: байты в shared/vendor совпадают с тем, что отдавали
+     cdnjs и jsdelivr (хеши снимались с живых ответов 28.08.2026). -->
+<script src="../shared/vendor/jspdf.umd.min.js"></script>
+<script src="../shared/vendor/pdf.min.js"></script>
+<script src="../shared/vendor/xlsx.full.min.js"></script>
 <script>
   if (window.pdfjsLib) {
     /* ВОРКЕР ЛЕЖИТ ЛОКАЛЬНО, И ЭТО НЕ ПРИДИРКА. `integrity` работает только
@@ -465,7 +476,7 @@
        защищёнными. Локальная копия снимает вопрос целиком.
        Версия обязана совпадать с pdf.min.js выше (2.16.105): pdf.js
        отказывается работать с воркером другой версии. */
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/vendor/pdf.worker.min.js';
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = '../shared/vendor/pdf.worker.min.js';
   }
 </script>
 <!-- Общий слой локализации хаба: подключается до модулей, чтобы T() был
@@ -506,8 +517,8 @@
 <script src="js/modules/afterSchool.js"></script>
 <script src="js/modules/signLanguage.js"></script>
 <script src="js/modules/letters.js"></script>
-<script src="js/vendor/pdf-lib.min.js"></script>
-<script src="js/vendor/fontkit.umd.min.js"></script>
+<script src="../shared/vendor/pdf-lib.min.js"></script>
+<script src="../shared/vendor/fontkit.umd.min.js"></script>
 <script src="js/export/fonts/dejavu-sans-subset.js"></script>
 <script src="js/export/fonts/dejavu-form-b64.js"></script>
 <script src="js/modules/registrationSchema.js"></script>

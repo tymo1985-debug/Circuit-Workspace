@@ -817,10 +817,21 @@ body::before{display:none !important}
        браузер не сможет проверить ответ и заблокирует скрипт.
        Хеши сверять при любой смене версии библиотеки:
        `node scripts/build-sri.mjs --check`. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js" integrity="sha384-2p6U+1mmqF10USehFeRiyG2ESG9FwIqN+jxULn5w9jjQIihSn9Pt13dVCn/Hawjn" crossorigin="anonymous"></script>
+  <!-- БИБЛИОТЕКИ PDF ЖИВУТ В РЕПОЗИТОРИИ (29.08.2026, shared/vendor/).
+       Раньше те же файлы приходили двумя путями сразу: Клиндарий тянул
+       pdf-lib и fontkit с CDN, а у Школы лежали их локальные копии — одна
+       версия, две поставки, два кэша у пользователя с обоими модулями и два
+       места правки при обновлении.
+       Вместе с дублем ушёл и CDN как таковой: `integrity` защищал от подмены
+       содержимого, но не от недоступности. Кэш service worker'а тянул CDN
+       «мягко», то есть на первом запуске без сети выгрузка PDF не работала
+       вовсе. Свой файл доезжает всегда.
+       Версии сверены: байты в shared/vendor совпадают с тем, что отдавали
+       cdnjs и jsdelivr (хеши снимались с живых ответов 28.08.2026). -->
+  <script src="../shared/vendor/jspdf.umd.min.js"></script>
+  <script src="../shared/vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="../shared/vendor/pdf-lib.min.js"></script>
+  <script src="../shared/vendor/fontkit.umd.min.js"></script>
   <script src="forms/s302-form.js"></script>
   <script src="fonts/fonts-aptos-regular.js"></script>
   <script src="fonts/fonts-aptos-bold.js"></script>

@@ -85,13 +85,16 @@ const ASSETS = [
   './js/export/fonts/dejavu-form-b64.js',
   // pdf-lib + fontkit лежат локально, а не на CDN: интерактивная AcroForm-анкета
   // должна собираться и без сети.
-  './js/vendor/pdf-lib.min.js',
-  './js/vendor/fontkit.umd.min.js',
+  '../shared/vendor/jspdf.umd.min.js',
+  '../shared/vendor/pdf.min.js',
+  '../shared/vendor/xlsx.full.min.js',
+  '../shared/vendor/pdf-lib.min.js',
+  '../shared/vendor/fontkit.umd.min.js',
   /* Воркер pdf.js: `integrity` его не защищает (адрес подставляется строкой в
      workerSrc, а не тегом), поэтому копия лежит в репозитории. Здесь же он
      переехал из CDN_ASSETS в обязательный прекэш: свой файл обязан доехать,
      а не кэшироваться «мягко». */
-  './js/vendor/pdf.worker.min.js',
+  '../shared/vendor/pdf.worker.min.js',
   './data/seed-lessons.json'
 ];
 
@@ -100,11 +103,12 @@ const ASSETS = [
 // управляет страницей, поэтому runtime-кэширование их не перехватывало.
 // Ошибка загрузки любой из них не должна ломать установку SW, поэтому они
 // кэшируются отдельно и «мягко».
-const CDN_ASSETS = [
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-];
+/* CDN_ASSETS больше нет (29.08.2026): библиотеки переехали в shared/vendor и
+   лежат в обязательном прекэше выше. Прежний «мягкий» кэш был вынужденной
+   мерой — отказ загрузки CDN не должен был ломать установку SW, — и её
+   ценой было то, что на первом запуске без сети выгрузка PDF и разбор
+   импортированных PDF не работали вовсе. Свой файл доезжает всегда. */
+const CDN_ASSETS = [];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
