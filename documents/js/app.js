@@ -149,8 +149,8 @@
           + escapeHtml(lang.toUpperCase()) + '</span>';
       }).join('');
       var pages = (tpl.pages || []).length;
-      var meta = [t(kind.key), moduleLabel(tpl)].filter(Boolean).join(' · ')
-        + (pages ? ' · ' + t('doc.extra_pages', { n: pages }) : '');
+      var meta = [escapeHtml(t(kind.key)), moduleLabel(tpl)].filter(Boolean).join(' · ')
+        + (pages ? ' · ' + escapeHtml(t('doc.extra_pages', { n: pages })) : '');
       return '<button type="button" class="doc-row" data-open="' + escapeHtml(tpl.id) + '">'
         + '<span class="doc-row__icon" aria-hidden="true">' + icon(kind.icon) + '</span>'
         + '<span><span class="doc-row__name">' + escapeHtml(nameOf(tpl)) + '</span>'
@@ -225,10 +225,10 @@
 
     box.innerHTML = groups.map(function (group) {
       var head = group.doc;
-      var title = head.entityTitle || t('doc.archive_entity_gone');
+      var title = head.entityTitle || escapeHtml(t('doc.archive_entity_gone'));
       var meta = [
-        head.module ? t('module.' + head.module + '.title') : '',
-        t('doc.archive_docs_count', { n: group.docs.length }),
+        head.module ? escapeHtml(t('module.' + head.module + '.title')) : '',
+        escapeHtml(t('doc.archive_docs_count', { n: group.docs.length })),
       ].filter(Boolean).join(' · ');
       return '<section class="arc-group">'
         + '<h3 class="arc-group__title">' + escapeHtml(title) + '</h3>'

@@ -218,6 +218,14 @@
       };
 
       fill();
+      /* Подписки ставятся один раз на элемент (29.08.2026, находка N-6).
+         Повторный mountSelect() на том же <select> прежде вешал второй
+         обработчик `change`, второй onChange темы и второй onChange языка:
+         список вариантов перезаполнялся дважды на каждое переключение, а
+         накопленные обработчики жили до перезагрузки страницы. Наполнение при
+         этом повторяется намеренно — оно и есть смысл повторного вызова. */
+      if (el.__cwThemeBound) return;
+      el.__cwThemeBound = true;
       el.addEventListener('change', function () { CWTheme.set(el.value); });
       CWTheme.onChange(function () { el.value = mode; });
       if (global.CWI18n && global.CWI18n.onChange) global.CWI18n.onChange(fill);

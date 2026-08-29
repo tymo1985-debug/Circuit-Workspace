@@ -1,4 +1,9 @@
 {
+  "_": "СПРАВКА, А НЕ ДЕЙСТВУЮЩИЙ ЗАМОК (записано 29.08.2026, находка N-4).",
+  "_1": "29.08.2026 CDN убран из проекта целиком: все библиотеки лежат в shared/vendor/ и в разметке НЕТ ни одного внешнего <script>.",
+  "_2": "Значит сверять этим хешам сейчас нечего — check-sri.mjs честно пишет «внешних скриптов нет» и проходит вхолостую.",
+  "_3": "Файл оставлен намеренно: если какая-то библиотека когда-нибудь вернётся на CDN, хеш для неё уже снят с байтов CDN, а не с копии из npm.",
+  "_4": "Возвращать адрес в разметку без свежего прогона `node scripts/build-sri.mjs --lock` нельзя: версия на CDN могла смениться, и старый хеш заблокирует скрипт у пользователя.",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js": "sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js": "sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3",
   "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js": "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI",

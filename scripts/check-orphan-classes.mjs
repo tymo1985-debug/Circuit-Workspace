@@ -2,8 +2,11 @@
 /**
  * Circuit Workspace — scripts/check-orphan-classes.mjs
  *
- * ЧТО ЛОВИТ. Класс, стоящий в разметке страницы, для которого во всей области
- * видимости этой страницы нет ни одного правила CSS.
+ * ЧТО ЛОВИТ. Проверка двусторонняя:
+ *   1) класс в разметке страницы, для которого во всей области видимости этой
+ *      страницы нет ни одного правила CSS;
+ *   2) правило в `shared/style.css`, для которого нет ни одного потребителя —
+ *      добавлено 29.08.2026, см. второй раздел файла.
  *
  * ЗАЧЕМ. 28.08.2026 при перекройке главного экрана вместе с ненужным блоком
  * стилей были вырезаны `.cw-btn`, `.cw-btn svg`, `.cw-btn--primary`,
@@ -94,9 +97,113 @@ for (const page of PAGES) {
   }
 }
 
+/* ═══ ОБРАТНАЯ СТОРОНА: правило без потребителя ═══════════════════════════
+ *
+ * ЗАЧЕМ. Всё выше ищет класс без правила. Обратный случай — правило в общем
+ * слое, которым никто не пользуется, — гейт до 29.08.2026 не видел вовсе:
+ * раздел 5.6 `shared/style.css` (`.md-table-wrap`, `.md-table--cards`)
+ * существовал вхолостую месяцами и нашёлся ГЛАЗАМИ при аудите, а не
+ * проверкой. Спящий компонент опаснее лишнего килобайта: следующий, кто
+ * будет решать задачу, которую этот компонент решает, о нём не узнает и
+ * напишет свой — так и появляются шесть редакций одного кода.
+ *
+ * ─── ТРИ СОСТОЯНИЯ, А НЕ ДВА ───────────────────────────────────────────────
+ *
+ *   применяется в модулях        — норма, ничего не печатается;
+ *   есть только в превью         — компонент задокументирован и предъявлен,
+ *     но ни один модуль его не взял. Это НЕ провал: каталог дизайн-системы
+ *     на то и каталог. Печатается счётчиком — чтобы список не рос молча;
+ *   нет нигде, даже в превью     — мёртвое правило. Ратчет ниже.
+ *
+ * ─── ПОЧЕМУ ХРАПОВИК ───────────────────────────────────────────────────────
+ *
+ * На 29.08.2026 таких правил 39. Требовать вычистить их разом значило бы
+ * тронуть общий слой целиком одним заходом — правка, которую нельзя
+ * проверить живым прогоном осмысленно. Поэтому список зафиксирован, а
+ * краснеет проверка на НОВОМ мёртвом правиле. Список только СОКРАЩАЕТСЯ:
+ * применили компонент или удалили — убрали строку.
+ */
+
+const SHARED_CSS = 'shared/style.css';
+
+/** Каталог дизайн-системы: использование здесь — документация, не применение. */
+const PREVIEW = 'docs/design-system';
+
+/**
+ * Мёртвые правила на 29.08.2026 — объявлены в общем слое и не встречаются
+ * нигде, включая превью. СПИСОК ТОЛЬКО СОКРАЩАЕТСЯ.
+ */
+const DEAD = new Set([
+  'cw-btn--accent', 'cw-badge--soon', 'cw-muted',
+  'md-display-large', 'md-display-medium', 'md-display-small',
+  'md-headline-large', 'md-headline-medium', 'md-body-large', 'md-label-small',
+  'md-icon', 'md-icon-sm', 'md-icon-lg',
+  'md-btn-elevated', 'md-fab', 'md-fab-extended',
+  'md-card-filled', 'md-card-elevated',
+  'md-list', 'md-list-item',
+  'md-topbar', 'md-nav-rail', 'md-nav-rail-item', 'md-nav-indicator',
+  'md-nav-label', 'md-nav-bottom', 'md-nav-bottom-item',
+  'md-hidden', 'md-flex', 'md-gap-sm', 'md-gap-md',
+  'md-shell__body--rail', 'md-page--narrow', 'md-toolbar--sticky',
+  'md-formgrid--3', 'md-sheet--drawer',
+  'u-truncate', 'u-print-only', 'u-no-print',
+]);
+
+console.log('\n' + SHARED_CSS + ': правила без потребителя');
+
+/* Селекторы берём только из СЕЛЕКТОРНОЙ части правил: точка внутри блока
+   объявлений — это дробное число (`.5rem`), а не класс. */
+const sharedCss = fs.readFileSync(path.join(ROOT, SHARED_CSS), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+const declaredShared = new Set();
+for (const block of sharedCss.matchAll(/([^{}]+)\{[^{}]*\}/g)) {
+  for (const m of block[1].matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) declaredShared.add(m[1]);
+}
+
+/* Использование ищем словами по всей разметке и всему JS: класс может
+   собираться конкатенацией и в атрибуте не встречаться ни разу. Ложное
+   «используется» здесь дешевле ложного «мёртвое». */
+const SKIP = new Set(['node_modules', '.git', 'shots', 'vendor', 'fonts']);
+const usedInCode = new Set();
+const usedInPreview = new Set();
+(function collect(dir, inPreview) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (SKIP.has(entry.name)) continue;
+    const p = path.join(dir, entry.name);
+    const rel = path.relative(ROOT, p).split(path.sep).join('/');
+    if (entry.isDirectory()) { collect(p, inPreview || rel.startsWith(PREVIEW)); continue; }
+    if (!/\.(html|js)$/.test(p)) continue;
+    const bag = inPreview ? usedInPreview : usedInCode;
+    for (const m of fs.readFileSync(p, 'utf8').matchAll(/[\w-]+/g)) bag.add(m[0]);
+  }
+})(ROOT, false);
+
+const unusedShared = [...declaredShared].filter((c) => !usedInCode.has(c));
+const onlyPreview = unusedShared.filter((c) => usedInPreview.has(c)).sort();
+const nowhere = unusedShared.filter((c) => !usedInPreview.has(c)).sort();
+
+console.log('  · объявлено классов: ' + declaredShared.size
+  + ', применяется в модулях: ' + (declaredShared.size - unusedShared.length));
+console.log('  · только в каталоге дизайн-системы: ' + onlyPreview.length
+  + ' — задокументированы, ни одним модулем не взяты');
+
+const newlyDead = nowhere.filter((c) => !DEAD.has(c));
+newlyDead.forEach((c) => {
+  failed++;
+  console.log('  ✗ .' + c + ' — правило есть, потребителя нет нигде, включая каталог\n'
+    + '      спящий компонент не найдёт следующий, кто будет решать ту же задачу, '
+    + 'и напишет свой; либо применить, либо удалить, либо предъявить в ' + PREVIEW);
+});
+if (!newlyDead.length) console.log('  ✓ новых мёртвых правил нет');
+
+/* Правило свели, а строку из DEAD убрать забыли: не провал, но списку нельзя
+   давать врать — иначе он перестанет быть мерой. */
+const revived = [...DEAD].filter((c) => !nowhere.includes(c)).sort();
+if (revived.length) console.log('  · ожили или удалены, можно убрать из DEAD: ' + revived.join(', '));
+console.log('  · осталось разобрать: ' + nowhere.filter((c) => DEAD.has(c)).length);
+
 console.log('');
 if (failed) {
   console.log('Провалено: ' + failed);
   process.exit(1);
 }
-console.log('Классов без правил нет.');
+console.log('Классы и правила сходятся в обе стороны.');

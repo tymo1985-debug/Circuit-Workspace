@@ -232,12 +232,12 @@ export function openMatchReport() {
     <p class="hint">${esc(t("cong.match.summary", {
       total: items.length - excluded.length, sure: sure.length, ask: ask.length, none: none.length,
     }))}</p>
-    ${sectionHTML(t("cong.match.group_ask"), ask)}
-    ${sectionHTML(t("cong.match.group_none"), none)}
-    ${sectionHTML(t("cong.match.group_sure"), sure)}
-    ${sectionHTML(t("cong.match.group_dupes"), dupes)}
-    ${sectionHTML(t("cong.match.group_embedded"), embedded)}
-    ${sectionHTML(t("cong.match.group_excluded"), excluded)}`;
+    ${sectionHTML(esc(t("cong.match.group_ask")), ask)}
+    ${sectionHTML(esc(t("cong.match.group_none")), none)}
+    ${sectionHTML(esc(t("cong.match.group_sure")), sure)}
+    ${sectionHTML(esc(t("cong.match.group_dupes")), dupes)}
+    ${sectionHTML(esc(t("cong.match.group_embedded")), embedded)}
+    ${sectionHTML(esc(t("cong.match.group_excluded")), excluded)}`;
 
   /* Делегирование: строки перерисовываются целиком после каждой пометки,
      поэтому обработчики на самих кнопках пришлось бы вешать заново каждый

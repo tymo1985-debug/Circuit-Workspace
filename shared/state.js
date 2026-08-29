@@ -86,6 +86,13 @@
     var ownRev = null;       // маячок, который поставили мы сами
     var inFlight = null;     // текущая запись
     var queued = null;       // последняя нагрузка, ждущая своей очереди (last-wins)
+    /* Подписка на `storage` ставится РОВНО ОДИН РАЗ (29.08.2026, находка N-6).
+       Второй вызов onForeign() прежде вешал второй слушатель, и каждая чужая
+       запись читалась из базы дважды, а обработчик модуля вызывался дважды —
+       для перерисовки списка это двойная работа, для обработчика с побочным
+       действием могло быть и хуже. Такой же флаг уже стоит в shared/i18n.js. */
+    var foreignBound = false;
+    var foreignCallbacks = [];
 
     function db() {
       return global.CWDB && global.CWDB[STORE] ? global.CWDB[STORE] : null;
@@ -231,8 +238,14 @@
       /**
        * Подписка на запись из соседней вкладки. Событие `storage` приходит
        * только на маячок, поэтому состояние перечитывается из базы.
+       *
+       * Слушатель ставится один раз на экземпляр, а обработчики копятся в
+       * списке: повторный вызов добавляет получателя, но не вторую подписку.
        */
       onForeign: function (callback) {
+        if (typeof callback === 'function') foreignCallbacks.push(callback);
+        if (foreignBound) return;
+        foreignBound = true;
         global.addEventListener('storage', function (event) {
           if (event.key !== revKey || !event.newValue) return;
           if (event.newValue === ownRev) return;      // наша же запись
@@ -242,7 +255,7 @@
           store.get(moduleId).then(function (record) {
             if (!record || typeof record.payload !== 'string') return;
             cache = record.payload;
-            callback(record.payload);
+            foreignCallbacks.forEach(function (cb) { cb(record.payload); });
           }).catch(function (error) { console.error('CWState: чтение после чужой записи не удалось', error); });
         });
       },

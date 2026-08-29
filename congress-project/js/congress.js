@@ -8,7 +8,7 @@ import { t } from "./i18n.js";
 // там перевод зовётся через псевдоним tr_.
 const tr_ = t;
 
-export function populateSeriesSelect(selectEl,current){selectEl.innerHTML='<option value="">${t("cong.opt.no_series")}</option>'+(store.st.series||[]).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");selectEl.value=current||""}
+export function populateSeriesSelect(selectEl,current){selectEl.innerHTML=`<option value="">${esc(t("cong.opt.no_series"))}</option>`+(store.st.series||[]).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");selectEl.value=current||""}
 export function openNewSeries(){$("#newSeriesName").value="";$("#newSeriesDialog").showModal()}
 export function createSeries(){let name=$("#newSeriesName").value.trim();if(!name)return alert(t("cong.alert.series_name_required"));store.st.series=store.st.series||[];let s={id:id(),name};store.st.series.push(s);save();$("#newSeriesDialog").close();renderCongresses();openNew(s.id)}
 export function openNew(presetSeriesId){let a=A();$("#newCongressName").value=a?a.name+t("cong.msg.copy_suffix"):"Новый конгресс";$("#newCongressPlace").value=a?.place||"";$("#newCongressDate").value=a?.date||"";$("#newCongressMode").value=a?"copyEmptyPeople":"demo";populateSeriesSelect($("#newCongressSeries"),presetSeriesId!=null?presetSeriesId:(a?.seriesId||""));$("#newCongressDialog").showModal()}

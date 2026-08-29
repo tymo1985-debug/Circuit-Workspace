@@ -113,7 +113,17 @@ if (lock) {
   if (failed) {
     console.log('\nЗамок НЕ обновлён: часть файлов не скачалась, записывать неполный набор нельзя.');
   } else {
-    writeFileSync(join(ROOT, 'scripts/sri-lock.json'), JSON.stringify(locked, null, 2) + '\n');
+    /* Шапка замка (ключи, начинающиеся с `_`) переносится в новый файл.
+       Она объясняет, что на 29.08.2026 замку сверять нечего — CDN убран, и
+       без этого пояснения следующий читатель решит, что подписи работают
+       (находка N-4 повторного аудита). Перезапись стёрла бы её молча. */
+    let head = {};
+    try {
+      const prev = JSON.parse(readFileSync(join(ROOT, 'scripts/sri-lock.json'), 'utf8'));
+      Object.keys(prev).forEach((k) => { if (k.charAt(0) === '_') head[k] = prev[k]; });
+    } catch (e) { /* замка ещё нет — шапку переносить неоткуда */ }
+    writeFileSync(join(ROOT, 'scripts/sri-lock.json'),
+      JSON.stringify(Object.assign(head, locked), null, 2) + '\n');
     console.log('\nscripts/sri-lock.json обновлён, адресов: ' + Object.keys(locked).length);
     console.log('Теперь проставить те же хеши в разметке — теги напечатаны выше.');
   }

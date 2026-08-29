@@ -1240,8 +1240,8 @@
         var at = fmt((log[id] || {}).at);
         var cell = at
           ? '<span>' + at + '</span>'
-          : '<span class="cw-backup__never">' + CWI18n.t('backup.never') + '</span>';
-        return '<tr><td>' + CWI18n.t('module.' + id + '.title') + '</td><td>v' + version + '</td><td>' + cell + '</td></tr>';
+          : '<span class="cw-backup__never">' + CWEscape.html(CWI18n.t('backup.never')) + '</span>';
+        return '<tr><td>' + CWEscape.html(CWI18n.t('module.' + id + '.title')) + '</td><td>v' + version + '</td><td>' + cell + '</td></tr>';
       }).join('');
     }
 
@@ -1320,15 +1320,46 @@
           if (err && err.message === 'backup-newer-schema') msg = 'backup.too_new';
           if (err && err.message === 'db-blocked') msg = 'backup.blocked';
           say(msg);
+          // Отказ — ровно тот момент, когда человеку важно знать, что снимок
+          // предыдущего состояния сохранён и до него можно дотянуться. Кнопка
+          // отката появляется при загрузке страницы, а перезагрузки после
+          // неудачи не будет: показываем её здесь же (29.08.2026, N-2).
+          if (CWBackup.guard) {
+            CWBackup.guard.list().then(function (list) {
+              if (!list.length) return;
+              var btn = document.getElementById('backupGuardBtn');
+              if (btn) btn.hidden = false;
+              status.textContent += ' ' + CWI18n.t('backup.guard_saved');
+            });
+          }
         });
       };
       reader.readAsText(file);
     });
 
     // Откат к состоянию перед восстановлением. Снимок лежит в отдельной базе
-    // приложения; кнопка отдаёт его файлом, а дальше работает обычный путь
-    // «Восстановить из файла». Отдельного пути восстановления намеренно нет:
-    // второй такой путь пришлось бы проверять и поддерживать наравне с первым.
+    // приложения, которую полное восстановление не заменяет.
+    //
+    // ПОЧЕМУ КНОПКА ТЕПЕРЬ ОТКАТЫВАЕТ, А НЕ ВЫГРУЖАЕТ ФАЙЛ (29.08.2026,
+    // находка N-2 повторного аудита). Раньше она отдавала снимок файлом, а
+    // дальше работал обычный путь «Восстановить из файла»; отдельного пути
+    // восстановления не было намеренно — второй такой путь пришлось бы
+    // проверять и поддерживать наравне с первым.
+    //
+    // Возражение верное в общем виде, но здесь второго пути и не появляется:
+    // CWBackup.restore(snap) — ТА ЖЕ функция, что вызывается после разбора
+    // файла. Пропускается только круг через файловую систему, а не проверенный
+    // код. А круг этот и есть слабое место: отдельная база `circuit-workspace-
+    // guard` заведена ровно потому, что download() может отказать МОЛЧА —
+    // блокировка автозагрузок, iOS Safari в режиме PWA, нет места, отменённый
+    // диалог. Там, где он не работает, кнопка рапортовала «сохранено», файла
+    // не было, а снимок лежал в IndexedDB недосягаемым.
+    //
+    // Подпись кнопки (`backup.guard_restore` — «Откатиться к состоянию перед
+    // восстановлением») и текст `backup.guard_saved` («откат доступен кнопкой
+    // ниже») уже обещали именно откат на всех пяти языках. Новых строк
+    // перевода не понадобилось: код приведён к тому, что интерфейс и так
+    // говорил пользователю.
     (function () {
       var guardBtn = document.getElementById('backupGuardBtn');
       if (!guardBtn || !CWBackup.guard) return;
@@ -1340,12 +1371,29 @@
       });
       guardBtn.addEventListener('click', function () {
         if (!newest) return;
+        var when = fmt(String(newest.id).slice(8)) || String(newest.id).slice(8, 18);
+        // Подтверждение то же, что у обычного восстановления: откат заменяет
+        // данные ровно так же, и человек должен видеть одинаковый вопрос.
+        if (!confirm(CWI18n.t('backup.confirm_restore', { date: when, version: CW_VERSION || '—' }))) return;
         say('backup.working');
         CWBackup.guard.get(newest.id).then(function (snap) {
           if (!snap) { say('backup.failed'); return; }
+          // Файл всё равно отдаём: если откат почему-то не доедет, у человека
+          // на руках останется то же состояние в виде файла.
           CWBackup.download(snap, 'circuit-workspace-before-restore-' + String(newest.id).slice(8, 18) + '.json');
-          say('backup.guard_saved');
-        }).catch(function (e) { console.error(e); say('backup.failed'); });
+          return CWBackup.restore(snap).then(function () {
+            say('backup.restored');
+            setTimeout(function () { location.reload(); }, 1200);
+          });
+        }).catch(function (err) {
+          console.error(err);
+          // Те же три исхода, что и у восстановления из файла: отказы
+          // наступают в фазе A, до первой записи.
+          var msg = 'backup.failed';
+          if (err && err.message === 'backup-newer-schema') msg = 'backup.too_new';
+          if (err && err.message === 'db-blocked') msg = 'backup.blocked';
+          say(msg);
+        });
       });
     })();
 
