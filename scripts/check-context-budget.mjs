@@ -13,11 +13,16 @@
  *   2. Новые чрезмерно большие `.md` и `.js` вне известных исключений.
  *   3. Data-only файлы, не покрытые `.aiignore`.
  *
- * ⚠️ ЕДИНИЦА ИЗМЕРЕНИЯ — СИМВОЛЫ, НЕ БАЙТЫ. Это осознанное решение, а не
- * недосмотр. Контекст модели расходуется по символам/токенам, а кириллица в
- * UTF-8 занимает 2 байта на символ: байтовый порог урезал бы русский текст
- * ровно вдвое против английского при одинаковой реальной стоимости. Байтовый
- * размер выводится рядом справочно, чтобы цифры сходились с `ls` и `du`.
+ * ⚠️ ЕДИНИЦА ИЗМЕРЕНИЯ — СИМВОЛЫ, НЕ БАЙТЫ (решение Алекса, 30.08.2026).
+ * Контекст модели расходуется по символам/токенам, а кириллица в UTF-8
+ * занимает 2 байта на символ: байтовый порог урезал бы русский текст ровно
+ * вдвое против английского при одинаковой реальной стоимости.
+ *
+ * РЕШЕНИЕ ГЕЙТ ПРИНИМАЕТ ПО СИМВОЛАМ. Размер в байтах печатается рядом
+ * СПРАВОЧНО — чтобы цифры сходились с `ls`/`du` и потом не возникало путаницы,
+ * что именно измеряется. Формат вывода:
+ *     AGENTS.md: 12.0K chars / 18.6 KB UTF-8 — OK
+ * Байты ни на что не влияют и в сравнениях не участвуют.
  *
  * Коды возврата: 0 — прошло (в том числе с предупреждениями), 1 — провал.
  * Предупреждение НЕ возвращает 2: двойка в `check-all.mjs` означает «проверка
@@ -135,17 +140,19 @@ if (!existsSync(agentsPath)) {
   const text = readFileSync(agentsPath, 'utf8');
   const chars = text.length;
   const bytes = Buffer.byteLength(text, 'utf8');
-  const fmt = `${(chars / KB).toFixed(1)} КБ символов (${(bytes / KB).toFixed(1)} КБ байт)`;
+  // Решение — по символам; байты справочно. Единица названа в самой строке,
+  // чтобы из вывода было видно, что с чем сравнивалось.
+  const fmt = `${(chars / KB).toFixed(1)}K chars / ${(bytes / KB).toFixed(1)} KB UTF-8`;
   if (chars > AGENTS_FAIL) {
-    console.log(`  ПРОВАЛ: AGENTS.md — ${fmt}, порог ${AGENTS_FAIL / KB} КБ.`);
+    console.log(`  ПРОВАЛ: AGENTS.md: ${fmt} — превышен жёсткий порог ${AGENTS_FAIL / KB}K chars.`);
     console.log('          Историю переносить в docs/journal/, а не дописывать сюда.');
     failed = true;
   } else if (chars > AGENTS_WARN) {
-    console.log(`  ⚠ AGENTS.md — ${fmt}, мягкий порог ${AGENTS_WARN / KB} КБ.`);
+    console.log(`  ⚠ AGENTS.md: ${fmt} — выше мягкого порога ${AGENTS_WARN / KB}K chars.`);
     console.log('    Файл читается перед каждой задачей. Пора выносить в docs/journal/.');
     warned++;
   } else {
-    console.log(`  ✓ AGENTS.md — ${fmt}, в пределах ${AGENTS_WARN / KB} КБ`);
+    console.log(`  ✓ AGENTS.md: ${fmt} — OK (пороги ${AGENTS_WARN / KB}K warn / ${AGENTS_FAIL / KB}K fail, по символам)`);
   }
 }
 
@@ -164,7 +171,8 @@ for (const f of files) {
 if (bigNew.length) {
   console.log(`\n  ⚠ Крупные файлы вне известного списка: ${bigNew.length}`);
   for (const [f, chars, limit] of bigNew) {
-    console.log(`    ${f} — ${(chars / KB).toFixed(1)} КБ символов (порог ${limit / KB})`);
+    const b = Buffer.byteLength(readFileSync(join(ROOT, f), 'utf8'), 'utf8');
+    console.log(`    ${f}: ${(chars / KB).toFixed(1)}K chars / ${(b / KB).toFixed(1)} KB UTF-8 (порог ${limit / KB}K chars)`);
   }
   console.log('    Либо разрезать, либо осознанно добавить в KNOWN_LARGE этой проверки.');
   warned++;
