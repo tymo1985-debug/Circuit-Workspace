@@ -375,25 +375,22 @@
     doc.line(style.margin, y, pageWidth(doc) - style.margin, y);
     y += style.sectionGap;
 
-    // Тип посещения
-    doc.setFont(FONT_NAME, 'normal');
-    doc.setFontSize(style.typeFontSize);
-    doc.setTextColor(...TEXT_DARK);
-    const typeKey =
-      state.visitType === 'meeting' ? 'visitTypeMeeting' : state.visitType === 'group' ? 'visitTypeGroup' : state.visitType === 'pregroup' ? 'visitTypePregroup' : null;
-    doc.setFont(FONT_NAME, 'bold');
-    doc.text(t('pdfVisitTypeLabel'), style.margin, y);
-    doc.setFont(FONT_NAME, 'normal');
-    doc.text(typeKey ? t(typeKey) : '', style.margin + doc.getTextWidth(t('pdfVisitTypeLabel')) + 14, y);
-    y += style.sectionGap;
-
-    // Название собрания/группы — чтобы формуляр был самодостаточным и было сразу
-    // видно, к кому он относится, без сверки с письмом или календарём.
+    // Название собрания/группы (с номером, если он есть) — чтобы формуляр был
+    // самодостаточным и было сразу видно, к кому он относится, без сверки с
+    // письмом или календарём. Раньше здесь же отдельной строкой шёл "Тип
+    // посещения" (см. историю файла) — убран по решению от 31.08.2026:
+    // state.visitType остаётся в данных и используется в других местах
+    // (фильтры/календарь/backup/export), просто в этом PDF-рендере больше не
+    // выводится. Ключи visitTypeMeeting/Group/Pregroup и pdfVisitTypeLabel в
+    // VP_I18N_DICTS намеренно не удалены — это i18n-слой, а не данные.
     if (state.congregationName) {
       doc.setFont(FONT_NAME, 'bold');
       doc.setFontSize(style.typeFontSize);
       doc.setTextColor(...NAVY);
-      doc.text(String(state.congregationName), style.margin, y);
+      const congTitle = state.congNumber
+        ? `${state.congregationName} (${state.congNumber})`
+        : String(state.congregationName);
+      doc.text(congTitle, style.margin, y);
       doc.setTextColor(...TEXT_DARK);
       doc.setFont(FONT_NAME, 'normal');
       y += style.sectionGap;

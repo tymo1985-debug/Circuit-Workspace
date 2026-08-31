@@ -130,8 +130,82 @@
     finish();
   }
 
+  // «Кому следующим нужно отправить письмо?» — компактная карточка рядом с
+  // «Следующим посещением» (31.08.2026, уточнено 31.08.2026). Никакого нового
+  // хранимого состояния: статус письма читается из того же entry.flags.letter,
+  // что и в renderNextVisitCard. Если ближайшее письмо-должник — это тот же
+  // визит, что уже показан в основной карточке (и там его статус виден), не
+  // дублируем — ищем следующий по дате визит с неотправленным письмом.
+  //
+  // Три разных исхода, которые нельзя схлопывать в один "всё сделано":
+  //   1) есть другой (не main-card) визит без письма         -> показать его;
+  //   2) неотправленных писем среди будущих визитов вообще НЕТ
+  //      -> "Все ближайшие письма отправлены";
+  //   3) неотправленное письмо есть, но оно ровно у main-card визита
+  //      (и другого кандидата нет) — статус там уже виден, дублировать
+  //      нечего, но письмо ФАКТИЧЕСКИ не отправлено, поэтому нельзя
+  //      сказать "всё отправлено" — говорим "остальные" вместо "все".
+  function renderLetterDuePill() {
+    const pill = App.els.letterDuePill || document.getElementById('letterDuePill');
+    if (!pill) return;
+    const finish = () => window.requestAnimationFrame(() => window.requestAnimationFrame(() => App.ui.measureTopbarHeight()));
+    if (!pill.dataset.clickBound) {
+      pill.dataset.clickBound = '1';
+      pill.addEventListener('click', () => {
+        const targetId = pill.dataset.entryId;
+        if (!targetId) return; // both "all sent" states have no target entry
+        App.state.calendarDetailId = `entry:${targetId}`;
+        App.ui.renderCalendarDetails({ id: `entry:${targetId}` });
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+          App.ui.scrollToDetailPanel();
+        }));
+      });
+    }
+    if (App.state.selectedScreen !== 'calendar') { pill.style.display = 'none'; finish(); return; }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    // Те же будущие визиты, что и в «Следующем посещении» (визит ещё не
+    // завершился), отсортированные по дате начала — это единый источник
+    // истины для понятия «будущий визит» в этом блоке топбара.
+    const upcoming = (App.state.app.entries || [])
+      .map((entry) => ({ entry, event: App.data.getEventById(entry.eventId), start: App.utils.parseLocalDate(entry.start) }))
+      .filter(({ event, start, entry }) => event?.visitType && start && App.utils.parseLocalDate(entry.end) >= today)
+      .sort((a, b) => a.start - b.start);
+    const shownInMainCard = upcoming[0]?.entry?.id || null;
+    const withoutLetter = upcoming.filter(({ entry }) => !entry?.flags?.letter);
+    // Кандидат помимо того, что уже виден в главной карточке (если он там
+    // тоже без письма) — именно ЭТО отличает "нечего дублировать, но письмо
+    // всё ещё не отправлено" (partial) от "писем без статуса нет вовсе" (full).
+    const otherCandidate = withoutLetter.find(({ entry }) => entry.id !== shownInMainCard) || null;
+    const mainCardHasUnsentLetter = withoutLetter.some(({ entry }) => entry.id === shownInMainCard);
+    pill.classList.remove('is-allsent');
+    if (!otherCandidate) {
+      pill.style.display = 'flex';
+      pill.dataset.entryId = '';
+      pill.classList.add('is-allsent');
+      const setText = (el, text) => { if (el) el.textContent = text; };
+      // Различаем "все письма отправлены" (нет вообще неотправленных среди
+      // будущих визитов) от "остальные отправлены" (main card сам ещё без
+      // письма, но дублировать его в этой карточке нечего) — говорить "все",
+      // когда письмо main card фактически не отправлено, было бы неверно.
+      const key = mainCardHasUnsentLetter ? 'other_letters_sent' : 'all_letters_sent';
+      setText(App.els.letterDuePillName, `✓ ${App.utils.t(key)}`);
+      setText(App.els.letterDuePillMeta, '');
+      pill.title = App.utils.t(key);
+      finish();
+      return;
+    }
+    const { entry, event } = otherCandidate;
+    pill.style.display = 'flex';
+    pill.dataset.entryId = entry.id;
+    const setText = (el, text) => { if (el) el.textContent = text; };
+    setText(App.els.letterDuePillName, entry.title || event?.name || '');
+    setText(App.els.letterDuePillMeta, `${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDateYear(entry.end)} · ${App.utils.countdownText(entry.start, 'days')} · ${App.utils.t('needs_sending')}`);
+    pill.title = `${entry.title || event?.name || ''}: ${App.utils.t('needs_sending')}`;
+    finish();
+  }
+
   Object.assign(App.ui, {
     shareWeekText, findScrollContainer, scrollToDetailPanel,
-    measureTopbarHeight, renderNextVisitCard,
+    measureTopbarHeight, renderNextVisitCard, renderLetterDuePill,
   });
 });

@@ -1588,7 +1588,7 @@
     ui: {
       cacheElements() {
         [
-          'appRoot','desktopNav','toastWrap','offlineBanner','sideStatus','screenTitle','screenSubtitle','nextVisitPill','nextVisitPillName','nextVisitPillDate','nextVisitPillType','nextVisitPillRange','nextVisitPillLetter','nextVisitPillS302',
+          'appRoot','desktopNav','toastWrap','offlineBanner','sideStatus','screenTitle','screenSubtitle','nextVisitPill','nextVisitPillName','nextVisitPillDate','nextVisitPillType','nextVisitPillRange','nextVisitPillLetter','nextVisitPillS302','letterDuePill','letterDuePillName','letterDuePillMeta',
           'eventEditorModal','eventEditorCloseBtn',
           'monthLabel','calendarRangeLabel','calendarGrid','prevMonthBtn','todayMonthBtn','nextMonthBtn',
           'calendarYearSelect','calendarLayoutPresetSelect','layoutPresetSelect','calendarEditor','editorTitle',
@@ -1779,6 +1779,7 @@
         this.renderStatus();
         this.updateReminderButtonBadge();
         this.renderNextVisitCard();
+        this.renderLetterDuePill();
         if (App.els.holidaysToggle) App.els.holidaysToggle.checked = !!App.state.app.settings.showHolidays;
         if (App.els.autoShowRemindersToggle) App.els.autoShowRemindersToggle.checked = !!App.state.app.settings.autoShowReminders;
         this.updatePinButton();
@@ -2786,6 +2787,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // Нужны формуляру: название собрания/группы в шапке PDF и период визита,
         // из которого считаются даты для каждого дня недели (визит стартует во вторник).
         state.congregationName = entry.title || event?.name || '';
+        state.congNumber = event?.congNumber || ''; // для строки "Название (№)" в шапке PDF
         state.visitStart = entry.start || '';
         state.visitEnd = entry.end || '';
         if (!state.language) state.language = defaultLang; // older saved forms predating this field

@@ -97,7 +97,10 @@
           <button class="md-btn md-btn-outlined md-state-layer mobile-menu-btn" id="mobileMenuToggleBtn" type="button" aria-label="Открыть меню" data-i18n-aria-label="cp.a_open_menu" aria-expanded="false"><span data-i18n="cp.menu_btn">☰ Меню</span></button>
           <div class="topbar-title-block">
             <h2 data-i18n="cp.screen_calendar" id="screenTitle">Календарь</h2>
-            <button id="nextVisitPill" class="md-state-layer" type="button" data-i18n-aria-label="cp.next_visit" aria-label="Следующий визит"><span class="nv-head"><span class="nv-countdown" id="nextVisitPillDate"></span><span class="nv-type" id="nextVisitPillType"></span></span><span class="nv-name" id="nextVisitPillName"></span><span class="nv-dates" id="nextVisitPillRange"></span><span class="nv-flags"><span class="nv-flag" id="nextVisitPillLetter"></span><span class="nv-flag" id="nextVisitPillS302"></span></span></button>
+            <div class="nv-row" id="nvRow">
+              <button id="nextVisitPill" class="md-state-layer" type="button" data-i18n-aria-label="cp.next_visit" aria-label="Следующий визит"><span class="nv-head"><span class="nv-countdown" id="nextVisitPillDate"></span><span class="nv-type" id="nextVisitPillType"></span></span><span class="nv-name" id="nextVisitPillName"></span><span class="nv-dates" id="nextVisitPillRange"></span><span class="nv-flags"><span class="nv-flag" id="nextVisitPillLetter"></span><span class="nv-flag" id="nextVisitPillS302"></span></span></button>
+              <button id="letterDuePill" class="md-state-layer" type="button" data-i18n-aria-label="cp.letter_due" aria-label="Ближайшее неотправленное письмо"><span class="ld-icon" aria-hidden="true">✉</span><span class="ld-body"><span class="ld-name" id="letterDuePillName"></span><span class="ld-meta" id="letterDuePillMeta"></span></span><span class="ld-chevron" aria-hidden="true">›</span></button>
+            </div>
             <p id="screenSubtitle"></p>
           </div>
         </div>
