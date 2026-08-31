@@ -35,6 +35,8 @@ const APP_SHELL_URLS = [
   // сборка получит app.js, но не увидит функцию, которую он ожидает найти
   // в App.ui после применения частей (shared/AGENTS.md, п.2 «Прекэш»).
   './ui/calendar-styles.js',
+  './ui/doc-templates.js',
+  './ui/modals.js',
   './visit-pdf.js',
   './fonts/fonts-aptos-regular.js',
   './fonts/fonts-aptos-bold.js',
