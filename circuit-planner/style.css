@@ -140,7 +140,20 @@
        его содержимого. */
     .nv-row{flex-direction:column;max-width:520px}
     .nv-row>#nextVisitPill{flex:0 0 auto;align-self:auto;max-width:none}
-    #letterDuePill{flex:0 0 auto;max-width:none;padding:8px 12px}
+    /* Ширина letterDuePill на mobile (правка после реального скриншота,
+       31.08.2026, третий заход): высота уже content-based (flex:0 0 auto,
+       см. выше) — это НЕ трогаем. Но в column-контейнере align-items
+       управляет КРОСС-осью, то есть шириной, а не flex-grow — а .nv-row
+       даёт базовое align-items:flex-start, которое не переопределено на
+       mobile. Из-за этого каждый ребёнок брал свою natural width по
+       содержимому: у nextVisitPill контента много (значки, флаги, две
+       строки), поэтому он и так занимал почти всю ширину, а у letterDuePill
+       контента меньше — и он визуально оказывался у́же соседа. Явный
+       align-self:stretch только на letterDuePill растягивает его по
+       кросс-оси (ширина) до ширины контейнера, никак не задействуя
+       flex-grow/flex-basis (главная, вертикальная ось остаётся
+       flex:0 0 auto — высота по-прежнему только от контента). */
+    #letterDuePill{flex:0 0 auto;align-self:stretch;max-width:none;padding:8px 12px}
     /* Компактный status-block: высота — по контенту, без больших пустых
        областей. Название переносится (не обрезается многоточием — на узком
        экране многоточие на длинном названии собрания было хуже переноса);
