@@ -2887,10 +2887,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }
         // Meals
         const MEAL_TIME_OPTIONS = ['12:30', '12:45', '13:00', '13:30'];
+        const mealDayOptions = (selectedDay) => vpi.MEAL_DAY_KEYS.map((dk) => {
+          const label = vpi.t(dk);
+          return `<option value="${escA(label)}" ${selectedDay === label ? 'selected' : ''}>${esc(label)}</option>`;
+        }).join('');
         if (App.els.vfMealsList) App.els.vfMealsList.innerHTML = state.meals.length ? state.meals.map((m) => `
           <div class="md-card" style="padding:10px;box-shadow:none" data-row-id="${escA(m.id)}" data-row-kind="meal">
             <div class="form-grid">
-              <label><span class="small">${App.utils.tEsc('vf_day')}</span><select data-field="day"><option value=""></option>${vpi.MEAL_DAY_KEYS.map((dk) => { const label = App.utils.tEsc(dk); return `<option value="${escA(label)}" ${m.day === label ? 'selected' : ''}>${esc(label)}</option>`; }).join('')}</select></label>
+              <label><span class="small">${App.utils.tEsc('vf_day')}</span><select data-field="day"><option value=""></option>${mealDayOptions(m.day)}</select></label>
               <label><span class="small">${App.utils.tEsc('vf_time')}</span><select data-field="time"><option value=""></option>${MEAL_TIME_OPTIONS.map((tm) => `<option value="${tm}" ${m.time === tm ? 'selected' : ''}>${tm}</option>`).join('')}</select></label>
               <label><span class="small">${App.utils.tEsc('vf_place')}</span><input data-field="place" type="text" value="${escA(m.place)}" /></label>
               <label><span class="small">${App.utils.tEsc('vf_host')}</span><input data-field="host" type="text" value="${escA(m.host)}" /></label>
