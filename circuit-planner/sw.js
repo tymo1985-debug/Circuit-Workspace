@@ -29,6 +29,7 @@ const APP_SHELL_URLS = [
   './',
   './?source=pwa',
   './index.html',
+  './style.css',
   './app.js',
   // Части, зарегистрированные в window.CPParts, подключаются РАНЬШЕ app.js в
   // index.html и обязаны лежать в прекэше отдельно от него: иначе оффлайн
