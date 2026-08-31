@@ -74,7 +74,7 @@
      письма/S-302) уже лежали в entry/event, но не показывались — карточка их
      выводит. Высота блока меняется, поэтому measureTopbarHeight() обязан
      отрабатывать после каждой перерисовки (см. renderNextVisitCard). */
-  #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;max-width:520px;padding:12px 14px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
+  #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:12px 14px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
   .nv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:13px;font-weight:600}
   .nv-type{display:inline-flex;padding:4px 10px;border-radius:10px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px;color:var(--md-on-surface-variant)}
@@ -87,20 +87,41 @@
   .nv-flag.is-pending{border-color:color-mix(in srgb, var(--md-error) 45%, transparent);background:color-mix(in srgb, var(--md-error) 7%, transparent)}
   .nv-flag.is-done{border-color:color-mix(in srgb, var(--md-primary) 35%, transparent);background:color-mix(in srgb, var(--md-primary) 8%, transparent)}
   /* «Письмо не отправлено» — компактная карточка рядом с «Следующим
-     посещением». Desktop: две карточки в ряд, эта — уже и с flex-basis
-     поменьше. Mobile (<=767px, порог общий с остальным topbar/sidebar):
-     схлопывается в узкую строку под основной карточкой — раскладка чисто
-     CSS-flex, без отдельной мобильной бизнес-логики (см. renderLetterDuePill).
-     ROOT CAUSE большой пустой высоты (правка 31.08.2026): .nv-row держал
-     align-items:stretch, поэтому эта карточка растягивалась под высоту
-     соседней #nextVisitPill (у которой контента больше — тип посещения,
-     диапазон дат, два флага). Исправлено через align-items:flex-start на
-     контейнере + явный align-self:stretch только на #nextVisitPill — так
-     основная карточка не потеряла свою прежнюю высоту, а компактная
-     считает высоту от своего содержимого, а не от соседа. */
-  .nv-row{display:flex;flex-wrap:wrap;gap:10px;width:100%;max-width:760px;align-items:flex-start}
-  .nv-row>#nextVisitPill{flex:1 1 320px;max-width:520px;align-self:stretch}
-  #letterDuePill{display:none;flex:1 1 220px;max-width:280px;align-items:center;gap:8px;padding:8px 12px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
+     посещением». LAYOUT-МОДЕЛЬ (правка 31.08.2026, четвёртый заход, после
+     проверки на нескольких реальных ширинах desktop/tablet): предыдущие
+     заходы чинили высоту и ширину точечными flex/max-width хаками
+     (align-items:stretch→flex-start, flex:0 0 auto на mobile,
+     align-self:stretch на letterDuePill) — каждый по отдельности был
+     корректен, но всё вместе оставалось "плавающим": на mobile всё
+     починили, а на tablet/wide-desktop пара карточек имела фиксированный
+     max-width:760px (унаследованный от старой прикидки на глаз) и поэтому
+     превращалась в два маленьких острова с пустым пространством справа —
+     ширина зависела от natural width/flex-basis, а не от реальной ширины
+     колонки календаря (.main/.calendar-shell, которая на wide-desktop
+     заметно шире 760px).
+     Заменено на CSS Grid — единая, предсказуемая модель вместо цепочки
+     точечных правок:
+       >767px:  grid-template-columns: minmax(0,1.6fr) minmax(280px,1fr)
+                — пара занимает ВСЮ ширину контейнера (никакого
+                max-width-потолка), пропорция ~1.6:1 (примерно 60–65%/
+                35–40% на типичных tablet/desktop ширинах), вторая
+                карточка не уже 280px даже когда первой "не хватает" места.
+       <=767px: grid-template-columns: 1fr — одна колонка, карточки друг
+                под другом, как и было.
+     align-items:start на .nv-row — это Grid-эквивалент прежнего
+     align-items:flex-start: без него Grid по умолчанию растягивает ячейки
+     строки (align-items:stretch), и та же самая "большая пустая высота"
+     вернулась бы уже через Grid, а не через flex-grow. И на mobile, и на
+     tablet/desktop высота каждой карточки теперь строго по её содержимому,
+     потому что ни на одном брейкпоинте нет stretch по вертикали.
+     Дочерним #nextVisitPill/#letterDuePill больше не нужны flex/max-width/
+     align-self — Grid-ячейка по умолчанию растягивает элемент по ШИРИНЕ
+     (justify-self:stretch), а высота остаётся содержимого. Все прежние
+     flex-специфичные свойства (flex, max-width, align-self, flex-direction)
+     на .nv-row и её детях стали избыточны и убраны как на базовом уровне,
+     так и в mobile-медиа-запросе. */
+  .nv-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:10px;align-items:start;width:100%}
+  #letterDuePill{display:none;align-items:center;gap:8px;padding:8px 12px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
   #letterDuePill.is-allsent{cursor:default}
   .ld-icon{font-size:15px;flex:0 0 auto}
   .ld-body{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 auto}
@@ -120,45 +141,22 @@
   #letterDuePill.is-status-danger .ld-status::before{background:var(--status-critical)}
   .ld-chevron{font-size:16px;color:var(--md-on-surface-variant);flex:0 0 auto}
   @media (max-width:767px){
-    /* ROOT CAUSE (найден по реальному скриншоту с телефона, 31.08.2026,
-       второй заход): предыдущее исправление align-items:stretch → flex-start
-       на .nv-row было верным, но недостаточным. .nv-row меняет
-       flex-direction на column на mobile, а вместе с ним меняется смысл
-       "flex-grow" у детей: в row-раскладке "flex:1 1 320px"/"flex:1 1 220px"
-       росли ПО ШИРИНЕ (main-axis = горизонталь), это и было нужно на
-       desktop. В column-раскладке main-axis становится ВЕРТИКАЛЬНЫМ —
-       та же самая цифра flex-grow:1 (первое число в "flex: 1 1 …") теперь
-       заставляет оба элемента расти ПО ВЫСОТЕ и делить между собой любое
-       свободное вертикальное пространство контейнера поровну, вне
-       зависимости от того, сколько у каждого реального контента. Именно
-       это и создавало огромную пустую область под двумя короткими строками
-       в letterDuePill — карточка росла вверх/вниз вслед за более длинной
-       nextVisitPill, а не по своему содержимому.
-       Исправление: на mobile явно возвращаем flex-grow к 0 у обоих детей
-       (flex:0 0 auto), раз в column-раскладке расти по вертикали не нужно
-       ни одному из них — высота каждого блока становится строго высотой
-       его содержимого. */
-    .nv-row{flex-direction:column;max-width:520px}
-    .nv-row>#nextVisitPill{flex:0 0 auto;align-self:auto;max-width:none}
-    /* Ширина letterDuePill на mobile (правка после реального скриншота,
-       31.08.2026, третий заход): высота уже content-based (flex:0 0 auto,
-       см. выше) — это НЕ трогаем. Но в column-контейнере align-items
-       управляет КРОСС-осью, то есть шириной, а не flex-grow — а .nv-row
-       даёт базовое align-items:flex-start, которое не переопределено на
-       mobile. Из-за этого каждый ребёнок брал свою natural width по
-       содержимому: у nextVisitPill контента много (значки, флаги, две
-       строки), поэтому он и так занимал почти всю ширину, а у letterDuePill
-       контента меньше — и он визуально оказывался у́же соседа. Явный
-       align-self:stretch только на letterDuePill растягивает его по
-       кросс-оси (ширина) до ширины контейнера, никак не задействуя
-       flex-grow/flex-basis (главная, вертикальная ось остаётся
-       flex:0 0 auto — высота по-прежнему только от контента). */
-    #letterDuePill{flex:0 0 auto;align-self:stretch;max-width:none;padding:8px 12px}
+    /* Mobile: одна колонка — карточки друг под другом на всю ширину.
+       Высота остаётся по содержимому благодаря align-items:start на
+       .nv-row (базовое правило, общее для всех breakpoint'ов) — Grid не
+       растягивает ячейки по вертикали, в отличие от прежней flex-модели,
+       где на mobile рискованно менялся смысл flex-grow при развороте оси.
+       Никаких flex/max-width/align-self хаков на детях больше не нужно:
+       Grid-ячейка по умолчанию растягивает элемент по ширине
+       (justify-self:stretch), а .nv-row{align-items:start} не даёт
+       растянуться по высоте — то же самое, что раньше давал flex:0 0 auto,
+       но без разворота оси и без разного поведения на разных breakpoint'ах. */
+    .nv-row{grid-template-columns:1fr}
     /* Компактный status-block: высота — по контенту, без больших пустых
        областей. Название переносится (не обрезается многоточием — на узком
        экране многоточие на длинном названии собрания было хуже переноса);
        мета и статус собраны в одну строку со стрелкой в конце, которая не
-       ломает строку (flex:0 0 auto + сама строка не переносится). */
+       ломает строку. */
     #letterDuePill .ld-name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
     #letterDuePill .ld-meta{display:none}
     #letterDuePill .ld-status{font-size:12px}
@@ -248,7 +246,7 @@
 
  
 /* v9.5.2 layout cleanup: drawer sidebar, larger calendar, clean top area, UI font size */
-:root{--ui-font-scale:1;--sidebar-width:280px;--calendar-side-width:360px}
+:root{--ui-font-scale:1;--sidebar-width:280px;--calendar-side-width:360px;--calendar-layout-gap:22px}
 html{font-size:calc(16px * var(--ui-font-scale))}
 body::before{display:none !important}
 .app{grid-template-columns:1fr !important}
@@ -257,7 +255,7 @@ body::before{display:none !important}
 .mobile-menu-btn{display:inline-flex !important}
 .sidebar{position:fixed !important;left:calc(-1 * var(--sidebar-width) - 20px) !important;top:0 !important;bottom:0 !important;width:var(--sidebar-width) !important;z-index:2500 !important;transition:left .22s ease !important;box-shadow:0 20px 60px rgba(0,0,0,.24);display:flex !important;pointer-events:auto !important}
 .app.menu-open .sidebar{left:0 !important}
-.calendar-layout{grid-template-columns:minmax(0,1fr) minmax(320px,var(--calendar-side-width)) !important;gap:22px !important;align-items:start}
+.calendar-layout{grid-template-columns:minmax(0,1fr) minmax(320px,var(--calendar-side-width)) !important;gap:var(--calendar-layout-gap) !important;align-items:start}
 .calendar-shell{border-radius:26px;overflow:visible}
 .calendar-toolbar{padding:18px 22px 14px !important}
 .legend,.sy-legend,.sy-compact-hint{display:none !important}
@@ -271,6 +269,25 @@ body::before{display:none !important}
 .day-cell{min-height:108px}
 @media (min-width:1600px){:root{--calendar-side-width:390px}.service-year-grid{grid-template-columns:repeat(4,minmax(190px,1fr)) !important}}
 @media (max-width:1180px){.calendar-layout{grid-template-columns:1fr !important}.calendar-side{position:static !important;max-height:none !important;overflow:visible !important}.service-year-grid{grid-template-columns:repeat(2,minmax(180px,1fr)) !important}#calendarSideTitle{scroll-margin-top:calc(var(--topbar-h, 88px) + 46px)}}
+/* .nv-row живёт в <header class="topbar">, вне .calendar-layout — DOM'ом
+   выше, сиблинг секции календаря, а не её потомок. Grid-модель .nv-row
+   сама по себе ничего не знает про деление .calendar-layout на левую
+   (календарь) и правую (.calendar-side, detail-панель) колонки: width:100%
+   у .nv-row означает 100% ширины .main, а не ширины левой колонки —
+   на wide desktop .main{max-width:none}, и без этого правила верхний
+   dashboard визуально перекрывал бы и пространство над правой панелью
+   (уточнение после проверки на реальных ширинах, 31.08.2026, пятый заход).
+   Порог min-width:1181px совпадает с тем же 1180px, на котором
+   .calendar-layout выше схлопывается обратно в одну колонку (строка выше) —
+   ниже этого порога правой колонки физически нет, поэтому и сужать
+   .nv-row не нужно, она снова законно занимает всю ширину .main.
+   Above порога — .nv-row получает тот же max-width, что и левая колонка
+   .calendar-layout: 100% минус то же --calendar-side-width минус тот же
+   --calendar-layout-gap (шестой заход: gap вынесен в переменную, чтобы не
+   дублировать число 22px в двух местах — раньше здесь стояло gap:22px
+   отдельным литералом) — обе переменные те же самые, что использует само
+   .calendar-layout между колонками, не отдельные магические числа. */
+@media (min-width:1181px){.nv-row{max-width:calc(100% - var(--calendar-side-width) - var(--calendar-layout-gap))}}
 @media (max-width:680px){.main{padding:14px 12px 92px !important}.service-year-grid{grid-template-columns:1fr !important;padding:10px !important;gap:12px !important}.calendar-toolbar{padding:14px !important}.calendar-title{font-size:1.2rem}.sidebar{width:86vw !important;left:-90vw !important}.app.menu-open .sidebar{left:0 !important}}
  [data-font-size="80"]{--ui-font-scale:.80}
  [data-font-size="85"]{--ui-font-scale:.85}
