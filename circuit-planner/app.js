@@ -222,6 +222,12 @@
      * window.jspdf при разборе. Параллельная загрузка сэкономила бы доли
      * секунды и стоила бы гонки, которая воспроизводится раз в сто запусков.
      */
+    /**
+     * Сам загрузчик с 30.08.2026 живёт в общем слое (`shared/pdfstack.js`) —
+     * там же записано, почему загрузка последовательная и почему обещание
+     * снимается при отказе. Здесь остались ровно наборы и две подписи:
+     * состав набора — знание модуля о своих трактах, а не общего слоя.
+     */
     pdf: {
       FONTS: [
         'fonts/fonts-aptos-regular.js',
@@ -251,45 +257,31 @@
         ],
       },
 
-      _pending: {},
+      tag: 'Клиндарий',
 
-      _script(src) {
-        if (this._pending[src]) return this._pending[src];
-        this._pending[src] = new Promise((resolve, reject) => {
-          const el = document.createElement('script');
-          el.src = src;
-          el.onload = () => resolve(src);
-          el.onerror = () => {
-            /* Обещание снимается: иначе первая неудача (не было сети) навсегда
-               запомнилась бы отказом, и повторное нажатие уже ничего бы не
-               грузило. */
-            delete this._pending[src];
-            reject(new Error('не загрузился: ' + src));
-          };
-          document.head.appendChild(el);
-        });
-        return this._pending[src];
+      /* Подписи загрузчика переехали в общий словарь (`pdf.*`) вместе с самим
+         загрузчиком: они дословно те же и у Школы, а дублировать перевод в
+         двух словарях значило бы оплатить его дважды и разойтись при первой
+         правке. Префикс `cp.` здесь поэтому НЕ подставляется. */
+      _t(key) {
+        return (typeof CWI18n === 'undefined') ? key : CWI18n.t(key, null, App.utils.lang());
       },
+      onStart() { App.utils.toast(this._t('pdf.preparing')); },
+      onError() { App.utils.toast(this._t('pdf.not_loaded')); },
 
       /**
        * @param {'letter'|'visit'|'s302'} kind
        * @returns {Promise<boolean>} удалось ли подготовить стек
        */
-      async ensure(kind) {
-        const list = (this.SETS[kind] || []).concat(this.FONTS);
-        const missing = list.filter((src) => !this._pending[src]);
-        /* Сообщение показывается только когда что-то действительно предстоит
-           грузить: на втором нажатии стек уже в памяти и полоска «Готовлю…»
-           мигала бы впустую. */
-        if (missing.length) App.utils.toast(App.utils.t('pdf_preparing'));
-        try {
-          for (const src of list) await this._script(src);
-          return true;
-        } catch (err) {
-          console.error('Клиндарий: ПДФ-стек не догрузился', err);
-          App.utils.toast(App.utils.t('pdf_not_loaded'));
-          return false;
+      ensure(kind) {
+        /* Клиндарий обязан открыться, даже если общий слой сорвался (раздел
+           AGENTS.md с тем же названием): без загрузчика выдача бумаги
+           невозможна — но остальной модуль работает. */
+        if (!self.CWPdfStack) {
+          App.utils.toast(this._t('pdf.not_loaded'));
+          return Promise.resolve(false);
         }
+        return self.CWPdfStack.ensure(this, kind);
       },
     },
 

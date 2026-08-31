@@ -210,62 +210,11 @@ const PdfExport = {
     return (typeof PSDocLang !== 'undefined') ? PSDocLang.date(value) : String(value || '');
   },
 
-  buildRegistrationLines(record, config = {}) {
-    // Ключ передаётся целиком (без префикса `doc.ps.`), потому что подписи
-    // теперь живут в двух наборах: общие для всех документов — в
-    // `doc.ps.field.*`, свои для этой карточки — в `doc.ps.rec.*`. Прежняя
-    // склейка `'doc.ps.rec.' + key` этого различить не умела.
-    const row = (key, value) => `${D('doc.ps.' + key)}: ${value || '—'}`;
-    const language = record.language === 'other'
-      ? (record.languageOther || D('doc.ps.reg.opt.lang.other_lower'))
-      : (this._optLabel('language', record.language) || record.language || '');
-    const formats = (record.format || []).map((f) => this._optLabel('format', f) || f).join(', ');
-
-    const lines = [
-      row('rec.filled_at', this._formatDocDate(record.submittedAt || new Date().toISOString())),
-      '',
-      row('field.lastName', record.lastName),
-      row('field.firstName', record.firstName),
-      row('field.address', record.address),
-      row('field.email', record.email),
-      row('field.phone', record.phone),
-      '',
-      // Подписи ответов здесь свои («Смогу присутствовать на Школе»), а не
-      // общие («Присутствие»): карточка читается как рассказ о человеке, а
-      // выгрузка — как таблица. Сводить их было бы ошибкой.
-      row('rec.attending', this._optLabel('attending', record.attending))
-    ];
-    if (record.attending === 'no') lines.push(row('rec.reason', record.attendReason));
-    lines.push(
-      row('rec.transport', this._optLabel('transport', record.transport)),
-      row('rec.lodging', this._optLabel('lodging', record.lodging)),
-      '',
-      row('field.language', language),
-      row('field.format', formats),
-      '',
-      row('rec.notes', record.notes)
-    );
-
-    // Напоминание о сроке и адресате печатаем в самом формуляре: бумажную копию
-    // часто заполняют заранее и отправляют позже, уже без открытой страницы.
-    const footer = [];
-    if (config.deadline) footer.push(row('rec.deadline', this._formatDocDate(config.deadline)));
-    if (config.email) footer.push(row('send.to_email', config.email));
-    if (config.whatsapp) footer.push(row('send.to_whatsapp', config.whatsapp));
-    if (footer.length) lines.push('', '— — —', ...footer);
-
-    return lines;
-  },
-
-  async downloadRegistrationFormulaire(record, config = {}) {
-    const title = config.title || D('doc.ps.reg.title_page');
-    const doc = await this.buildDocument(title, this.buildRegistrationLines(record, config));
-    const namePart = `${record.lastName || ''}-${record.firstName || ''}`
-      .trim()
-      .replace(/[\\/:*?"<>|\s]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'registration';
-    doc.save(`formulyar-${namePart}.pdf`);
-  },
+  /* buildRegistrationLines() и downloadRegistrationFormulaire() удалены
+     30.08.2026 вместе с трактом выдачи PDF на публичной странице анкеты.
+     Их вызывали только две кнопки register.html; тракт признан мёртвым
+     владельцем проекта. Карточка регистрации как бумага больше не
+     существует — анкета уходит письмом и в WhatsApp текстом. */
 
   async downloadTextbookOrder(order) {
     const yn = (flag) => (flag ? D('doc.ps.yes_short') : D('doc.ps.no_short'));

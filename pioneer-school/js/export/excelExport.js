@@ -55,20 +55,10 @@ const ExcelExport = {
     this._download('students.csv', this.toCsv(headers, rows));
   },
 
-  // Настоящий .xlsx (SheetJS) — открывается в Excel, Google Sheets и Apple Numbers.
-  // Отдельного формата для Numbers не существует как открытого стандарта для генерации
-  // на клиенте — Numbers полностью и корректно открывает .xlsx, поэтому один файл
-  // покрывает оба случая.
-  downloadStudentsXlsx(students, columns, classesById) {
-    if (!window.XLSX) { alert('Библиотека для Excel не загрузилась. Проверьте подключение к интернету.'); return; }
-    // В .xlsx экранирование кавычкой не нужно и мешало бы — SheetJS пишет
-    // значения как текстовые ячейки, формулой они не станут.
-    const { headers, rows } = this._buildStudentAoa(students, columns, classesById);
-    const ws = window.XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, D('doc.ps.csv.sheet_students'));
-    window.XLSX.writeFile(wb, 'students.xlsx');
-  },
+  /* downloadStudentsXlsx() переехал в js/export/xlsxExport.js (30.08.2026):
+     он единственный здесь требовал SheetJS, а остальные три выгрузки —
+     чистый CSV и обязаны работать без библиотек. Строки листа он по-прежнему
+     берёт отсюда, через _buildStudentAoa(). */
 
   // Подписи вариантов — из схемы анкеты, то есть на языке ДОКУМЕНТА.
   // Выгрузка уходит в письме или в общую таблицу, её язык не должен зависеть

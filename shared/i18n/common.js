@@ -158,6 +158,11 @@
       'cong.field.number': '№',
       'cong.dlg.directory': 'Справочник',
       'doc.dir_hint': 'Общий справочник собраний. Здесь можно только просматривать записи — редактировать и удалять их нельзя.',
+      /* Ленивая догрузка ПДФ-стека (shared/pdfstack.js) — механизм общий
+         для Клиндария и Школы, поэтому и подписи живут здесь, а не в
+         словаре модуля. Тексты перенесены из cp.pdf_* без изменений. */
+      'pdf.preparing': 'Готовлю модуль PDF…',
+      'pdf.not_loaded': 'Модуль PDF ещё не загрузился, попробуйте ещё раз через секунду.',
     },
 
     uk: {
@@ -288,6 +293,11 @@
       'cong.field.number': '№',
       'cong.dlg.directory': 'Довідник',
       'doc.dir_hint': 'Спільний довідник зборів. Тут записи можна лише переглядати — редагувати й видаляти їх не можна.',
+      /* Ленивая догрузка ПДФ-стека (shared/pdfstack.js) — механизм общий
+         для Клиндария и Школы, поэтому и подписи живут здесь, а не в
+         словаре модуля. Тексты перенесены из cp.pdf_* без изменений. */
+      'pdf.preparing': 'Готую модуль PDF…',
+      'pdf.not_loaded': 'Модуль PDF ще не завантажився, спробуйте ще раз за секунду.',
     },
 
     en: {
@@ -418,6 +428,11 @@
       'cong.field.number': '№',
       'cong.dlg.directory': 'Directory',
       'doc.dir_hint': 'Shared congregation directory. Entries here are read-only—they cannot be edited or deleted.',
+      /* Ленивая догрузка ПДФ-стека (shared/pdfstack.js) — механизм общий
+         для Клиндария и Школы, поэтому и подписи живут здесь, а не в
+         словаре модуля. Тексты перенесены из cp.pdf_* без изменений. */
+      'pdf.preparing': 'Preparing the PDF module…',
+      'pdf.not_loaded': 'The PDF module has not loaded yet — try again in a second.',
     },
 
     pl: {
@@ -548,6 +563,11 @@
       'cong.field.number': '№',
       'cong.dlg.directory': 'Katalog',
       'doc.dir_hint': 'Wspólny spis zborów. Wpisy można tu tylko przeglądać — nie można ich edytować ani usuwać.',
+      /* Ленивая догрузка ПДФ-стека (shared/pdfstack.js) — механизм общий
+         для Клиндария и Школы, поэтому и подписи живут здесь, а не в
+         словаре модуля. Тексты перенесены из cp.pdf_* без изменений. */
+      'pdf.preparing': 'Przygotowuję moduł PDF…',
+      'pdf.not_loaded': 'Moduł PDF jeszcze się nie wczytał, spróbuj za sekundę.',
     },
 
     de: {
@@ -678,6 +698,11 @@
       'cong.field.number': '№',
       'cong.dlg.directory': 'Verzeichnis',
       'doc.dir_hint': 'Gemeinsames Versammlungsverzeichnis. Die Einträge können hier nur angesehen, aber nicht bearbeitet oder gelöscht werden.',
+      /* Ленивая догрузка ПДФ-стека (shared/pdfstack.js) — механизм общий
+         для Клиндария и Школы, поэтому и подписи живут здесь, а не в
+         словаре модуля. Тексты перенесены из cp.pdf_* без изменений. */
+      'pdf.preparing': 'PDF-Modul wird vorbereitet…',
+      'pdf.not_loaded': 'Das PDF-Modul wurde noch nicht geladen, bitte versuchen Sie es in einer Sekunde erneut.',
     },
 
   });

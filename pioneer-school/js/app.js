@@ -350,6 +350,7 @@ async function renderRegistration() {
       // соответствовал тому, что организатор видит на экране.
       const current = collectConfig();
       await Registration.saveConfig(current);
+      if (!(await PSPdf.ensure('form'))) return;
       await PdfFormExport.download(current, RegistrationSchema);
       status.textContent = T('ps.app.gotovo_pdf_anketa_skachana');
     } catch (e) {
@@ -361,6 +362,7 @@ async function renderRegistration() {
 
   $('#download-reg-blank-pdf').onclick = async () => {
     try {
+      if (!(await PSPdf.ensure('pdf'))) return;
       await PdfExport.downloadRegistrationBlankForm(await Registration.getConfig());
     } catch (e) {
       alert(T('ps.app.pdf_failed', { error: e.message }));
@@ -390,7 +392,10 @@ async function renderRegistration() {
     } catch (e) { alert(e.message); }
   };
 
-  $('#export-reg-pdf').onclick = async () => PdfExport.downloadRegistrations(await Registration.list());
+  $('#export-reg-pdf').onclick = async () => {
+    if (!(await PSPdf.ensure('pdf'))) return;
+    await PdfExport.downloadRegistrations(await Registration.list());
+  };
   $('#export-reg-csv').onclick = async () => ExcelExport.downloadRegistrations(await Registration.list());
 
   renderRegistrationsTable(await Registration.list());
@@ -606,9 +611,13 @@ function printComposerDoc() {
   Letters.snapshot(doc, composerState.student, 'print', composerState.edited);
 }
 
-function pdfComposerDoc() {
+/* Стала асинхронной 30.08.2026: ПДФ-стек догружается по требованию, и ждать
+   его нужно ДО сборки письма. Единственный вызывающий — обработчик кнопки
+   #doc-pdf-btn, он ничего не делает с возвращаемым значением. */
+async function pdfComposerDoc() {
   const doc = currentComposerDoc();
   if (!doc) return;
+  if (!(await PSPdf.ensure('pdf'))) return;
   try {
     PdfExport.downloadLetter({
       title: doc.title,
@@ -712,6 +721,7 @@ async function renderStudents() {
     const cols = await Students.getColumns();
     const cls = await DB.list('classes');
     const byId = Object.fromEntries(cls.map((c) => [c.id, c]));
+    if (!(await PSPdf.ensure('pdf'))) return;
     await PdfExport.downloadAllStudentFormulaires(st, cols, byId);
   };
 }
@@ -875,6 +885,7 @@ function renderStudentsTable(students, classes, columns) {
       const student = list.find((s) => s.id === btn.dataset.id);
       if (!student) return;
       const cls = classById[student.classId];
+      if (!(await PSPdf.ensure('pdf'))) return;
       await PdfExport.downloadStudentFormulaire(student, columns, cls ? cls.name : '');
     };
   });
@@ -889,6 +900,7 @@ async function handlePdfImportParse() {
   const file = input.files[0];
   if (!file) { alert(T('ps.app.vyberite_pdf_fayl')); return; }
   status.textContent = T('ps.app.razbirayu_pdf');
+  if (!(await PSPdf.ensure('import'))) { status.textContent = ''; return; }
   try {
     const { headers, rows, anomalies, usedLineDetection } = await PdfImport.extractTable(file);
     if (!headers.length) { status.textContent = T('ps.app.ne_udalos_nayti_tablicu'); return; }
@@ -1109,12 +1121,14 @@ async function openExportPicker() {
   $('#export-do-pdf').onclick = async () => {
     const cols = await getSelectedColumns();
     const students = await Students.list();
+    if (!(await PSPdf.ensure('pdf'))) return;
     await PdfExport.downloadStudentList(students, cols, await getClassesById());
   };
   $('#export-do-xlsx').onclick = async () => {
     const cols = await getSelectedColumns();
     const students = await Students.list();
-    ExcelExport.downloadStudentsXlsx(students, cols, await getClassesById());
+    if (!(await PSPdf.ensure('excel'))) return;
+    XlsxExport.downloadStudents(students, cols, await getClassesById());
   };
   $('#export-do-csv').onclick = async () => {
     const cols = await getSelectedColumns();
@@ -1150,6 +1164,7 @@ async function renderTextbooks() {
   };
 
   $('#export-textbooks-pdf').onclick = async () => {
+    if (!(await PSPdf.ensure('pdf'))) return;
     await PdfExport.downloadTextbookOrder(await Textbooks.getOrder());
   };
   $('#export-textbooks-csv').onclick = async () => {
@@ -1325,6 +1340,7 @@ async function renderAfterSchool() {
   };
 
   $('#export-s253-pdf').onclick = async () => {
+    if (!(await PSPdf.ensure('pdf'))) return;
     await PdfExport.downloadS253(await AfterSchool.get());
   };
 }

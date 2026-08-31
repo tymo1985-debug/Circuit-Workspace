@@ -73,6 +73,7 @@ const APP_SHELL_URLS = [
   '../shared/db.js',
   '../shared/directory.js',
   '../shared/escape.js',
+  '../shared/pdfstack.js',
   '../shared/doclang.js',
   '../shared/serviceyear.js',
   '../shared/i18n/common.js',

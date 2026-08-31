@@ -95,13 +95,17 @@
 
     <div class="btn-row">
       <button type="submit" class="md-btn md-btn-filled" data-doc-i18n="doc.ps.page.submit">Отправить формуляр</button>
-      <button type="button" class="md-btn md-btn-outlined" id="pdf-btn" data-doc-i18n="doc.ps.page.download_pdf">Скачать формуляр (PDF)</button>
     </div>
   </form>
 </div>
 
-<!-- Только с `integrity` — см. circuit-planner/index.html. -->
-<script src="../shared/vendor/jspdf.umd.min.js"></script>
+<!-- ПДФ-СТЕКА ЗДЕСЬ БОЛЬШЕ НЕТ (30.08.2026). Страницу открывают пионеры с
+     телефонов, а jsPDF (356 КБ) грузился ради единственной кнопки «Скачать
+     формуляр (PDF)». Тракт признан мёртвым владельцем проекта и удалён
+     целиком — вместе с ним ушли downloadRegistrationFormulaire() и
+     buildRegistrationLines() из js/export/pdfExport.js. Страница осталась:
+     она отправляет анкету письмом и в WhatsApp, для этого библиотеки не
+     нужны. -->
 <script src="js/db.js"></script>
 <!-- Схема анкеты (подписи вариантов на языке документа) вместо модуля
      Registration: тот тянет за собой T() из js/i18n.js, которого на публичной
@@ -110,7 +114,6 @@
      появлялись ни баннер, ни кнопки «отправить письмо/WhatsApp». -->
 <script src="js/modules/registrationSchema.js"></script>
 <script src="js/modules/registrationForm.js"></script>
-<script src="js/export/pdfExport.js"></script>
 <script>
 (function () {
   // Разметку переводим сразу: PSDocLang.init() отработал ещё в <head>,
@@ -243,13 +246,10 @@ ${D('doc.ps.field.notes')}: ${record.notes || '-'}`;
     shareRow.innerHTML = `
       <a class="md-btn md-btn-filled md-btn-tonal" href="${mailtoHref}">${D('doc.ps.send.to_email')}</a>
       ${waNumber ? `<a class="md-btn md-btn-outlined md-btn-tonal" href="${waHref}" target="_blank" rel="noopener">${D('doc.ps.send.to_whatsapp')}</a>` : ''}
-      <button type="button" class="md-btn md-btn-outlined md-btn-tonal" id="pdf-after-submit">${D('doc.ps.page.download_pdf_short')}</button>
     `;
-    // Письмо и WhatsApp отправляют только текст — PDF пользователь прикладывает
-    // сам, поэтому кнопка выгрузки остаётся доступной и после отправки.
-    document.getElementById('pdf-after-submit').addEventListener('click', () => {
-      PdfExport.downloadRegistrationFormulaire(record, currentConfig);
-    });
+    /* Вторая кнопка выгрузки PDF («Скачать формуляр») удалена 30.08.2026
+       вместе со всем трактом — см. комментарий у скриптов ниже. Письмо и
+       WhatsApp уносят анкету текстом, и этого достаточно. */
 
     successBanner.classList.add('show');
     successBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -262,19 +262,6 @@ ${D('doc.ps.field.notes')}: ${record.notes || '-'}`;
   // Раньше кнопка вызывала window.print(): результат зависел от браузера, а на
   // телефонах «сохранить как PDF» доступно не везде. Теперь формуляр собирается
   // тем же генератором, что и остальные PDF модуля (js/export/pdfExport.js).
-  document.getElementById('pdf-btn').addEventListener('click', async () => {
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
-    const record = collectRecord();
-    record.submittedAt = new Date().toISOString();
-    try {
-      await PdfExport.downloadRegistrationFormulaire(record, currentConfig);
-    } catch (err) {
-      console.warn('Не удалось сформировать PDF:', err);
-    }
-  });
 })();
 </script>
 </body>

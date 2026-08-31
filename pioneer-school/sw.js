@@ -39,6 +39,7 @@ const ASSETS = [
   '../shared/docsview.js',
   '../shared/i18n/common.js',
   '../shared/escape.js',
+  '../shared/pdfstack.js',
   '../shared/doclang.js',
   // Общий слой документов (фаза 6): письмо учащемуся собирается из общего
   // хранилища шаблонов. Без предварительного кэширования офлайн-запуск падал
@@ -58,6 +59,7 @@ const ASSETS = [
   '../shared/fonts/roboto-latin-500-normal.woff2',
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
   '../shared/fonts/roboto-cyrillic-500-normal.woff2',
+  './js/pdfstack.js',
   './js/db.js',
   './js/app.js',
   './js/utils/dateUtils.js',
@@ -77,14 +79,18 @@ const ASSETS = [
   './js/export/pdfExport.js',
   './js/export/pdfFormExport.js',
   './js/export/excelExport.js',
+  './js/export/xlsxExport.js',
   './js/modules/registrationSchema.js',
   './js/modules/registrationForm.js',
   // Шрифты для PDF: встраиваются в сами PDF-файлы (кириллица в бланке и в
   // интерактивной анкете), поэтому нужны офлайн.
   './js/export/fonts/dejavu-sans-subset.js',
   './js/export/fonts/dejavu-form-b64.js',
-  // pdf-lib + fontkit лежат локально, а не на CDN: интерактивная AcroForm-анкета
-  // должна собираться и без сети.
+  // ВСЁ НИЖЕ ДОГРУЖАЕТСЯ ПО КНОПКЕ (30.08.2026, находка N-3), но в прекэше
+  // обязано лежать: файл, который тянет js/pdfstack.js, невидим для
+  // check-shared-precache.mjs — тот разбирает разметку, а в разметке этих
+  // тегов больше нет. Выпади любой из них отсюда, всё работало бы ровно до
+  // первой выдачи бумаги без сети. Связь сторожит check-lazy-pdf.mjs.
   '../shared/vendor/jspdf.umd.min.js',
   '../shared/vendor/pdf.min.js',
   '../shared/vendor/xlsx.full.min.js',

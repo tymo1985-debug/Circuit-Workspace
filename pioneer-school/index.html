@@ -464,26 +464,18 @@
      вовсе. Свой файл доезжает всегда.
      Версии сверены: байты в shared/vendor совпадают с тем, что отдавали
      cdnjs и jsdelivr (хеши снимались с живых ответов 28.08.2026). -->
-<script src="../shared/vendor/jspdf.umd.min.js"></script>
-<script src="../shared/vendor/pdf.min.js"></script>
-<script src="../shared/vendor/xlsx.full.min.js"></script>
-<script>
-  if (window.pdfjsLib) {
-    /* ВОРКЕР ЛЕЖИТ ЛОКАЛЬНО, И ЭТО НЕ ПРИДИРКА. `integrity` работает только
-       для тега <script>; здесь же адрес подставляется строкой, и проверить
-       ответ браузеру нечем. То есть воркер остался бы единственным файлом, в
-       котором подмена по-прежнему исполнялась бы — рядом с шестью
-       защищёнными. Локальная копия снимает вопрос целиком.
-       Версия обязана совпадать с pdf.min.js выше (2.16.105): pdf.js
-       отказывается работать с воркером другой версии. */
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = '../shared/vendor/pdf.worker.min.js';
-  }
-</script>
+<!-- ПДФ/EXCEL-СТЕКА ЗДЕСЬ НЕТ НАМЕРЕННО (30.08.2026, находка N-3).
+     Семь файлов на 2913 КБ разбирались при каждом открытии модуля, а нужны
+     только при выдаче бумаги. Теперь их тянет по кнопке js/pdfstack.js —
+     там же записано, что какому тракту нужно. Возврат любого из них в эту
+     разметку краснит гейт: scripts/check-lazy-pdf.mjs. -->
 <!-- Общий слой локализации хаба: подключается до модулей, чтобы T() был
      доступен уже на этапе объявления констант (DEFAULT_COLUMNS и т.п.). -->
 <script src="../shared/version.js"></script>
 <script src="../shared/i18n.js"></script>
 <script src="../shared/escape.js"></script>
+<script src="../shared/pdfstack.js"></script>
+<script src="js/pdfstack.js"></script>
 <script src="../shared/doclang.js"></script>
 <!-- Общий слой документов (фаза 6). Порядок обязателен: реестр переменных и
      системные тексты должны быть объявлены до движка, движок — до app.js.
@@ -510,20 +502,16 @@
 <script src="js/modules/registration.js"></script>
 <script src="js/modules/substitutes.js"></script>
 <script src="js/modules/students.js"></script>
-<script src="js/modules/pdfImport.js"></script>
 <script src="js/modules/textbooks.js"></script>
 <script src="js/modules/practical.js"></script>
 <script src="js/modules/review.js"></script>
 <script src="js/modules/afterSchool.js"></script>
 <script src="js/modules/signLanguage.js"></script>
 <script src="js/modules/letters.js"></script>
-<script src="../shared/vendor/pdf-lib.min.js"></script>
-<script src="../shared/vendor/fontkit.umd.min.js"></script>
-<script src="js/export/fonts/dejavu-sans-subset.js"></script>
-<script src="js/export/fonts/dejavu-form-b64.js"></script>
 <script src="js/modules/registrationSchema.js"></script>
-<script src="js/export/pdfExport.js"></script>
-<script src="js/export/pdfFormExport.js"></script>
+<!-- excelExport.js остаётся на старте: три из четырёх его выгрузок — чистый
+     CSV и обязаны работать без библиотек. Настоящий .xlsx уехал в набор
+     `excel` вместе с SheetJS (js/export/xlsxExport.js). -->
 <script src="js/export/excelExport.js"></script>
 <!-- update.js — ДО js/app.js: он зовёт CWUpdate.init() при старте. -->
 <script src="../shared/update.js"></script>

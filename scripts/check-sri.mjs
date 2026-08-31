@@ -129,9 +129,14 @@ if (seen === 0) {
 
 /* Воркер pdf.js: `integrity` для него не существует, защита одна — свой файл. */
 console.log('\nВоркер pdf.js');
-const schoolPage = join(ROOT, 'pioneer-school/index.html');
-if (existsSync(schoolPage)) {
-  const html = readFileSync(schoolPage, 'utf8');
+/* 30.08.2026: адрес переехал из инлайнового скрипта index.html в
+   js/pdfstack.js — pdf.js теперь догружается по кнопке, и объявить workerSrc
+   раньше, чем появится window.pdfjsLib, нельзя. Проверка ищет его в обоих
+   местах: суть требования не изменилась, изменилось только место записи. */
+const schoolFiles = ['pioneer-school/js/pdfstack.js', 'pioneer-school/index.html']
+  .map((f) => join(ROOT, f)).filter((f) => existsSync(f));
+if (schoolFiles.length) {
+  const html = schoolFiles.map((f) => readFileSync(f, 'utf8')).join('\n');
   const src = /workerSrc\s*=\s*["']([^"']+)["']/.exec(html);
   ok('адрес воркера задан', !!src);
   if (src) {
@@ -142,6 +147,10 @@ if (existsSync(schoolPage)) {
     ok('файл воркера на месте',
       !/^https?:/i.test(src[1]) && existsSync(join(ROOT, 'pioneer-school', src[1])),
       'pioneer-school/' + src[1]);
+    /* Версия воркера обязана совпадать с pdf.min.js: pdf.js отказывается
+       работать с воркером другой версии, и разошлись бы они молча. */
+    ok('воркер лежит рядом с самой библиотекой',
+      src[1].includes('vendor/'), src[1]);
   }
 }
 

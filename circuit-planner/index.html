@@ -47,6 +47,10 @@
 <script src="../shared/print.js"></script>
 <!-- Язык документа (формуляр визита, письмо) — отдельно от языка интерфейса. -->
 <script src="../shared/escape.js"></script>
+<!-- Загрузчик ПДФ-стека. Сам он крошечный и нужен на старте: App.pdf.ensure()
+     зовут обработчики кнопок. Тяжёлое, что он тянет, в разметке отсутствует
+     намеренно — см. shared/pdfstack.js и scripts/check-lazy-pdf.mjs. -->
+<script src="../shared/pdfstack.js"></script>
 <script src="../shared/doclang.js"></script>
 <!-- Служебный год (сентябрь–август). Обязан грузиться ДО app.js: модуль читает
      CWServiceYear.START_MONTH прямо при построении App.config. -->
