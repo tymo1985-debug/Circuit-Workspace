@@ -2280,15 +2280,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.editorFlagS302) App.els.editorFlagS302.checked = !!data.flags?.f302;
         if (App.els.editorFlagLetter) App.els.editorFlagLetter.checked = !!data.flags?.letter;
       },
-      openModal(modalEl) {
-        if (!modalEl) return;
-        modalEl.hidden = false;
-        const card = modalEl.querySelector('.modal-card');
-        if (card) card.scrollTop = 0;
-      },
-      closeModal(modalEl) {
-        if (modalEl) modalEl.hidden = true;
-      },
       openStatsModal() {
         const sy = App.state.calendarYear ? App.utils.getServiceYearForDate(new Date(App.state.calendarYear, App.state.calendarMonth || 0, 1)) : App.utils.getServiceYearForDate(new Date());
         const stats = App.data.getServiceYearStats(sy);
@@ -3868,24 +3859,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       },
 
       renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
-      closeMobileMenu() {
-        if (App.els.appRoot) App.els.appRoot.classList.remove('menu-open');
-        if (App.els.mobileOverlay) {
-          App.els.mobileOverlay.hidden = true;
-          App.els.mobileOverlay.classList.remove('show');
-        }
-        App.els.mobileMenuToggleBtn?.setAttribute('aria-expanded', 'false');
-      },
-      toggleMobileMenu() {
-        if (!App.els.appRoot) return;
-        const open = !App.els.appRoot.classList.contains('menu-open');
-        App.els.appRoot.classList.toggle('menu-open', open);
-        if (App.els.mobileOverlay) {
-          App.els.mobileOverlay.hidden = !open;
-          App.els.mobileOverlay.classList.toggle('show', open);
-        }
-        App.els.mobileMenuToggleBtn?.setAttribute('aria-expanded', String(open));
-      }
     },
 
     bind() {
