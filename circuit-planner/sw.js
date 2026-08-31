@@ -37,6 +37,7 @@ const APP_SHELL_URLS = [
   './ui/calendar-styles.js',
   './ui/doc-templates.js',
   './ui/modals.js',
+  './ui/ui-aux.js',
   './visit-pdf.js',
   './fonts/fonts-aptos-regular.js',
   './fonts/fonts-aptos-bold.js',
