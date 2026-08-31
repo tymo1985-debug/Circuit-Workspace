@@ -120,14 +120,32 @@
   #letterDuePill.is-status-danger .ld-status::before{background:var(--status-critical)}
   .ld-chevron{font-size:16px;color:var(--md-on-surface-variant);flex:0 0 auto}
   @media (max-width:767px){
+    /* ROOT CAUSE (найден по реальному скриншоту с телефона, 31.08.2026,
+       второй заход): предыдущее исправление align-items:stretch → flex-start
+       на .nv-row было верным, но недостаточным. .nv-row меняет
+       flex-direction на column на mobile, а вместе с ним меняется смысл
+       "flex-grow" у детей: в row-раскладке "flex:1 1 320px"/"flex:1 1 220px"
+       росли ПО ШИРИНЕ (main-axis = горизонталь), это и было нужно на
+       desktop. В column-раскладке main-axis становится ВЕРТИКАЛЬНЫМ —
+       та же самая цифра flex-grow:1 (первое число в "flex: 1 1 …") теперь
+       заставляет оба элемента расти ПО ВЫСОТЕ и делить между собой любое
+       свободное вертикальное пространство контейнера поровну, вне
+       зависимости от того, сколько у каждого реального контента. Именно
+       это и создавало огромную пустую область под двумя короткими строками
+       в letterDuePill — карточка росла вверх/вниз вслед за более длинной
+       nextVisitPill, а не по своему содержимому.
+       Исправление: на mobile явно возвращаем flex-grow к 0 у обоих детей
+       (flex:0 0 auto), раз в column-раскладке расти по вертикали не нужно
+       ни одному из них — высота каждого блока становится строго высотой
+       его содержимого. */
     .nv-row{flex-direction:column;max-width:520px}
-    .nv-row>#nextVisitPill{max-width:none}
+    .nv-row>#nextVisitPill{flex:0 0 auto;align-self:auto;max-width:none}
+    #letterDuePill{flex:0 0 auto;max-width:none;padding:8px 12px}
     /* Компактный status-block: высота — по контенту, без больших пустых
        областей. Название переносится (не обрезается многоточием — на узком
        экране многоточие на длинном названии собрания было хуже переноса);
        мета и статус собраны в одну строку со стрелкой в конце, которая не
        ломает строку (flex:0 0 auto + сама строка не переносится). */
-    #letterDuePill{max-width:none;padding:8px 12px}
     #letterDuePill .ld-name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
     #letterDuePill .ld-meta{display:none}
     #letterDuePill .ld-status{font-size:12px}
