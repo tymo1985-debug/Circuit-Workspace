@@ -36,7 +36,7 @@ self.CW_VERSION = '0.40.14';
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
   'congress-project': { title: 'Конгрессы',       version: '4.46.17' },
-  'circuit-planner':  { title: 'Клиндарий',       version: '9.91.16' },
+  'circuit-planner':  { title: 'Клиндарий',       version: '9.91.17' },
   'pioneer-school':   { title: 'Школа пионеров',  version: '1.13.24' },
   'appointments':     { title: 'Назначения',      version: '5.5.34'  },
   'documents':        { title: 'Документы и данные', version: '1.5.18'  },

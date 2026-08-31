@@ -30,6 +30,11 @@ const APP_SHELL_URLS = [
   './?source=pwa',
   './index.html',
   './app.js',
+  // Части, зарегистрированные в window.CPParts, подключаются РАНЬШЕ app.js в
+  // index.html и обязаны лежать в прекэше отдельно от него: иначе оффлайн
+  // сборка получит app.js, но не увидит функцию, которую он ожидает найти
+  // в App.ui после применения частей (shared/AGENTS.md, п.2 «Прекэш»).
+  './ui/calendar-styles.js',
   './visit-pdf.js',
   './fonts/fonts-aptos-regular.js',
   './fonts/fonts-aptos-bold.js',
