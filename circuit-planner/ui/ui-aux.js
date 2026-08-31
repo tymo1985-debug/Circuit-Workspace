@@ -145,6 +145,14 @@
   //      (и другого кандидата нет) — статус там уже виден, дублировать
   //      нечего, но письмо ФАКТИЧЕСКИ не отправлено, поэтому нельзя
   //      сказать "всё отправлено" — говорим "остальные" вместо "все".
+  //
+  // Внутри исхода 1) — правило 60 дней (уточнено 31.08.2026): статус "Ещё
+  // рано" (success, зелёная точка) при daysUntil > 60, "Пора отправить
+  // письмо" (danger, красная точка) при daysUntil <= 60. daysUntil считается
+  // от ДАТЫ НАЧАЛА посещения (entry.start), той же формулой, что и в
+  // App.data.getUpcomingReminders() (App.utils.parseLocalDate(entry.start) -
+  // today, в целых днях) — сознательно не по entry.end. Никакого нового
+  // persisted-флага: чисто вычисляемое UI-правило поверх entry.flags.letter.
   function renderLetterDuePill() {
     const pill = App.els.letterDuePill || document.getElementById('letterDuePill');
     if (!pill) return;
@@ -178,18 +186,23 @@
     const otherCandidate = withoutLetter.find(({ entry }) => entry.id !== shownInMainCard) || null;
     const mainCardHasUnsentLetter = withoutLetter.some(({ entry }) => entry.id === shownInMainCard);
     pill.classList.remove('is-allsent');
+    pill.classList.remove('is-status-danger', 'is-status-success');
     if (!otherCandidate) {
       pill.style.display = 'flex';
       pill.dataset.entryId = '';
-      pill.classList.add('is-allsent');
+      pill.classList.add('is-allsent', 'is-status-success');
       const setText = (el, text) => { if (el) el.textContent = text; };
       // Различаем "все письма отправлены" (нет вообще неотправленных среди
       // будущих визитов) от "остальные отправлены" (main card сам ещё без
       // письма, но дублировать его в этой карточке нечего) — говорить "все",
       // когда письмо main card фактически не отправлено, было бы неверно.
+      // Оба исхода — спокойные success-состояния, без порога 60 дней:
+      // они не про срочность конкретного письма, а про то, что в этой
+      // карточке сейчас нечего показать.
       const key = mainCardHasUnsentLetter ? 'other_letters_sent' : 'all_letters_sent';
-      setText(App.els.letterDuePillName, `✓ ${App.utils.t(key)}`);
+      setText(App.els.letterDuePillName, App.utils.t(key));
       setText(App.els.letterDuePillMeta, '');
+      if (App.els.letterDuePillStatus) { App.els.letterDuePillStatus.textContent = ''; App.els.letterDuePillStatus.removeAttribute('data-meta'); }
       pill.title = App.utils.t(key);
       finish();
       return;
@@ -198,9 +211,24 @@
     pill.style.display = 'flex';
     pill.dataset.entryId = entry.id;
     const setText = (el, text) => { if (el) el.textContent = text; };
+    // Порог 60 дней (правило от 31.08.2026, уточнено): считается по дате
+    // НАЧАЛА посещения, той же формулой, что и getUpcomingReminders() —
+    // единая точка истины для "сколько дней до визита", не отдельная копия.
+    const daysUntil = Math.round((otherCandidate.start - today) / 86400000);
+    const isUrgent = daysUntil <= 60;
+    pill.classList.add(isUrgent ? 'is-status-danger' : 'is-status-success');
+    const statusText = isUrgent
+      ? App.utils.t('needs_sending_now')
+      : `${App.utils.t('letter_soon')} · ${App.utils.t('days_until_send', { value: daysUntil - 60, label: App.utils.pluralUnit(daysUntil - 60, 'day') })}`;
     setText(App.els.letterDuePillName, entry.title || event?.name || '');
-    setText(App.els.letterDuePillMeta, `${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDateYear(entry.end)} · ${App.utils.countdownText(entry.start, 'days')} · ${App.utils.t('needs_sending')}`);
-    pill.title = `${entry.title || event?.name || ''}: ${App.utils.t('needs_sending')}`;
+    setText(App.els.letterDuePillMeta, `${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDateYear(entry.end)} · ${App.utils.countdownText(entry.start, 'days')}`);
+    setText(App.els.letterDuePillStatus, statusText);
+    // На mobile .ld-meta скрыт (нет места для полного диапазона дат на
+    // компактной строке), но короткий countdown всё же нужен рядом со
+    // статусом — как в примере Алекса ("· через 64 дня"). CSS дописывает
+    // это через ::after{content:attr(data-meta)}, без лишнего DOM-узла.
+    if (App.els.letterDuePillStatus) App.els.letterDuePillStatus.setAttribute('data-meta', App.utils.countdownText(entry.start, 'days'));
+    pill.title = `${entry.title || event?.name || ''}: ${isUrgent ? App.utils.t('needs_sending_now') : App.utils.t('letter_soon')}`;
     finish();
   }
 

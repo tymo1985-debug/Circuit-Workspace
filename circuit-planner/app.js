@@ -1588,7 +1588,7 @@
     ui: {
       cacheElements() {
         [
-          'appRoot','desktopNav','toastWrap','offlineBanner','sideStatus','screenTitle','screenSubtitle','nextVisitPill','nextVisitPillName','nextVisitPillDate','nextVisitPillType','nextVisitPillRange','nextVisitPillLetter','nextVisitPillS302','letterDuePill','letterDuePillName','letterDuePillMeta',
+          'appRoot','desktopNav','toastWrap','offlineBanner','sideStatus','screenTitle','screenSubtitle','nextVisitPill','nextVisitPillName','nextVisitPillDate','nextVisitPillType','nextVisitPillRange','nextVisitPillLetter','nextVisitPillS302','letterDuePill','letterDuePillName','letterDuePillMeta','letterDuePillStatus',
           'eventEditorModal','eventEditorCloseBtn',
           'monthLabel','calendarRangeLabel','calendarGrid','prevMonthBtn','todayMonthBtn','nextMonthBtn',
           'calendarYearSelect','calendarLayoutPresetSelect','layoutPresetSelect','calendarEditor','editorTitle',

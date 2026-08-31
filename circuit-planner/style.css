@@ -90,23 +90,48 @@
      посещением». Desktop: две карточки в ряд, эта — уже и с flex-basis
      поменьше. Mobile (<=767px, порог общий с остальным topbar/sidebar):
      схлопывается в узкую строку под основной карточкой — раскладка чисто
-     CSS-flex, без отдельной мобильной бизнес-логики (см. renderLetterDuePill). */
-  .nv-row{display:flex;flex-wrap:wrap;gap:10px;width:100%;max-width:760px;align-items:stretch}
-  .nv-row>#nextVisitPill{flex:1 1 320px;max-width:520px}
-  #letterDuePill{display:none;flex:1 1 220px;max-width:280px;align-items:center;gap:10px;padding:12px 14px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
+     CSS-flex, без отдельной мобильной бизнес-логики (см. renderLetterDuePill).
+     ROOT CAUSE большой пустой высоты (правка 31.08.2026): .nv-row держал
+     align-items:stretch, поэтому эта карточка растягивалась под высоту
+     соседней #nextVisitPill (у которой контента больше — тип посещения,
+     диапазон дат, два флага). Исправлено через align-items:flex-start на
+     контейнере + явный align-self:stretch только на #nextVisitPill — так
+     основная карточка не потеряла свою прежнюю высоту, а компактная
+     считает высоту от своего содержимого, а не от соседа. */
+  .nv-row{display:flex;flex-wrap:wrap;gap:10px;width:100%;max-width:760px;align-items:flex-start}
+  .nv-row>#nextVisitPill{flex:1 1 320px;max-width:520px;align-self:stretch}
+  #letterDuePill{display:none;flex:1 1 220px;max-width:280px;align-items:center;gap:8px;padding:8px 12px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
   #letterDuePill.is-allsent{cursor:default}
-  .ld-icon{font-size:16px;flex:0 0 auto}
-  .ld-body{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
-  .ld-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ld-meta{font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ld-icon{font-size:15px;flex:0 0 auto}
+  .ld-body{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 auto}
+  .ld-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ld-meta{font-size:11px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Статусная строка: цветная точка + короткий текст. Только эта точка и
+     текст несут semantic color — сама карточка/фон остаются нейтральными
+     (см. задачу: не красить всю карточку). Токены --status-success и
+     --status-critical — уже существующие в shared/style.css, те же, что
+     .success-banner и .ls-tag.ok в congress-project/pioneer-school. */
+  .ld-status{display:flex;align-items:center;gap:5px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ld-status:empty{display:none}
+  .ld-status::before{content:"";width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  #letterDuePill.is-status-success .ld-status{color:var(--status-success)}
+  #letterDuePill.is-status-success .ld-status::before{background:var(--status-success)}
+  #letterDuePill.is-status-danger .ld-status{color:var(--status-critical)}
+  #letterDuePill.is-status-danger .ld-status::before{background:var(--status-critical)}
   .ld-chevron{font-size:16px;color:var(--md-on-surface-variant);flex:0 0 auto}
   @media (max-width:767px){
     .nv-row{flex-direction:column;max-width:520px}
     .nv-row>#nextVisitPill{max-width:none}
+    /* Компактный status-block: высота — по контенту, без больших пустых
+       областей. Название переносится (не обрезается многоточием — на узком
+       экране многоточие на длинном названии собрания было хуже переноса);
+       мета и статус собраны в одну строку со стрелкой в конце, которая не
+       ломает строку (flex:0 0 auto + сама строка не переносится). */
     #letterDuePill{max-width:none;padding:8px 12px}
-    #letterDuePill .ld-name,#letterDuePill .ld-meta{display:inline}
-    #letterDuePill .ld-body{flex-direction:row;gap:6px;align-items:baseline}
-    #letterDuePill .ld-meta::before{content:"· "}
+    #letterDuePill .ld-name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+    #letterDuePill .ld-meta{display:none}
+    #letterDuePill .ld-status{font-size:12px}
+    #letterDuePill .ld-status[data-meta]:not([data-meta=""])::after{content:" · " attr(data-meta)}
   }
   .toolbar-more{position:relative}
   .toolbar-more summary{list-style:none;cursor:pointer}
