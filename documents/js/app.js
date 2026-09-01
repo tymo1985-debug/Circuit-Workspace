@@ -61,6 +61,22 @@
     varsQuery: '',
   };
 
+  /* ─── Desktop split-view: определение широкого экрана ───
+     Порог — 1201px, уже одобренная парная граница «лестницы Клиндария»
+     (docs/design-tokens/03-breakpoints.md, раздел «Про пары 767/768,
+     1100/1101, 1200/1201»), а не заново введённое число. Ровно `1200px`
+     нельзя: `circuit-planner/style.css` уже держит `max-width:1200px` для
+     своей раскладки, и `min-width:1200px` здесь пересёкся бы с ним на
+     ширине ровно 1200px — гейт `check-breakpoints.mjs` поймал это при первой
+     попытке. `.doc-wrap{max-width:1180px}` достигает полной ширины около
+     этой точки, то есть 1200/1201px — первая ширина, где на редактор и
+     preview реально хватает места для двух читаемых колонок. `900` (tablet,
+     уже используется для bottom sheet селектора переменных) для сплита
+     тесен. Паттерн `matchMedia` — тот же, что уже используется в
+     shared/theme.js для системной тёмной темы. */
+  var wideQuery = self.matchMedia ? self.matchMedia('(min-width: 1201px)') : null;
+  function isWide() { return !!(wideQuery && wideQuery.matches); }
+
   /* ─────────────────────────  Вспомогательное  ───────────────────────── */
 
   /* Делегирование в общий слой (28.08.2026). Своя редакция убрана: их было
@@ -434,19 +450,46 @@
     Array.prototype.forEach.call(document.querySelectorAll('.doc-tab'), function (btn) {
       btn.setAttribute('aria-selected', String(btn.dataset.view === view));
     });
-    $('#viewEdit').hidden = view !== 'edit';
-    $('#viewPreview').hidden = view !== 'preview';
-    $('#viewPages').hidden = view !== 'pages';
+
+    var wide = isWide();
+    /* Расклад по ширине и по вкладке — независимые оси. На mobile (не wide)
+       ничего не меняется: строго одна вкладка видна за раз, как раньше.
+       На wide вкладка «Текст» показывает и редактор, и preview одновременно
+       (split), вкладка «Предпросмотр» — preview на всю ширину, «Страницы» —
+       без изменений в обоих случаях. */
+    if (wide && view === 'edit') {
+      $('#viewEdit').hidden = false;
+      $('#viewPreview').hidden = false;
+      $('#viewPages').hidden = true;
+    } else if (wide && view === 'preview') {
+      $('#viewEdit').hidden = true;
+      $('#viewPreview').hidden = false;
+      $('#viewPages').hidden = true;
+    } else {
+      $('#viewEdit').hidden = view !== 'edit';
+      $('#viewPreview').hidden = view !== 'preview';
+      $('#viewPages').hidden = view !== 'pages';
+    }
+
+    /* Класс включает grid-раскладку в две колонки — только когда реально
+       нужен split (wide + «Текст»). CSS ничего не решает о видимости сам;
+       hidden выше — единственный источник правды, класс лишь говорит, как
+       расположить то, что уже видимо (см. documents/css/styles.css). */
+    $('#viewEdit').closest('.ed__main').classList.toggle('ed__main--split', wide && view === 'edit');
+
     /* Кнопка вставки переменной осмысленна только там, где есть курсор для
-       вставки — на вкладке «Текст». В Preview ничего не редактируется, а
-       на «Страницах» вставка идёт через отдельные rte-редакторы карточек
+       вставки — на вкладке «Текст» (split или нет, на wide редактор виден
+       в обоих случаях кроме full Preview). В Preview ничего не редактируется,
+       а на «Страницах» вставка идёт через отдельные rte-редакторы карточек
        страниц, не через #edArea/#edRte, поэтому кнопка скрыта и там же. */
-    $('#insertVarBtn').hidden = view !== 'edit';
+    $('#insertVarBtn').hidden = $('#viewEdit').hidden;
     /* Уход с «Текста» закрывает диалог переменных, если он был открыт —
        иначе он остался бы открытым поверх Preview/Pages, где вставлять
-       уже некуда. */
-    if (view !== 'edit') closeVarsDialog();
-    if (view === 'preview') renderPreview();
+       уже некуда. На wide-split редактор остаётся виден вместе с preview,
+       поэтому диалог здесь не закрывается сам по себе — только когда
+       редактор реально скрыт ($('#viewEdit').hidden). */
+    if ($('#viewEdit').hidden) closeVarsDialog();
+    if (view === 'preview' || (wide && view === 'edit')) renderPreview();
   }
 
   /* ─── Предпросмотр ─── */
@@ -654,6 +697,10 @@
     restoreEditorCaret();
     insertToken(token);
     saveEditorCaret();
+    /* Вставка через picker — одиночное дискретное действие, не поток
+       input-событий, поэтому без debounce: обновляем preview сразу, но
+       только когда wide-split реально показан (иначе лишняя работа). */
+    if (isWide() && state.view === 'edit') renderPreview();
   }
 
   function insertToken(token) {
@@ -833,6 +880,21 @@
     $('#edArea').addEventListener('input', markDirty);
     $('#edRte').addEventListener('input', markDirty);
 
+    /* Live preview на wide-split: debounce, чтобы не гонять render на каждую
+       букву (regex в plainToHtml() + innerHTML на длинном письме заметны).
+       Работает только когда сплит реально показан — на mobile и на full
+       Preview/Pages это лишняя работа впустую, поэтому проверяем условие
+       заново на каждый input, а не полагаемся на то, что был верно в момент
+       навешивания слушателя. renderPreview() не меняется, вызывается как есть. */
+    var livePreviewTimer = null;
+    function scheduleLivePreview() {
+      if (!(isWide() && state.view === 'edit')) return;
+      if (livePreviewTimer) clearTimeout(livePreviewTimer);
+      livePreviewTimer = setTimeout(renderPreview, 200);
+    }
+    $('#edArea').addEventListener('input', scheduleLivePreview);
+    $('#edRte').addEventListener('input', scheduleLivePreview);
+
     $('#rteToolbar').addEventListener('click', function (e) {
       var btn = e.target.closest('[data-cmd]');
       if (!btn) return;
@@ -993,6 +1055,20 @@
     if (version) $('#moduleVersion').textContent = 'v' + version;
 
     bind();
+    /* Пересечение порога wide/mobile при живом resize — не перезагрузка
+       страницы, значит раскладку нужно пересчитать на лету. `change` тот же
+       паттерн, что уже используется в shared/theme.js для системной тёмной
+       темы. Трогаем DOM только если редактор реально открыт: setView() внутри
+       и так безопасна (renderPreview() сама проверяет currentTpl()), но нет
+       смысла лишний раз переключать hidden/классы на элементах, которые
+       сейчас скрыты вместе со всем экраном редактора. */
+    if (wideQuery) {
+      var onWideChange = function () {
+        if (state.id) setView(state.view);
+      };
+      if (wideQuery.addEventListener) wideQuery.addEventListener('change', onWideChange);
+      else if (wideQuery.addListener) wideQuery.addListener(onWideChange); // Safari < 14
+    }
     initDocLangSelect();
     renderFilters();
     renderArchiveFilters();

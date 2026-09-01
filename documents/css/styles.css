@@ -86,6 +86,35 @@ body {
 .ed__title { font-size: 16px; }
 .ed__spacer { flex: 1 1 auto; }
 
+/* Desktop split-view (решение 01.09.2026): редактор + живой preview рядом,
+   только на вкладке «Текст» и только на wide. Порог — 1201px, уже одобренная
+   парная граница «лестницы Клиндария» (docs/design-tokens/03-breakpoints.md),
+   не новое число: ровно 1200px пересёкся бы с `circuit-planner/style.css`,
+   который держит `max-width:1200px` для своей раскладки — на этой ширине обе
+   ветки были бы активны одновременно, что и поймал `check-breakpoints.mjs`.
+   Класс ставится и снимается из setView() (documents/js/app.js) — CSS здесь
+   ничего не решает о видимости элементов, только о том, как расположить то,
+   что JS уже показал через hidden. `#viewPages`, если он вдруг окажется
+   видимым одновременно (не должно происходить по логике setView()), тоже
+   стал бы grid-item — но hidden на нём остаётся источником правды и его не
+   покажет. */
+@media (min-width: 1201px) {
+  .ed__main--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 20px;
+    align-items: start;
+  }
+  /* Строка инструментов и вкладки не должны попадать в сетку колонок — они
+     стоят раньше `.ed__view` в разметке. `grid-column: 1 / -1` растягивает
+     их на всю ширину, иначе первая полоса (тулбар) заняла бы только левую
+     колонку и обрезалась визуально. */
+  .ed__main--split > .doc-tabs,
+  .ed__main--split > .ed__toolbar {
+    grid-column: 1 / -1;
+  }
+}
+
 .doc-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--md-outline-variant); }
 .doc-tab {
   appearance: none; border: 0; background: none; cursor: pointer;
