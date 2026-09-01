@@ -75,8 +75,12 @@ body {
 .lang-pill--filled { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: transparent; }
 .lang-pill--pending { opacity: .55; }
 
-/* ─── Редактор ─── */
-.ed { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+/* ─── Редактор ───
+   Правая колонка переменных убрана 01.09.2026 (см. docs/documents/ —
+   решение по UX-переделке селектора переменных): редактор теперь занимает
+   всю доступную ширину, `.ed` больше не grid из двух колонок, а простая
+   обёртка. Класс сохранён, чтобы не трогать остальную разметку. */
+.ed { display: block; }
 .ed__main { min-width: 0; }
 .ed__head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .ed__title { font-size: 16px; }
@@ -91,7 +95,14 @@ body {
 .doc-tab[aria-selected="true"] { color: var(--md-primary); border-bottom-color: var(--md-primary); }
 .doc-tab[hidden] { display: none; }
 
-.rte-toolbar { display: flex; gap: 4px; margin-bottom: 8px; }
+/* Строка над областью редактирования: слева форматирование (только html),
+   справа кнопка вставки переменной. Кнопка нужна независимо от режима, а
+   .rte-toolbar скрыта для текстовых шаблонов — поэтому это отдельная строка,
+   не часть .rte-toolbar. */
+.ed__toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.ed__toolbar-spacer { flex: 1 1 auto; }
+
+.rte-toolbar { display: flex; gap: 4px; }
 .rte-toolbar .md-btn { min-width: 44px; }
 
 .ed__area, .ed__rte {
@@ -126,21 +137,61 @@ body {
 .page-card .rte-editor { min-height: 150px; padding: 12px 14px; border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs); }
 .page-card .rte-editor:focus { outline: none; border: 2px solid var(--md-primary); }
 
-.vars { border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); padding: 14px; background: var(--md-surface-container-low); }
-.vars h3 { margin: 0 0 4px; }
-.vars h4 { margin: 14px 0 6px; font: 500 12px/16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--md-on-surface-variant); }
-.vars button {
-  display: block; width: 100%; text-align: left; margin: 4px 0; padding: 6px 8px;
+/* ─── Селектор переменных ───
+   Один <dialog>, одна разметка (см. documents/index.html #varsDialog). Никакого
+   anchored-popover positioning engine: нативный <dialog> центрируется браузером
+   сам, а на mobile мы просто переопределяем его позицию/размер через CSS —
+   тот же DOM, тот же JS, только другая раскладка (решение 01.09.2026).
+
+   Desktop: компактное окно ~420px, фиксированная max-height со скроллом
+   внутри списка, а не всего диалога — иначе прокручивался бы вместе с
+   заголовком и полем поиска, что на практике неудобно при длинном списке. */
+.vars-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(600px, calc(100vh - 64px));
+  display: flex; flex-direction: column;
+  padding: 0;
+}
+.vars-dialog[open] { display: flex; }
+.vars-dialog__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 16px 16px 8px;
+}
+.vars-dialog__head h3 { margin: 0; }
+.vars-dialog__search { padding: 0 16px 12px; }
+.vars-dialog__list { overflow-y: auto; padding: 0 16px 16px; min-height: 0; }
+
+.vars-dialog__list h4 {
+  margin: 14px 0 6px; font: 500 12px/16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--md-on-surface-variant);
+}
+.vars-dialog__list h4:first-child { margin-top: 0; }
+.vars-dialog__list button {
+  display: block; width: 100%; text-align: left; margin: 4px 0; padding: 8px 10px;
   background: var(--md-surface-container-lowest); color: var(--md-on-surface);
   border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs); cursor: pointer;
-  font: 400 12.5px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: inherit;
 }
-.vars button:hover { border-color: var(--md-primary); }
-.vars button small { display: block; font-size: 11px; color: var(--md-on-surface-variant); margin-top: 2px; }
+.vars-dialog__list button:hover { border-color: var(--md-primary); }
+.vars-dialog__list button:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+.vars-dialog__item-label { display: block; font: 400 14px/20px var(--md-font-family); }
+.vars-dialog__item-token {
+  display: block; margin-top: 2px; font: 400 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--md-on-surface-variant);
+}
 
+/* Mobile: тот же <dialog>, докованный к низу экрана — bottom sheet без
+   отдельного JS-компонента. `inset` вместо `margin: auto` убирает
+   центрирование браузера по умолчанию для <dialog>. Порог 900px — тот же,
+   что раньше держал .vars на мобильной раскладке (реестр контрольных точек,
+   docs/design-tokens/03-breakpoints.md), новую точку не заводим. */
 @media (max-width: 900px) {
-  .ed { grid-template-columns: 1fr; }
-  .vars { order: -1; }
+  .vars-dialog {
+    position: fixed; inset: auto 0 0 0; margin: 0;
+    width: 100%; max-width: none;
+    max-height: 82vh;
+    border-radius: var(--md-radius-xl) var(--md-radius-xl) 0 0;
+  }
 }
 
 /* ─── Архив выданных документов ───

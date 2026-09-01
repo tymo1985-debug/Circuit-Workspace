@@ -58,6 +58,7 @@
     lang: null,
     view: 'edit',
     dirty: false,
+    varsQuery: '',
   };
 
   /* ─────────────────────────  Вспомогательное  ───────────────────────── */
@@ -377,7 +378,6 @@
     $('#resetBtn').hidden = !tpl.custom;
     $('#tabPages').hidden = !isHtml(tpl);
     renderLangs();
-    renderVars();
     loadColumn();
     setView('edit');
     window.scrollTo(0, 0);
@@ -477,23 +477,174 @@
     $('#edPreview').innerHTML = html ? body : plainToHtml(body);
   }
 
-  /* ─── Переменные ─── */
+  /* ─── Сохранение позиции курсора редактора ───
+     ПОЧЕМУ ЭТО НУЖНО. insertToken() ниже читает `window.getSelection()` для
+     RTE-режима — а это ГЛОБАЛЬНЫЙ Selection API, один на весь документ.
+     `openVarsDialog()` намеренно переводит фокус в поле поиска (диалог открыт
+     именно ради поиска), и как только фокус уходит из #edRte, его Range
+     перестаёт быть текущим выделением документа: `rte.contains(sel.anchorNode)`
+     в insertToken() перестаёт быть истиной, и функция молча уходит в свою
+     аварийную ветку `else` — дописывает токен в КОНЕЦ редактора вместо места,
+     где стоял курсор. Проверено экспериментом на jsdom (см. журнал 01.09.2026):
+     `sel.rangeCount` остаётся 1 после фокуса на другом поле, но `anchorNode`
+     перестаёт быть внутри #edRte. Для textarea риска нет: `selectionStart`/
+     `selectionEnd` — свойства самого элемента, фокус на другом поле их не
+     трогает.
+     Решение — не трогать insertToken() (он и раньше вставлял верно, когда
+     фокус не уходил), а вокруг него сохранять и восстанавливать позицию:
+     сохранить перед открытием диалога, восстановить непосредственно перед
+     каждым вызовом insertToken(). */
+  var savedCaret = null;
 
-  function renderVars() {
+  function saveEditorCaret() {
+    var tpl = currentTpl();
+    if (isHtml(tpl)) {
+      var sel = window.getSelection();
+      var rte = $('#edRte');
+      if (sel && sel.rangeCount && rte.contains(sel.anchorNode)) {
+        savedCaret = { html: true, range: sel.getRangeAt(0).cloneRange() };
+      } else {
+        /* Курсора в редакторе не было (например, фокус уже был не там) —
+           вставлять в конец безопаснее, чем гадать. */
+        savedCaret = { html: true, range: null };
+      }
+    } else {
+      var area = $('#edArea');
+      savedCaret = { html: false, start: area.selectionStart || 0, end: area.selectionEnd || 0 };
+    }
+  }
+
+  /** Восстанавливает сохранённую позицию курсора НЕПОСРЕДСТВЕННО перед
+      вставкой — insertToken() сам не трогается, он снова читает актуальное
+      выделение/selectionStart, которое мы только что вернули на место. */
+  function restoreEditorCaret() {
+    if (!savedCaret) return;
+    if (savedCaret.html) {
+      if (!savedCaret.range) return;
+      var rte = $('#edRte');
+      rte.focus();
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedCaret.range);
+    } else {
+      var area = $('#edArea');
+      area.focus();
+      area.selectionStart = savedCaret.start;
+      area.selectionEnd = savedCaret.end;
+    }
+  }
+
+  /* ─── Селектор переменных ───
+     UX-переделка 01.09.2026: постоянная колонка `<aside class="vars">`
+     заменена на один `<dialog>` (desktop — компактное окно, mobile — bottom
+     sheet через CSS, разметка и логика общие). Три источника данных, как и
+     раньше:
+       - self.CWTemplates.tokens(list) — какие поля вообще существуют и
+         разрешены текущему module (без изменений, как в старой renderVars());
+       - self.CWDocVariables — presentation-слой: человеческое название поля
+         и что из списка скрыть (visit.type/typeLabel, doc.lang — решение
+         01.09.2026, полей в реестре и в движке это не касается);
+       - state.varsQuery — текст в поле поиска, ищет по label/ns.field/
+         token/aliases (aliases только для поиска, в карточке не показываются).
+     insertToken() ниже не тронут: вставка по курсору уже работала верно —
+     проблему с потерей caret в RTE-режиме решает обвязка
+     saveEditorCaret()/restoreEditorCaret() выше, а не сама функция вставки. */
+
+  var varsAll = [];
+
+  /** Строит плоский список видимых переменных для текущего шаблона.
+      Скрытые поля (CWDocVariables.isHidden) выпадают здесь же, до рендера —
+      это единственное место, которое их фильтрует. */
+  function collectVars() {
     var tpl = currentTpl();
     var list = NAMESPACES_BY_MODULE[tpl.module] || ['sender', 'doc'];
-    var groups = {};
-    self.CWTemplates.tokens(list).forEach(function (v) {
-      (groups[v.ns] = groups[v.ns] || []).push(v);
+    var registry = self.CWDocVariables;
+    return self.CWTemplates.tokens(list).filter(function (v) {
+      return !(registry && registry.isHidden(v.ns, v.field));
+    }).map(function (v) {
+      var labelKey = registry && registry.labelKey(v.ns, v.field);
+      var nsLabelKey = registry && registry.namespaceLabelKey(v.ns);
+      return {
+        ns: v.ns,
+        field: v.field,
+        token: v.token,
+        aliases: v.aliases,
+        /* Без i18n-ключа (пока не покрыт перевод) — токен как запасной
+           вариант названия, чтобы карточка не осталась пустой. */
+        label: labelKey ? t(labelKey) : v.token,
+        nsLabel: nsLabelKey ? t(nsLabelKey) : v.ns,
+      };
     });
-    $('#varsList').innerHTML = Object.keys(groups).map(function (ns) {
-      return '<h4>' + ns + '.*</h4>' + groups[ns].map(function (v) {
-        /* Прежнее написание показываем рядом: свой старый шаблон человек должен
-           узнать с первого взгляда. Старые имена работают всегда. */
-        var legacy = v.aliases.length ? '<small>' + escapeHtml(t('doc.was_named', { name: '{{' + v.aliases[0] + '}}' })) + '</small>' : '';
-        return '<button type="button" data-token="' + escapeHtml(v.token) + '">' + escapeHtml(v.token) + legacy + '</button>';
+  }
+
+  /** Совпадение с поисковой строкой: по человеческому названию, ns.field,
+      текущему token и старым aliases (алиасы участвуют в поиске, но не
+      выводятся в карточке — п.7 утверждённого плана). */
+  function matchesVarQuery(v, q) {
+    if (!q) return true;
+    q = q.toLowerCase();
+    if (v.label.toLowerCase().indexOf(q) >= 0) return true;
+    if ((v.ns + '.' + v.field).toLowerCase().indexOf(q) >= 0) return true;
+    if (v.token.toLowerCase().indexOf(q) >= 0) return true;
+    return v.aliases.some(function (a) { return a.toLowerCase().indexOf(q) >= 0; });
+  }
+
+  function renderVarsList() {
+    var q = (state.varsQuery || '').trim();
+    var rows = varsAll.filter(function (v) { return matchesVarQuery(v, q); });
+    if (!rows.length) {
+      $('#varsList').innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.variables_not_found')) + '</div>';
+      return;
+    }
+    var groups = {};
+    var order = [];
+    rows.forEach(function (v) {
+      if (!groups[v.ns]) { groups[v.ns] = []; order.push(v.ns); }
+      groups[v.ns].push(v);
+    });
+    $('#varsList').innerHTML = order.map(function (ns) {
+      var items = groups[ns].map(function (v) {
+        return '<button type="button" data-token="' + escapeHtml(v.token) + '">'
+          + '<span class="vars-dialog__item-label">' + escapeHtml(v.label) + '</span>'
+          + '<span class="vars-dialog__item-token">' + escapeHtml(v.token) + '</span>'
+          + '</button>';
       }).join('');
+      return '<h4>' + escapeHtml(groups[ns][0].nsLabel) + '</h4>' + items;
     }).join('');
+  }
+
+  /** Пересобрать список переменных для текущего шаблона и открыть диалог.
+      Курсор редактора сохраняется ПЕРВЫМ действием — до того, как что-либо
+      ещё (включая showModal()) успеет сдвинуть фокус или изменить DOM. */
+  function openVarsDialog() {
+    saveEditorCaret();
+    varsAll = collectVars();
+    state.varsQuery = '';
+    $('#varsSearch').value = '';
+    renderVarsList();
+    var dlg = $('#varsDialog');
+    if (dlg && !dlg.open) dlg.showModal();
+    /* Фокус в поиск сразу — диалог открыт специально ради поиска переменной. */
+    if (dlg) $('#varsSearch').focus();
+  }
+
+  function closeVarsDialog() {
+    var dlg = $('#varsDialog');
+    if (dlg && dlg.open) dlg.close();
+  }
+
+  /** Точка входа из клика по карточке переменной: восстанавливает курсор
+      редактора и только потом зовёт insertToken() — саму функцию вставки
+      это не меняет. Позиция пересохраняется СРАЗУ после вставки: диалог
+      остаётся открытым (можно вставить несколько переменных подряд), а
+      следующая вставка обязана попасть туда, где курсор оказался ПОСЛЕ
+      этой вставки (insertToken() сам ставит его туда через
+      range.setStartAfter/collapse для RTE, или selectionStart/End для
+      textarea), а не туда, где он был до неё. */
+  function insertTokenAtSavedCaret(token) {
+    restoreEditorCaret();
+    insertToken(token);
+    saveEditorCaret();
   }
 
   function insertToken(token) {
@@ -683,7 +834,22 @@
 
     $('#varsList').addEventListener('click', function (e) {
       var btn = e.target.closest('[data-token]');
-      if (btn) insertToken(btn.dataset.token);
+      if (btn) insertTokenAtSavedCaret(btn.dataset.token);
+    });
+
+    /* Диалог остаётся открытым после вставки: типичный сценарий — вставить
+       подряд несколько переменных (имя, потом адрес, потом телефон), и
+       закрывать/переоткрывать окно на каждую было бы лишним трением. */
+    $('#insertVarBtn').addEventListener('click', openVarsDialog);
+    $('#varsDialogClose').addEventListener('click', closeVarsDialog);
+    $('#varsSearch').addEventListener('input', function (e) {
+      state.varsQuery = e.target.value;
+      renderVarsList();
+    });
+    /* Клик по backdrop нативного <dialog> попадает в сам элемент (не в его
+       детей): проверяем e.target === dialog, а не closest(). */
+    $('#varsDialog').addEventListener('click', function (e) {
+      if (e.target === e.currentTarget) closeVarsDialog();
     });
 
     $('#pagesList').addEventListener('input', markDirty);

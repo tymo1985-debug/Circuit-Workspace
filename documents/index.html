@@ -148,13 +148,19 @@
           <button class="doc-tab" role="tab" data-view="pages" aria-selected="false" id="tabPages"><span data-i18n="doc.tab_pages">Страницы</span> <span id="pagesCount"></span></button>
         </div>
 
-        <!-- Панель форматирования — только для документов формата html.
-             У текстовых шаблонов Конгрессов жирный задаётся звёздочками в
-             самом тексте, кнопки там сбивали бы с толку. -->
-        <div class="rte-toolbar" id="rteToolbar" hidden>
-          <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="bold" title="Ctrl+B"><b>Ж</b></button>
-          <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="italic" title="Ctrl+I"><i>К</i></button>
-          <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="underline" title="Ctrl+U"><u>Ч</u></button>
+        <!-- Панель форматирования и кнопка вставки переменной — в одной строке.
+             Кнопка нужна в обоих режимах (текст/html), поэтому стоит ВНЕ
+             .rte-toolbar, которая скрыта для текстовых шаблонов Конгрессов. -->
+        <div class="ed__toolbar">
+          <div class="rte-toolbar" id="rteToolbar" hidden>
+            <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="bold" title="Ctrl+B"><b>Ж</b></button>
+            <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="italic" title="Ctrl+I"><i>К</i></button>
+            <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="underline" title="Ctrl+U"><u>Ч</u></button>
+          </div>
+          <span class="ed__toolbar-spacer"></span>
+          <button type="button" class="md-btn md-btn-tonal md-state-layer" id="insertVarBtn">
+            <span aria-hidden="true">+</span> <span data-i18n="doc.insert_variable">Вставить переменную</span>
+          </button>
         </div>
 
         <div class="ed__view" id="viewEdit">
@@ -173,19 +179,33 @@
           <button type="button" class="md-btn md-btn-tonal md-state-layer" id="addPageBtn" data-i18n="doc.add_page">Добавить страницу</button>
         </div>
       </div>
-
-      <aside class="vars" id="varsPanel" aria-labelledby="varsHeading">
-        <h3 class="md-title-small" id="varsHeading" data-i18n="doc.variables">Переменные</h3>
-        <p class="doc-hint" data-i18n="doc.variables_hint">Нажмите, чтобы вставить в текст.</p>
-        <div id="varsList"></div>
-      </aside>
     </div>
+
+    <!-- Единственный DOM для селектора переменных. Одна и та же разметка на
+         desktop (компактный dialog у центра экрана) и на mobile (bottom sheet
+         во всю ширину) — разница только в CSS, JS-логика общая
+         (см. documents/css/styles.css, documents/js/app.js). Нативный
+         <dialog> даёт focus-trap, Esc и ::backdrop бесплатно. -->
+    <dialog id="varsDialog" class="md-dialog vars-dialog" aria-labelledby="varsDialogTitle">
+      <div class="vars-dialog__head">
+        <h3 class="md-title-small" id="varsDialogTitle" data-i18n="doc.variables">Переменные</h3>
+        <button type="button" class="md-btn md-btn-text md-state-layer md-icon-btn" id="varsDialogClose" aria-label="Закрыть" data-i18n-aria-label="doc.close">
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+      <label class="md-field vars-dialog__search">
+        <span data-i18n="doc.variables_search_label">Поиск переменной</span>
+        <input id="varsSearch" type="search" autocomplete="off" data-i18n-placeholder="doc.variables_search_placeholder" placeholder="Поиск переменной...">
+      </label>
+      <div class="vars-dialog__list" id="varsList"></div>
+    </dialog>
   </section>
 
 </div>
 
 <script src="../shared/nav.js"></script>
 <script src="../shared/update.js"></script>
+<script src="js/variables.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
