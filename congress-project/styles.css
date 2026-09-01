@@ -1048,35 +1048,28 @@ dialog {
      ТОЛЬКО у выбранной строки (правило ниже), перестала появляться вообще
      для обычных заданий: Edit/Mail/Delete исчезли с телефона целиком,
      включая пустое «Новое задание», которое нечем было удалить.
-     Для обычных строк (не .section-title) действия теперь показаны
-     ВСЕГДА, компактным рядом иконок — то же самое DOM/обработчики
-     (.ed/.le/.rm из renderTasks, e.stopPropagation() уже на месте),
-     без новой бизнес-логики. Для разделов (.section-title) поведение
-     оставлено прежним — их тап не менялся, и правило показа по
-     .selected для них по-прежнему нужно и работает. */
+     Действия показаны ВСЕГДА, компактным рядом иконок — то же самое
+     DOM/обработчики (.ed/.le/.rm из renderTasks, e.stopPropagation() уже
+     на месте), без новой бизнес-логики. Разделы (.section-title) теперь
+     тоже открываются прямым тапом (см. render.js), поэтому их .rm нуждается
+     в том же всегда-видимом ряду — правило больше не сужено `:not()`. */
   .program-table td.actions-cell {
     order: 10;
     flex: 1 1 100%;
-    display: none;
+    display: flex;
+    justify-content: flex-end;
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid var(--md-outline-variant)
   }
-  .program-table tr.selected td.actions-cell {
-    display: block
-  }
-  .program-table tr:not(.section-title) td.actions-cell {
-    display: flex;
-    justify-content: flex-end
-  }
-  .program-table tr:not(.section-title) td.actions-cell .actgrid {
+  .program-table td.actions-cell .actgrid {
     display: flex;
     gap: 6px
   }
-  .program-table tr:not(.section-title) td.actions-cell .primary-row {
+  .program-table td.actions-cell .primary-row {
     display: contents
   }
-  .program-table tr:not(.section-title) td.actions-cell .tiny {
+  .program-table td.actions-cell .tiny {
     width: 40px;
     height: 40px;
     padding: 0;
