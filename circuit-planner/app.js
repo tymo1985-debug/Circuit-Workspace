@@ -4646,7 +4646,12 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       this.ui.showPinGateIfNeeded();
       this.ui.showRemindersModalIfNeeded();
       this.ui.checkSixtyDayNotifications();
-      this.ui.checkAutoBackupReminder();
+      // checkAutoBackupReminder(): отключено — теперь есть общий backup всех
+      // модулей Circuit Workspace в хабе, отдельное модульное напоминание
+      // дублирует его. Функция оставлена нетронутой (не удалена), просто
+      // больше не вызывается на старте. Ручной backup/export (exportJson,
+      // downloadBackup, кнопки #backupBtn/#exportConfirmBtn) не затронут.
+      // this.ui.checkAutoBackupReminder();
       // Safety net: persist when the app is about to be hidden/closed/reloaded, in case some
       // future code path ever mutates state without calling store.save() itself. Guarded by
       // saveIfOwnStateIsCurrent() so it can never clobber newer data written by another tab —

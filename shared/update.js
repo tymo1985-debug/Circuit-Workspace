@@ -74,7 +74,7 @@
     /* Токены MD3 общего слоя с запасными значениями: файл должен выглядеть
        прилично и в модуле, открытом без shared/style.css. */
     style.textContent = [
-      '#' + BAR_ID + '{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);',
+      '#' + BAR_ID + '{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);',
       'z-index:2147483000;display:flex;align-items:center;gap:12px;flex-wrap:wrap;',
       'max-width:min(560px,calc(100vw - 24px));padding:12px 16px;border-radius:16px;',
       'background:var(--md-inverse-surface,#2f2f33);color:var(--md-inverse-on-surface,#f2f0f4);',
