@@ -149,10 +149,18 @@ body {
 .vars-dialog {
   width: min(420px, calc(100vw - 32px));
   max-height: min(600px, calc(100vh - 64px));
-  display: flex; flex-direction: column;
   padding: 0;
 }
-.vars-dialog[open] { display: flex; }
+/* КРИТИЧНО: display:flex должен жить ТОЛЬКО здесь, под [open]. Раньше он
+   стоял безусловно на базовом .vars-dialog (правило выше) — авторский CSS
+   побеждает браузерный UA-стиль `dialog:not([open]){display:none}` в каскаде
+   независимо от точной специфичности внутри origin, поэтому закрытый диалог
+   получал `display:flex` от .vars-dialog и никогда не возвращался к `none`:
+   торчал внизу страницы поверх Text/Preview на всех размерах экрана. Правило
+   `:not([open])` ниже — защита на случай, если явный display где-то ещё
+   перекроет UA-стиль повторно. */
+.vars-dialog[open] { display: flex; flex-direction: column; }
+.vars-dialog:not([open]) { display: none; }
 .vars-dialog__head {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 16px 16px 8px;
