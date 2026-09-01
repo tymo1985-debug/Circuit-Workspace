@@ -244,7 +244,7 @@ export function load(){
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
   render();store.lastSavedAt=new Date();updateSaveStatus()}
 export function newC(n,p,d,t,seriesId,letterFields){let lf=letterFields||{};let c={id:id(),name:n,place:p||"",date:d||"",theme:"",language:"",notes:"",tasks:t||[],seriesId:seriesId||null,rehearsalDate:lf.rehearsalDate||"",rehearsalTime:lf.rehearsalTime||"",recordingDeadline:lf.recordingDeadline||"",responseDeadline:lf.responseDeadline||""};store.st.congresses.unshift(c);store.st.activeId=c.id;store.sel=c.tasks[0]?.id||null;save();return c}
-export function cloneTask(t,m){let n=clone(t);n.id=id();n.linkId=null;if(m==="emptyPeople"){n.participants=(n.participants||[]).map(()=>({name:"",congregation:""}));n.confirmed=false;n.rehearsal=false;n.notes="";n.letterSent=false;n.letterSentDate="";n.status="Не назначено"}return n}
+export function cloneTask(t,m){let n=clone(t);n.id=id();n.linkId=null;if(m==="emptyPeople"){n.participants=(n.participants||[]).map(()=>({name:"",congregation:"",phone:""}));n.confirmed=false;n.rehearsal=false;n.notes="";n.letterSent=false;n.letterSentDate="";n.status="Не назначено"}return n}
 
 // ── Общие задания серии (linkId) ─────────────────────────────────────────────
 // В некоторых сериях программа повторяется: одно и то же задание у одного и

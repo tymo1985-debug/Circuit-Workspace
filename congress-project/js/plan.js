@@ -7,8 +7,8 @@ import { A } from "./state.js";
 import { dt, esc, isSection, tableHeading } from "./utils.js";
 import { fitByZoom, fitPlan, fitPlanPages, planScaleCSS, planZoomCSS } from "./plan-fit.js";
 
-export const COLS=[["time","Час"],["number","№"],["title","Тема"],["speaker","Ведучий / Промовець"],["kind","Інтерв’ю/Показ"],["duration","Хв."],["confirmed","Підтв."],["rehearsal","Реп."]];
-export function htmlCell(t,k){if(k==="speaker")return(t.participants||[]).filter(p=>p.name||p.congregation).map(p=>esc(p.name)+(p.congregation?` (${esc(p.congregation)})`:"")).join("<br>");if(k==="confirmed")return t.confirmed?"так":"";if(k==="rehearsal")return t.rehearsal?"✓":"";if(k==="time")return esc(dt(t.time));return esc(t[k]||"")}
+export const COLS=[["time","Час"],["number","№"],["title","Тема"],["speaker","Ведучий / Промовець"],["kind","Інтерв’ю/Показ"],["duration","Хв."],["confirmed","Підтв."],["rehearsal","Реп."],["phone","Мобільний номер"]];
+export function htmlCell(t,k){if(k==="speaker")return(t.participants||[]).filter(p=>p.name||p.congregation).map(p=>esc(p.name)+(p.congregation?` (${esc(p.congregation)})`:"")).join("<br>");if(k==="phone")return(t.participants||[]).filter(p=>p.phone).map(p=>(p.name?`${esc(p.name)} — `:"")+esc(p.phone)).join("<br>");if(k==="confirmed")return t.confirmed?"так":"";if(k==="rehearsal")return t.rehearsal?"✓":"";if(k==="time")return esc(dt(t.time));return esc(t[k]||"")}
 
 // keep=true — сохранить текущий выбор колонок (возврат из диалога «не помещается»)
 export function openPrintColumns(keep){

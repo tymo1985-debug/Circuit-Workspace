@@ -548,7 +548,7 @@ dialog {
 }
 .epart {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr 1fr auto;
   gap: 8px
 }
 .modal-actions {
@@ -810,7 +810,7 @@ dialog {
   .meta > label:first-child {
     grid-column: 1 / -1
   }
-  .settings-grid, .form-grid, .letter-row, .backup-row, .epart {
+  .settings-grid, .form-grid, .letter-row, .backup-row, .epart, .checks {
     grid-template-columns: 1fr
   }
   .time-row {
@@ -822,6 +822,33 @@ dialog {
   }
   .modal, .letter-modal, .wide-modal, .small-modal, .template-modal {
     width: 96vw;
+    min-width: 0
+  }
+  /* Причина horizontal overflow диалогов на узком экране: .form-grid/.checks —
+     grid, а их дети (.label, .epart, .time-row) — сами flex/grid-контейнеры.
+     У элементов grid/flex по умолчанию min-width:auto, а не 0 — это значит,
+     что минимальная ширина колонки равна min-content ширине САМОГО широкого
+     потомка. Длинные тексты <option> (например "Письмо отправлено",
+     "Ожидает ответа") и нативный минимум браузера у input[type=date]/time не
+     сжимались этим правилом, даже когда сама .modal уже была 96vw — колонка
+     упиралась в контент и раздвигала диалог за пределы viewport.
+     Ниже min-width:0 расставлен по всей цепочке grid → label(flex) →
+     input/select, а не только на верхнем уровне. */
+  .form-grid, .settings-grid, .checks, .epart, .time-row {
+    min-width: 0
+  }
+  .form-grid > label,
+  .settings-grid > label,
+  .checks > label,
+  .epart,
+  .time-row {
+    min-width: 0
+  }
+  .form-grid input, .form-grid select,
+  .settings-grid input, .settings-grid select,
+  .checks input, .checks select,
+  .epart input, .epart select,
+  .time-row input, .time-row select {
     min-width: 0
   }
   .modal-head {
@@ -1185,7 +1212,13 @@ dialog {
 /* Восемь кнопок инструментов не помещаются в одну строку на ноутбуке —
    шапка растёт вниз, а не обрезает их. Поэтому высота не фиксирована. */
 @media (max-width:900px) {
-  .md-topbar-v2 .top-actions span[data-i18n] {
+  /* :not(.md-menu *) — раньше правило гасило подписи и у пунктов выпадающего
+     меню инструментов (.md-menu__item внутри .md-menu лежит физически в
+     .top-actions), хотя рассчитано было только на отдельные кнопки шапки
+     («Письмо» и т.п.), которым тесно в строке. Сама разметка меню всегда
+     содержала иконку + <span> с нормальной подписью — прятал текст именно
+     этот селектор, а не отсутствие разметки. */
+  .md-topbar-v2 .top-actions span[data-i18n]:not(.md-menu *) {
     display: none
   }
 }
