@@ -163,13 +163,24 @@
           </button>
         </div>
 
+        <!-- Подсказка предпросмотра вынесена СЮДА (не внутрь #viewPreview) —
+             структурная правка выравнивания, не косметическая: на split-view
+             (desktop, вкладка «Текст») редактор и preview стоят рядом, и если
+             подсказка жила бы внутри #viewPreview, она бы сдвигала верхний
+             край правой колонки вниз относительно textarea слева. Здесь она
+             общая строка НАД split-area, видна только на полноэкранном
+             Preview (view === 'preview', см. setView() в documents/js/app.js)
+             — на split (view === 'edit') её не должно быть вовсе, поэтому обе
+             колонки естественно стартуют с одной линии, без искусственного
+             margin/padding для компенсации. -->
+        <p class="doc-hint" id="previewHint" data-i18n="doc.preview_hint" hidden>Переменные подставлены примерами значений — так документ будет выглядеть в готовом виде.</p>
+
         <div class="ed__view" id="viewEdit">
           <textarea class="ed__area" id="edArea" hidden></textarea>
           <div class="ed__rte rte-editor" id="edRte" contenteditable="true" hidden></div>
         </div>
 
         <div class="ed__view" id="viewPreview" hidden>
-          <p class="doc-hint" data-i18n="doc.preview_hint">Переменные подставлены примерами значений — так документ будет выглядеть в готовом виде.</p>
           <div class="ed__preview" id="edPreview"></div>
         </div>
 
