@@ -731,6 +731,22 @@ dialog {
    и десктопная таблица, письма и печать физически не могут пострадать.
    ════════════════════════════════════════════════════════════════════════ */
 @media(max-width:680px) {
+  /* САМ <dialog>, а не только .modal внутри него. Причина оставшегося
+     overflow на реальном Android-экране (после того как .form-grid/.checks/
+     input/select уже получили min-width:0 в прошлой фазе): у элемента
+     <dialog> нет собственного width/max-width НИГДЕ в этом файле — только у
+     его ребёнка .modal (width:96vw). <dialog> рендерится в top layer браузера
+     со своим отдельным алгоритмом авто-размера, не как обычный блочный
+     потомок страницы; html,body{overflow-x:hidden} на него не действует,
+     поэтому если авто-ширина диалога не совпадает 1-в-1 с шириной .modal на
+     конкретной версии WebView/Chrome, диалог остаётся без внешнего потолка
+     вообще. vw — всегда от viewport, не от родителя, поэтому это жёсткая
+     граница независимо от того, что происходит внутри .modal. */
+  dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    min-width: 0
+  }
   body {
     font-size: 13px
   }
@@ -821,7 +837,7 @@ dialog {
     width: 100%
   }
   .modal, .letter-modal, .wide-modal, .small-modal, .template-modal {
-    width: 96vw;
+    width: 100%;
     min-width: 0
   }
   /* Причина horizontal overflow диалогов на узком экране: .form-grid/.checks —
@@ -1027,9 +1043,17 @@ dialog {
     margin: 0
   }
 
-  /* Действия появляются у выбранного задания. Одно касание по карточке уже
-     выбирает её (renderTasks вешает обработчик), поэтому получается
-     «нажал — увидел действия», без единой новой строки JS. */
+  /* Прошлая фаза: обычный тап по карточке стал сразу вызывать openEdit,
+     минуя store.sel/.selected. Побочный эффект — .actions-cell, видимая
+     ТОЛЬКО у выбранной строки (правило ниже), перестала появляться вообще
+     для обычных заданий: Edit/Mail/Delete исчезли с телефона целиком,
+     включая пустое «Новое задание», которое нечем было удалить.
+     Для обычных строк (не .section-title) действия теперь показаны
+     ВСЕГДА, компактным рядом иконок — то же самое DOM/обработчики
+     (.ed/.le/.rm из renderTasks, e.stopPropagation() уже на месте),
+     без новой бизнес-логики. Для разделов (.section-title) поведение
+     оставлено прежним — их тап не менялся, и правило показа по
+     .selected для них по-прежнему нужно и работает. */
   .program-table td.actions-cell {
     order: 10;
     flex: 1 1 100%;
@@ -1040,6 +1064,23 @@ dialog {
   }
   .program-table tr.selected td.actions-cell {
     display: block
+  }
+  .program-table tr:not(.section-title) td.actions-cell {
+    display: flex;
+    justify-content: flex-end
+  }
+  .program-table tr:not(.section-title) td.actions-cell .actgrid {
+    display: flex;
+    gap: 6px
+  }
+  .program-table tr:not(.section-title) td.actions-cell .primary-row {
+    display: contents
+  }
+  .program-table tr:not(.section-title) td.actions-cell .tiny {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    flex: 0 0 auto
   }
   .program-table td.actions-cell .actgrid {
     grid-template-columns: repeat(3, 1fr);
