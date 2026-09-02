@@ -158,6 +158,23 @@
             <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="underline" title="Ctrl+U"><u>Ч</u></button>
           </div>
           <span class="ed__toolbar-spacer"></span>
+          <!-- Меню «Вставка» — второй способ вызвать существующий variable
+               picker (см. documents/js/app.js: openVarsDialog()). Не новый
+               picker и не новая логика переменных — переиспользован общий
+               .md-menu/.md-menu__panel/.md-menu__item примитив
+               (shared/style.css, раздел 5.2a), тот же, что уже использует
+               congress-project/js/topbar-menu.js. Единственный текущий
+               пункт — «Переменная…»; будущие пункты (дата, разделитель,
+               подпись) остаются на следующие фазы, структура меню их не
+               предполагает заранее placeholder'ами. -->
+          <div class="md-menu">
+            <button type="button" class="md-btn md-btn-outlined md-state-layer" id="insertMenuBtn" aria-haspopup="true" aria-expanded="false">
+              <span data-i18n="doc.insert_menu">Вставка</span>
+            </button>
+            <div class="md-menu__panel" id="insertMenu" role="menu" hidden>
+              <button type="button" class="md-menu__item" id="insertMenuVarItem" role="menuitem" data-i18n="doc.insert_menu_variable">Переменная…</button>
+            </div>
+          </div>
           <button type="button" class="md-btn md-btn-tonal md-state-layer" id="insertVarBtn">
             <span aria-hidden="true">+</span> <span data-i18n="doc.insert_variable">Вставить переменную</span>
           </button>

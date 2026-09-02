@@ -505,12 +505,17 @@
        в editable режим ни при каком будущем изменении раскладки. */
     var editable = view === 'edit';
     $('#insertVarBtn').hidden = !editable;
+    /* Меню «Вставка» — тот же принцип: видно только на «Тексте», источник
+       истины `view === 'edit'` напрямую (documents/index.html: doc.insert_menu). */
+    $('#insertMenuBtn').closest('.md-menu').hidden = !editable;
     /* Уход с «Текста» закрывает диалог переменных, если он был открыт —
        иначе он остался бы открытым поверх Preview/Pages, где вставлять
        уже некуда. На wide-split редактор остаётся виден вместе с preview,
        поэтому диалог здесь не закрывается сам по себе — только когда
-       вкладка реально не «Текст» (editable === false). */
-    if (!editable) closeVarsDialog();
+       вкладка реально не «Текст» (editable === false). Меню «Вставка»
+       закрывается тем же условием — не должно оставаться открытым при
+       переходе на Preview/Pages. */
+    if (!editable) { closeVarsDialog(); closeInsertMenu(); }
     if (view === 'preview' || (wide && view === 'edit')) renderPreview();
   }
 
@@ -823,6 +828,44 @@
   /** Пересобрать список переменных для текущего шаблона и открыть диалог.
       Курсор редактора сохраняется ПЕРВЫМ действием — до того, как что-либо
       ещё (включая showModal()) успеет сдвинуть фокус или изменить DOM. */
+  /* ─── Меню «Вставка» ───
+     Второй способ вызвать существующий variable picker — не новая логика,
+     переиспользует openVarsDialog() как есть. Поведение (open/close, клик
+     мимо, Esc, стрелки) — тот же паттерн, что уже есть в
+     congress-project/js/topbar-menu.js для общего примитива .md-menu
+     (shared/style.css, раздел 5.2a): там это отдельный ES-модуль, здесь —
+     часть общего IIFE Documents, стиль этого файла. Правило второго
+     применения (см. комментарий в shared/style.css) не требует выносить
+     JS-поведение в shared — оно всё ещё специфично каждому модулю. */
+  function isInsertMenuOpen() {
+    var panel = $('#insertMenu');
+    return !!(panel && !panel.hidden);
+  }
+
+  function openInsertMenu() {
+    var panel = $('#insertMenu');
+    var trigger = $('#insertMenuBtn');
+    if (!panel || !trigger) return;
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    var first = panel.querySelector('.md-menu__item');
+    if (first) first.focus();
+  }
+
+  function closeInsertMenu(returnFocus) {
+    var panel = $('#insertMenu');
+    var trigger = $('#insertMenuBtn');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) trigger.focus();
+    }
+  }
+
+  /** Пересобрать список переменных для текущего шаблона и открыть диалог.
+      Курсор редактора сохраняется ПЕРВЫМ действием — до того, как что-либо
+      ещё (включая showModal()) успеет сдвинуть фокус или изменить DOM. */
   function openVarsDialog() {
     saveEditorCaret();
     varsAll = collectVars();
@@ -1085,6 +1128,46 @@
       if (e.target === e.currentTarget) closeVarsDialog();
     });
     bindVarsDialogDrag();
+
+    /* Меню «Вставка» — второй вход в тот же variable picker. Клик по пункту
+       «Переменная…» закрывает меню и зовёт РОВНО ту же openVarsDialog(),
+       что и существующая кнопка «+ Вставить переменную» — никакой новой
+       caret-логики здесь нет и не нужно: saveEditorCaret() внутри
+       openVarsDialog() сохраняет позицию курсора независимо от того, что
+       именно вызвало открытие диалога. */
+    $('#insertMenuBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (isInsertMenuOpen()) closeInsertMenu(false); else openInsertMenu();
+    });
+    $('#insertMenuVarItem').addEventListener('click', function () {
+      closeInsertMenu(false);
+      openVarsDialog();
+    });
+    document.addEventListener('click', function (e) {
+      if (!isInsertMenuOpen()) return;
+      if (e.target.closest('.md-menu')) return;
+      closeInsertMenu(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!isInsertMenuOpen()) return;
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeInsertMenu(true);
+        return;
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      var list = Array.prototype.filter.call(
+        $('#insertMenu').querySelectorAll('.md-menu__item'),
+        function (el) { return !el.hidden; }
+      );
+      if (!list.length) return;
+      e.preventDefault();
+      var i = list.indexOf(document.activeElement);
+      var next = e.key === 'ArrowDown'
+        ? list[(i + 1) % list.length]
+        : list[(i - 1 + list.length) % list.length];
+      next.focus();
+    });
 
     $('#pagesList').addEventListener('input', markDirty);
     $('#pagesList').addEventListener('click', function (e) {
