@@ -108,39 +108,44 @@
       id: 'sys.visit.congregation.email',
       context: 'visit.congregation.email',
       module: 'circuit-planner',
-      format: 'text',
+      format: 'html',
       title: 'Тело сопроводительного письма (Congregation)',
       /* Текст русский — это записка координатору, а не сам документ.
          Поэтому колонка ru, а не uk: подписывать русский текст украинским
-         языком нельзя, даже если fallback всё равно отдаст его любому языку. */
+         языком нельзя, даже если fallback всё равно отдаст его любому языку.
+         Формат переведён на html 02.09.2026 (RTE Ж/К/Ч для этих трёх
+         email-body шаблонов) — старые legacy-токены в одинарных скобках
+         ({congregation}, {start_date}, {end_date}) не тронуты и продолжают
+         разрешаться движком (TOKEN regex ищет их независимо от окружающей
+         HTML-разметки). Body обёрнут в <p>, как это делает plainToHtml()
+         для остальных text-шаблонов — тот же визуальный результат, что и
+         раньше, просто теперь редактируемый через RTE. */
       translations: {
-        ru: { subject: null, body: "Здравствуйте! Направляю письмо перед визитом к собранию {congregation} ({start_date} — {end_date}), см. вложение." },
+        ru: { subject: null, body: "<p>Здравствуйте! Направляю письмо перед визитом к собранию {congregation} ({start_date} — {end_date}), см. вложение.</p>" },
       },
     },
     {
       id: 'sys.visit.group.email',
       context: 'visit.group.email',
       module: 'circuit-planner',
-      format: 'text',
+      format: 'html',
       title: 'Тело сопроводительного письма (Group)',
-      /* Текст русский — это записка координатору, а не сам документ.
-         Поэтому колонка ru, а не uk: подписывать русский текст украинским
-         языком нельзя, даже если fallback всё равно отдаст его любому языку. */
+      /* См. пояснение у sys.visit.congregation.email выше — тот же перевод
+         на html, тот же принцип обёртки в <p>. */
       translations: {
-        ru: { subject: null, body: "Здравствуйте! Направляю письмо перед визитом к группе {congregation} ({start_date} — {end_date}), см. вложение." },
+        ru: { subject: null, body: "<p>Здравствуйте! Направляю письмо перед визитом к группе {congregation} ({start_date} — {end_date}), см. вложение.</p>" },
       },
     },
     {
       id: 'sys.visit.pregroup.email',
       context: 'visit.pregroup.email',
       module: 'circuit-planner',
-      format: 'text',
+      format: 'html',
       title: 'Тело сопроводительного письма (Pregroup)',
-      /* Текст русский — это записка координатору, а не сам документ.
-         Поэтому колонка ru, а не uk: подписывать русский текст украинским
-         языком нельзя, даже если fallback всё равно отдаст его любому языку. */
+      /* См. пояснение у sys.visit.congregation.email выше — тот же перевод
+         на html, тот же принцип обёртки в <p>. */
       translations: {
-        ru: { subject: null, body: "Здравствуйте! Направляю письмо перед визитом к предгруппе {congregation} ({start_date} — {end_date}), см. вложение." },
+        ru: { subject: null, body: "<p>Здравствуйте! Направляю письмо перед визитом к предгруппе {congregation} ({start_date} — {end_date}), см. вложение.</p>" },
       },
     },
     /* ── Школа пионеров (фаза 6, 14.08.2026) ──────────────────────────────

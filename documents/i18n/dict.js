@@ -141,6 +141,7 @@
 
       'doc.lang_columns_label': 'Языковые версии документа',
       'doc.lang_empty': 'перевода нет',
+      'doc.lang_new': 'новый перевод',
       'doc.pending_with_fallback': 'Перевода на этот язык нет. Пока он пуст, документ печатается на {lang}.',
       'doc.pending_empty': 'Текста пока нет ни на одном языке.',
       'doc.confirm_restore': 'Вернуть системный текст? Ваша версия будет удалена.',
@@ -272,6 +273,7 @@
 
       'doc.lang_columns_label': 'Мовні версії документа',
       'doc.lang_empty': 'перекладу немає',
+      'doc.lang_new': 'новий переклад',
       'doc.pending_with_fallback': 'Перекладу на цю мову немає. Поки він порожній, документ друкується на {lang}.',
       'doc.pending_empty': 'Тексту поки немає ні на жодній мові.',
       'doc.confirm_restore': 'Повернути системний текст? Ваша версія буде видалена.',
@@ -401,6 +403,7 @@
 
       'doc.lang_columns_label': 'Document language versions',
       'doc.lang_empty': 'no translation',
+      'doc.lang_new': 'new translation',
       'doc.pending_with_fallback': 'There is no translation into this language. For now, it\'s empty, the document is printed in {lang}.',
       'doc.pending_empty': 'There is no text in any language yet.',
       'doc.confirm_restore': 'Restore system text? Your version will be deleted.',
@@ -530,6 +533,7 @@
 
       'doc.lang_columns_label': 'Wersje językowe dokumentu',
       'doc.lang_empty': 'brak tłumaczenia',
+      'doc.lang_new': 'nowe tłumaczenie',
       'doc.pending_with_fallback': 'Nie ma tłumaczenia na ten język. Na razie jest pusty, dokument drukuje się w {lang}.',
       'doc.pending_empty': 'Na żadnym języku tekstu jeszcze nie ma.',
       'doc.confirm_restore': 'Przywrócić tekst systemowy? Twoja wersja zostanie usunięta.',
@@ -659,6 +663,7 @@
 
       'doc.lang_columns_label': 'Sprachversionen des Dokuments',
       'doc.lang_empty': 'keine Übersetzung',
+      'doc.lang_new': 'neue Übersetzung',
       'doc.pending_with_fallback': 'Es gibt keine Übersetzung in diese Sprache. Vorläufig ist das Dokument in {lang} gedruckt.',
       'doc.pending_empty': 'Es gibt bisher noch keinen Text in irgendeiner Sprache.',
       'doc.confirm_restore': 'Systemtext wiederherstellen? Ihre Version wird gelöscht.',

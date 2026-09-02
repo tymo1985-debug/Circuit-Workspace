@@ -50,6 +50,34 @@
     'pioneer-school': ['sender', 'student', 'school', 'doc'],
   };
 
+  /* Язык ДОКУМЕНТА (не язык интерфейса, не путать с CWDocLang, который
+     отвечает за отображаемый язык UI хаба). Фиксированный список из пяти
+     языков проекта — тот же порядок, что уже используется в
+     `CWDocLang.init({langs: [...]})` ниже, для консистентности. Раньше
+     доступные для выбора языки строились из `Object.keys(tpl.translations)`
+     — при одной колонке (например, только RU у builtin) пользователь видел
+     единственный вариант и не мог создать перевод на другой язык вовсе. */
+  var LANG_LIST = ['uk', 'ru', 'de', 'pl', 'en'];
+
+  /* Lazy-миграция text→html только для этих трёх email-body шаблонов
+     (решение 02.09.2026). НЕ трогает shared/templates.js/effective() —
+     решение целиком локально в Documents, чтобы не расширять scope ради
+     трёх id. Причина, почему просто поднять base.format до 'html' в
+     builtin.js недостаточно: effective() в shared/templates.js мёржит
+     own (сохранённый override) ПОВЕРХ base — уже существующий у
+     пользователя override с format:'text' продолжил бы победу над новым
+     base.format:'html', и RTE не появился бы, пока пользователь не сделает
+     Restore original (что стирает его текст — недопустимо, п.2 решения).
+     Вместо этого здесь принудительно считаем isHtml()===true для этих id
+     ВСЕГДА, а loadColumn() ниже на лету прогоняет старый text-body через
+     уже существующий plainToHtml() ТОЛЬКО для отображения — ничего не
+     пишется в CWDB, пока пользователь не нажмёт Save явно. */
+  var RTE_MIGRATION_IDS = {
+    'sys.visit.congregation.email': true,
+    'sys.visit.group.email': true,
+    'sys.visit.pregroup.email': true,
+  };
+
   var state = {
     screen: 'library',
     filter: 'all',
@@ -380,13 +408,42 @@
     return state.id && self.CWTemplates ? self.CWTemplates.get(state.id) : null;
   }
 
-  function isHtml(tpl) { return (tpl && tpl.format) === 'html'; }
+  /* isHtml() — источник истины для UI (тулбар, textarea/RTE видимость).
+     Для трёх email-body шаблонов ВСЕГДА true, даже если сырой tpl.format
+     (после merge в effective()) всё ещё 'text' от старого пользовательского
+     override — это и есть принудительная сторона lazy-миграции. Для всех
+     остальных шаблонов поведение не изменилось ни на йоту. */
+  function isHtml(tpl) {
+    if (tpl && RTE_MIGRATION_IDS[tpl.id]) return true;
+    return (tpl && tpl.format) === 'html';
+  }
+
+  /** true — ровно тот случай, когда body ещё нужно на лету прогнать через
+      plainToHtml() перед показом в RTE: это один из трёх мигрируемых id,
+      и СЫРОЙ (не принудительный) tpl.format всё ещё 'text' — то есть
+      существует старый пользовательский override, сохранённый до перехода
+      builtin на html, и он ещё ни разу не проходил через новый Save.
+      Чистый новый builtin (own отсутствует, tpl.format уже 'html' из
+      builtin.js) и уже смигрированный через Save override (tpl.format
+      реально 'html' в записи) оба возвращают false — body в обоих случаях
+      уже настоящий HTML, повторный plainToHtml() испортил бы разметку. */
+  function needsLazyHtmlMigration(tpl) {
+    return !!(tpl && RTE_MIGRATION_IDS[tpl.id] && tpl.format === 'text');
+  }
 
   /** Сырой текст выбранной языковой колонки — БЕЗ подстановки запасного языка:
       в редакторе нужно видеть, что колонка пуста, а не чужой текст. */
   function columnBody(tpl, lang) {
     var entry = (tpl.translations || {})[lang];
-    return entry && entry.body ? entry.body : '';
+    var body = entry && entry.body ? entry.body : '';
+    /* Lazy-миграция: старый text-body показывается как HTML только для
+       отображения — plainToHtml() экранирует HTML-спецсимволы (значит
+       variables/tokens в фигурных скобках не задеты, escapeHtml не трогает
+       { }), сохраняет переносы строк через <p>/<br>. Ничего не записывается
+       обратно в CWDB здесь — только следующий явный Save (см. save() ниже)
+       зафиксирует результат с format:'html'. */
+    if (body && needsLazyHtmlMigration(tpl)) body = plainToHtml(body);
+    return body;
   }
 
   function openEditor(id) {
@@ -402,7 +459,12 @@
     $('#edTitle').textContent = nameOf(tpl);
     $('#edBadge').textContent = t(tpl.custom ? 'doc.badge_custom' : 'doc.badge_system');
     $('#resetBtn').hidden = !tpl.custom;
-    $('#tabPages').hidden = !isHtml(tpl);
+    /* Вкладка «Страницы» — не просто зеркало isHtml(): три мигрируемых
+       email-body шаблона теперь принудительно isHtml()===true (lazy RTE
+       migration), но у них никогда не было структуры pages (в отличие от
+       sys.visit.*.letter, где memo-страница — часть builtin) и не должно
+       появляться пустой вкладки только из-за смены формата отображения. */
+    $('#tabPages').hidden = !isHtml(tpl) || !(tpl.pages && tpl.pages.length);
     renderLangs();
     loadColumn();
     setView('edit');
@@ -419,16 +481,29 @@
   function renderLangs() {
     var tpl = currentTpl();
     var tr = tpl.translations || {};
-    $('#edLangs').innerHTML = Object.keys(tr).map(function (lang) {
+    /* Панель строится из фиксированных 5 языков (LANG_LIST), а не только
+       Object.keys(tr) — иначе при одной колонке (например, только RU у
+       builtin) пользователь видел бы единственный вариант и не мог создать
+       перевод на другой язык вовсе. Каждый пункт помечает, есть ли уже
+       колонка и заполнена ли она — но сам список пунктов не сужается. */
+    $('#edLangMenuPanel').innerHTML = LANG_LIST.map(function (lang) {
       var on = state.lang === lang;
+      var exists = !!tr[lang];
       var filled = !!(tr[lang] && tr[lang].body);
-      return '<button type="button" class="md-chip' + (on ? ' selected' : '') + '"'
-        + ' aria-pressed="' + on + '" data-lang="' + lang + '">' + lang.toUpperCase()
-        + (filled ? '' : ' · ' + escapeHtml(t('doc.lang_empty'))) + '</button>';
+      var suffix = exists
+        ? (filled ? '' : ' · ' + escapeHtml(t('doc.lang_empty')))
+        : ' · ' + escapeHtml(t('doc.lang_new'));
+      return '<button type="button" class="md-menu__item' + (on ? ' selected' : '') + '"'
+        + ' role="menuitemradio" aria-checked="' + on + '" data-lang="' + lang + '">' + lang.toUpperCase()
+        + suffix + '</button>';
     }).join('');
+    $('#edLangMenuCurrent').textContent = state.lang.toUpperCase();
 
-    /* Пустая колонка — не ошибка, а «перевода пока нет». Говорим об этом
-       прямо и называем язык, который увидит получатель документа. */
+    /* Пустая колонка — не ошибка, а «перевода пока нет» (или «ещё не
+       создан», для языка, у которого пока нет записи в translations вовсе —
+       columnBody() в обоих случаях честно вернёт '', разница только в
+       тексте подсказки). Говорим об этом прямо и называем язык, который
+       увидит получатель документа, если он есть. */
     var pending = $('#edPending');
     if (columnBody(tpl, state.lang)) { pending.hidden = true; return; }
     var fallback = Object.keys(tr).filter(function (l) { return tr[l] && tr[l].body; })[0];
@@ -864,6 +939,37 @@
     }
   }
 
+  /* ─── Меню выбора языка документа ───
+     Тот же .md-menu примитив и тот же паттерн open/close, что и у меню
+     «Вставка» выше — не язык интерфейса (CWDocLang/CWI18n), а язык КОНКРЕТНОГО
+     документа (state.lang). Выбор языка не должен трогать язык UI ни при
+     каком сценарии. */
+  function isLangMenuOpen() {
+    var panel = $('#edLangMenuPanel');
+    return !!(panel && !panel.hidden);
+  }
+
+  function openLangMenu() {
+    var panel = $('#edLangMenuPanel');
+    var trigger = $('#edLangMenuBtn');
+    if (!panel || !trigger) return;
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    var current = panel.querySelector('.md-menu__item.selected') || panel.querySelector('.md-menu__item');
+    if (current) current.focus();
+  }
+
+  function closeLangMenu(returnFocus) {
+    var panel = $('#edLangMenuPanel');
+    var trigger = $('#edLangMenuBtn');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) trigger.focus();
+    }
+  }
+
   /** Пересобрать список переменных для текущего шаблона и открыть диалог.
       Курсор редактора сохраняется ПЕРВЫМ действием — до того, как что-либо
       ещё (включая showModal()) успеет сдвинуть фокус или изменить DOM. */
@@ -1004,7 +1110,15 @@
       body: editorValue(),
       context: tpl.context,
       module: tpl.module,
-      format: tpl.format,
+      /* Для трёх мигрируемых email-body шаблонов ВСЕГДА пишем 'html',
+         даже если сырой tpl.format ещё 'text' от старого override — именно
+         этот Save и есть точка, которая необратимо фиксирует миграцию:
+         CWTemplates.save() (shared/templates.js) берёт format из patch
+         первым приоритетом, значит следующий reopen увидит уже настоящий
+         html-override без нужды в needsLazyHtmlMigration()/isHtml()
+         принудительной ветке — но эта ветка остаётся безвредной защитой,
+         не переписывать effective()/save() в shared ради этого. */
+      format: RTE_MIGRATION_IDS[tpl.id] ? 'html' : tpl.format,
       title: tpl.title,
     };
     if (isHtml(tpl)) patch.pages = collectPages();
@@ -1081,14 +1195,44 @@
       showLibrary();
     });
 
-    $('#edLangs').addEventListener('click', function (e) {
+    $('#edLangMenuBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (isLangMenuOpen()) closeLangMenu(false); else openLangMenu();
+    });
+    $('#edLangMenuPanel').addEventListener('click', function (e) {
       var btn = e.target.closest('[data-lang]');
       if (!btn) return;
+      closeLangMenu(false);
       if (state.dirty && !window.confirm(t('doc.confirm_leave'))) return;
       state.lang = btn.dataset.lang;
       state.dirty = false;
       renderLangs();
       loadColumn();
+    });
+    document.addEventListener('click', function (e) {
+      if (!isLangMenuOpen()) return;
+      if (e.target.closest('#edLangMenu')) return;
+      closeLangMenu(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!isLangMenuOpen()) return;
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeLangMenu(true);
+        return;
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      var list = Array.prototype.filter.call(
+        $('#edLangMenuPanel').querySelectorAll('.md-menu__item'),
+        function (el) { return !el.hidden; }
+      );
+      if (!list.length) return;
+      e.preventDefault();
+      var i = list.indexOf(document.activeElement);
+      var next = e.key === 'ArrowDown'
+        ? list[(i + 1) % list.length]
+        : list[(i - 1 + list.length) % list.length];
+      next.focus();
     });
 
     Array.prototype.forEach.call(document.querySelectorAll('.doc-tab'), function (btn) {
