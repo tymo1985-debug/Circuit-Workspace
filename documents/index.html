@@ -133,7 +133,24 @@
       <span class="md-chip" id="edBadge"></span>
       <span class="ed__spacer"></span>
       <button type="button" class="md-btn md-btn-outlined md-state-layer" id="resetBtn" data-i18n="doc.restore_original">Восстановить оригинал</button>
-      <button type="button" class="md-btn md-btn-filled md-state-layer" id="saveBtn" data-i18n="doc.save">Сохранить</button>
+      <!-- Save-статус переехал сюда, рядом с самой кнопкой (решение
+           02.09.2026, финальный UX-аудит, пункт B1): раньше единственный
+           #saveStatus стоял в шапке хаба, далеко от места действия. Тот же
+           переиспользуемый shared-компонент .md-savestatus (shared/style.css,
+           раздел 5.11 — уже используется Конгрессами/Назначениями в topbar),
+           просто второй экземпляр здесь, не новый визуальный примитив.
+           editorStatus() (documents/js/app.js) — отдельная функция от
+           status(): старый #saveStatus в topbar остаётся для того, что не
+           относится к состоянию редактора (копирование в Архиве, ошибка
+           создания шаблона до открытия редактора) — единственный источник
+           истины для КАЖДОГО из двух разных состояний, не один элемент на
+           два разных смысла. #edBadge (системный/изменён — происхождение
+           записи) и #editorSaveStatus (dirty/saving/saved — состояние
+           несохранённых правок) сознательно разделены, это разные вещи. -->
+      <div class="ed__save-group">
+        <button type="button" class="md-btn md-btn-filled md-state-layer" id="saveBtn" data-i18n="doc.save">Сохранить</button>
+        <span class="md-savestatus" id="editorSaveStatus" aria-live="polite"></span>
+      </div>
     </div>
 
     <!-- Язык ДОКУМЕНТА (не язык интерфейса) — выпадающее меню из фиксированных

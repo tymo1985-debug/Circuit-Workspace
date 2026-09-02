@@ -129,6 +129,22 @@
     if (el) el.textContent = key ? t(key) : '';
   }
 
+  /** Save-статус РЕДАКТОРА — отдельно от status() (topbar), который
+      обслуживает несвязанные состояния (копирование в Архиве, ошибка
+      создания шаблона до открытия редактора). Один источник истины для
+      dirty/saving/saved/error конкретно этого экрана — второй DOM-элемент
+      с тем же смыслом появиться не должен. `dataState` включает уже
+      существующий CSS `.md-savestatus[data-state="..."]` (shared/style.css,
+      раздел 5.11) — цветной индикатор был определён там с самого начала,
+      но JS никогда не выставлял атрибут, поэтому визуально не работал. */
+  function editorStatus(key, dataState) {
+    var el = $('#editorSaveStatus');
+    if (!el) return;
+    el.textContent = key ? t(key) : '';
+    if (dataState) el.setAttribute('data-state', dataState);
+    else el.removeAttribute('data-state');
+  }
+
   function templates() {
     return self.CWTemplates && self.CWTemplates.all ? self.CWTemplates.all() : [];
   }
@@ -480,6 +496,10 @@
        sys.visit.*.letter, где memo-страница — часть builtin) и не должно
        появляться пустой вкладки только из-за смены формата отображения. */
     $('#tabPages').hidden = !isHtml(tpl) || !(tpl.pages && tpl.pages.length);
+    /* Открытие шаблона всегда начинается с «чистого» состояния — без этого
+       статус от предыдущего открытого шаблона (например, «сохранено»)
+       остался бы виден до первого действия в новом. */
+    editorStatus(null, null);
     renderLangs();
     loadColumn();
     setView('edit');
@@ -1112,7 +1132,7 @@
 
   function markDirty() {
     state.dirty = true;
-    status('doc.status_unsaved');
+    editorStatus('doc.status_unsaved', 'dirty');
   }
 
   function collectPages() {
@@ -1146,17 +1166,17 @@
       title: tpl.title,
     };
     if (isHtml(tpl)) patch.pages = collectPages();
-    status('doc.status_saving');
+    editorStatus('doc.status_saving', 'saving');
     self.CWTemplates.save(state.id, state.lang, patch).then(function () {
       state.dirty = false;
-      status('doc.status_saved');
+      editorStatus('doc.status_saved', null);
       var fresh = currentTpl();
       $('#edBadge').textContent = t('doc.badge_custom');
       $('#resetBtn').hidden = !fresh.custom;
       renderLangs();
     }).catch(function (error) {
       console.error('Документы: не удалось сохранить', error);
-      status('doc.status_save_failed');
+      editorStatus('doc.status_save_failed', 'error');
     });
   }
 
@@ -1208,15 +1228,15 @@
        ОДНОГО языка их трогать незачем, save() и так оставит own.pages как
        есть, если patch.pages не передан (shared/templates.js: `pages !==
        undefined ? patch.pages : ((own && own.pages) || ...)`). */
-    status('doc.status_saving');
+    editorStatus('doc.status_saving', 'saving');
     self.CWTemplates.save(state.id, state.lang, patch).then(function () {
       state.dirty = false;
-      status('doc.status_restored');
+      editorStatus('doc.status_restored', null);
       renderLangs();
       loadColumn();
     }).catch(function (error) {
       console.error('Документы: не удалось восстановить оригинал', error);
-      status('doc.status_save_failed');
+      editorStatus('doc.status_save_failed', 'error');
     });
   }
 
