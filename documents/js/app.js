@@ -937,6 +937,12 @@
     var panel = $('#insertMenu');
     var trigger = $('#insertMenuBtn');
     if (!panel || !trigger) return;
+    /* Взаимоисключение с языковым меню (решение 02.09.2026, найдено
+       финальным UX-аудитом): раньше оба .md-menu могли быть открыты
+       одновременно, если пользователь открывал одно, не закрыв другое.
+       Минимальная правка — закрыть другое меню перед открытием этого,
+       без общего menu-controller. */
+    closeLangMenu(false);
     panel.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
     var first = panel.querySelector('.md-menu__item');
@@ -968,6 +974,9 @@
     var panel = $('#edLangMenuPanel');
     var trigger = $('#edLangMenuBtn');
     if (!panel || !trigger) return;
+    /* Взаимоисключение с меню «Вставка» — см. симметричную заметку в
+       openInsertMenu() выше. */
+    closeInsertMenu(false);
     panel.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
     var current = panel.querySelector('.md-menu__item.selected') || panel.querySelector('.md-menu__item');
