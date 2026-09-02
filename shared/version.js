@@ -39,5 +39,5 @@ self.CW_MODULES = {
   'circuit-planner':  { title: 'Клиндарий',       version: '9.94.4' },
   'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.14' },
   'appointments':     { title: 'Назначения',      version: '5.5.53'  },
-  'documents':        { title: 'Документы и данные', version: '1.10.3'  },
+  'documents':        { title: 'Документы и данные', version: '1.10.4'  },
 };
