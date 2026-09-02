@@ -408,6 +408,21 @@
     return state.id && self.CWTemplates ? self.CWTemplates.get(state.id) : null;
   }
 
+  /** Чистый системный (builtin) шаблон по id — БЕЗ слияния с пользовательским
+      override, в отличие от currentTpl()/CWTemplates.get(), которые всегда
+      возвращают effective() (уже смёрженный результат). Нужен для Restore
+      original по одному языку (см. resetToOriginal() ниже): требуется знать,
+      что реально было в builtin для конкретного языка, а не то, что сейчас
+      видно в объединённой записи. `self.CW_BUILTIN_TEMPLATES` — та же самая
+      глобальная переменная, что уже читает приватная builtinById() внутри
+      shared/templates.js; здесь просто прямой доступ к ней, без изменения
+      публичного API shared-слоя ради одной функции в одном модуле. */
+  function builtinTpl(id) {
+    var list = self.CW_BUILTIN_TEMPLATES || [];
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
   /* isHtml() — источник истины для UI (тулбар, textarea/RTE видимость).
      Для трёх email-body шаблонов ВСЕГДА true, даже если сырой tpl.format
      (после merge в effective()) всё ещё 'text' от старого пользовательского
@@ -1136,36 +1151,63 @@
     });
   }
 
+  /** Restore original относится ТОЛЬКО к текущему state.lang (решение
+      02.09.2026) — не ко всей записи. CWTemplates.reset(id) больше не
+      вызывается из этой кнопки: он удаляет override ВСЕХ языков разом, а
+      пользователь просит вернуть то, что он сейчас смотрит, не тронуть
+      остальные колонки, которые мог сохранить отдельно. Технически это
+      обычный CWTemplates.save() с телом из builtin для текущего языка —
+      save() уже устроен так, что переписывает только translations[lang],
+      сохраняя остальные ключи как есть (shared/templates.js), поэтому
+      shared-слой не менялся вовсе. */
   function resetToOriginal() {
     var tpl = currentTpl();
     if (!tpl || !tpl.custom) return;
-    if (!window.confirm(t('doc.confirm_restore'))) return;
-    self.CWTemplates.reset(state.id).then(function () {
-      var fresh = currentTpl();
-      if (!fresh) { showLibrary(); return; }
-      /* Пользовательской записи могло не быть в системном наборе вовсе
-         (например, шаблон под конкретный тип задания) — тогда возвращаться
-         некуда, и мы уходим в список. */
-      state.dirty = false;
-      /* Набор языков после reset() сужается до builtin — у пользовательской
-         версии могло быть больше колонок перевода (например, кто-то вручную
-         добавил uk, которого нет в системном тексте). Без этого пересчёта
-         state.lang оставался бы на уже несуществующей колонке, и
-         columnBody() ниже молча вернула бы пустую строку — редактор выглядел
-         бы так, будто Restore original стёр текст, хотя реальный
-         builtin-текст (например, на ru) остаётся целым и просто не на той
-         вкладке. Тот же принцип fallback, что уже в openEditor(): остаться
-         на текущем языке, если он всё ещё доступен, иначе — первый доступный
-         язык нового (более узкого) набора. */
-      var langs = Object.keys(fresh.translations || {});
-      if (langs.indexOf(state.lang) < 0) state.lang = langs[0];
-      $('#edBadge').textContent = t('doc.badge_system');
-      $('#resetBtn').hidden = true;
+    var base = builtinTpl(state.id);
+    var baseEntry = base && base.translations && base.translations[state.lang];
+    if (!baseEntry) {
+      /* Системного оригинала для текущего языка нет — ничего не удаляем и
+         не изменяем молча. Раньше (до этого решения) кнопка вызывала
+         reset(id) на всю запись и state.lang тихо перескакивал на первый
+         доступный builtin-язык — технически без потери данных, но UX вводил
+         в заблуждение: пользователь нажимал «восстановить свой язык», а
+         получал совсем другой. Теперь — явный выбор. */
+      var availableLangs = Object.keys(base && base.translations || {});
+      var suggested = availableLangs[0];
+      if (!suggested) return; /* у builtin вообще нет ни одного языка — восстанавливать нечего */
+      var proceed = window.confirm(t('doc.restore_lang_missing', {
+        lang: state.lang.toUpperCase(),
+        fallback: suggested.toUpperCase(),
+      }));
+      if (!proceed) return;
+      state.lang = suggested;
       renderLangs();
       loadColumn();
+      return;
+    }
+    if (!window.confirm(t('doc.confirm_restore'))) return;
+    var patch = {
+      body: baseEntry.body || '',
+      subject: baseEntry.subject !== undefined ? baseEntry.subject : null,
+      context: tpl.context,
+      module: tpl.module,
+      format: RTE_MIGRATION_IDS[tpl.id] ? 'html' : (base.format || tpl.format),
+      title: tpl.title,
+    };
+    /* Дополнительные страницы (памятка координатору у sys.visit.*.letter)
+       принадлежат записи целиком, не колонке перевода — при восстановлении
+       ОДНОГО языка их трогать незачем, save() и так оставит own.pages как
+       есть, если patch.pages не передан (shared/templates.js: `pages !==
+       undefined ? patch.pages : ((own && own.pages) || ...)`). */
+    status('doc.status_saving');
+    self.CWTemplates.save(state.id, state.lang, patch).then(function () {
+      state.dirty = false;
       status('doc.status_restored');
+      renderLangs();
+      loadColumn();
     }).catch(function (error) {
       console.error('Документы: не удалось восстановить оригинал', error);
+      status('doc.status_save_failed');
     });
   }
 

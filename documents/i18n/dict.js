@@ -35,7 +35,7 @@
   global.CWI18n.register({
     ru: {
       'doc.search_label': 'Поиск по названию и тексту',
-      'doc.doclang_label': 'Язык документа',
+      'doc.doclang_label': 'Язык документа по умолчанию',
       'doc.filters_label': 'Фильтр по модулю',
       'doc.filter_all': 'Все',
       'doc.filter_custom': 'Изменённые',
@@ -145,6 +145,7 @@
       'doc.pending_with_fallback': 'Перевода на этот язык нет. Пока он пуст, документ печатается на {lang}.',
       'doc.pending_empty': 'Текста пока нет ни на одном языке.',
       'doc.confirm_restore': 'Вернуть системный текст? Ваша версия будет удалена.',
+      'doc.restore_lang_missing': 'Для языка {lang} системного оригинала нет. Системный оригинал доступен на {fallback}.\n\nПерейти на {fallback}?',
       'doc.confirm_leave': 'Изменения не сохранены. Уйти и потерять их?',
       'doc.confirm_delete_page': 'Удалить эту страницу?',
       'doc.status_unsaved': 'есть несохранённые изменения',
@@ -170,7 +171,7 @@
 
     uk: {
       'doc.search_label': 'Пошук за назвою та текстом',
-      'doc.doclang_label': 'Мова документа',
+      'doc.doclang_label': 'Мова документа за замовчуванням',
       'doc.filters_label': 'Фільтр по модулю',
       'doc.filter_all': 'Усі',
       'doc.filter_custom': 'Змінені',
@@ -277,6 +278,7 @@
       'doc.pending_with_fallback': 'Перекладу на цю мову немає. Поки він порожній, документ друкується на {lang}.',
       'doc.pending_empty': 'Тексту поки немає ні на жодній мові.',
       'doc.confirm_restore': 'Повернути системний текст? Ваша версія буде видалена.',
+      'doc.restore_lang_missing': 'Для мови {lang} системного оригіналу немає. Системний оригінал доступний на {fallback}.\n\nПерейти на {fallback}?',
       'doc.confirm_leave': 'Зміни не збережено. Вийти та втратити їх?',
       'doc.confirm_delete_page': 'Видалити цю сторінку?',
       'doc.status_unsaved': 'є незбережені зміни',
@@ -300,7 +302,7 @@
     },
     en: {
       'doc.search_label': 'Search by name and text',
-      'doc.doclang_label': 'Document language',
+      'doc.doclang_label': 'Default document language',
       'doc.filters_label': 'Filter by module',
       'doc.filter_all': 'All',
       'doc.filter_custom': 'Modified',
@@ -407,6 +409,7 @@
       'doc.pending_with_fallback': 'There is no translation into this language. For now, it\'s empty, the document is printed in {lang}.',
       'doc.pending_empty': 'There is no text in any language yet.',
       'doc.confirm_restore': 'Restore system text? Your version will be deleted.',
+      'doc.restore_lang_missing': 'There is no system original for {lang}. The system original is available in {fallback}.\n\nSwitch to {fallback}?',
       'doc.confirm_leave': 'Changes not saved. Leave and lose them?',
       'doc.confirm_delete_page': 'Delete this page?',
       'doc.status_unsaved': 'there are unsaved changes',
@@ -430,7 +433,7 @@
     },
     pl: {
       'doc.search_label': 'Wyszukiwanie po nazwie i tekście',
-      'doc.doclang_label': 'Język dokumentu',
+      'doc.doclang_label': 'Domyślny język dokumentu',
       'doc.filters_label': 'Filtr według modułu',
       'doc.filter_all': 'Wszystko',
       'doc.filter_custom': 'Zmodyfikowane',
@@ -537,6 +540,7 @@
       'doc.pending_with_fallback': 'Nie ma tłumaczenia na ten język. Na razie jest pusty, dokument drukuje się w {lang}.',
       'doc.pending_empty': 'Na żadnym języku tekstu jeszcze nie ma.',
       'doc.confirm_restore': 'Przywrócić tekst systemowy? Twoja wersja zostanie usunięta.',
+      'doc.restore_lang_missing': 'Dla języka {lang} nie ma oryginału systemowego. Oryginał systemowy jest dostępny w {fallback}.\n\nPrzełączyć na {fallback}?',
       'doc.confirm_leave': 'Zmiany nie zostały zapisane. Opuścić i stracić je?',
       'doc.confirm_delete_page': 'Usunąć tę stronę?',
       'doc.status_unsaved': 'są niezapisane zmiany',
@@ -560,7 +564,7 @@
     },
     de: {
       'doc.search_label': 'Suche nach Name und Text',
-      'doc.doclang_label': 'Dokumentsprache',
+      'doc.doclang_label': 'Standard-Dokumentsprache',
       'doc.filters_label': 'Modul-Filter',
       'doc.filter_all': 'Alle',
       'doc.filter_custom': 'Geändert',
@@ -667,6 +671,7 @@
       'doc.pending_with_fallback': 'Es gibt keine Übersetzung in diese Sprache. Vorläufig ist das Dokument in {lang} gedruckt.',
       'doc.pending_empty': 'Es gibt bisher noch keinen Text in irgendeiner Sprache.',
       'doc.confirm_restore': 'Systemtext wiederherstellen? Ihre Version wird gelöscht.',
+      'doc.restore_lang_missing': 'Für {lang} gibt es kein Systemoriginal. Das Systemoriginal ist auf {fallback} verfügbar.\n\nZu {fallback} wechseln?',
       'doc.confirm_leave': 'Änderungen nicht gespeichert. Verlassen und verlieren?',
       'doc.confirm_delete_page': 'Diese Seite löschen?',
       'doc.status_unsaved': 'Es gibt ungespeicherte Änderungen',
