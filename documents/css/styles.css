@@ -131,16 +131,31 @@ body {
 .ed__toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .ed__toolbar-spacer { flex: 1 1 auto; }
 /* Защита ЛОКАЛЬНО для Documents (решение 02.09.2026 — не расширять scope на
-   shared/style.css ради одной кнопки). `.md-btn { display: inline-flex }` —
-   авторское CSS-правило, побеждающее браузерный UA-стиль
+   shared/style.css). `.md-menu { display: inline-flex }` (shared/style.css,
+   раздел 5.2a) — авторское CSS-правило, побеждающее браузерный UA-стиль
    `[hidden]{display:none}` в каскаде независимо от совпадающей специфичности
-   внутри origin (тот же класс бага, что уже был у `.vars-dialog` — см. выше
-   по файлу). setView() (documents/js/app.js) верно ставит `hidden=true` на
-   вкладках, отличных от «Текст», но без этого правила кнопка всё равно
-   оставалась видимой. Подтверждено реальным WebKit-рендерером. */
-#insertVarBtn[hidden] { display: none; }
+   внутри origin (тот же класс бага, что уже был у `.vars-dialog` и у
+   `#insertVarBtn` — обнаружено при cleanup последней кнопки, тем же методом:
+   реальный WebKit-рендерер, не jsdom, который здесь давал ложноотрицательный
+   результат). setView() ставит `hidden=true` на `.closest('.md-menu')` вне
+   вкладки «Текст», но без этого правила меню «Вставка» оставалось видимым
+   на Preview/Pages, несмотря на верно выставленный атрибут. */
+.md-menu[hidden] { display: none; }
 
 .rte-toolbar { display: flex; gap: 4px; }
+/* Защита ЛОКАЛЬНО для Documents (решение 02.09.2026, тот же паттерн, что уже
+   применён к .md-btn, .vars-dialog и .md-menu в этом файле выше). Причина
+   бага подтверждена реальным WebKit-рендерером: `.rte-toolbar { display:flex }`
+   — авторское CSS-правило, побеждающее браузерный UA-стиль
+   `[hidden]{display:none}` в каскаде независимо от совпадающей специфичности
+   внутри origin. loadColumn() (documents/js/app.js) верно ставит
+   `hidden = !html` на этом элементе для plain-text шаблонов, но без этого
+   правила тулбар форматирования (Ж/К/Ч) всё равно оставался видимым —
+   пользователь мог нажимать кнопки, форматирующие скрытый и нерелевантный
+   #edRte, пока реально печатал в видимой textarea (#edArea), не получая
+   никакого видимого эффекта. Сама логика execCommand()/#edRte не менялась —
+   это чистый fix видимости. */
+.rte-toolbar[hidden] { display: none; }
 .rte-toolbar .md-btn { min-width: 44px; }
 
 .ed__area, .ed__rte {
