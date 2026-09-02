@@ -77,6 +77,16 @@
   var wideQuery = self.matchMedia ? self.matchMedia('(min-width: 1201px)') : null;
   function isWide() { return !!(wideQuery && wideQuery.matches); }
 
+  /* ─── Drag-позиция picker'а переменных ───
+     `null` — пользователь ещё не двигал диалог в текущей сессии, значит при
+     следующем открытии применяется дефолтная right-side позиция заново
+     (computeDefaultVarsDialogPos). Не пустая строка/0 — именно `null`,
+     чтобы отличать «ещё не трогали» от «подвинули ровно в дефолтную точку».
+     Живёт только в памяти вкладки: перезагрузка страницы сбрасывает его —
+     персистентность между сессиями не требуется на этой фазе (решение
+     02.09.2026). Mobile эту переменную не читает и не пишет вовсе. */
+  var varsDialogPos = null;
+
   /* ─────────────────────────  Вспомогательное  ───────────────────────── */
 
   /* Делегирование в общий слой (28.08.2026). Своя редакция убрана: их было
@@ -677,6 +687,139 @@
     }).join('');
   }
 
+  /* ─── Позиционирование и drag диалога переменных (desktop-only) ───
+     Активно только при isWide() — на mobile ничего из этого не вызывается
+     и не задаёт inline-стили, существующий bottom-sheet CSS (@media
+     max-width:900px) остаётся единственным источником позиции там. */
+
+  var MIN_VISIBLE_PX = 80; /* минимум шапки, который обязан остаться в
+    границах viewport с любой стороны — требование «нельзя утащить
+    полностью за край» (п.2/5 утверждённого плана). */
+
+  /** Дефолтная позиция при первом открытии в сессии (или после
+      close→reopen, если пользователь ещё не двигал): справа от рабочей
+      области, над правой (preview) колонкой — редактор слева остаётся
+      максимально открытым. Вычисляется от фактической ширины/высоты
+      диалога и текущего viewport, а не хардкодом — чтобы корректно
+      работать на разных размерах окна и при разной ширине diалога
+      (min(420px, calc(100vw - 32px)) в CSS). */
+  function computeDefaultVarsDialogPos() {
+    var dlg = $('#varsDialog');
+    var w = dlg.offsetWidth || 420;
+    var margin = 24;
+    return {
+      left: Math.max(margin, window.innerWidth - w - margin),
+      top: 96, /* чуть ниже тулбара редактора — не наезжает на кнопку
+        «Вставить переменную» и заголовок документа сверху. */
+    };
+  }
+
+  /** Не даёт окну уехать полностью за viewport ни с одной стороны:
+      минимум MIN_VISIBLE_PX шапки должен остаться видимым. Переиспользуется
+      и после drag (pointerup), и на resize — единая логика ограничения,
+      как и требовалось (п.5). */
+  function clampVarsDialogPos(pos) {
+    var dlg = $('#varsDialog');
+    var w = dlg.offsetWidth || 420;
+    var h = dlg.offsetHeight || 200;
+    var maxLeft = window.innerWidth - MIN_VISIBLE_PX;
+    var maxTop = window.innerHeight - MIN_VISIBLE_PX;
+    var minLeft = MIN_VISIBLE_PX - w;
+    var minTop = 0; /* шапка — верхний край диалога; тащить его выше
+      верхней границы экрана незачем, там и так некуда вставлять. */
+    return {
+      left: Math.min(Math.max(pos.left, minLeft), maxLeft),
+      top: Math.min(Math.max(pos.top, minTop), maxTop),
+    };
+  }
+
+  function applyVarsDialogPos(pos) {
+    var dlg = $('#varsDialog');
+    dlg.style.left = pos.left + 'px';
+    dlg.style.top = pos.top + 'px';
+  }
+
+  /** Навешивается один раз (bind()). Drag активен только при isWide() —
+      проверяется заново на каждый pointerdown, а не один раз при навеске,
+      чтобы переход wide→mobile во время открытого диалога не оставлял
+      «залипший» обработчик, ожидающий pointermove, которого на mobile быть
+      не должно. */
+  function bindVarsDialogDrag() {
+    var head = $('#varsDialog .vars-dialog__head');
+    var dragging = false;
+    var startX = 0, startY = 0, origLeft = 0, origTop = 0;
+
+    head.addEventListener('pointerdown', function (e) {
+      if (!isWide()) return;
+      /* Клик по кнопке закрытия (или любой другой интерактивный элемент,
+         если он появится в шапке в будущем) не должен инициировать drag —
+         п.3 утверждённого плана. Поиск/список физически вне .vars-dialog__head,
+         так что для них проверка не нужна: pointerdown там просто не
+         долетает до этого обработчика. */
+      if (e.target.closest('button')) return;
+      dragging = true;
+      var dlg = $('#varsDialog');
+      var rect = dlg.getBoundingClientRect();
+      origLeft = rect.left;
+      origTop = rect.top;
+      startX = e.clientX;
+      startY = e.clientY;
+      head.classList.add('is-dragging');
+      head.setPointerCapture(e.pointerId);
+    });
+
+    head.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var pos = clampVarsDialogPos({
+        left: origLeft + (e.clientX - startX),
+        top: origTop + (e.clientY - startY),
+      });
+      applyVarsDialogPos(pos);
+    });
+
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      head.classList.remove('is-dragging');
+      try { head.releasePointerCapture(e.pointerId); } catch (err) { /* уже отпущен браузером — не критично */ }
+      var dlg = $('#varsDialog');
+      /* Позиция фиксируется как «пользователь уже двигал» только здесь, по
+         отпусканию — не на каждый pointermove, чтобы промежуточные кадры
+         drag не считались завершённым перемещением сами по себе. */
+      varsDialogPos = clampVarsDialogPos({ left: dlg.offsetLeft, top: dlg.offsetTop });
+      applyVarsDialogPos(varsDialogPos);
+    }
+    head.addEventListener('pointerup', endDrag);
+    head.addEventListener('pointercancel', endDrag);
+  }
+
+  /** При изменении размеров окна: если пользователь уже задавал позицию
+      вручную в этой сессии, зажимаем её обратно в границы — иначе окно
+      могло бы остаться за пределами уменьшенного viewport (п.5). Дефолтная
+      (ещё не тронутая) позиция ничего не зажимает: она пересчитывается
+      заново при каждом следующем открытии (computeDefaultVarsDialogPos),
+      поэтому нет смысла подстраивать её, пока диалог даже не открыт.
+      Переход в mobile — отдельный случай: inline left/top от desktop-drag
+      должны быть явно сняты, иначе их специфичность (inline style всегда
+      выше любого класса/@media) перебила бы mobile-раскладку bottom-sheet
+      целиком, даже если внешне кажется, что mobile CSS «просто должен
+      сработать сам». varsDialogPos-состояние (последняя desktop-позиция)
+      при этом НЕ обнуляется — она понадобится, когда пользователь вернётся
+      на wide (п.6: «mobile → wide → корректный desktop default/last
+      position»). */
+  function reclampVarsDialogIfNeeded() {
+    var dlg = $('#varsDialog');
+    if (!isWide()) {
+      dlg.style.left = '';
+      dlg.style.top = '';
+      return;
+    }
+    if (!varsDialogPos) return;
+    if (!dlg.open) return;
+    varsDialogPos = clampVarsDialogPos(varsDialogPos);
+    applyVarsDialogPos(varsDialogPos);
+  }
+
   /** Пересобрать список переменных для текущего шаблона и открыть диалог.
       Курсор редактора сохраняется ПЕРВЫМ действием — до того, как что-либо
       ещё (включая showModal()) успеет сдвинуть фокус или изменить DOM. */
@@ -688,6 +831,13 @@
     renderVarsList();
     var dlg = $('#varsDialog');
     if (dlg && !dlg.open) dlg.showModal();
+    /* Позиция — только на desktop: mobile держит bottom-sheet целиком через
+       CSS (@media max-width:900px), никаких inline left/top там не нужно и
+       не должно быть — оставлять их означало бы тянуть desktop-координаты
+       в mobile-раскладку при последующем resize обратно на wide. */
+    if (dlg && isWide()) {
+      applyVarsDialogPos(varsDialogPos || computeDefaultVarsDialogPos());
+    }
     /* Фокус в поиск сразу — диалог открыт специально ради поиска переменной. */
     if (dlg) $('#varsSearch').focus();
   }
@@ -934,6 +1084,7 @@
     $('#varsDialog').addEventListener('click', function (e) {
       if (e.target === e.currentTarget) closeVarsDialog();
     });
+    bindVarsDialogDrag();
 
     $('#pagesList').addEventListener('input', markDirty);
     $('#pagesList').addEventListener('click', function (e) {
@@ -1077,10 +1228,16 @@
     if (wideQuery) {
       var onWideChange = function () {
         if (state.id) setView(state.view);
+        reclampVarsDialogIfNeeded();
       };
       if (wideQuery.addEventListener) wideQuery.addEventListener('change', onWideChange);
       else if (wideQuery.addListener) wideQuery.addListener(onWideChange); // Safari < 14
     }
+    /* Resize внутри wide-диапазона (окно сужается, но остаётся ≥1201px) не
+       пересекает порог matchMedia выше — нужен отдельный listener, иначе
+       перетащенный диалог мог бы остаться за пределами уменьшенного
+       viewport, пока пользователь не сделает что-то ещё (п.5 плана). */
+    window.addEventListener('resize', reclampVarsDialogIfNeeded);
     initDocLangSelect();
     renderFilters();
     renderArchiveFilters();

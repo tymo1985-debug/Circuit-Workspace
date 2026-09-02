@@ -246,6 +246,27 @@ body {
   color: var(--md-on-surface-variant);
 }
 
+/* Desktop drag (решение 02.09.2026): диалог остаётся модальным через
+   showModal(), но позицию теперь держит JS через inline left/top, а не
+   браузерное центрирование. Нативный <dialog> в модальном режиме уже
+   получает `position:fixed` от UA-стиля с `margin:auto` (центрирование) —
+   здесь `margin:0` снимает центрирование, оставляя `position:fixed` по сути
+   тем же самым, только с координатами под нашим управлением
+   (documents/js/app.js: applyVarsDialogPos()/bindVarsDialogDrag()).
+   Порог — 1201px, тот же самый `isWide()`, что уже определяет desktop/mobile
+   для split-view (documents/js/app.js) — не 900/901: 900 здесь используется
+   как ПОРОГ MOBILE-РАСКЛАДКИ диалога (bottom sheet), а drag — часть wide
+   layout'а в целом, и должен включаться/выключаться той же границей, что и
+   вся остальная wide-логика, иначе JS (isWide()) и CSS разойдутся в узком
+   диапазоне 901–1200px: split уже выключен там, но drag CSS не должен жить
+   отдельно от него на своём пороге. Новую точку не заводим — 1201 уже в
+   реестре (docs/design-tokens/03-breakpoints.md, парная граница к 1200). */
+@media (min-width: 1201px) {
+  .vars-dialog { position: fixed; margin: 0; }
+  .vars-dialog__head { cursor: grab; }
+  .vars-dialog__head.is-dragging { cursor: grabbing; }
+}
+
 /* Mobile: тот же <dialog>, докованный к низу экрана — bottom sheet без
    отдельного JS-компонента. `inset` вместо `margin: auto` убирает
    центрирование браузера по умолчанию для <dialog>. Порог 900px — тот же,
