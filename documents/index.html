@@ -53,8 +53,13 @@
   </div>
   <span class="md-topbar-v2__spacer"></span>
   <div class="md-topbar-v2__actions">
-    <label class="sr-only" for="uiLanguage" data-i18n="hub.language_label">Язык интерфейса</label>
-    <select id="uiLanguage" class="lang-select"></select>
+    <label class="sr-only" for="docLang" data-i18n="doc.doclang_label">Язык документа по умолчанию</label>
+    <select id="docLang" class="doc-lang-compact" title="Язык документа по умолчанию" data-i18n-title="doc.doclang_label" aria-label="Язык документа по умолчанию" data-i18n-aria-label="doc.doclang_label"></select>
+    <div class="doc-icon-select" title="Язык интерфейса" data-i18n-title="hub.language_label">
+      <svg class="doc-icon-select__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+      <label class="sr-only" for="uiLanguage" data-i18n="hub.language_label">Язык интерфейса</label>
+      <select id="uiLanguage" class="doc-icon-select__control lang-select" aria-label="Язык интерфейса" data-i18n-aria-label="hub.language_label"></select>
+    </div>
   </div>
 </header>
 
@@ -76,11 +81,6 @@
       <div class="md-field doc-search">
         <input type="text" id="search" placeholder=" " autocomplete="off">
         <label for="search" data-i18n="doc.search_label">Поиск по названию и тексту</label>
-      </div>
-      <span class="doc-toolbar__spacer"></span>
-      <div class="md-field md-field-select doc-lang-field">
-        <select id="docLang"></select>
-        <label for="docLang" data-i18n="doc.doclang_label">Язык документа по умолчанию</label>
       </div>
       <!-- Единственный вид документа, который заводит сам пользователь: письмо
            под конкретный тип задания в Конгрессах. Раньше его создавали из
