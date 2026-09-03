@@ -497,6 +497,29 @@
     bindField('coordinator', 'coordinator');
     bindField('coordinatorAddress', 'coordinatorAddress');
 
+    var newLetterBtn = $('#newLetterBtn');
+    if (newLetterBtn) {
+      newLetterBtn.addEventListener('click', function () {
+        if (!window.confirm(t('ap.confirm.new_letter'))) return;
+        state.date = new Date().toISOString().slice(0, 10);
+        state.congregation = '';
+        state.coordinator = '';
+        state.coordinatorAddress = '';
+        state.lists.elders = [''];
+        state.lists.servants = [''];
+        state.lists.removed = [''];
+        $('#letterDate').value = state.date;
+        $('#congName').value = '';
+        $('#coordinator').value = '';
+        $('#coordinatorAddress').value = '';
+        renderList('elders');
+        renderList('servants');
+        renderList('removed');
+        renderLetter();
+        save();
+      });
+    }
+
     document.querySelectorAll('[data-add]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var name = btn.getAttribute('data-add');

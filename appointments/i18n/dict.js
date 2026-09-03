@@ -25,6 +25,8 @@
 
     ru: {
       'ap.panel.heading': 'Настройки письма',
+      'ap.btn.new_letter': 'Новое письмо',
+      'ap.confirm.new_letter': 'Начать новое письмо? Текущие данные письма и списки братьев будут очищены.',
       'ap.field.date': 'Дата письма',
       'ap.field.congregation': 'Собрание',
       'ap.field.coordinator': 'Координатор совета старейшин',
@@ -87,6 +89,8 @@
 
     uk: {
       'ap.panel.heading': 'Налаштування листа',
+      'ap.btn.new_letter': 'Новий лист',
+      'ap.confirm.new_letter': 'Почати новий лист? Поточні дані листа та списки братів буде очищено.',
       'ap.field.date': 'Дата листа',
       'ap.field.congregation': 'Збір',
       'ap.field.coordinator': 'Координатор ради старійшин',
@@ -145,6 +149,8 @@
 
     en: {
       'ap.panel.heading': 'Letter settings',
+      'ap.btn.new_letter': 'New letter',
+      'ap.confirm.new_letter': 'Start a new letter? Current letter data and brother lists will be cleared.',
       'ap.field.date': 'Letter date',
       'ap.field.congregation': 'Congregation',
       'ap.field.coordinator': 'Coordinator of the body of elders',
@@ -203,6 +209,8 @@
 
     pl: {
       'ap.panel.heading': 'Ustawienia listu',
+      'ap.btn.new_letter': 'Nowy list',
+      'ap.confirm.new_letter': 'Rozpocząć nowy list? Bieżące dane listu i listy braci zostaną wyczyszczone.',
       'ap.field.date': 'Data listu',
       'ap.field.congregation': 'Zbór',
       'ap.field.coordinator': 'Koordynator grona starszych',
@@ -261,6 +269,8 @@
 
     de: {
       'ap.panel.heading': 'Briefeinstellungen',
+      'ap.btn.new_letter': 'Neuer Brief',
+      'ap.confirm.new_letter': 'Neuen Brief beginnen? Die aktuellen Briefdaten und Bruderlisten werden gelöscht.',
       'ap.field.date': 'Datum des Briefes',
       'ap.field.congregation': 'Versammlung',
       'ap.field.coordinator': 'Koordinator der Ältestenschaft',
