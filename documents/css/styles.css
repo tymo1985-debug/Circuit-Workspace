@@ -80,9 +80,18 @@ body {
 .doc-hint { margin: 0 0 12px; font-size: 13px; color: var(--md-on-surface-variant); }
 
 @media (max-width: 600px) {
-  .doc-toolbar { flex-direction: column; align-items: stretch; }
-  .doc-search { max-width: none; }
+  .doc-toolbar { flex-direction: column; align-items: stretch; margin-bottom: 10px; }
+  /* .doc-search{flex:1 1 280px} — 280px это flex-basis, всегда размер по
+     ГЛАВНОЙ оси контейнера. В обычном (строчном) .doc-toolbar это ширина,
+     безобидно. Но flex-direction:column выше разворачивает главную ось
+     вертикально — тот же flex-basis:280px становится подсказкой по
+     ВЫСОТЕ, а высоту .doc-toolbar ничем не ограничивает и сжимать
+     нечему, поэтому .doc-search рендерится ~280px высотой вместо
+     обычных ~56px своего .md-field — это и есть пустой разрыв на
+     реальном скриншоте. Сброс на auto возвращает высоту к контенту. */
+  .doc-search { flex-basis: auto; max-width: none; }
   #newTypeTplBtn { width: 100%; }
+  .doc-filters { margin-bottom: 10px; }
 }
 
 /* ─── Библиотека ─── */
@@ -130,27 +139,88 @@ body {
    обёртка. Класс сохранён, чтобы не трогать остальную разметку. */
 .ed { display: block; }
 .ed__main { min-width: 0; }
-.ed__head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-.ed__title { font-size: 16px; }
-.ed__spacer { flex: 1 1 auto; }
+
+/* .ed__head — CSS Grid на ВСЕХ ширинах (решение 03.09.2026, вторая
+   итерация). Первая попытка держала flex+flex-wrap и выталкивала
+   #edLangMenu на отдельную строку через flex-basis:100% — но в
+   wrapping flex-контейнере 100%-элемент обрывает текущую строку И
+   переносит на новую строку буквально ВСЁ, что идёт после него в DOM
+   (.ed__spacer, #resetBtn, .ed__save-group), потому что flex размещает
+   элементы строго по порядку появления, и после принудительного разрыва
+   уже никто не возвращается на предыдущую строку. Итог был не «язык
+   отдельной строкой ниже action-row», а «task-row тоже расползлась на
+   отдельную строку» — реальная desktop-регрессия, не только визуальная
+   мелочь.
+   Грид с именованными областями размещает элементы по абсолютным
+   координатам, не по последовательному переносу строк — поэтому «action»
+   (вся строка ← / title / badge / spacer / Restore / Save) и «lang»
+   (языковое меню отдельной строкой ниже) гарантированно остаются на тех
+   местах, что заданы, независимо от того, в каком порядке узлы стоят в
+   DOM. #edLangMenu физически лежит в DOM внутри .ed__head (нужно для
+   мобильного грида — единственный способ поставить бейдж и язык в одну
+   строку, если элементы должны делить строку с чем-то ещё), но реальное
+   МЕСТО на экране всегда определяет grid-area, а не позиция в разметке. */
+.ed__head {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto auto;
+  grid-template-areas:
+    "back title badgeslot spacer reset save"
+    "lang lang  lang      lang   lang  lang";
+  column-gap: 12px;
+  row-gap: 4px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.ed__title { grid-area: title; font-size: 16px; }
+#backBtn { grid-area: back; }
+#edBadge { grid-area: badgeslot; justify-self: start; }
+.ed__spacer { grid-area: spacer; }
+#edLangMenu { grid-area: lang; justify-self: start; margin-top: 4px; }
 /* Restore и Save на одной линии (решение 02.09.2026, реальный баг найден
-   на скриншоте пользователя после B1). Причина: `.ed__head` центрирует
-   flex-item'ы по общей высоте строки (`align-items:center`), а
-   `.ed__save-group` (кнопка + статус + gap) выше простой кнопки —
-   `#resetBtn` центрировался по этой увеличенной высоте и визуально
-   оказывался ниже верхнего края «Сохранить». Fix точечный: оба —
-   `#resetBtn` и `.ed__save-group` — выравниваются по верхнему краю
-   строки (`align-self:flex-start`), не трогая `align-items` самого
-   `.ed__head` и поведение остальных элементов строки. */
-#resetBtn { align-self: flex-start; }
+   на скриншоте пользователя после B1). В гриде оба явно поставлены в
+   одну строку "action" через grid-area — вопрос "какая строка выше",
+   который раньше решался через align-self:flex-start во flex-контексте,
+   в гриде не возникает вовсе: обе области физически в одной строке
+   шаблона. */
+#resetBtn { grid-area: reset; align-self: center; }
 /* Save-статус под кнопкой (решение 02.09.2026, финальный UX-аудит B1):
    column-обёртка вместо простого соседства в строке — иначе строка
    .ed__head визуально расползалась бы шире на длину текста статуса.
    align-items:flex-end прижимает статус к правому краю кнопки снизу,
    а не к левому — компактнее и точнее соответствует утверждённой
-   визуализации «кнопка сверху, статус под ней». Высота шапки растёт
-   всего на одну строку текста статуса, не больше. */
-.ed__save-group { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; align-self: flex-start; }
+   визуализации «кнопка сверху, статус под ней». */
+.ed__save-group { grid-area: save; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; align-self: center; }
+
+@media (max-width: 600px) {
+  /* Мобильный редактор: та же .ed__head, другая раскладка областей —
+     переключается только grid-template-areas/columns, display остаётся
+     grid на обеих ширинах. #edBadge и #edLangMenu делят одну строку
+     ("badge lang"), Restore и Save получают каждый свою строку целиком.
+     Ни одного нового DOM-узла — все области ссылаются на уже
+     существующие элементы. */
+  .ed__head {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "back   back"
+      "title  title"
+      "badgeslot lang"
+      "reset  reset"
+      "save   save";
+    row-gap: 8px;
+  }
+  .ed__head #backBtn { justify-self: start; }
+  .ed__head #edBadge { justify-self: start; align-self: center; }
+  .ed__head #edLangMenu { justify-self: end; margin-top: 0; }
+  .ed__head .ed__spacer { display: none; }
+  .ed__head #resetBtn { align-self: stretch; width: 100%; }
+  .ed__head .ed__save-group {
+    align-self: stretch;
+    align-items: stretch;
+  }
+  .ed__head .ed__save-group #saveBtn { width: 100%; }
+  .ed__head .ed__save-group #editorSaveStatus { align-self: center; }
+}
+
 
 /* Desktop split-view (решение 01.09.2026): редактор + живой preview рядом,
    только на вкладке «Текст» и только на wide. Порог — 1201px, уже одобренная

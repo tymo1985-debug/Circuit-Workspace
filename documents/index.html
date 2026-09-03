@@ -131,6 +131,29 @@
       </button>
       <strong id="edTitle" class="ed__title"></strong>
       <span class="md-chip" id="edBadge"></span>
+      <!-- Язык ДОКУМЕНТА (не язык интерфейса) — выпадающее меню из фиксированных
+           5 языков проекта, а не только существующих колонок translations.
+           Переиспользован тот же .md-menu примитив, что уже используется для
+           меню «Вставка» (см. документацию в комментарии там же). Раньше здесь
+           был плоский .doc-filters chip-набор, строившийся из
+           Object.keys(tpl.translations) — при одном RU пользователь видел
+           единственный RU chip и не мог создать UK/DE/PL/EN вовсе. renderLangs()
+           (documents/js/app.js) строит содержимое панели из фиксированного
+           списка LANG_LIST, независимо от того, какие колонки уже существуют.
+           Перенесён сюда, внутрь .ed__head, рядом с #edBadge (решение
+           03.09.2026): на mobile бейдж и язык документа должны стоять в одной
+           строке — этого нельзя добиться чистым CSS, если элементы остаются в
+           разных родителях, поэтому узел перемещён (тот же id, то же
+           содержимое, ничего не задублировано). Desktop-положение сохранено
+           через flex-basis:100% в CSS ниже (переносит его на отдельную
+           строку внутри wrapping-ряда) — сам перенос в DOM визуально ничего
+           не меняет на wide. -->
+      <div class="md-menu" id="edLangMenu">
+        <button type="button" class="md-btn md-btn-outlined md-state-layer" id="edLangMenuBtn" aria-haspopup="true" aria-expanded="false" aria-labelledby="edLangsLabel">
+          <span id="edLangMenuCurrent"></span> <span aria-hidden="true">▾</span>
+        </button>
+        <div class="md-menu__panel" id="edLangMenuPanel" role="menu" hidden></div>
+      </div>
       <span class="ed__spacer"></span>
       <button type="button" class="md-btn md-btn-outlined md-state-layer" id="resetBtn" data-i18n="doc.restore_original">Восстановить оригинал</button>
       <!-- Save-статус переехал сюда, рядом с самой кнопкой (решение
@@ -153,21 +176,6 @@
       </div>
     </div>
 
-    <!-- Язык ДОКУМЕНТА (не язык интерфейса) — выпадающее меню из фиксированных
-         5 языков проекта, а не только существующих колонок translations.
-         Переиспользован тот же .md-menu примитив, что уже используется для
-         меню «Вставка» (см. документацию в комментарии там же). Раньше здесь
-         был плоский .doc-filters chip-набор, строившийся из
-         Object.keys(tpl.translations) — при одном RU пользователь видел
-         единственный RU chip и не мог создать UK/DE/PL/EN вовсе. renderLangs()
-         (documents/js/app.js) строит содержимое панели из фиксированного
-         списка LANG_LIST, независимо от того, какие колонки уже существуют. -->
-    <div class="md-menu" id="edLangMenu">
-      <button type="button" class="md-btn md-btn-outlined md-state-layer" id="edLangMenuBtn" aria-haspopup="true" aria-expanded="false" aria-labelledby="edLangsLabel">
-        <span id="edLangMenuCurrent"></span> <span aria-hidden="true">▾</span>
-      </button>
-      <div class="md-menu__panel" id="edLangMenuPanel" role="menu" hidden></div>
-    </div>
     <span class="sr-only" id="edLangsLabel" data-i18n="doc.lang_columns_label">Языковые версии документа</span>
     <p class="doc-hint" id="edPending" hidden></p>
 
