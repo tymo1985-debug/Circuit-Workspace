@@ -412,10 +412,7 @@ body {
 .vars-dialog__list button:hover { border-color: var(--md-primary); }
 .vars-dialog__list button:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
 .vars-dialog__item-label { display: block; font: 400 14px/20px var(--md-font-family); }
-.vars-dialog__item-token {
-  display: block; margin-top: 2px; font: 400 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--md-on-surface-variant);
-}
+.vars-dialog__item-token { display: none; }
 
 /* Desktop drag (решение 02.09.2026): диалог остаётся модальным через
    showModal(), но позицию теперь держит JS через inline left/top, а не
