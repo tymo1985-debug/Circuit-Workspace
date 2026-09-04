@@ -217,6 +217,8 @@
     'cong.th.rehearsal': 'Реп.',
     'cong.th.actions': 'Действия',
 
+    'cong.status.letter_pending': 'Письмо не отправлено',
+
     'cong.dlg.new_congress': 'Создать новый конгресс',
     'cong.dlg.new_series': 'Новая серия конгрессов',
     'cong.dlg.letter_settings': 'Письмо — настройки и шаблон',
@@ -256,10 +258,13 @@
     'cong.title.reset_data': 'Сбросить все данные приложения',
     'cong.title.congress_settings': 'Настройки конгресса',
     'cong.title.delete_congress': 'Удалить этот конгресс',
+    'cong.title.more': 'Ещё',
     'cong.title.add_section': 'Добавить раздел программы',
     'cong.title.add_task': 'Добавить задание',
     'cong.title.check': 'Проверить программу на ошибки',
     'cong.title.letters': 'Подготовка и рассылка писем',
+    'cong.title.print_menu': 'Печать',
+    'cong.btn.print_menu': 'Печать',
     'cong.title.print_plan': 'Печать плана программы',
     'cong.title.all_letters': 'Распечатать все письма',
     'cong.title.close': 'Закрыть',

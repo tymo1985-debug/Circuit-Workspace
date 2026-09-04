@@ -94,11 +94,6 @@ label.icon-text-btn {
   font-size: inherit;
   color: inherit
 }
-.actgrid .icon-btn {
-  width: 100%;
-  display: flex;
-  justify-content: center
-}
 .light {
   background: var(--md-secondary-container);
   color: var(--md-on-secondary-container)
@@ -161,6 +156,35 @@ html, body {
   margin: 0;
   font-size: 18px
 }
+/* Печать ▾ (п.2 ТЗ): маленькая приглушённая стрелка рядом с подписью, не
+   отдельная жирная деталь — сам факт «это меню» уже несёт aria-haspopup и
+   структура .md-menu, стрелка только визуальная подсказка. */
+.icon-caret {
+  width: 12px;
+  height: 12px;
+  margin-left: -2px;
+  opacity: .7
+}
+/* Инструкция над таблицей (п.3 ТЗ): раньше — постоянный текст в потоке
+   (.hint), теперь — маленькая unobtrusive help-иконка со всем тем же
+   текстом в title/aria-label. Строка-обёртка выравнивает иконку по правому
+   краю, чтобы она не спорила с toolbar выше и не смещала таблицу вниз. */
+.table-hint-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 2px 0 6px
+}
+.help-icon {
+  color: var(--md-on-surface-variant);
+  opacity: .8
+}
+.help-icon:hover {
+  opacity: 1
+}
+.help-icon .icon {
+  width: 16px;
+  height: 16px
+}
 .actions, .top-actions {
   display: flex;
   gap: 8px;
@@ -210,11 +234,54 @@ html, body {
   margin: 0 0 8px;
   font-size: 12px
 }
+/* Компактная шапка конгресса (UI-фаза упрощения, 4.46.48 → следующий патч).
+   Было: пять полей (название/место/дата/настройки/удалить) в grid, постоянно
+   в потоке — самая частая жалоба скрина «слишком много вертикали».
+   Стало: заголовок + одна metadata-строка (дата · место), большие input не
+   показываются по умолчанию (редактирование — через «Настройки конгресса»,
+   поля остаются в DOM и в JS-биндингах main.js, просто скрыты здесь), delete
+   убран из постоянного потока в overflow ⋮ рядом с «Настройки».
+   #congressMeta как контейнер НЕ переименован и не убран: js/mobile.js
+   переносит его целиком (весь узел) в bottom sheet на ≤680px — переименование
+   id сломало бы этот перенос молча. */
 .meta {
-  display: grid;
-  grid-template-columns: 1fr 180px 150px auto auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 10px;
-  align-items: end
+  flex-wrap: wrap
+}
+.meta-head {
+  min-width: 0;
+  flex: 1 1 auto
+}
+.meta-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere
+}
+.meta-line {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--md-on-surface-variant);
+  overflow-wrap: anywhere
+}
+.meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto
+}
+/* Поля названия/места/даты остаются функциональными (main.js вешает oninput
+   на #congressName/Place/Date независимо от того, видны они или нет), но по
+   умолчанию скрыты — редактирование теперь через «Настройки конгресса».
+   display:none, а не удаление из разметки/JS: сохраняет один источник
+   истины для данных полей, требование ТЗ п.1 «удалить функциональность
+   нельзя — только изменить presentation». */
+.meta-inputs {
+  display: none
 }
 .settings-grid {
   display: grid;
@@ -267,43 +334,68 @@ input:focus, select:focus, textarea:focus {
   table-layout: fixed;
   background: var(--md-surface)
 }
+/* Визуальное облегчение таблицы (UI-фаза упрощения). Данные/структура/печать
+   не тронуты — вертикальные линии между ячейками сняты (остаётся только
+   правая граница целых секций через .col-actions, чтобы блок действий не
+   сливался с текстом), горизонтальные — остаются, но мягче, чем раньше:
+   так строки читаются как список заданий, а не расчерченная сетка. */
 .program-table th, .program-table td {
-  border: 1px solid var(--md-outline-variant);
-  padding: 7px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--md-outline-variant);
+  padding: 9px 8px;
   vertical-align: middle;
   overflow-wrap: anywhere;
   word-break: break-word
 }
 .program-table th {
-  background: var(--md-surface-container-low);
+  background: var(--md-surface-container-high);
+  border-bottom: 1px solid var(--md-outline);
   text-align: center;
-  font: 500 12px/16px var(--md-font-family);
+  font: 600 12px/16px var(--md-font-family);
   letter-spacing: .5px;
   color: var(--md-on-surface-variant)
+}
+.program-table tbody tr:hover td {
+  background: var(--md-surface-container-low)
 }
 .program-table tr.section-title td {
   background: var(--md-surface-container);
   font-weight: 500
 }
+.program-table tr.section-title:hover td {
+  background: var(--md-surface-container)
+}
+/* Строка-раздел (п.6 ТЗ): тема крупнее и жирнее, время видимо, но не как
+   обычное задание — время раздела приглушено сильнее, чем у задания
+   (.section-title .time переопределяет общий акцент времени ниже). */
 .program-table tr.section-title .topic {
-  font-weight: 500;
+  font-weight: 700;
+  font-size: 14px;
   color: var(--md-on-surface)
 }
-.program-table tr.selected td {
+.program-table tr.section-title .time {
+  color: var(--md-on-surface-variant);
+  font-weight: 500
+}
+/* Выделенная (selected) строка отличается от простого hover — сплошная
+   заливка + акцентная полоса слева, hover поверх неё не перекрашивает
+   (иначе выбор терялся бы под курсором). */
+.program-table tr.selected td,
+.program-table tr.selected:hover td {
   background: var(--md-surface-container-high) !important;
   box-shadow: inset 4px 0 0 var(--md-primary)
 }
 .col-time {
-  width: 7%
+  width: 8%
 }
 .col-num {
   width: 5%
 }
 .col-topic {
-  width: 20%
+  width: 23%
 }
 .col-speaker {
-  width: 18%
+  width: 20%
 }
 .col-kind {
   width: 9%
@@ -312,19 +404,29 @@ input:focus, select:focus, textarea:focus {
   width: 6%
 }
 .col-status {
-  width: 11%
-}
-.col-mail {
-  width: 6%
+  width: 15%
 }
 .col-reh {
   width: 6%
 }
 .col-actions {
-  width: 12%
+  width: 12%;
+  border-left: 1px solid var(--md-outline-variant)
 }
-.time, .num, .kind, .dur, .mail, .reh {
+.time, .num, .kind, .dur, .reh {
   text-align: center
+}
+/* Время как визуальная ось (п.5 ТЗ): чуть контрастнее и весомее остального
+   текста строки, стабильная ширина уже даёт колонка .col-time. Не жирный —
+   полужирный, чтобы не выглядело кнопкой. */
+.time {
+  font-weight: 600;
+  color: var(--md-on-surface);
+  font-variant-numeric: tabular-nums
+}
+/* Номер задания — наоборот, менее акцентный ориентир, чем время. */
+.num {
+  color: var(--md-on-surface-variant)
 }
 .participant-line {
   line-height: 1.35;
@@ -379,6 +481,40 @@ input:focus, select:focus, textarea:focus {
   font-weight: 400;
   letter-spacing: normal
 }
+/* Индикатор письма рядом со статусом (решение по колонке «Письмо», UI-фаза
+   упрощения). НЕ второй status badge: маленькая монохромная иконка, а не
+   цветной pill — статус остаётся единственным цветным элементом ячейки.
+   letterSent не связан со status в данных (см. render.js mailIndicatorHTML)
+   — здесь только отображение уже существующего независимого поля. */
+.status-cell__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0
+}
+.status-cell__row .status-sel {
+  flex: 1 1 auto;
+  min-width: 0
+}
+.mail-flag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--md-on-surface-variant)
+}
+.mail-flag svg {
+  width: 14px;
+  height: 14px
+}
+.mail-flag--sent {
+  color: var(--md-on-secondary-container)
+}
+.mail-flag--pending {
+  opacity: .5
+}
 .tiny {
   font-size: 12px;
   padding: 6px 8px
@@ -386,14 +522,46 @@ input:focus, select:focus, textarea:focus {
 .tiny.icon-btn {
   padding: 6px
 }
-.actgrid {
-  display: grid;
-  gap: 4px
+/* Ячейка «Действия» (п.7 ТЗ): было три больших pill-кнопки (edit/письмо/
+   delete) в две строки — сильный визуальный шум в каждой строке таблицы.
+   Стало: edit и письмо — компактные icon-only рядом, delete убран из
+   постоянного вида в overflow ⋮ (.row-menu, поведение — bindRowMenus() в
+   render.js, разметка — те же .md-menu__panel/.md-menu__item, что и в
+   шапке). Функциональность edit/send/delete не изменена, изменена только
+   presentation и то, что delete требует одного лишнего клика. */
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px
 }
-.primary-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px
+/* Нейтральные icon-actions (п.7 ТЗ): базовый button/.btn в этом модуле
+   всегда фиолетовый — годится для primary-действий, но три одинаковых
+   сплошных фиолетовых кружка подряд в каждой строке создают тот же
+   визуальный шум, от которого фаза избавляется. Edit/письмо/overflow
+   становятся плоскими (прозрачный фон, только силуэт иконки), заметная
+   заливка остаётся исключительно у danger-пункта внутри overflow-меню. */
+.row-actions .icon-btn {
+  min-width: 32px;
+  min-height: 32px;
+  background: transparent;
+  color: var(--md-on-surface-variant)
+}
+.row-actions .icon-btn:hover {
+  background: var(--md-surface-container-highest);
+  color: var(--md-on-surface)
+}
+.row-menu {
+  position: static
+}
+.row-menu .md-menu__panel {
+  min-width: 160px
+}
+.row-menu .md-menu__item-danger {
+  color: var(--md-error)
+}
+.row-menu .md-menu__item-danger:hover {
+  background: var(--md-error-container)
 }
 dialog {
   border: 0;
@@ -686,9 +854,6 @@ dialog {
   }
 }
 @media(max-width:900px) {
-  .meta {
-    grid-template-columns: 1fr 1fr
-  }
   .settings-grid {
     grid-template-columns: 1fr 1fr
   }
@@ -726,7 +891,7 @@ dialog {
    отдельная логика для этого не нужна.
 
    ПОЧЕМУ БЕЗ JS. Все нужные зацепки в разметке уже есть — классы ячеек
-   (.time/.num/.topic/.speaker/.kind/.dur/.status-cell/.mail/.reh/.actions-cell)
+   (.time/.num/.topic/.speaker/.kind/.dur/.status-cell/.reh/.actions-cell)
    и класс .selected на строке. Значит мобильный вид целиком выражается в CSS,
    и десктопная таблица, письма и печать физически не могут пострадать.
    ════════════════════════════════════════════════════════════════════════ */
@@ -817,14 +982,14 @@ dialog {
     font-size: 13px
   }
 
-  /* Карточка конгресса: название на всю ширину, место и дата рядом,
-     две кнопки в последнем ряду. Пять полей в столбик были выше экрана. */
+  /* Карточка конгресса на телефоне: тот же компактный заголовок + строка
+     метаданных, что и на desktop (js/mobile.js переносит #congressMeta в
+     bottom sheet целиком, той же разметкой). Только направление колонки —
+     действия переносятся под заголовок вместо ряда справа. */
   .meta {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px
-  }
-  .meta > label:first-child {
-    grid-column: 1 / -1
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px
   }
   .settings-grid, .form-grid, .letter-row, .backup-row, .epart, .checks {
     grid-template-columns: 1fr
@@ -1002,6 +1167,14 @@ dialog {
     border-radius: var(--md-radius-full);
     font: 500 11px/16px var(--md-font-family)
   }
+  /* На телефоне статус-ячейка стала flex-контейнером ещё в desktop-разметке
+     (.status-cell__row, UI-фаза упрощения) — здесь только подгонка под
+     карточку: строка растягивается на всю ширину, mail-flag остаётся
+     компактной иконкой рядом со статусом, без отдельной строки/колонки
+     ради letterSent (п.7 ТЗ фазы 2). */
+  .program-table td.status-cell .status-cell__row {
+    width: 100%
+  }
   .program-table td.kind {
     order: 7;
     margin-top: 8px
@@ -1011,10 +1184,12 @@ dialog {
     font-size: 11px;
     line-height: 16px
   }
-  /* «Письмо ✓» и «Реп. ✓» — тонированные метки. Подпись возвращается из
-     data-label: галочка без подписи ничего не сообщает, а места на метку
-     хватает. Незаполненные ячейки пустые и скрыты правилом td:empty. */
-  .program-table td.mail,
+  /* «Реп. ✓» — тонированная метка. Подпись возвращается из data-label:
+     галочка без подписи ничего не сообщает, а места на метку хватает.
+     Незаполненная ячейка пустая и скрыта правилом td:empty.
+     «Письмо» больше не отдельная td (убрана из разметки вместе с desktop
+     колонкой) — её факт теперь виден через .mail-flag внутри status-cell
+     на любой ширине, дублировать его здесь не нужно. */
   .program-table td.reh {
     display: inline-flex;
     align-items: center;
@@ -1025,15 +1200,9 @@ dialog {
     background: var(--status-success-bg);
     color: var(--status-success);
     font: 500 11px/16px var(--md-font-family);
-    letter-spacing: .4px
-  }
-  .program-table td.mail {
+    letter-spacing: .4px;
     order: 8
   }
-  .program-table td.reh {
-    order: 9
-  }
-  .program-table td.mail::before,
   .program-table td.reh::before {
     content: attr(data-label);
     font: inherit;
@@ -1052,9 +1221,13 @@ dialog {
      DOM/обработчики (.ed/.le/.rm из renderTasks, e.stopPropagation() уже
      на месте), без новой бизнес-логики. Разделы (.section-title) теперь
      тоже открываются прямым тапом (см. render.js), поэтому их .rm нуждается
-     в том же всегда-видимом ряду — правило больше не сужено `:not()`. */
+     в том же всегда-видимом ряду — правило больше не сужено `:not()`.
+     UI-фаза упрощения: .actgrid/.primary-row заменены на .row-actions
+     (edit + письмо icon-only + overflow ⋮ с delete внутри), разметка и
+     обработчики те же самые узлы, что и на desktop — здесь только подгонка
+     размера тач-таргетов. */
   .program-table td.actions-cell {
-    order: 10;
+    order: 9;
     flex: 1 1 100%;
     display: flex;
     justify-content: flex-end;
@@ -1062,33 +1235,21 @@ dialog {
     padding-top: 10px;
     border-top: 1px solid var(--md-outline-variant)
   }
-  .program-table td.actions-cell .actgrid {
-    display: flex;
-    gap: 6px
+  .program-table td.actions-cell .row-actions {
+    gap: 8px
   }
-  .program-table td.actions-cell .primary-row {
-    display: contents
-  }
-  .program-table td.actions-cell .tiny {
+  .program-table td.actions-cell .icon-btn {
     width: 40px;
     height: 40px;
     padding: 0;
-    flex: 0 0 auto
-  }
-  .program-table td.actions-cell .actgrid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px
-  }
-  /* .primary-row — сетка внутри сетки; display:contents распрямляет её,
-     чтобы «Изменить», «Письмо» и «Удалить» встали в один ряд. */
-  .program-table td.actions-cell .primary-row {
-    display: contents
-  }
-  .program-table td.actions-cell .tiny {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 9px
+    flex: 0 0 auto
+  }
+  .program-table td.actions-cell .row-menu .md-menu__panel {
+    right: 0;
+    left: auto
   }
 
   /* Раздел программы (утро/день) — надпись-разделитель, а не карточка. */
@@ -1122,7 +1283,6 @@ dialog {
   .program-table tr.section-title td.num,
   .program-table tr.section-title td.dur,
   .program-table tr.section-title td.kind,
-  .program-table tr.section-title td.mail,
   .program-table tr.section-title td.reh,
   .program-table tr.section-title td.status-cell {
     display: none
@@ -1141,7 +1301,7 @@ dialog {
   .program-table td.topic {
     font-size: 14px
   }
-  .actgrid, .primary-row {
+  .row-actions {
     gap: 4px
   }
   .tiny {

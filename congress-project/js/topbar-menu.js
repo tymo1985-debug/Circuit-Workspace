@@ -1,4 +1,4 @@
-// Меню инструментов в шапке.
+// Меню инструментов в шапке + переиспользуемая фабрика .md-menu.
 //
 // ЗАЧЕМ. В шапке жили восемь кнопок подряд: письмо, три справочника,
 // резервная копия, экспорт, импорт, установка. На ноутбуке они не помещались
@@ -11,12 +11,18 @@
 // ВАЖНО. Идентификаторы кнопок (#directoryBtn, #backupBtn и т.д.) не менялись:
 // js/main.js по-прежнему вешает на них обработчики через $("#id").onclick.
 // Пункты меню — те же самые элементы, просто в другом месте разметки.
+//
+// UI-фаза «Конгрессы» (compact header/print menu): initTopbarMenu() был
+// жёстко привязан к #toolsMenuBtn/#toolsMenu. Вынесена общая фабрика
+// initMenu(triggerSel, panelSel), initTopbarMenu — её частный случай, чтобы
+// не трогать существующий вызов в main.js. Новые меню (header overflow,
+// print dropdown) используют ту же фабрику, то же поведение, тот же CSS.
 
 import { $ } from "./dom.js";
 
-export function initTopbarMenu() {
-  const trigger = $("#toolsMenuBtn");
-  const panel = $("#toolsMenu");
+export function initMenu(triggerSel, panelSel) {
+  const trigger = $(triggerSel);
+  const panel = $(panelSel);
   if (!trigger || !panel) return;
 
   const items = () =>
@@ -85,4 +91,8 @@ export function initTopbarMenu() {
         : list[(i - 1 + list.length) % list.length];
     next.focus();
   });
+}
+
+export function initTopbarMenu() {
+  initMenu("#toolsMenuBtn", "#toolsMenu");
 }
