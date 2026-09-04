@@ -66,19 +66,32 @@
   @media (min-width:1181px){
     .events-panel-layout.is-map-open{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,42%);gap:var(--calendar-layout-gap,22px);align-items:start}
     .events-panel-layout.is-map-open #eventsList{min-width:0}
-    /* top/max-height переиспользуют те же переменные и тот же паттерн, что
-       .calendar-side (строки выше, --topbar-h/--calendar-side-top) — там
-       уже проверено, что sticky корректно уходит под sticky-topbar и не
-       вылезает за низ вьюпорта. Ширина/размер контейнера карты (520px,
-       .events-map-container ниже) не меняются — sticky только позиционирует
-       сам map-pane, не карту внутри него. */
-    .events-map-pane{display:block;position:sticky;top:var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px));align-self:start;max-height:calc(100dvh - var(--topbar-h, 88px) - 20px);overflow:auto;-webkit-overflow-scrolling:touch}
+    /* КРИТИЧНО: на .events-map-pane нельзя вешать свой overflow/max-height —
+       это превращает саму панель в отдельный скролл-контейнер, и sticky
+       внутри неё «залипает» относительно ВЫСОТЫ ПАНЕЛИ (по факту — высоты
+       .events-map-container, 520px), а не относительно реальной высоты
+       grid-row (которая равна высоте #eventsList, длинного списка). Именно
+       так voзникал баг со скриншотов: карта «убегала» наверх и оставляла
+       пустую колонку до конца списка — она честно стикалась, но внутри
+       собственного 520px-контейнера, а не внутри всей строки грида.
+       top переиспользует паттерн .calendar-side (--calendar-side-top /
+       --topbar-h) — только эту переменную и меняем, никакого overflow тут
+       быть не должно. */
+    .events-map-pane{display:block;position:sticky;top:var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px));align-self:start}
   }
   @media (max-width:1180px){.events-map-toggle-btn{display:none}}
   .events-map-container{width:100%;height:520px;border-radius:16px;overflow:hidden;background:var(--md-surface-variant,#e7e7e7)}
   .events-map-empty{margin-top:10px}
   .map-offline-notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--md-surface,#fff);color:var(--md-on-surface,#333);padding:10px 16px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18);font-size:.9rem;pointer-events:none;z-index:500}
-  .events-map-pane{position:relative}
+  /* position:relative нужен ТОЛЬКО как контекст для .map-offline-notice
+     (position:absolute внутри) — раньше это правило стояло без @media и
+     позже sticky-блока в каскаде, поэтому на ≥1181px тем же селектором
+     тихо перезаписывало position:sticky на relative тем же приоритетом
+     (источник настоящего бага со скриншотов, не grid/overflow). Ниже
+     1181px .events-map-pane и так display:none — relative здесь безвреден,
+     но правило сужено под сам @media, чтобы больше не переопределять
+     sticky выше и не полагаться на порядок объявления. */
+  @media (max-width:1180px){.events-map-pane{position:relative}}
   .overflow-menu{position:relative}.overflow-menu-trigger{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;user-select:none}.overflow-menu-trigger::-webkit-details-marker{display:none}.overflow-menu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:20;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:12px;box-shadow:var(--md-elevation-2);padding:8px;display:flex;flex-direction:column;min-width:220px}.overflow-menu-panel .md-btn{width:100%;justify-content:flex-start}
   .week-item,.event-row,.note-row{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--md-primary);outline:2px solid color-mix(in srgb, var(--md-primary) 20%, transparent)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
   #eventsList.is-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
