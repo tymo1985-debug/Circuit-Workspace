@@ -66,7 +66,13 @@
   @media (min-width:1181px){
     .events-panel-layout.is-map-open{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,42%);gap:var(--calendar-layout-gap,22px);align-items:start}
     .events-panel-layout.is-map-open #eventsList{min-width:0}
-    .events-map-pane{display:block;position:sticky;top:12px}
+    /* top/max-height переиспользуют те же переменные и тот же паттерн, что
+       .calendar-side (строки выше, --topbar-h/--calendar-side-top) — там
+       уже проверено, что sticky корректно уходит под sticky-topbar и не
+       вылезает за низ вьюпорта. Ширина/размер контейнера карты (520px,
+       .events-map-container ниже) не меняются — sticky только позиционирует
+       сам map-pane, не карту внутри него. */
+    .events-map-pane{display:block;position:sticky;top:var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px));align-self:start;max-height:calc(100dvh - var(--topbar-h, 88px) - 20px);overflow:auto;-webkit-overflow-scrolling:touch}
   }
   @media (max-width:1180px){.events-map-toggle-btn{display:none}}
   .events-map-container{width:100%;height:520px;border-radius:16px;overflow:hidden;background:var(--md-surface-variant,#e7e7e7)}
