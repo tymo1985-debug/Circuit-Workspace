@@ -77,6 +77,14 @@
 
   function renderMarkers() {
     if (!map || !markersLayer) return;
+    // fitBounds/setView двигают zoom/center пользователя — это допустимо
+    // только при ПЕРВОМ появлении точек на пустой карте (открытие карты,
+    // hide→show). Любой последующий вызов (scroll вызывает renderEvents →
+    // renderMarkers, resize, hide/show после первого fit) обязан только
+    // обновить сами маркеры, не трогая текущий зум/пан — иначе scroll
+    // списка слева незаметно сбрасывал карту в дальний zoom-out (regression,
+     // зафиксирован 04.09.2026).
+    const hadMarkers = markersLayer.getLayers().length > 0;
     markersLayer.clearLayers();
     const pts = eventsWithCoords();
     const emptyState = App.els.eventsMapEmpty;
@@ -99,6 +107,7 @@
       marker.addTo(markersLayer);
       latlngs.push([ev.lat, ev.lng]);
     });
+    if (hadMarkers) return; // карта уже была отцентрована — зум/пан не трогаем
     if (latlngs.length === 1) {
       map.setView(latlngs[0], 14);
     } else if (latlngs.length > 1) {
