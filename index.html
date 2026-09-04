@@ -1571,6 +1571,7 @@
 
     var MESSAGE = {
       current: ['update.current', 'Установлена последняя версия.'],
+      partial: ['update.partial', 'Не удалось проверить некоторые модули. Попробуйте ещё раз.'],
       offline: ['update.offline', 'Нет соединения — проверить обновления не удалось.'],
     };
 
@@ -1581,12 +1582,22 @@
 
       return CWUpdate.checkAll().then(function (result) {
         var ready = result.ready || [];
-        var unreachable = result.unreachable || [];
+        var failed = result.failed || [];
 
         if (!ready.length) {
-          // Ничего не нашлось. Если при этом что-то не удалось проверить —
-          // это НЕ то же самое, что «всё актуально», и должно быть видно.
-          var msg = unreachable.length ? MESSAGE.offline : MESSAGE.current;
+          // Ничего не нашлось. Различаем три исхода, а не два:
+          //  - failed пуст → все регистрации проверены, апдейта нет — «последняя версия».
+          //  - failed есть, но не все — часть проверок реально не удалась
+          //    (updateFailed на конкретном scope), не весь набор — нейтральное
+          //    сообщение, не утверждение «нет соединения».
+          //  - failed покрывает вообще все проверенные (или пришёл единственный
+          //    маркер '*' — getRegistrations() сам отклонился) — тогда это
+          //    единственный случай, где «нет соединения» оправдано.
+          var globalFailure = failed.some(function (f) { return f.scope === '*'; });
+          var msg;
+          if (!failed.length) msg = MESSAGE.current;
+          else if (globalFailure) msg = MESSAGE.offline;
+          else msg = MESSAGE.partial;
           CWUpdate.notify(msg[0], msg[1]);
           return;
         }
@@ -1598,6 +1609,11 @@
         // Хаб сам мог оказаться среди ready (свой scope) — для него отдельной
         // строки в списке нет (moduleIdForScope возвращает null), баннер в
         // этом случае просто говорит про сам Circuit Workspace без деталей.
+        //
+        // failed здесь не теряется молча: если что-то из ready нашлось, а
+        // другие scope при этом реально не проверились, баннер про apply
+        // всё равно применяет то, что нашлось — частичный отказ проверки
+        // остальных не блокирует применение уже готового.
 
         CWUpdate.offerHubBanner({
           listItems: lines,

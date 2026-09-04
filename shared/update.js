@@ -262,12 +262,19 @@
   }
 
   /**
-   * Дожидается исхода update-цикла одной регистрации: либо уже готовый
-   * `waiting`, либо `updatefound` → `installed`, в пределах таймаута.
-   * Подписка ставится ДО вызова reg.update() снаружи (см. checkAll) — иначе
-   * есть риск гонки, если updatefound сработает уже внутри промиса update().
+   * Дожидается появления waiting-воркера у регистрации: либо он уже есть,
+   * либо доходит до этого через `updatefound` → `installed`, в пределах
+   * таймаута. Подписка ставится ДО вызова reg.update() снаружи (см.
+   * checkAll) — иначе есть риск гонки, если updatefound сработает уже
+   * внутри промиса update().
    *
-   * @returns {Promise<boolean>} true — найден waiting worker к моменту исхода
+   * ВАЖНО: таймаут здесь НЕ означает ошибку. Если у scope нет нового
+   * release, `updatefound` не произойдёт никогда — это нормальный исход
+   * «обновления нет», а не «не удалось проверить». Решение о том,
+   * `updateFailed`/`hasWaiting`/`noUpdate`, принимает checkAll на основе
+   * реального success/reject самого reg.update(), а не этой функции.
+   *
+   * @returns {Promise<boolean>} true — появился waiting worker
    */
   function waitForOutcome(reg) {
     return new Promise(function (resolve) {
@@ -303,6 +310,10 @@
         });
       });
 
+      /* Таймаут — не находка «offline», а просто «дальше не ждём»: если к
+         этому моменту waiting нет, значит нет и нового release (при
+         условии, что reg.update() выше уже успешно отработал — это
+         проверяется в checkAll, не здесь). */
       timer = global.setTimeout(function () { finish(!!reg.waiting); }, UPDATE_TIMEOUT_MS);
     });
   }
@@ -382,42 +393,65 @@
     /**
      * Bounded orchestration для кнопки «Обновить всё» в хабе. Проходит по
      * ВСЕМ регистрациям origin (хаб + четыре модуля), для каждой форсирует
-     * update() и ДОЖИДАЕТСЯ исход (installed/waiting либо явный таймаут) —
-     * не просто опрашивает reg.waiting сразу после update(), которое могло
-     * бы пропустить регистрацию, всё ещё находящуюся в installing.
+     * update() и ДОЖИДАЕТСЯ появление waiting-воркера (installed/waiting
+     * либо явный таймаут) — не просто опрашивает reg.waiting сразу после
+     * update(), которое могло бы пропустить регистрацию, всё ещё
+     * находящуюся в installing.
      *
-     * @returns {Promise<{ready: Array<{scope:string,reg:Object}>, unreachable: Array<{scope:string}>}>}
-     *   ready       — регистрации, у которых к концу цикла есть reg.waiting;
-     *   unreachable — регистрации, которые не удалось проверить (нет сети
-     *                 либо не уложились в таймаут) — не должны молча
-     *                 считаться «актуальными».
+     * Три состояния на регистрацию, а не одно бинарное: успешный
+     * reg.update() без найденного waiting — это `noUpdate` (обновления нет,
+     * нормальный результат), а НЕ `updateFailed`. Смешивать их и раньше
+     * приводило к тому, что обычное «обновлений нет» показывалось
+     * пользователю как «нет соединения».
+     *
+     * @returns {Promise<{ready: Array<{scope:string,reg:Object}>, failed: Array<{scope:string}>}>}
+     *   ready  — hasWaiting: у регистрации к концу цикла есть reg.waiting;
+     *   failed — updateFailed: сам reg.update() отклонился (реальная
+     *            сетевая/иная ошибка на этот scope). noUpdate нигде не
+     *            накапливается отдельно — это отсутствие записи в обоих
+     *            списках.
      */
     checkAll: function () {
-      if (unsupported()) return Promise.resolve({ ready: [], unreachable: [] });
+      if (unsupported()) return Promise.resolve({ ready: [], failed: [] });
 
       return nav.serviceWorker.getRegistrations().then(function (regs) {
-        if (!regs.length) return { ready: [], unreachable: [] };
+        if (!regs.length) return { ready: [], failed: [] };
 
         return Promise.all(regs.map(function (reg) {
           /* Подписка на исход СНАЧАЛА, update() запускается следом —
              иначе updatefound мог бы сработать до того, как мы начали
              слушать. */
           var outcome = waitForOutcome(reg);
-          return reg.update()
-            .catch(function () { /* нет сети на этот scope — не блокируем остальные */ })
-            .then(function () { return outcome; })
-            .then(function (found) { return { reg: reg, found: found }; });
+          return reg.update().then(
+            function () { return { reg: reg, updateFailed: false }; },
+            function () { return { reg: reg, updateFailed: true }; }
+          ).then(function (r) {
+            /* updateFailed уже известен независимо от outcome — но если
+               update() сам отклонился, waiting всё равно может однажды
+               появиться (installed от прошлой фоновой проверки браузера).
+               Ждём outcome в любом случае, updateFailed решает КАТЕГОРИЮ
+               результата ниже, не отменяет сам факт reg.waiting. */
+            return outcome.then(function (hasWaiting) {
+              r.hasWaiting = hasWaiting;
+              return r;
+            });
+          });
         })).then(function (results) {
           var ready = [];
-          var unreachable = [];
+          var failed = [];
           results.forEach(function (r) {
-            if (r.reg.waiting) ready.push({ scope: r.reg.scope, reg: r.reg });
-            else if (!r.found) unreachable.push({ scope: r.reg.scope, reg: r.reg });
+            if (r.reg.waiting) { ready.push({ scope: r.reg.scope, reg: r.reg }); return; }
+            /* Регистрация без waiting: updateFailed → реальная ошибка на
+               этот scope (failed); иначе — noUpdate, не попадает никуда. */
+            if (r.updateFailed) failed.push({ scope: r.reg.scope, reg: r.reg });
           });
-          return { ready: ready, unreachable: unreachable };
+          return { ready: ready, failed: failed };
         });
       }, function () {
-        return { ready: [], unreachable: [{ scope: '*' }] };
+        /* getRegistrations() сам отклонился — это не про сеть отдельного
+           scope, а про API целиком; единственный разумный сигнал —
+           «ничего не проверено». */
+        return { ready: [], failed: [{ scope: '*' }] };
       });
     },
 
