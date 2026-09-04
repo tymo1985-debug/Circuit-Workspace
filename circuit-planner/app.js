@@ -1143,6 +1143,30 @@
     },
 
     actions: {
+      /* Единая точка открытия редактора собрания по id — используется и
+         списком/карточками (data-edit-event), и маркером карты, чтобы клик
+         по маркеру вёл в тот же самый редактор, а не в его копию. */
+      openEventEditorFor(eventId) {
+        const event = App.data.getEventById(eventId);
+        App.state.editingEventId = event?.id || null;
+        if (App.els.eventNameInput) App.els.eventNameInput.value = event?.name || '';
+        if (App.els.eventColorInput) { App.els.eventColorInput.innerHTML = App.utils.colorOptionsHtml(event?.color || '#1f7a45'); App.els.eventColorInput.value = event?.color || '#1f7a45'; if (!App.els.eventColorInput.value) App.els.eventColorInput.selectedIndex = 0; }
+        if (App.els.eventAddressInput) App.els.eventAddressInput.value = event?.address || '';
+        if (App.els.eventScheduleInput) App.els.eventScheduleInput.value = event?.schedule || '';
+        if (App.els.eventVisitTypeInput) App.els.eventVisitTypeInput.value = event?.visitType || '';
+        App.ui.syncEventVisitFieldsVisibility();
+        if (App.els.eventContactNameInput) App.els.eventContactNameInput.value = event?.contactName || '';
+        if (App.els.eventContactPhoneInput) App.els.eventContactPhoneInput.value = event?.contactPhone || '';
+        if (App.els.eventContactEmailInput) App.els.eventContactEmailInput.value = event?.contactEmail || '';
+        if (App.els.eventContactNoteInput) App.els.eventContactNoteInput.value = event?.contactNote || '';
+        if (App.els.eventCongNumberInput) App.els.eventCongNumberInput.value = event?.congNumber || '';
+        App.state.editingEventCoords = (typeof event?.lat === 'number' && typeof event?.lng === 'number') ? { lat: event.lat, lng: event.lng } : null;
+        App.ui.renderEventDistanceStatus();
+        if (App.els.eventFormLanguageSelect) App.els.eventFormLanguageSelect.value = event?.formLanguage || '';
+        App.ui.openModal(App.els.eventEditorModal);
+        if (App.els.deleteEventBtn) App.els.deleteEventBtn.hidden = false;
+        App.els.eventNameInput?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      },
       resetEventForm() {
         App.state.editingEventId = null;
         if (App.els.eventNameInput) App.els.eventNameInput.value = '';
@@ -1596,6 +1620,7 @@
           'editorCancelBtn','editorDeleteBtn','editorSaveBtn','calendarServiceYearLabel',
           'calendarSideTitle','calendarSideMeta','calendarSideDetails','calendarSideCountdownRow','calendarSideCountdown','countdownUnitSelect',
           'toggleTeamPanelBtn','calendarLayout','eventsList','eventSearchInput','eventColorFilter','eventVisitFilter','deleteAllEventsBtn','eventsListCount','eventsViewListBtn','eventsViewCardsBtn','eventsOverflowMenu','eventNameInput','eventColorInput','eventAddressInput',
+          'eventsPanelLayout','eventsMapPane','eventsMapContainer','eventsMapEmpty','showMapBtn',
           'eventScheduleInput','resetEventBtn','saveEventBtn','deleteEventBtn','newEventBtn','eventVisitTypeInput','eventContactNameInput','eventContactPhoneInput','eventContactEmailInput','eventContactNoteInput','editorFlagsRow','editorFlagS302','editorFlagLetter',
           'fillCongNumbersBtn','fillNumbersModal','fillNumbersSub','fillNumbersBody','fillNumbersApplyBtn','fillNumbersCancelBtn','fillNumbersCloseBtn',
           'eventDeleteModal','eventDeleteSub','eventDeleteHereBtn','eventDeleteEverywhereBtn','eventDeleteCancelBtn','eventDeleteCloseBtn',
@@ -3854,25 +3879,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.eventsViewListBtn) { App.els.eventsViewListBtn.textContent = App.utils.t('events_view_list'); App.els.eventsViewListBtn.setAttribute('aria-pressed', String(viewMode === 'list')); App.els.eventsViewListBtn.classList.toggle('md-btn-filled', viewMode === 'list'); App.els.eventsViewListBtn.classList.toggle('md-btn-outlined', viewMode !== 'list'); }
         if (App.els.eventsViewCardsBtn) { App.els.eventsViewCardsBtn.textContent = App.utils.t('events_view_cards'); App.els.eventsViewCardsBtn.setAttribute('aria-pressed', String(viewMode === 'cards')); App.els.eventsViewCardsBtn.classList.toggle('md-btn-filled', viewMode === 'cards'); App.els.eventsViewCardsBtn.classList.toggle('md-btn-outlined', viewMode !== 'cards'); }
         document.querySelectorAll('[data-edit-event]').forEach((btn) => btn.addEventListener('click', () => {
-          const event = App.data.getEventById(btn.dataset.editEvent);
-          App.state.editingEventId = event?.id || null;
-          if (App.els.eventNameInput) App.els.eventNameInput.value = event?.name || '';
-          if (App.els.eventColorInput) { App.els.eventColorInput.innerHTML = App.utils.colorOptionsHtml(event?.color || '#1f7a45'); App.els.eventColorInput.value = event?.color || '#1f7a45'; if (!App.els.eventColorInput.value) App.els.eventColorInput.selectedIndex = 0; }
-          if (App.els.eventAddressInput) App.els.eventAddressInput.value = event?.address || '';
-          if (App.els.eventScheduleInput) App.els.eventScheduleInput.value = event?.schedule || '';
-          if (App.els.eventVisitTypeInput) App.els.eventVisitTypeInput.value = event?.visitType || '';
-          App.ui.syncEventVisitFieldsVisibility();
-          if (App.els.eventContactNameInput) App.els.eventContactNameInput.value = event?.contactName || '';
-          if (App.els.eventContactPhoneInput) App.els.eventContactPhoneInput.value = event?.contactPhone || '';
-          if (App.els.eventContactEmailInput) App.els.eventContactEmailInput.value = event?.contactEmail || '';
-          if (App.els.eventContactNoteInput) App.els.eventContactNoteInput.value = event?.contactNote || '';
-          if (App.els.eventCongNumberInput) App.els.eventCongNumberInput.value = event?.congNumber || '';
-          App.state.editingEventCoords = (typeof event?.lat === 'number' && typeof event?.lng === 'number') ? { lat: event.lat, lng: event.lng } : null;
-          App.ui.renderEventDistanceStatus();
-          if (App.els.eventFormLanguageSelect) App.els.eventFormLanguageSelect.value = event?.formLanguage || '';
-          App.ui.openModal(App.els.eventEditorModal);
-          if (App.els.deleteEventBtn) App.els.deleteEventBtn.hidden = false;
-          App.els.eventNameInput?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          App.actions.openEventEditorFor(btn.dataset.editEvent);
         }));
       },
 
@@ -3900,6 +3907,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.deleteAllEventsBtn?.addEventListener('click', () => { if (App.els.eventsOverflowMenu) App.els.eventsOverflowMenu.open = false; App.actions.deleteAllEventTemplates(); });
       App.els.eventsViewListBtn?.addEventListener('click', () => { if (App.state.app.settings.eventsViewMode === 'list') return; App.state.app.settings.eventsViewMode = 'list'; App.store.save(); App.ui.renderEvents(); });
       App.els.eventsViewCardsBtn?.addEventListener('click', () => { if (App.state.app.settings.eventsViewMode === 'cards') return; App.state.app.settings.eventsViewMode = 'cards'; App.store.save(); App.ui.renderEvents(); });
+      App.els.showMapBtn?.addEventListener('click', () => App.ui.toggleEventsMap?.());
       App.els.themeBtn?.addEventListener('click', () => {
         if (window.CWTheme) { App.state.app.settings.theme = window.CWTheme.toggle(); App.store.save(); return; }
         App.state.app.settings.theme = App.state.app.settings.theme === 'dark' ? 'light' : 'dark';

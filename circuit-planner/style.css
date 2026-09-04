@@ -54,6 +54,25 @@
   @media (max-width:767px){.weeks-toolbar{grid-template-columns:1fr !important}.icon-btn{width:44px !important;height:44px !important;font-size:16px}}
   .event-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(170px,230px) auto auto auto;gap:10px;align-items:center;margin-bottom:14px}.event-tools .small{justify-self:start}.event-tools .md-btn-danger{white-space:nowrap}@media (max-width:760px){.event-tools{grid-template-columns:1fr}.event-tools .small{justify-self:start}}
   .events-view-toggle{display:inline-flex;gap:6px}.events-view-btn{white-space:nowrap}
+  .events-map-toggle-btn{white-space:nowrap}
+  /* Карта — desktop-only по ТЗ фазы. Переиспользуем уже одобренный порог
+     1181px (см. .nv-row ниже, docs/design-tokens/03-breakpoints.md) вместо
+     заведения нового: тот же физический "есть ли правая колонка вообще"
+     вопрос, что и там, поэтому check-breakpoints.mjs не должен требовать
+     отдельной документации второго порога с тем же смыслом.
+     Ниже 1181px .is-map-open ничего не меняет — кнопка карты просто не
+     показывается (правило ниже), mobile-раскладка списка не трогается. */
+  .events-map-pane{display:none}
+  @media (min-width:1181px){
+    .events-panel-layout.is-map-open{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,42%);gap:var(--calendar-layout-gap,22px);align-items:start}
+    .events-panel-layout.is-map-open #eventsList{min-width:0}
+    .events-map-pane{display:block;position:sticky;top:12px}
+  }
+  @media (max-width:1180px){.events-map-toggle-btn{display:none}}
+  .events-map-container{width:100%;height:520px;border-radius:16px;overflow:hidden;background:var(--md-surface-variant,#e7e7e7)}
+  .events-map-empty{margin-top:10px}
+  .map-offline-notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--md-surface,#fff);color:var(--md-on-surface,#333);padding:10px 16px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.18);font-size:.9rem;pointer-events:none;z-index:500}
+  .events-map-pane{position:relative}
   .overflow-menu{position:relative}.overflow-menu-trigger{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;user-select:none}.overflow-menu-trigger::-webkit-details-marker{display:none}.overflow-menu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:20;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:12px;box-shadow:var(--md-elevation-2);padding:8px;display:flex;flex-direction:column;min-width:220px}.overflow-menu-panel .md-btn{width:100%;justify-content:flex-start}
   .week-item,.event-row,.note-row{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--md-primary);outline:2px solid color-mix(in srgb, var(--md-primary) 20%, transparent)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
   #eventsList.is-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}

@@ -40,7 +40,14 @@ const APP_SHELL_URLS = [
   './ui/modals.js',
   './ui/ui-aux.js',
   './ui/ui-toggles.js',
+  './ui/map.js',
   './visit-pdf.js',
+  // Leaflet — модуль-локальная зависимость (карта собраний, desktop-only).
+  // cache-first, как шрифты: без прекэша карта не инициализируется офлайн
+  // вовсе (см. шапку ui/map.js). Тайлы OSM сюда намеренно НЕ входят — это
+  // runtime-запросы, они не прекэшируются никогда.
+  './vendor/leaflet.js',
+  './vendor/leaflet.css',
   './fonts/fonts-aptos-regular.js',
   './fonts/fonts-aptos-bold.js',
   './fonts/fonts-aptos-italic.js',
