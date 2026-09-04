@@ -11,24 +11,42 @@
  * работать. Именно так и вышло 11.08.2026: старый `app.js` из кэша рядом с
  * новой разметкой — кнопки выдачи формуляров и писем нажимались вхолостую.
  *
- * КАК ЭТО РАБОТАЕТ ТЕПЕРЬ.
- *  1. Ни один SW больше не зовёт skipWaiting() на установке. Новый worker
- *     доходит до состояния `waiting` и там останавливается — открытая
- *     страница продолжает работать на том наборе файлов, с которым
- *     запустилась. Смешения старого кода со свежими ассетами не возникает.
- *  2. Как только обновление готово, показывается ненавязчивая полоса внизу
- *     экрана: «Доступна новая версия» + «Обновить» / «Позже». Решает
- *     пользователь, а не приложение — потерять несохранённый формуляр
- *     из-за внезапной перезагрузки нельзя.
- *  3. Кнопка «Обновить» шлёт worker'у SKIP_WAITING; тот активируется, ловится
- *     `controllerchange`, страница перезагружается уже осознанно.
+ * HUB AS SINGLE UPDATE AUTHORITY (введено 04.09.2026). До этой правки каждая
+ * страница (хаб и все четыре модуля) сама решала, показывать ли пользователю
+ * баннер «Обновить», и сама слала SKIP_WAITING. Открытая вкладка модуля
+ * могла показать собственный баннер независимо от хаба — двойной UI одного
+ * и того же события. Теперь:
  *
- * ПОЧЕМУ CHECK() ОБХОДИТ ВСЕ РЕГИСТРАЦИИ. GitHub Pages — один origin на весь
- * монорепо, поэтому `getRegistrations()` со страницы хаба видит регистрации
- * всех четырёх модулей. Одна кнопка в шапке хаба форсирует проверку и хабу, и
- * каждому модулю: не нужно заходить в каждый и жать Shift+Cmd+R по очереди.
- * Чужим (не управляющим этой страницей) регистрациям обновление применяется
- * сразу и молча — их страницы не открыты, ломать нечего.
+ *  1. Ни один SW по-прежнему не зовёт skipWaiting() на установке. Новый
+ *     worker доходит до `waiting` и там останавливается.
+ *  2. Пользовательский UI обновления (баннер со списком изменившихся
+ *     модулей, кнопка «Обновить всё») существует ТОЛЬКО на странице хаба —
+ *     режим `ui: 'hub'`.
+ *  3. Все четыре модуля подключают этот же файл в режиме `ui: 'silent'`:
+ *     SW регистрируется и отслеживается, но локальная кнопка «Обновить»
+ *     никогда не рисуется и локальный пользовательский SKIP_WAITING никогда
+ *     не отправляется. Единственное, что может увидеть пользователь модуля,
+ *     — нейтральное уведомление без кнопки действия: «Доступно обновление —
+ *     открыть Hub» со ссылкой на хаб. Это не самостоятельный update-flow:
+ *     уведомление не предлагает применить обновление на месте, только
+ *     перейти туда, где это можно сделать. Никакого таймера, превращающего
+ *     это уведомление обратно в локальный apply, не существует.
+ *  4. Хаб находит все обновившиеся scopes через ограниченный по времени
+ *     orchestration-цикл (`checkAll`, ниже) и применяет их одной кнопкой.
+ *
+ * ПОЧЕМУ CHECKALL() ОБХОДИТ ВСЕ РЕГИСТРАЦИИ. GitHub Pages — один origin на
+ * весь монорепо, поэтому `getRegistrations()` со страницы хаба видит
+ * регистрации всех четырёх модулей. Одна кнопка в хабе форсирует проверку
+ * всем сразу — не нужно заходить в каждый модуль по очереди.
+ *
+ * ПОЧЕМУ update() НЕДОСТАТОЧНО САМ ПО СЕБЕ. Промис `reg.update()` резолвится,
+ * когда сеть отработала — это НЕ означает, что новый worker уже дошёл до
+ * `installed`/`waiting`: установка идёт по отдельному пайплайну (`installing`
+ * → событие `statechange`). Опрос `reg.waiting` сразу после `update()` мог бы
+ * пропустить модуль, чей worker всё ещё в `installing` в момент проверки.
+ * Поэтому `checkAll()` после `update()` дожидается исхода (уже готовый
+ * `waiting`, либо `updatefound` → `installed`) с ограничением по времени —
+ * не бесконечно, но и не мгновенным опросом.
  *
  * `self` вместо `window` — единообразно с остальным общим слоем; файл
  * рассчитан на подключение обычным <script>, в service worker'е не нужен.
@@ -42,14 +60,31 @@
   var BAR_ID = 'cwUpdateBar';
   var STYLE_ID = 'cwUpdateStyle';
 
+  /* Сколько ждать исход update-цикла одной регистрации (installed/waiting
+     либо явное отсутствие изменений) прежде чем считать её недоступной. */
+  var UPDATE_TIMEOUT_MS = 10000;
+  /* Сколько ждать активацию (controllerchange) после SKIP_WAITING одному
+     scope, прежде чем всё равно продолжить — воркер мог активироваться и
+     без немедленного события в редких браузерах/условиях. */
+  var ACTIVATE_TIMEOUT_MS = 6000;
+
   /* Своя регистрация: та, что управляет текущей страницей. */
   var ownReg = null;
+  /* Режим страницы: 'hub' — полный UI и apply; 'silent' — только нейтральное
+     уведомление-ссылка, никогда кнопка «Обновить», никогда локальный
+     SKIP_WAITING по инициативе пользователя. */
+  var uiMode = 'hub';
+  /* Куда ведёт нейтральное уведомление в silent-режиме. */
+  var hubHref = '../index.html';
   /* Был ли контроллер в момент запуска. Первая в жизни установка SW тоже
      вызывает controllerchange (через clients.claim), но перезагружать там
      нечего — страница уже свежая. */
   var hadController = !!(nav && nav.serviceWorker && nav.serviceWorker.controller);
   var reloading = false;
   var barShown = false;
+  /* Нейтральное уведомление silent-режима показывается один раз за время
+     жизни страницы — повторный updatefound не должен спамить тем же текстом. */
+  var neutralShown = false;
 
   function unsupported() {
     return !nav || !doc || !('serviceWorker' in nav);
@@ -80,9 +115,11 @@
       'background:var(--md-inverse-surface,#2f2f33);color:var(--md-inverse-on-surface,#f2f0f4);',
       'box-shadow:0 12px 32px rgba(0,0,0,.28);font:inherit;font-size:14px;line-height:1.35}',
       '#' + BAR_ID + ' .cw-update__text{flex:1 1 200px;min-width:0}',
-      '#' + BAR_ID + ' button{flex:0 0 auto;min-height:36px;padding:7px 16px;border-radius:999px;',
-      'border:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer}',
-      '#' + BAR_ID + ' .cw-update__apply{background:var(--md-inverse-primary,#c9a3ff);',
+      '#' + BAR_ID + ' .cw-update__list{margin:4px 0 0;padding:0;list-style:none;font-size:13px;opacity:.92}',
+      '#' + BAR_ID + ' .cw-update__list li{padding:1px 0}',
+      '#' + BAR_ID + ' button,#' + BAR_ID + ' a.cw-update__link{flex:0 0 auto;min-height:36px;padding:7px 16px;border-radius:999px;',
+      'border:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}',
+      '#' + BAR_ID + ' .cw-update__apply,#' + BAR_ID + ' a.cw-update__link{background:var(--md-inverse-primary,#c9a3ff);',
       'color:var(--md-on-primary-container,#22005d)}',
       '#' + BAR_ID + ' .cw-update__later{background:transparent;color:inherit;font-weight:500;opacity:.85}',
       '@media print{#' + BAR_ID + '{display:none !important}}',
@@ -101,8 +138,12 @@
    * @param {Object} opts
    * @param {string} opts.textKey  ключ i18n основного текста
    * @param {string} opts.textFallback
-   * @param {Function} [opts.onApply] если не задан — кнопка действия не рисуется
-   *                                  (полоса становится просто уведомлением)
+   * @param {Array<string>} [opts.listItems] построчный список (уже переведённые строки)
+   * @param {Function} [opts.onApply] кнопка действия «Обновить» (только hub-режим)
+   * @param {string} [opts.linkHref] если задан вместо onApply — рисуется ссылка,
+   *                                 не кнопка (silent-режим: переход, не apply)
+   * @param {string} [opts.linkKey] ключ i18n подписи ссылки
+   * @param {string} [opts.linkFallback]
    * @param {number} [opts.autoHide] мс до автоскрытия
    */
   function showBar(opts) {
@@ -120,12 +161,23 @@
     text.textContent = t(opts.textKey, opts.textFallback);
     bar.appendChild(text);
 
+    if (opts.listItems && opts.listItems.length) {
+      var list = doc.createElement('ul');
+      list.className = 'cw-update__list';
+      opts.listItems.forEach(function (line) {
+        var li = doc.createElement('li');
+        li.textContent = line;
+        list.appendChild(li);
+      });
+      text.appendChild(list);
+    }
+
     if (opts.onApply) {
       var apply = doc.createElement('button');
       apply.type = 'button';
       apply.className = 'cw-update__apply';
-      apply.setAttribute('data-i18n', 'update.apply');
-      apply.textContent = t('update.apply', 'Обновить');
+      apply.setAttribute('data-i18n', opts.applyKey || 'update.apply');
+      apply.textContent = t(opts.applyKey || 'update.apply', opts.applyFallback || 'Обновить');
       apply.addEventListener('click', opts.onApply);
       bar.appendChild(apply);
 
@@ -136,6 +188,16 @@
       later.textContent = t('update.later', 'Позже');
       later.addEventListener('click', hideBar);
       bar.appendChild(later);
+    } else if (opts.linkHref) {
+      /* Ссылка, а не кнопка-действие: silent-режим никогда не применяет
+         обновление на месте, только предлагает переход туда, где это можно
+         сделать. */
+      var link = doc.createElement('a');
+      link.className = 'cw-update__link';
+      link.href = opts.linkHref;
+      link.setAttribute('data-i18n', opts.linkKey || 'update.open_hub');
+      link.textContent = t(opts.linkKey || 'update.open_hub', opts.linkFallback || 'Открыть Hub');
+      bar.appendChild(link);
     }
 
     doc.body.appendChild(bar);
@@ -149,7 +211,10 @@
     }
   }
 
-  /** Применить уже дождавшееся обновление своей страницы. */
+  /** Применить уже дождавшееся обновление своей страницы. Доступно только
+      из hub-режима (кнопка «Обновить всё» зовёт это для scope хаба) — из
+      silent-режима эта функция никогда не вызывается пользовательским
+      действием. */
   function applyOwn() {
     var waiting = ownReg && ownReg.waiting;
     if (!waiting) { global.location.reload(); return; }
@@ -158,7 +223,22 @@
     catch (e) { global.location.reload(); }
   }
 
+  /* Нейтральное уведомление silent-режима: только ссылка на хаб, без кнопки
+     применения. Показывается один раз за время жизни страницы. */
+  function offerNeutral() {
+    if (neutralShown) return;
+    neutralShown = true;
+    showBar({
+      textKey: 'update.available_open_hub',
+      textFallback: 'Доступно обновление Circuit Workspace — открыть Hub',
+      linkHref: hubHref,
+      linkKey: 'update.open_hub',
+      linkFallback: 'Открыть Hub',
+    });
+  }
+
   function offerOwn() {
+    if (uiMode !== 'hub') { offerNeutral(); return; }
     showBar({
       textKey: 'update.available',
       textFallback: 'Доступна новая версия приложения.',
@@ -181,15 +261,92 @@
     });
   }
 
+  /**
+   * Дожидается исхода update-цикла одной регистрации: либо уже готовый
+   * `waiting`, либо `updatefound` → `installed`, в пределах таймаута.
+   * Подписка ставится ДО вызова reg.update() снаружи (см. checkAll) — иначе
+   * есть риск гонки, если updatefound сработает уже внутри промиса update().
+   *
+   * @returns {Promise<boolean>} true — найден waiting worker к моменту исхода
+   */
+  function waitForOutcome(reg) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      var timer = null;
+
+      function finish(result) {
+        if (settled) return;
+        settled = true;
+        if (timer) global.clearTimeout(timer);
+        resolve(result);
+      }
+
+      if (reg.waiting) { finish(true); return; }
+
+      var installing = reg.installing;
+      if (installing) {
+        installing.addEventListener('statechange', function onState() {
+          if (installing.state === 'installed') finish(!!reg.waiting);
+          else if (installing.state === 'redundant') finish(!!reg.waiting);
+        });
+      }
+
+      /* updatefound может сработать позже (update() ещё сетевой запрос
+         отправляет) — слушаем и его, на случай если installing выше был
+         ещё пуст в момент вызова. */
+      reg.addEventListener('updatefound', function onFound() {
+        var inst = reg.installing;
+        if (!inst) return;
+        inst.addEventListener('statechange', function onState2() {
+          if (inst.state === 'installed') finish(!!reg.waiting);
+          else if (inst.state === 'redundant') finish(!!reg.waiting);
+        });
+      });
+
+      timer = global.setTimeout(function () { finish(!!reg.waiting); }, UPDATE_TIMEOUT_MS);
+    });
+  }
+
+  /** Дожидается активации конкретной регистрации после SKIP_WAITING — по
+      исчезновению `waiting`. Ограничено по времени; если время вышло,
+      просто продолжаем (страница-владелец own-scope перезагрузится сама
+      через уже подписанный controllerchange, когда бы это ни случилось). */
+  function waitForActivation(reg) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      var poll = null;
+      var timer = global.setTimeout(function () { finish(); }, ACTIVATE_TIMEOUT_MS);
+
+      function finish() {
+        if (settled) return;
+        settled = true;
+        global.clearTimeout(timer);
+        if (poll) global.clearInterval(poll);
+        resolve();
+      }
+
+      poll = global.setInterval(function () {
+        if (!reg.waiting) finish();
+      }, 300);
+    });
+  }
+
   var CWUpdate = {
     /**
      * Регистрирует SW модуля/хаба и включает слежение за обновлениями.
      * @param {Object} [options]
      * @param {string} [options.swUrl='./sw.js'] путь к service worker'у
+     * @param {string} [options.ui='hub'] 'hub' — полный UI (баннер + apply);
+     *   'silent' — модуль: без кнопки «Обновить», без пользовательского
+     *   SKIP_WAITING; максимум нейтральная ссылка на хаб.
+     * @param {string} [options.hubHref='../index.html'] куда ведёт ссылка
+     *   «Открыть Hub» в silent-режиме.
      */
     init: function (options) {
       if (unsupported()) return Promise.resolve(null);
       var swUrl = (options && options.swUrl) || './sw.js';
+      uiMode = (options && options.ui) || 'hub';
+      if (options && options.hubHref) hubHref = options.hubHref;
 
       nav.serviceWorker.addEventListener('controllerchange', function () {
         /* Первая установка: контроллера не было, перезагружать нечего. */
@@ -223,47 +380,74 @@
     },
 
     /**
-     * Ручная проверка обновлений — то, что делает кнопка в шапке хаба.
-     * Проходит по ВСЕМ регистрациям origin: хаб + все четыре модуля.
+     * Bounded orchestration для кнопки «Обновить всё» в хабе. Проходит по
+     * ВСЕМ регистрациям origin (хаб + четыре модуля), для каждой форсирует
+     * update() и ДОЖИДАЕТСЯ исход (installed/waiting либо явный таймаут) —
+     * не просто опрашивает reg.waiting сразу после update(), которое могло
+     * бы пропустить регистрацию, всё ещё находящуюся в installing.
      *
-     * @returns {Promise<'ready'|'others'|'current'|'offline'|'unsupported'>}
-     *   ready  — обновилась сама эта страница, показана полоса с «Обновить»;
-     *   others — обновились другие модули (их страницы не открыты, применено сразу);
-     *   current — всё уже актуально;
-     *   offline — ни одну регистрацию не удалось проверить (нет сети).
+     * @returns {Promise<{ready: Array<{scope:string,reg:Object}>, unreachable: Array<{scope:string}>}>}
+     *   ready       — регистрации, у которых к концу цикла есть reg.waiting;
+     *   unreachable — регистрации, которые не удалось проверить (нет сети
+     *                 либо не уложились в таймаут) — не должны молча
+     *                 считаться «актуальными».
      */
-    check: function () {
-      if (unsupported()) return Promise.resolve('unsupported');
+    checkAll: function () {
+      if (unsupported()) return Promise.resolve({ ready: [], unreachable: [] });
 
       return nav.serviceWorker.getRegistrations().then(function (regs) {
-        if (!regs.length) return 'current';
+        if (!regs.length) return { ready: [], unreachable: [] };
 
-        var reachable = 0;
         return Promise.all(regs.map(function (reg) {
-          return reg.update().then(function () { reachable++; }, function () { /* нет сети */ });
-        })).then(function () {
-          if (!reachable) return 'offline';
-
-          var ownScope = ownReg ? ownReg.scope : null;
-          var mineReady = false;
-          var othersReady = false;
-
-          regs.forEach(function (reg) {
-            if (!reg.waiting) return;
-            if (ownScope && reg.scope === ownScope) { mineReady = true; return; }
-            /* Чужой модуль: его страница не открыта, применяем молча. */
-            othersReady = true;
-            try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) { /* уже активируется */ }
+          /* Подписка на исход СНАЧАЛА, update() запускается следом —
+             иначе updatefound мог бы сработать до того, как мы начали
+             слушать. */
+          var outcome = waitForOutcome(reg);
+          return reg.update()
+            .catch(function () { /* нет сети на этот scope — не блокируем остальные */ })
+            .then(function () { return outcome; })
+            .then(function (found) { return { reg: reg, found: found }; });
+        })).then(function (results) {
+          var ready = [];
+          var unreachable = [];
+          results.forEach(function (r) {
+            if (r.reg.waiting) ready.push({ scope: r.reg.scope, reg: r.reg });
+            else if (!r.found) unreachable.push({ scope: r.reg.scope, reg: r.reg });
           });
-
-          if (mineReady) { offerOwn(); return 'ready'; }
-          if (othersReady) return 'others';
-          return 'current';
+          return { ready: ready, unreachable: unreachable };
         });
-      }, function () { return 'offline'; });
+      }, function () {
+        return { ready: [], unreachable: [{ scope: '*' }] };
+      });
     },
 
-    /** Применить обновление своей страницы (кнопка «Обновить»). */
+    /**
+     * Применяет обновление ко всем переданным регистрациям (результат
+     * `checkAll().ready`) и дожидается активации каждой в пределах таймаута.
+     * Own-scope (хаб) после этого перезагружается сам — controllerchange уже
+     * подписан в init(). Чужие scopes (модули, чьи страницы сейчас не
+     * открыты) просто получают новый активный worker; если вкладка модуля
+     * всё же открыта в фоне, её собственный controllerchange (тот же
+     * механизм init()) сам перезагрузит её позже — без участия хаба.
+     *
+     * @param {Array<{scope:string, reg:ServiceWorkerRegistration}>} readyList
+     * @returns {Promise<void>}
+     */
+    applyAll: function (readyList) {
+      var list = readyList || [];
+      list.forEach(function (item) {
+        if (!item.reg || !item.reg.waiting) return;
+        try { item.reg.waiting.postMessage({ type: 'SKIP_WAITING' }); }
+        catch (e) { /* воркер уже активируется */ }
+      });
+      return Promise.all(list.map(function (item) {
+        return item.reg ? waitForActivation(item.reg) : Promise.resolve();
+      })).then(function () { /* void */ });
+    },
+
+    /** Применить обновление своей страницы (используется хабом внутри
+        applyAll для собственного scope через общий механизм; напрямую из
+        silent-режима не вызывается). */
     apply: applyOwn,
 
     /** Скрыть полосу — на случай, если модулю нужно место внизу экрана. */
@@ -272,6 +456,20 @@
     /** Показать произвольное уведомление той же полосой (без кнопки действия). */
     notify: function (key, fallback, autoHide) {
       showBar({ textKey: key, textFallback: fallback, autoHide: autoHide || 4000 });
+    },
+
+    /** Показать баннер хаба со списком изменившихся модулей и кнопкой
+        «Обновить всё». Только для ui:'hub'; из silent-режима не действует. */
+    offerHubBanner: function (opts) {
+      if (uiMode !== 'hub') return;
+      showBar({
+        textKey: 'update.available_multi',
+        textFallback: 'Доступно обновление Circuit Workspace',
+        listItems: opts.listItems,
+        onApply: opts.onApply,
+        applyKey: 'update.apply_all',
+        applyFallback: 'Обновить всё',
+      });
     },
   };
 

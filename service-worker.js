@@ -27,6 +27,7 @@ const SHELL_FILES = [
   './shared/backup.js',
   './shared/sender.js',
   './shared/version.js',
+  './shared/release-manifest.js',
   './shared/update.js',
   // Локализация: без неё офлайн-хаб остался бы без переводов и упал бы
   // на CWI18n undefined в inline-скрипте.

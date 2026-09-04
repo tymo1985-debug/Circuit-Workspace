@@ -1444,7 +1444,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).
   // Раньше модуль просто регистрировал worker и не следил за обновлениями
   // вовсе: пользователь мог неделями работать на старой оболочке.
-  if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js' });
+  if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js', ui: 'silent', hubHref: '../index.html' });
 
   // Реакция на смену #hash: раньше кнопки «Назад»/«Вперёд» в браузере меняли
   // адрес, но экран не переключался — приложение выглядело зависшим.

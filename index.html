@@ -1008,6 +1008,7 @@
 </footer>
 
 <script src="shared/version.js"></script>
+<script src="shared/release-manifest.js"></script>
 <script src="shared/update.js"></script>
 <script>
   // Версия хаба — единственный источник: shared/version.js. Никогда не хардкодим
@@ -1525,45 +1526,110 @@
     fill();
   })();
 
-  // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js),
-  // тот же, что используют все четыре модуля.
-  CWUpdate.init({ swUrl: 'service-worker.js' });
+  // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js).
+  // Хаб — ЕДИНСТВЕННОЕ место с ui:'hub': только здесь существует кнопка
+  // «Обновить всё» и полоса с apply. Все четыре модуля подключают тот же
+  // файл с ui:'silent' (см. их index.html/app.js) и никогда не показывают
+  // локальную кнопку «Обновить».
+  CWUpdate.init({ swUrl: 'service-worker.js', ui: 'hub' });
 
-  // Кнопка «Проверить обновления». Форсирует проверку ВСЕМ регистрациям origin
-  // (хаб + четыре модуля), а не только своей: смысл кнопки именно в том, чтобы
-  // не заходить в каждый модуль и не жать там Shift+Cmd+R.
+  // Сопоставление scope service worker'а с id модуля из CW_MODULES — нужно,
+  // чтобы построить человекочитаемый список в баннере. Scope — это URL
+  // ПАПКИ модуля (…/circuit-planner/), поэтому ищем по вхождению "/<id>/".
+  function moduleIdForScope(scope) {
+    var ids = Object.keys(self.CW_MODULES || {});
+    for (var i = 0; i < ids.length; i++) {
+      if (scope.indexOf('/' + ids[i] + '/') !== -1) return ids[i];
+    }
+    return null; // scope хаба самого — под него строка в списке не нужна
+  }
+
+  // Строит подписи для баннера из CW_RELEASE.changes (текущий release,
+  // shared/release-manifest.js), но ТОЛЬКО для тех модулей, что реально
+  // оказались в списке ready — совпадение release-манифеста с фактически
+  // найденными waiting-воркерами, а не слепое доверие манифесту.
+  function buildChangeLines(readyModuleIds) {
+    var release = self.CW_RELEASE;
+    var byModule = {};
+    if (release && Array.isArray(release.changes)) {
+      release.changes.forEach(function (c) { byModule[c.module] = c; });
+    }
+    return readyModuleIds.map(function (id) {
+      var title = (self.CW_MODULES[id] && self.CW_MODULES[id].title) || id;
+      var change = byModule[id];
+      return change && change.note ? (title + ' — ' + change.note) : title;
+    });
+  }
+
+  // Кнопка «Проверить обновления / Обновить всё». Один и тот же элемент
+  // проходит два состояния: сначала bounded-проверка всех registrations,
+  // затем (если что-то нашлось) сама кнопка предлагает применить всё разом.
   (function () {
     var btn = document.getElementById('hubUpdateBtn');
     var label = btn && btn.querySelector('.cw-update-btn__label');
     if (!btn) return;
 
-    // Результат 'ready' ничего не сообщает сам: CWUpdate.check() уже показал
-    // полосу с кнопкой «Обновить», и второе уведомление поверх неё было бы шумом.
     var MESSAGE = {
-      others: ['update.others', 'Модули обновлены — изменения появятся при следующем открытии.'],
       current: ['update.current', 'Установлена последняя версия.'],
       offline: ['update.offline', 'Нет соединения — проверить обновления не удалось.'],
-      unsupported: ['update.offline', 'Нет соединения — проверить обновления не удалось.']
     };
 
-    btn.addEventListener('click', function () {
+    function runCheck() {
       btn.disabled = true;
       var restore = label ? label.textContent : '';
       if (label) label.textContent = CWI18n.t('update.checking');
 
-      CWUpdate.check().then(function (result) {
-        var message = MESSAGE[result];
-        if (message) CWUpdate.notify(message[0], message[1]);
+      return CWUpdate.checkAll().then(function (result) {
+        var ready = result.ready || [];
+        var unreachable = result.unreachable || [];
+
+        if (!ready.length) {
+          // Ничего не нашлось. Если при этом что-то не удалось проверить —
+          // это НЕ то же самое, что «всё актуально», и должно быть видно.
+          var msg = unreachable.length ? MESSAGE.offline : MESSAGE.current;
+          CWUpdate.notify(msg[0], msg[1]);
+          return;
+        }
+
+        var moduleIds = ready
+          .map(function (r) { return moduleIdForScope(r.scope); })
+          .filter(Boolean);
+        var lines = buildChangeLines(moduleIds);
+        // Хаб сам мог оказаться среди ready (свой scope) — для него отдельной
+        // строки в списке нет (moduleIdForScope возвращает null), баннер в
+        // этом случае просто говорит про сам Circuit Workspace без деталей.
+
+        CWUpdate.offerHubBanner({
+          listItems: lines,
+          onApply: function () {
+            CWUpdate.dismiss();
+            if (label) label.textContent = CWI18n.t('update.checking');
+            btn.disabled = true;
+            CWUpdate.applyAll(ready).then(function () {
+              // Own-scope (хаб), если был в ready, перезагрузится сам через
+              // controllerchange, подписанный в CWUpdate.init(). Если хаб в
+              // ready не входил (только модули обновились), перезагружать
+              // нечего — просто подтверждаем и возвращаем кнопку.
+              btn.disabled = false;
+              if (label) label.textContent = CWI18n.t('hub.update_label');
+            });
+          },
+        });
       }).catch(function (err) {
         console.warn('Проверка обновлений не удалась', err);
         CWUpdate.notify(MESSAGE.offline[0], MESSAGE.offline[1]);
       }).then(function () {
         btn.disabled = false;
-        // Подпись возвращаем через словарь, а не сохранённой строкой: язык мог
-        // смениться, пока шла проверка.
-        if (label) label.textContent = CWI18n.t('hub.update_label') || restore;
+        // Подпись возвращаем через словарь, а не сохранённой строкой: язык
+        // мог смениться, пока шла проверка. Не трогаем, если баннер с
+        // «Обновить всё» уже показан выше — там своя подпись кнопки.
+        if (label && !document.getElementById('cwUpdateBar')) {
+          label.textContent = CWI18n.t('hub.update_label');
+        }
       });
-    });
+    }
+
+    btn.addEventListener('click', runCheck);
   })();
 </script>
 </body>

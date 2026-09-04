@@ -676,7 +676,7 @@
     renderLetter();
 
     // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).
-    if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js' });
+    if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js', ui: 'silent', hubHref: '../index.html' });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

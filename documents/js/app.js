@@ -1578,7 +1578,7 @@
       });
     }
 
-    if (typeof self.CWUpdate !== 'undefined') self.CWUpdate.init({ swUrl: './sw.js' });
+    if (typeof self.CWUpdate !== 'undefined') self.CWUpdate.init({ swUrl: './sw.js', ui: 'silent', hubHref: '../index.html' });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
