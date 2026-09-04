@@ -598,7 +598,7 @@
 
     store: {
       ensureSettingsDefaults(settings = {}) {
-        const out = { ...settings }; if (typeof out.showTeamPanel !== 'boolean') out.showTeamPanel = true; if (typeof out.showHolidays !== 'boolean') out.showHolidays = true; if (!out.language) out.language = 'ru'; if (!out.theme) out.theme = 'light'; if (!out.layoutPreset || !['classic','compact','spacious'].includes(out.layoutPreset)) out.layoutPreset = 'classic'; if (!out.calendarView) out.calendarView = 'month'; if (!out.fontSize) out.fontSize = '100';
+        const out = { ...settings }; if (typeof out.showTeamPanel !== 'boolean') out.showTeamPanel = true; if (typeof out.showHolidays !== 'boolean') out.showHolidays = true; if (!out.language) out.language = 'ru'; if (!out.theme) out.theme = 'light'; if (!out.layoutPreset || !['classic','compact','spacious'].includes(out.layoutPreset)) out.layoutPreset = 'classic'; if (!out.calendarView) out.calendarView = 'month'; if (!out.fontSize) out.fontSize = '100'; if (!out.eventsViewMode || !['list','cards'].includes(out.eventsViewMode)) out.eventsViewMode = 'list';
         /* Системные тексты в настройки больше НЕ вписываются — они живут в общем
            слое, и материализовать их здесь значило бы заморозить: обновление
            приложения перестало бы менять текст у тех, кто его не правил.
@@ -1595,7 +1595,7 @@
           'editorMeta','editorEventSelect','editorStart','editorEnd','editorReadonly','editorCloseBtn',
           'editorCancelBtn','editorDeleteBtn','editorSaveBtn','calendarServiceYearLabel',
           'calendarSideTitle','calendarSideMeta','calendarSideDetails','calendarSideCountdownRow','calendarSideCountdown','countdownUnitSelect',
-          'toggleTeamPanelBtn','calendarLayout','eventsList','eventSearchInput','eventColorFilter','eventVisitFilter','deleteAllEventsBtn','eventsListCount','eventNameInput','eventColorInput','eventAddressInput',
+          'toggleTeamPanelBtn','calendarLayout','eventsList','eventSearchInput','eventColorFilter','eventVisitFilter','deleteAllEventsBtn','eventsListCount','eventsViewListBtn','eventsViewCardsBtn','eventsOverflowMenu','eventNameInput','eventColorInput','eventAddressInput',
           'eventScheduleInput','resetEventBtn','saveEventBtn','deleteEventBtn','newEventBtn','eventVisitTypeInput','eventContactNameInput','eventContactPhoneInput','eventContactEmailInput','eventContactNoteInput','editorFlagsRow','editorFlagS302','editorFlagLetter',
           'fillCongNumbersBtn','fillNumbersModal','fillNumbersSub','fillNumbersBody','fillNumbersApplyBtn','fillNumbersCancelBtn','fillNumbersCloseBtn',
           'eventDeleteModal','eventDeleteSub','eventDeleteHereBtn','eventDeleteEverywhereBtn','eventDeleteCancelBtn','eventDeleteCloseBtn',
@@ -3781,6 +3781,32 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         mailto();
         App.ui.closeLetterModal();
       },
+      /* Один pipeline для «Список»/«Карточки»: разметка отличается только
+         layout-классом контейнера и порядком блоков внутри строки, данные и
+         обработчик клика (открыть на редактирование) — общие. Ничего не
+         добавляем ради красоты карточки — то же самое, что уже показывал
+         список: название, расписание, адрес, цвет, тип/статус, контакт (если
+         заполнен). */
+      renderEventItem(event, mode) {
+        const isCard = mode === 'cards';
+        const contactLine = (event.contactName || event.contactPhone) ? `<div class="small">👤 ${App.utils.escapeHtml([event.contactName, event.contactPhone].filter(Boolean).join(' · '))}</div>` : '';
+        const colorPill = `<span class="pill"><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${App.utils.escapeHtml(App.utils.colorName(event.color))}</span>`;
+        const visitPill = event.visitType ? `<span class="pill">${App.utils.escapeHtml(App.utils.visitTypeLabel(event.visitType))}</span>` : `<span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fde68a">⚠️ ${App.utils.escapeHtml(App.utils.t('visit_type_none'))}</span>`;
+        return `
+          <div class="event-row${isCard ? ' is-card' : ''}" data-edit-event="${App.utils.escapeAttr(event.id)}" style="cursor:pointer">
+            <div>
+              <strong>${App.utils.escapeHtml(event.name)}</strong>
+              <div class="small">${App.utils.escapeHtml(event.schedule || App.utils.t('no_schedule'))}</div>
+              <div class="small">${event.address ? `<a href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${App.utils.escapeHtml(event.address)}</a>` : App.utils.escapeHtml(App.utils.t('no_address'))}</div>
+              ${contactLine}
+            </div>
+            <div class="pill-row${isCard ? '' : ''}" style="${isCard ? 'display:flex;gap:8px;flex-wrap:wrap' : 'display:grid;gap:8px;justify-items:end'}">
+              ${colorPill}
+              ${visitPill}
+            </div>
+          </div>`;
+      },
+
       renderEvents() {
         const query = (App.state.eventSearch || '').trim().toLowerCase();
         const colorFilter = App.state.eventColorFilter || 'all';
@@ -3820,19 +3846,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.els.deleteAllEventsBtn.disabled = !allEvents.length;
           App.els.deleteAllEventsBtn.style.opacity = allEvents.length ? '' : '.55';
         }
-        if (App.els.eventsList) App.els.eventsList.innerHTML = visibleEvents.map((event) => `
-          <div class="event-row" data-edit-event="${App.utils.escapeAttr(event.id)}" style="cursor:pointer">
-            <div>
-              <strong>${App.utils.escapeHtml(event.name)}</strong>
-              <div class="small">${App.utils.escapeHtml(event.schedule || App.utils.t('no_schedule'))}</div>
-              <div class="small">${event.address ? `<a href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${App.utils.escapeHtml(event.address)}</a>` : App.utils.escapeHtml(App.utils.t('no_address'))}</div>
-              ${(event.contactName || event.contactPhone) ? `<div class="small">👤 ${App.utils.escapeHtml([event.contactName, event.contactPhone].filter(Boolean).join(' · '))}</div>` : ''}
-            </div>
-            <div style="display:grid;gap:8px;justify-items:end">
-              <span class="pill"><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${App.utils.escapeHtml(App.utils.colorName(event.color))}</span>
-              ${event.visitType ? `<span class="pill">${App.utils.escapeHtml(App.utils.visitTypeLabel(event.visitType))}</span>` : `<span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fde68a">⚠️ ${App.utils.escapeHtml(App.utils.t('visit_type_none'))}</span>`}
-            </div>
-          </div>`).join('') || `<div class="md-empty">${query || App.state.eventColorFilter !== 'all' ? App.utils.tEsc('no_events_found') : App.utils.tEsc('no_events_month')}</div>`;
+        const viewMode = (App.state.app.settings.eventsViewMode === 'cards') ? 'cards' : 'list';
+        if (App.els.eventsList) {
+          App.els.eventsList.classList.toggle('is-cards', viewMode === 'cards');
+          App.els.eventsList.innerHTML = visibleEvents.map((event) => App.ui.renderEventItem(event, viewMode)).join('') || `<div class="md-empty">${query || App.state.eventColorFilter !== 'all' ? App.utils.tEsc('no_events_found') : App.utils.tEsc('no_events_month')}</div>`;
+        }
+        if (App.els.eventsViewListBtn) { App.els.eventsViewListBtn.textContent = App.utils.t('events_view_list'); App.els.eventsViewListBtn.setAttribute('aria-pressed', String(viewMode === 'list')); App.els.eventsViewListBtn.classList.toggle('md-btn-filled', viewMode === 'list'); App.els.eventsViewListBtn.classList.toggle('md-btn-outlined', viewMode !== 'list'); }
+        if (App.els.eventsViewCardsBtn) { App.els.eventsViewCardsBtn.textContent = App.utils.t('events_view_cards'); App.els.eventsViewCardsBtn.setAttribute('aria-pressed', String(viewMode === 'cards')); App.els.eventsViewCardsBtn.classList.toggle('md-btn-filled', viewMode === 'cards'); App.els.eventsViewCardsBtn.classList.toggle('md-btn-outlined', viewMode !== 'cards'); }
         document.querySelectorAll('[data-edit-event]').forEach((btn) => btn.addEventListener('click', () => {
           const event = App.data.getEventById(btn.dataset.editEvent);
           App.state.editingEventId = event?.id || null;
@@ -3877,7 +3897,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.eventSearchInput?.addEventListener('input', (e) => { App.state.eventSearch = e.target.value; App.ui.renderEvents(); });
       App.els.eventColorFilter?.addEventListener('change', (e) => { App.state.eventColorFilter = e.target.value; App.ui.renderEvents(); });
       App.els.eventVisitFilter?.addEventListener('change', (e) => { App.state.eventVisitFilter = e.target.value; App.ui.renderEvents(); });
-      App.els.deleteAllEventsBtn?.addEventListener('click', () => App.actions.deleteAllEventTemplates());
+      App.els.deleteAllEventsBtn?.addEventListener('click', () => { if (App.els.eventsOverflowMenu) App.els.eventsOverflowMenu.open = false; App.actions.deleteAllEventTemplates(); });
+      App.els.eventsViewListBtn?.addEventListener('click', () => { if (App.state.app.settings.eventsViewMode === 'list') return; App.state.app.settings.eventsViewMode = 'list'; App.store.save(); App.ui.renderEvents(); });
+      App.els.eventsViewCardsBtn?.addEventListener('click', () => { if (App.state.app.settings.eventsViewMode === 'cards') return; App.state.app.settings.eventsViewMode = 'cards'; App.store.save(); App.ui.renderEvents(); });
       App.els.themeBtn?.addEventListener('click', () => {
         if (window.CWTheme) { App.state.app.settings.theme = window.CWTheme.toggle(); App.store.save(); return; }
         App.state.app.settings.theme = App.state.app.settings.theme === 'dark' ? 'light' : 'dark';
