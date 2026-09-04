@@ -1621,13 +1621,20 @@
             CWUpdate.dismiss();
             if (label) label.textContent = CWI18n.t('update.checking');
             btn.disabled = true;
-            CWUpdate.applyAll(ready).then(function () {
-              // Own-scope (хаб), если был в ready, перезагрузится сам через
-              // controllerchange, подписанный в CWUpdate.init(). Если хаб в
-              // ready не входил (только модули обновились), перезагружать
-              // нечего — просто подтверждаем и возвращаем кнопку.
+            CWUpdate.applyAll(ready).then(function (outcome) {
+              // Own-scope (хаб), если был в ready и подтвердил activation,
+              // перезагрузится сам через controllerchange, подписанный в
+              // CWUpdate.init(). allActivated=false значит хотя бы один
+              // scope не уложился в bounded timeout — показываем partial,
+              // а не молчаливый success (иначе хаб солгал бы, что apply
+              // завершён полностью, пока какой-то scope ещё pending).
               btn.disabled = false;
-              if (label) label.textContent = CWI18n.t('hub.update_label');
+              if (outcome.allActivated) {
+                if (label) label.textContent = CWI18n.t('hub.update_label');
+              } else {
+                CWUpdate.notify('update.partial', 'Не удалось проверить некоторые модули. Попробуйте ещё раз.');
+                if (label) label.textContent = CWI18n.t('hub.update_label');
+              }
             });
           },
         });

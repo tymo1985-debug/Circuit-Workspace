@@ -26,11 +26,11 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.25',
+  version: '0.41.26',
   changes: [
-    { module: 'congress-project', version: '4.46.46', note: 'Исправлен ложный «Нет соединения» в проверке обновлений' },
-    { module: 'pioneer-school',   version: '1.14.24', note: 'Исправлен ложный «Нет соединения» в проверке обновлений' },
-    { module: 'appointments',     version: '5.5.63',  note: 'Исправлен ложный «Нет соединения» в проверке обновлений' },
-    { module: 'documents',        version: '1.10.14', note: 'Исправлен ложный «Нет соединения» в проверке обновлений' },
+    { module: 'congress-project', version: '4.46.47', note: 'Исправлен ложный баннер обновления после Hub apply' },
+    { module: 'pioneer-school',   version: '1.14.25', note: 'Исправлен ложный баннер обновления после Hub apply' },
+    { module: 'appointments',     version: '5.5.64',  note: 'Исправлен ложный баннер обновления после Hub apply' },
+    { module: 'documents',        version: '1.10.15', note: 'Исправлен ложный баннер обновления после Hub apply' },
   ],
 };

@@ -246,12 +246,56 @@
     });
   }
 
+  /* Grace period перед показом neutral-banner в silent-режиме: устойчивый
+     ли это waiting, или воркер уже в процессе activate после недавнего
+     Hub-apply (SKIP_WAITING мог прийти секунду назад с другой вкладки/со
+     страницы хаба). Никакого нового reg.update() здесь не вызывается —
+     только слушаем statechange уже существующего waiting-воркера и
+     повторно проверяем reg.waiting по таймауту. */
+  var NEUTRAL_GRACE_MS = 2500;
+
+  function confirmStaleWaiting(reg) {
+    return new Promise(function (resolve) {
+      if (!reg.waiting) { resolve(false); return; }
+      var settled = false;
+      var w = reg.waiting;
+
+      function finish(stillWaiting) {
+        if (settled) return;
+        settled = true;
+        global.clearTimeout(timer);
+        resolve(stillWaiting);
+      }
+
+      /* Если этот конкретный worker уходит из waiting (activating/activated/
+         redundant), значит он был в процессе перехода, а не устойчивым
+         pending-состоянием — banner не нужен. */
+      w.addEventListener('statechange', function onState() {
+        if (w.state !== 'installed') finish(!!reg.waiting);
+      });
+
+      var timer = global.setTimeout(function () { finish(!!reg.waiting); }, NEUTRAL_GRACE_MS);
+    });
+  }
+
   /* Обновление могло дойти до `waiting` ещё до загрузки этой страницы —
      тогда никакого updatefound уже не будет, и без этой проверки полоса
      не появилась бы никогда. */
   function watch(reg) {
     if (!reg) return;
-    if (reg.waiting && nav.serviceWorker.controller) offerOwn();
+    if (reg.waiting && nav.serviceWorker.controller) {
+      if (uiMode === 'hub') {
+        offerOwn();
+      } else {
+        /* silent-режим: не доверяем waiting мгновенно — короткий grace
+           period на случай, если это transient-состояние сразу после
+           Hub-apply (worker уже переходит в activating, просто ещё не
+           долетело событие до этой, только что открытой страницы). */
+        confirmStaleWaiting(reg).then(function (stillWaiting) {
+          if (stillWaiting) offerNeutral();
+        });
+      }
+    }
     reg.addEventListener('updatefound', function () {
       var installing = reg.installing;
       if (!installing) return;
@@ -319,25 +363,25 @@
   }
 
   /** Дожидается активации конкретной регистрации после SKIP_WAITING — по
-      исчезновению `waiting`. Ограничено по времени; если время вышло,
-      просто продолжаем (страница-владелец own-scope перезагрузится сама
-      через уже подписанный controllerchange, когда бы это ни случилось). */
+      исчезновению `waiting`. Ограничено по времени; возвращает статус,
+      а не просто резолвится молча: хабу нужно знать, подтвердился ли
+      конкретный scope, а не считать бездоказательный timeout успехом. */
   function waitForActivation(reg) {
     return new Promise(function (resolve) {
       var settled = false;
       var poll = null;
-      var timer = global.setTimeout(function () { finish(); }, ACTIVATE_TIMEOUT_MS);
+      var timer = global.setTimeout(function () { finish('timedOut'); }, ACTIVATE_TIMEOUT_MS);
 
-      function finish() {
+      function finish(status) {
         if (settled) return;
         settled = true;
         global.clearTimeout(timer);
         if (poll) global.clearInterval(poll);
-        resolve();
+        resolve(status);
       }
 
       poll = global.setInterval(function () {
-        if (!reg.waiting) finish();
+        if (!reg.waiting) finish('activated');
       }, 300);
     });
   }
@@ -457,15 +501,25 @@
 
     /**
      * Применяет обновление ко всем переданным регистрациям (результат
-     * `checkAll().ready`) и дожидается активации каждой в пределах таймаута.
-     * Own-scope (хаб) после этого перезагружается сам — controllerchange уже
-     * подписан в init(). Чужие scopes (модули, чьи страницы сейчас не
-     * открыты) просто получают новый активный worker; если вкладка модуля
+     * `checkAll().ready`) и дожидается активации каждой в пределах таймаута
+     * — не молча резолвится после SKIP_WAITING, а ждёт исчезновения
+     * `reg.waiting` для КАЖДОГО scope и возвращает статус по каждому.
+     * Хаб не может полагаться на `controllerchange` для чужих module
+     * scopes (страница хаба ими не контролируется) — поэтому per-scope
+     * подтверждение идёт по состоянию самой регистрации (`waiting`
+     * исчез = activated), не по событию контроллера.
+     *
+     * Own-scope (хаб), если был среди readyList, после активации
+     * перезагрузится сам — controllerchange уже подписан в init(). Чужие
+     * scopes просто получают новый активный worker; если вкладка модуля
      * всё же открыта в фоне, её собственный controllerchange (тот же
      * механизм init()) сам перезагрузит её позже — без участия хаба.
      *
      * @param {Array<{scope:string, reg:ServiceWorkerRegistration}>} readyList
-     * @returns {Promise<void>}
+     * @returns {Promise<{results: Array<{scope:string, status:string}>, allActivated: boolean}>}
+     *   status — 'activated' | 'timedOut'. allActivated=false означает
+     *   ПОЛНЫЙ успех подтверждён НЕ для всех — вызывающий код (хаб) должен
+     *   показать partial result, а не «обновлено полностью».
      */
     applyAll: function (readyList) {
       var list = readyList || [];
@@ -475,8 +529,15 @@
         catch (e) { /* воркер уже активируется */ }
       });
       return Promise.all(list.map(function (item) {
-        return item.reg ? waitForActivation(item.reg) : Promise.resolve();
-      })).then(function () { /* void */ });
+        if (!item.reg) return Promise.resolve('activated');
+        return waitForActivation(item.reg);
+      })).then(function (statuses) {
+        var results = list.map(function (item, i) {
+          return { scope: item.scope, status: statuses[i] };
+        });
+        var allActivated = statuses.every(function (s) { return s === 'activated'; });
+        return { results: results, allActivated: allActivated };
+      });
     },
 
     /** Применить обновление своей страницы (используется хабом внутри
