@@ -26,11 +26,11 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.26',
+  version: '0.41.27',
   changes: [
-    { module: 'congress-project', version: '4.46.47', note: 'Исправлен ложный баннер обновления после Hub apply' },
-    { module: 'pioneer-school',   version: '1.14.25', note: 'Исправлен ложный баннер обновления после Hub apply' },
-    { module: 'appointments',     version: '5.5.64',  note: 'Исправлен ложный баннер обновления после Hub apply' },
-    { module: 'documents',        version: '1.10.15', note: 'Исправлен ложный баннер обновления после Hub apply' },
+    { module: 'congress-project', version: '4.46.48', note: 'Список изменений виден до и после обновления' },
+    { module: 'pioneer-school',   version: '1.14.26', note: 'Список изменений виден до и после обновления' },
+    { module: 'appointments',     version: '5.5.65',  note: 'Список изменений виден до и после обновления' },
+    { module: 'documents',        version: '1.10.16', note: 'Список изменений виден до и после обновления' },
   ],
 };

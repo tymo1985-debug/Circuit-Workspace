@@ -1533,6 +1533,52 @@
   // локальную кнопку «Обновить».
   CWUpdate.init({ swUrl: 'service-worker.js', ui: 'hub' });
 
+  // Пост-update блок «Обновление установлено» — показывается один раз для
+  // конкретного release, сразу после reload, который CWUpdate.init() делает
+  // автоматически по controllerchange. Marker пишется в sessionStorage ДО
+  // applyAll() (см. onApply ниже) именно из-за этой гонки: reload может
+  // случиться раньше, чем код после applyAll().then() успел бы что-то
+  // сохранить. Источник текста — тот же shared/release-manifest.js
+  // (self.CW_RELEASE), CHANGELOG.md не парсится и не читается.
+  (function () {
+    var raw;
+    try { raw = sessionStorage.getItem('cwPendingRelease'); } catch (e) { return; }
+    if (!raw) return;
+
+    var pending;
+    try { pending = JSON.parse(raw); } catch (e) { sessionStorage.removeItem('cwPendingRelease'); return; }
+
+    // Совпадение версии — единственное условие показа. Если после reload
+    // текущий CW_RELEASE.version не совпал с тем, что было применено (сборка
+    // не долетела, откат, ошибка деплоя), молча не показываем и не повторяем
+    // попытку — marker всё равно удаляется ниже, чтобы не залипнуть навечно.
+    var currentVersion = self.CW_RELEASE && self.CW_RELEASE.version;
+    var matches = pending.version && pending.version === currentVersion;
+
+    // Удаляем marker сразу после чтения, а не после показа: повторный показ
+    // при следующей загрузке (даже с тем же release) — не то поведение,
+    // которое нужно ("один раз"), а sessionStorage переживает обычный
+    // reload, но не переживает закрытие вкладки — двойной защиты достаточно.
+    try { sessionStorage.removeItem('cwPendingRelease'); } catch (e) { /* уже нечего чистить */ }
+
+    if (!matches) return;
+
+    var lines = (pending.changes || []).map(function (c) {
+      var title = (self.CW_MODULES[c.module] && self.CW_MODULES[c.module].title) || c.module;
+      var version = c.version ? ' ' + c.version : '';
+      return c.note ? (title + version + ' — ' + c.note) : (title + version);
+    });
+
+    CWUpdate.offerHubBanner({
+      textKey: 'update.installed_multi',
+      textFallback: 'Обновление установлено',
+      listItems: lines,
+      applyKey: 'update.dismiss',
+      applyFallback: 'Понятно',
+      onApply: function () { CWUpdate.dismiss(); },
+    });
+  })();
+
   // Сопоставление scope service worker'а с id модуля из CW_MODULES — нужно,
   // чтобы построить человекочитаемый список в баннере. Scope — это URL
   // ПАПКИ модуля (…/circuit-planner/), поэтому ищем по вхождению "/<id>/".
@@ -1621,6 +1667,17 @@
             CWUpdate.dismiss();
             if (label) label.textContent = CWI18n.t('update.checking');
             btn.disabled = true;
+            // Marker пишется ДО applyAll(), не в .then(): controllerchange
+            // может вызвать location.reload() (см. CWUpdate.init) раньше,
+            // чем этот .then() успеет отработать — гонка. sessionStorage
+            // переживает reload (в отличие от переменных в памяти), поэтому
+            // после перезагрузки есть с чем сверять текущий CW_RELEASE.
+            try {
+              sessionStorage.setItem('cwPendingRelease', JSON.stringify({
+                version: self.CW_RELEASE && self.CW_RELEASE.version,
+                changes: (self.CW_RELEASE && self.CW_RELEASE.changes) || [],
+              }));
+            } catch (e) { /* приватный режим/квота — просто не покажем post-update блок */ }
             CWUpdate.applyAll(ready).then(function (outcome) {
               // Own-scope (хаб), если был в ready и подтвердил activation,
               // перезагрузится сам через controllerchange, подписанный в

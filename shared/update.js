@@ -553,17 +553,19 @@
       showBar({ textKey: key, textFallback: fallback, autoHide: autoHide || 4000 });
     },
 
-    /** Показать баннер хаба со списком изменившихся модулей и кнопкой
-        «Обновить всё». Только для ui:'hub'; из silent-режима не действует. */
+    /** Показать баннер хаба со списком модулей и одной кнопкой действия.
+        Только для ui:'hub'. По умолчанию — предложение обновиться
+        («Доступно обновление» + «Обновить всё»); post-update использует тот
+        же баннер с другим текстом и кнопкой-подтверждением через opts. */
     offerHubBanner: function (opts) {
       if (uiMode !== 'hub') return;
       showBar({
-        textKey: 'update.available_multi',
-        textFallback: 'Доступно обновление Circuit Workspace',
+        textKey: opts.textKey || 'update.available_multi',
+        textFallback: opts.textFallback || 'Доступно обновление Circuit Workspace',
         listItems: opts.listItems,
         onApply: opts.onApply,
-        applyKey: 'update.apply_all',
-        applyFallback: 'Обновить всё',
+        applyKey: opts.applyKey || 'update.apply_all',
+        applyFallback: opts.applyFallback || 'Обновить всё',
       });
     },
   };

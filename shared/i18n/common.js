@@ -111,6 +111,8 @@
       'update.apply_all': 'Обновить всё',
       'update.available_open_hub': 'Доступно обновление Circuit Workspace — открыть Hub',
       'update.open_hub': 'Открыть Hub',
+      'update.installed_multi': 'Обновление установлено',
+      'update.dismiss': 'Понятно',
 
       'module.congress-project.title': 'Конгрессы',
       'module.congress-project.desc': 'Программа конгрессов, распределение заданий и генерация писем участникам в PDF.',
