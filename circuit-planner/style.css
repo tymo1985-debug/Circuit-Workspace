@@ -185,6 +185,11 @@
   .toast-wrap{position:fixed;top:18px;right:18px;display:grid;gap:10px;z-index:1600}.version-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px;color:var(--md-on-surface-variant)}
   .layout-help{margin-top:8px;font-size:12px;color:var(--md-on-surface-variant)} .calendar-layout-select{min-width:170px}
   .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1550;background:var(--md-surface-container-low);border-top:1px solid var(--md-outline-variant);box-shadow:0 -8px 20px rgba(0,0,0,.08);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));transform:translateZ(0);will-change:transform}
+  /* shared/update.js рисует #cwUpdateBar с bottom:16px+safe-area — на страницах
+     без нижней навигации этого достаточно, но в Клиндарии есть .bottom-nav
+     (~64px), и полоса обновления садится поверх неё. Локальный оверрайд
+     только для этого модуля: .bottom-nav видна лишь ≤767px, тот же порог. */
+  @media (max-width:767px){#cwUpdateBar{bottom:calc(64px + 16px + env(safe-area-inset-bottom,0px)) !important}}
   .offline-banner{display:none;position:sticky;top:0;z-index:1300;padding:10px 12px;border:1px solid var(--md-outline-variant);border-radius:14px;background:color-mix(in srgb, var(--md-error) 10%, transparent);color:var(--md-on-surface);margin-bottom:12px}
   .offline-banner.show{display:block}
   .app.menu-open .bottom-nav{display:none !important}
@@ -198,6 +203,14 @@
   .md-chip.settings-tab{opacity:.65}
   .settings-tab.active{opacity:1;background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
   .settings-panel{display:grid;gap:16px}
+  .settings-data-grid{grid-template-columns:repeat(2,1fr)}
+  /* На узком экране (реестр контрольных точек, «phone») «Экспорт и печать» /
+     «Синхронизация» ломались на две узкие колонки с переносами текста и
+     кнопок. DOM-порядок уже даёт нужную последовательность (Экспорт и
+     печать → Синхронизация), поэтому reflow достаточно свести к 1 колонке. */
+  @media (max-width:600px){.settings-data-grid{grid-template-columns:1fr !important}
+    .settings-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .settings-tabs .settings-tab:last-child{grid-column:1 / -1}}
   .rte-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
   .md-btn.rte-btn{min-width:40px;padding:8px 12px;height:auto}
   .rte-btn.active{background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
