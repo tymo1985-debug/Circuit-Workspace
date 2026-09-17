@@ -765,10 +765,10 @@ dialog {
 .edit-task-modal__scroll {
   overflow-y: auto;
   flex: 1 1 auto;
-  padding: var(--cw-space-3) 14px;
+  padding: var(--cw-space-2) 14px;
   display: flex;
   flex-direction: column;
-  gap: var(--cw-space-2)
+  gap: var(--cw-space-1, 6px)
 }
 /* Каждая секция — отдельная rounded-card с мягкой границей/фоном, а не
    плоская полоса. Круглый номер слева от заголовка. */
@@ -782,7 +782,7 @@ dialog {
   display: flex;
   align-items: center;
   gap: var(--cw-space-2);
-  margin-bottom: var(--cw-space-2)
+  margin-bottom: var(--cw-space-1, 6px)
 }
 .et-card__num {
   flex: 0 0 auto;
@@ -809,14 +809,23 @@ dialog {
 .et-row {
   display: grid;
   gap: var(--cw-space-2);
-  margin-bottom: var(--cw-space-2)
+  margin-bottom: var(--cw-space-1, 6px)
 }
 .et-row:last-child {
   margin-bottom: 0
 }
 .et-row--top {
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, .7fr) minmax(0, .7fr);
-  align-items: end
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, .65fr) minmax(0, .65fr);
+  align-items: end;
+  column-gap: var(--cw-space-2)
+}
+.et-time {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--md-on-surface-variant);
+  font-weight: 700
 }
 .et-row--two, .et-row--three {
   grid-template-columns: repeat(2, minmax(0, 1fr))
@@ -824,36 +833,50 @@ dialog {
 .et-row--three {
   grid-template-columns: repeat(3, minmax(0, 1fr))
 }
-/* Быстрый выбор времени — компактный secondary control рядом со временем,
-   не отдельная full-width строка (см. mockup п.3). */
+/* Быстрый выбор времени — компактный secondary control встроенный в
+   time-cluster первой строки (см. mockup п.3), не отдельная full-width
+   строка. Вложен в .et-time, сразу под .time-row. */
 .et-quicktime-row {
   display: flex;
   align-items: flex-end;
-  gap: var(--cw-space-2);
-  margin-bottom: var(--cw-space-2);
-  max-width: min(60%, 360px)
+  gap: 6px;
+  margin-top: 2px
 }
 .et-quicktime {
-  flex: 1 1 auto;
-  min-width: 0
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 168px
+}
+.et-quicktime span {
+  display: block;
+  font-size: 11px;
+  white-space: nowrap
 }
 .et-quicktime select {
-  font-size: 13px;
-  padding: 6px 10px
+  font-size: 12px;
+  padding: 5px 6px;
+  height: 34px
 }
 .et-quicktime-row__clear {
-  flex: 0 0 auto
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  height: 34px
 }
 .et-notes input {
-  min-height: 38px
+  min-height: 30px
 }
+/* Статус + три toggle в одну desktop-строку (см. mockup п.2/5): flex-row
+   с wrap на узких экранах вместо grid в одну колонку. */
 .et-status-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--cw-space-2)
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cw-space-3) var(--cw-space-4)
 }
 .et-status-row__status {
-  max-width: 260px
+  flex: 0 0 auto;
+  max-width: 220px;
+  min-width: 160px
 }
 /* Три boolean-поля отрисованы как настоящие switch-тумблеры (см.
    js/tasks.js initEtToggles) поверх скрытых select — не select со стилем
@@ -862,15 +885,17 @@ dialog {
 .et-toggle-group {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--cw-space-3) var(--cw-space-4)
+  align-items: center;
+  gap: 4px var(--cw-space-3);
+  flex: 1 1 auto
 }
 .et-toggle {
   display: flex;
   align-items: center;
-  gap: var(--cw-space-2);
+  gap: 6px;
   border: 0;
   background: transparent;
-  padding: 4px 2px;
+  padding: 2px;
   cursor: pointer;
   font: inherit;
   color: var(--md-on-surface)
@@ -920,7 +945,7 @@ dialog {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--cw-space-2)
+  gap: var(--cw-space-1, 6px)
 }
 /* Карточка участника: имя (primary) + собрание (secondary) слева, телефон
    отдельным полем справа, удаление крайним справа — не три равнозначных
@@ -930,9 +955,9 @@ dialog {
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   column-gap: var(--cw-space-3);
-  row-gap: 2px;
+  row-gap: 0;
   align-items: center;
-  padding: var(--cw-space-2) var(--cw-space-3);
+  padding: 6px var(--cw-space-3);
   border: 1px solid var(--md-outline-variant);
   border-radius: var(--md-radius-md);
   background: var(--md-surface-container)
@@ -1278,7 +1303,11 @@ dialog {
     grid-template-columns: 1fr
   }
   .et-quicktime-row {
-    max-width: none
+    width: 100%
+  }
+  .et-quicktime {
+    max-width: none;
+    flex: 1 1 auto
   }
   .epart {
     grid-template-columns: minmax(0, 1fr);
