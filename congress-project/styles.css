@@ -730,6 +730,135 @@ dialog {
   justify-content: flex-start;
   margin: 12px 0 0
 }
+
+/* ══ Modal «Редактировать задание» — редизайн 04.09.2026 ═══════════════════
+   Секции/header/footer только этого modal: id/bindings/data model не тронуты,
+   структура — та же .form-grid → .et-row (grid), .epart без изменения DOM-
+   порядка детей (см. js/tasks.js drawParts). Ширина — CSS-свойство width, не
+   media-query breakpoint: реестра check-breakpoints.mjs не касается. */
+.edit-task-modal {
+  width: min(940px, 96vw);
+  min-width: 0;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column
+}
+.modal-head__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0
+}
+.modal-head__titles h2 {
+  font-size: 18px
+}
+.modal-head__subtitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+.edit-task-modal__scroll {
+  overflow-y: auto;
+  flex: 1 1 auto
+}
+.et-section {
+  padding: var(--cw-space-3) 14px;
+  border-top: 1px solid var(--md-outline-variant)
+}
+.et-section:first-child {
+  border-top: 0
+}
+.et-section__title {
+  margin: 0 0 var(--cw-space-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--md-on-surface-variant)
+}
+.et-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cw-space-2);
+  margin-bottom: var(--cw-space-2)
+}
+.et-section__head .et-section__title {
+  margin: 0
+}
+.et-row {
+  display: grid;
+  gap: var(--cw-space-2);
+  margin-bottom: var(--cw-space-2)
+}
+.et-row:last-child {
+  margin-bottom: 0
+}
+.et-row--top {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, .8fr) minmax(0, .8fr)
+}
+.et-row--two, .et-row--three {
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+}
+.et-row--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+}
+.et-quicktime {
+  margin-bottom: var(--cw-space-2)
+}
+.et-notes input {
+  min-height: 38px
+}
+.et-status-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, .78fr));
+  gap: var(--cw-space-2);
+  align-items: end
+}
+#editParticipants {
+  padding: 0
+}
+.epart {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, .9fr) auto;
+  align-items: center;
+  padding: var(--cw-space-2);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  background: var(--md-surface-container-low)
+}
+.epart + .epart {
+  margin-top: var(--cw-space-2)
+}
+.epart__name {
+  font-weight: 700
+}
+.epart__cong {
+  color: var(--md-on-surface-variant)
+}
+.edit-task-modal__footer {
+  border-top: 1px solid var(--md-outline-variant);
+  padding-top: var(--cw-space-3);
+  align-items: center;
+  flex-wrap: nowrap
+}
+.edit-task-modal__footer-spacer {
+  flex: 1 1 auto
+}
+/* Триггер дублирования — единственный .md-menu слева в футере (базовый
+   .md-menu__panel{right:0} расположен для меню в правом верхнем углу шапки
+   и здесь уводит панель за левый край viewport). Открываем влево от левого
+   края триггера — локально для этого меню, другие .md-menu не затронуты. */
+.edit-task-modal__footer .md-menu__panel {
+  right: auto;
+  left: 0
+}
+.edit-task-modal .link-banner {
+  margin: 14px 14px 0
+}
 .checks {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -872,6 +1001,15 @@ dialog {
   .program-table {
     font-size: 13px
   }
+  .edit-task-modal {
+    width: min(700px, 96vw)
+  }
+  .et-row--top {
+    grid-template-columns: 1fr 1fr
+  }
+  .et-status-row {
+    grid-template-columns: 1fr 1fr
+  }
 }
 /* ══ МОБИЛЬНЫЙ СЛОЙ (≤680px) ═══════════════════════════════════════════════
    Здесь настольная таблица программы превращается в список карточек.
@@ -1001,9 +1139,22 @@ dialog {
   .time-row .time-btn {
     width: 100%
   }
-  .modal, .letter-modal, .wide-modal, .small-modal, .template-modal {
+  .modal, .letter-modal, .wide-modal, .small-modal, .template-modal, .edit-task-modal {
     width: 100%;
-    min-width: 0
+    min-width: 0;
+    max-height: 92vh
+  }
+  .et-row--top, .et-row--two, .et-row--three, .et-status-row {
+    grid-template-columns: 1fr
+  }
+  .et-status-row {
+    align-items: stretch
+  }
+  .epart {
+    align-items: stretch
+  }
+  .epart__del {
+    justify-self: end
   }
   /* Причина horizontal overflow диалогов на узком экране: .form-grid/.checks —
      grid, а их дети (.label, .epart, .time-row) — сами flex/grid-контейнеры.
@@ -1015,7 +1166,7 @@ dialog {
      упиралась в контент и раздвигала диалог за пределы viewport.
      Ниже min-width:0 расставлен по всей цепочке grid → label(flex) →
      input/select, а не только на верхнем уровне. */
-  .form-grid, .settings-grid, .checks, .epart, .time-row {
+  .form-grid, .settings-grid, .checks, .epart, .time-row, .et-row, .et-status-row {
     min-width: 0
   }
   .form-grid > label,
@@ -1045,6 +1196,25 @@ dialog {
     margin: 0 10px 10px
   }
   .modal-actions button {
+    flex: 1 1 auto
+  }
+  .edit-task-modal__footer {
+    margin: 0;
+    padding: 10px;
+    flex-wrap: wrap
+  }
+  .edit-task-modal__footer .md-menu {
+    order: 3;
+    flex: 1 1 100%
+  }
+  .edit-task-modal__footer .md-menu button {
+    width: 100%
+  }
+  .edit-task-modal__footer-spacer {
+    display: none
+  }
+  .edit-task-modal__footer button[value="cancel"],
+  .edit-task-modal__footer #saveEditBtn {
     flex: 1 1 auto
   }
   .series-header {

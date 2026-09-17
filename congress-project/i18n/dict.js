@@ -225,6 +225,12 @@
     'cong.dlg.speaker_profiles': 'Расширенный справочник докладчиков',
     'cong.dlg.template_editor': 'Редактор текста письма',
     'cong.dlg.edit_task': 'Редактировать задание',
+    // Заголовки секций modal «Редактировать задание» (редизайн 04.09.2026).
+    // Только ru: uk/en/pl/de ждут носителя, CWI18n.t() падает в русский.
+    'cong.section.main': 'Основное',
+    'cong.section.task_state': 'Состояние задания',
+    'cong.section.letter_recording': 'Письмо и запись',
+    'cong.section.notes': 'Примечания',
     'cong.dlg.check': 'Проверка программы',
     'cong.dlg.letters_mode': 'Подготовка писем',
     'cong.dlg.backups': 'Резервные копии',
