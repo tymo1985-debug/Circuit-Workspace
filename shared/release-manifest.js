@@ -26,11 +26,11 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.29',
+  version: '0.41.30',
   changes: [
-    { module: 'congress-project', version: '4.46.50', note: 'Список изменений виден до и после обновления' },
-    { module: 'pioneer-school',   version: '1.14.28', note: 'Список изменений виден до и после обновления' },
-    { module: 'appointments',     version: '5.5.67',  note: 'Список изменений виден до и после обновления' },
-    { module: 'documents',        version: '1.10.18', note: 'Список изменений виден до и после обновления' },
+    { module: 'congress-project', version: '4.46.51', note: 'Visual fidelity pass modal «Редактировать задание» по утверждённому mockup' },
+    { module: 'pioneer-school',   version: '1.14.29', note: 'Список изменений виден до и после обновления' },
+    { module: 'appointments',     version: '5.5.68',  note: 'Список изменений виден до и после обновления' },
+    { module: 'documents',        version: '1.10.19', note: 'Список изменений виден до и после обновления' },
   ],
 };
