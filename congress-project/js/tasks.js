@@ -11,7 +11,27 @@ const tr_ = t;
 
 export function addTask(after,sec){let c=A(),r=row(sec?{section:true,type:"Раздел",title:t("cong.msg.new_section"),recordingMedia:"",recordingKind:""}:{title:t("cong.msg.new_task"),participants:[{name:"",congregation:""}]});let i=c.tasks.findIndex(x=>x.id===after);c.tasks.splice(i>=0?i+1:c.tasks.length,0,r);store.sel=r.id;save();renderTasks();if(!sec)openEdit(r.id)}
 export function removeTask(id){if(!confirm(t("cong.confirm.delete_row")))return;makeBackup("cong.msg.before_task_delete");let c=A();c.tasks=c.tasks.filter(x=>x.id!==id);cleanupLinks();store.sel=c.tasks[0]?.id||null;save();renderTasks()}
-export function openEdit(id){store.editId=id;let t=A().tasks.find(x=>x.id===id);$("#eStatus").innerHTML=STATUSES.map(s=>`<option>${esc(s)}</option>`).join("");$("#eTime").value=tv(t.time);$("#quickTime").value="";$("#eNumber").value=t.number;$("#eTitle").value=t.title;$("#eType").value=t.type;$("#eKind").value=t.kind;$("#eDuration").value=t.duration;$("#eStatus").value=t.status||"Не назначено";$("#eConfirmed").value=String(!!t.confirmed);$("#eRehearsal").value=String(!!t.rehearsal);$("#eLetterSent").value=String(!!t.letterSent);$("#eLetterSentDate").value=t.letterSentDate||"";$("#eRecordingMedia").value=t.recordingMedia||"";$("#eRecordingKind").value=t.recordingKind||"";$("#eNotes").value=t.notes||"";drawParts(t.participants||[]);renderLinkBanner(t);renderEditSubtitle(t);$("#editDialog").showModal()}
+export function openEdit(id){store.editId=id;let t=A().tasks.find(x=>x.id===id);$("#eStatus").innerHTML=STATUSES.map(s=>`<option>${esc(s)}</option>`).join("");$("#eTime").value=tv(t.time);$("#quickTime").value="";$("#eNumber").value=t.number;$("#eTitle").value=t.title;$("#eType").value=t.type;$("#eKind").value=t.kind;$("#eDuration").value=t.duration;$("#eStatus").value=t.status||"Не назначено";$("#eConfirmed").value=String(!!t.confirmed);$("#eRehearsal").value=String(!!t.rehearsal);$("#eLetterSent").value=String(!!t.letterSent);$("#eLetterSentDate").value=t.letterSentDate||"";$("#eRecordingMedia").value=t.recordingMedia||"";$("#eRecordingKind").value=t.recordingKind||"";$("#eNotes").value=t.notes||"";drawParts(t.participants||[]);renderLinkBanner(t);renderEditSubtitle(t);syncEtToggles();$("#editDialog").showModal()}
+// Visual fidelity pass (17.09.2026): три boolean-поля (eConfirmed/eRehearsal/
+// eLetterSent) отрисованы как switch-тумблеры вместо select — presentation
+// only. Сами select не удалены из DOM, id/value/data model не меняются;
+// saveEdit()/openEdit() читают/пишут те же select как раньше. Список id
+// синхронизации — единственное место, которое нужно расширить, если в
+// будущем появится ещё один boolean-select с тем же паттерном.
+const ET_TOGGLE_IDS=["eConfirmed","eRehearsal","eLetterSent"];
+function etToggleBtn(selectId){return document.querySelector(`.et-toggle[data-target="${selectId}"]`)}
+function paintEtToggle(btn,on){btn.setAttribute("aria-checked",on?"true":"false");let state=btn.querySelector(".et-toggle__state");if(state)state.textContent=on?t("cong.opt.yes"):t("cong.opt.no")}
+// Вызывается при каждом openEdit(), чтобы визуальный toggle отражал текущее
+// значение select (в т.ч. после программной установки значения в openEdit).
+export function syncEtToggles(){ET_TOGGLE_IDS.forEach(selId=>{let sel=$("#"+selId),btn=etToggleBtn(selId);if(!sel||!btn)return;paintEtToggle(btn,sel.value==="true")})}
+// Один клик/Space/Enter на визуальном toggle → меняем value существующего
+// select и диспатчим стандартный change (на случай, если на него что-то
+// подписано), затем перекрашиваем сам toggle из актуального select.value —
+// единый источник истины остаётся у select, toggle только его отражает.
+function flipEtToggle(btn){let selId=btn.dataset.target,sel=$("#"+selId);if(!sel)return;sel.value=sel.value==="true"?"false":"true";sel.dispatchEvent(new Event("change",{bubbles:true}));paintEtToggle(btn,sel.value==="true")}
+// Слушатель на самом select — если значение когда-либо будет меняться
+// другим путём (не через этот toggle), визуал остаётся синхронизирован.
+export function initEtToggles(){ET_TOGGLE_IDS.forEach(selId=>{let sel=$("#"+selId),btn=etToggleBtn(selId);if(!sel||!btn)return;sel.addEventListener("change",()=>paintEtToggle(btn,sel.value==="true"));btn.addEventListener("click",()=>flipEtToggle(btn));btn.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();flipEtToggle(btn)}})});syncEtToggles()}
 // Строка контекста в шапке modal: время + тема текущего задания. Только
 // read-only отображение уже загруженных данных — новых полей и обращений
 // к состоянию не добавляет (редизайн 04.09.2026, см. AGENTS.md секция modal).

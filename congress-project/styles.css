@@ -731,13 +731,14 @@ dialog {
   margin: 12px 0 0
 }
 
-/* ══ Modal «Редактировать задание» — редизайн 04.09.2026 ═══════════════════
-   Секции/header/footer только этого modal: id/bindings/data model не тронуты,
-   структура — та же .form-grid → .et-row (grid), .epart без изменения DOM-
-   порядка детей (см. js/tasks.js drawParts). Ширина — CSS-свойство width, не
-   media-query breakpoint: реестра check-breakpoints.mjs не касается. */
+/* ══ Modal «Редактировать задание» — visual fidelity pass (17.09.2026) ═════
+   Presentation-only. id/bindings/data model не тронуты: та же .et-row
+   (grid), тот же .epart (см. js/tasks.js drawParts), те же <select>
+   eConfirmed/eRehearsal/eLetterSent (визуально скрыты через .meta-inputs,
+   но остаются в DOM с прежними id/value — см. js/tasks.js initEtToggles).
+   Ширина — CSS-свойство width, не media-query breakpoint. */
 .edit-task-modal {
-  width: min(940px, 96vw);
+  width: min(930px, 96vw);
   min-width: 0;
   max-height: 88vh;
   display: flex;
@@ -763,32 +764,47 @@ dialog {
 }
 .edit-task-modal__scroll {
   overflow-y: auto;
-  flex: 1 1 auto
-}
-.et-section {
+  flex: 1 1 auto;
   padding: var(--cw-space-3) 14px;
-  border-top: 1px solid var(--md-outline-variant)
+  display: flex;
+  flex-direction: column;
+  gap: var(--cw-space-2)
 }
-.et-section:first-child {
-  border-top: 0
+/* Каждая секция — отдельная rounded-card с мягкой границей/фоном, а не
+   плоская полоса. Круглый номер слева от заголовка. */
+.et-card {
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+  border-radius: var(--md-radius-md);
+  padding: var(--cw-space-2) var(--cw-space-3)
 }
-.et-section__title {
-  margin: 0 0 var(--cw-space-2);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--md-on-surface-variant)
-}
-.et-section__head {
+.et-card__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--cw-space-2);
   margin-bottom: var(--cw-space-2)
 }
-.et-section__head .et-section__title {
-  margin: 0
+.et-card__num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--md-radius-full);
+  background: var(--md-primary);
+  color: var(--md-on-primary, #fff);
+  font-size: 12px;
+  font-weight: 700
+}
+.et-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--md-on-surface)
+}
+.et-card__head-action {
+  margin-left: auto
 }
 .et-row {
   display: grid;
@@ -799,7 +815,8 @@ dialog {
   margin-bottom: 0
 }
 .et-row--top {
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, .8fr) minmax(0, .8fr)
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, .7fr) minmax(0, .7fr);
+  align-items: end
 }
 .et-row--two, .et-row--three {
   grid-template-columns: repeat(2, minmax(0, 1fr))
@@ -807,37 +824,144 @@ dialog {
 .et-row--three {
   grid-template-columns: repeat(3, minmax(0, 1fr))
 }
+/* Быстрый выбор времени — компактный secondary control рядом со временем,
+   не отдельная full-width строка (см. mockup п.3). */
+.et-quicktime-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--cw-space-2);
+  margin-bottom: var(--cw-space-2);
+  max-width: min(60%, 360px)
+}
 .et-quicktime {
-  margin-bottom: var(--cw-space-2)
+  flex: 1 1 auto;
+  min-width: 0
+}
+.et-quicktime select {
+  font-size: 13px;
+  padding: 6px 10px
+}
+.et-quicktime-row__clear {
+  flex: 0 0 auto
 }
 .et-notes input {
   min-height: 38px
 }
 .et-status-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, .78fr));
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cw-space-2)
+}
+.et-status-row__status {
+  max-width: 260px
+}
+/* Три boolean-поля отрисованы как настоящие switch-тумблеры (см.
+   js/tasks.js initEtToggles) поверх скрытых select — не select со стилем
+   toggle. .meta-inputs скрывает исходный select тем же приёмом, что и
+   служебные поля выше (display:none), не удаляя его из DOM. */
+.et-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cw-space-3) var(--cw-space-4)
+}
+.et-toggle {
+  display: flex;
+  align-items: center;
   gap: var(--cw-space-2);
-  align-items: end
+  border: 0;
+  background: transparent;
+  padding: 4px 2px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--md-on-surface)
+}
+.et-toggle__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--md-on-surface-variant)
+}
+.et-toggle__switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--md-radius-full);
+  background: var(--md-outline-variant);
+  transition: background .15s ease
+}
+.et-toggle__switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--md-surface-container-lowest, #fff);
+  transition: transform .15s ease
+}
+.et-toggle__state {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 26px
+}
+.et-toggle[aria-checked="true"] .et-toggle__switch {
+  background: var(--md-primary)
+}
+.et-toggle[aria-checked="true"] .et-toggle__switch::after {
+  transform: translateX(16px)
+}
+.et-toggle:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
+  border-radius: var(--md-radius-xs)
 }
 #editParticipants {
-  padding: 0
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cw-space-2)
 }
+/* Карточка участника: имя (primary) + собрание (secondary) слева, телефон
+   отдельным полем справа, удаление крайним справа — не три равнозначных
+   input подряд. DOM-порядок детей .epart не менялся (см. drawParts). */
 .epart {
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, .9fr) auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--cw-space-3);
+  row-gap: 2px;
   align-items: center;
-  padding: var(--cw-space-2);
+  padding: var(--cw-space-2) var(--cw-space-3);
   border: 1px solid var(--md-outline-variant);
   border-radius: var(--md-radius-md);
-  background: var(--md-surface-container-low)
-}
-.epart + .epart {
-  margin-top: var(--cw-space-2)
+  background: var(--md-surface-container)
 }
 .epart__name {
-  font-weight: 700
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 700;
+  border: 0;
+  background: transparent;
+  padding: 2px 0
 }
 .epart__cong {
-  color: var(--md-on-surface-variant)
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 12px;
+  color: var(--md-on-surface-variant);
+  border: 0;
+  background: transparent;
+  padding: 0
+}
+.epart__phone {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center
+}
+.epart__del {
+  grid-column: 3;
+  grid-row: 1 / span 2
 }
 .edit-task-modal__footer {
   border-top: 1px solid var(--md-outline-variant);
@@ -996,7 +1120,16 @@ dialog {
     grid-template-columns: 1fr
   }
   .epart {
-    grid-template-columns: 1fr 1fr
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto
+  }
+  .epart__phone {
+    grid-column: 1 / span 2;
+    grid-row: 3
+  }
+  .epart__del {
+    grid-column: 2;
+    grid-row: 1 / span 2
   }
   .program-table {
     font-size: 13px
@@ -1005,9 +1138,6 @@ dialog {
     width: min(700px, 96vw)
   }
   .et-row--top {
-    grid-template-columns: 1fr 1fr
-  }
-  .et-status-row {
     grid-template-columns: 1fr 1fr
   }
 }
@@ -1129,7 +1259,7 @@ dialog {
     align-items: stretch;
     gap: 6px
   }
-  .settings-grid, .form-grid, .letter-row, .backup-row, .epart, .checks {
+  .settings-grid, .form-grid, .letter-row, .backup-row, .checks {
     grid-template-columns: 1fr
   }
   .time-row {
@@ -1144,16 +1274,23 @@ dialog {
     min-width: 0;
     max-height: 92vh
   }
-  .et-row--top, .et-row--two, .et-row--three, .et-status-row {
+  .et-row--top, .et-row--two, .et-row--three {
     grid-template-columns: 1fr
   }
-  .et-status-row {
-    align-items: stretch
+  .et-quicktime-row {
+    max-width: none
   }
   .epart {
-    align-items: stretch
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto
+  }
+  .epart__phone {
+    grid-column: 1;
+    grid-row: 3
   }
   .epart__del {
+    grid-column: 1;
+    grid-row: 4;
     justify-self: end
   }
   /* Причина horizontal overflow диалогов на узком экране: .form-grid/.checks —
