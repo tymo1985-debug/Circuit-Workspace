@@ -768,7 +768,7 @@ dialog {
   padding: var(--cw-space-2) 14px;
   display: flex;
   flex-direction: column;
-  gap: var(--cw-space-1, 6px)
+  gap: 4px
 }
 /* Каждая секция — отдельная rounded-card с мягкой границей/фоном, а не
    плоская полоса. Круглый номер слева от заголовка. */
@@ -839,13 +839,13 @@ dialog {
 .et-quicktime-row {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  margin-top: 2px
+  gap: 4px;
+  margin-top: 0
 }
 .et-quicktime {
   flex: 0 0 auto;
   min-width: 0;
-  max-width: 168px
+  max-width: 150px
 }
 .et-quicktime span {
   display: block;
@@ -863,7 +863,7 @@ dialog {
   height: 34px
 }
 .et-notes input {
-  min-height: 30px
+  min-height: 20px
 }
 /* Статус + три toggle в одну desktop-строку (см. mockup п.2/5): flex-row
    с wrap на узких экранах вместо grid в одну колонку. */
@@ -871,7 +871,7 @@ dialog {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--cw-space-3) var(--cw-space-4)
+  gap: var(--cw-space-2) var(--cw-space-3)
 }
 .et-status-row__status {
   flex: 0 0 auto;
@@ -886,7 +886,7 @@ dialog {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px var(--cw-space-3);
+  gap: 4px var(--cw-space-2);
   flex: 1 1 auto
 }
 .et-toggle {
