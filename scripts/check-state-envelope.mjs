@@ -242,7 +242,11 @@ async function run() {
     ok('технический отказ различим как failed', outcome === 'failed');
     const mirror = globalThis.localStorage.getItem('cw-state-mirror:fail');
     const parsed = mirror ? JSON.parse(mirror) : null;
-    ok('провалившаяся запись уходит в зеркало', !!parsed && parsed.payload === '{"x":2}');
+    /* Фаза B: зеркало хранит ПЕРВУЮ несохранённую правку. Вторая и далее
+       отсекаются защёлкой деградации и зеркал не создают — набор блобов с
+       непроверяемой базой опаснее их отсутствия. */
+    ok('провалившаяся запись уходит в зеркало', !!parsed && parsed.payload === '{"x":1}');
+    ok('после первого отказа экземпляр деградирован', st.degraded() === true && st.status() === 'degraded');
   }
 
   /* 14. Зеркало несёт конверт и остаётся читаемым прежним разбором. */
@@ -260,9 +264,20 @@ async function run() {
     ok('CWState не пишет в прежний ключ модуля',
       !/localStorage\.setItem\(\s*['"]service-year|congress-pwa/.test(src));
     const planner = readFileSync(join(ROOT, 'circuit-planner/app.js'), 'utf8');
-    ok('Клиндарий по-прежнему пишет в прежний ключ голый JSON',
-      planner.includes('localStorage.setItem(App.config.storageKey, payload)'),
-      'обёртка вокруг legacy-блоба сломала бы откат версии');
+    /* Фаза B перевернула это требование. Раньше проверялось, что Клиндарий
+       пишет в прежний ключ ГОЛЫЙ JSON (обёртка сломала бы откат версии).
+       Теперь он не пишет туда вовсе: ключ читается как вход миграции, но
+       записываемым запасным хранилищем больше не является. */
+    ok('Клиндарий больше не пишет в прежний ключ состояния',
+      !planner.includes('localStorage.setItem(App.config.storageKey'));
+    ok('Клиндарий больше не пишет в прежний ключ истории',
+      !planner.includes('localStorage.setItem(App.config.historyKey'));
+    ok('прежние ключи Клиндария по-прежнему читаются',
+      planner.includes('localStorage.getItem(App.config.storageKey)')
+      && planner.includes('localStorage.getItem(App.config.historyKey)'));
+    const cong = readFileSync(join(ROOT, 'congress-project/js/state.js'), 'utf8');
+    ok('Конгрессы больше не пишут в прежние ключи состояния и копий',
+      !cong.includes('localStorage.setItem(KEY') && !cong.includes('localStorage.setItem(BACKUP_KEY'));
   }
 
   /* 16. IDB-ONLY backward compatibility. Без зеркала: старый код должен
@@ -516,6 +531,149 @@ async function run() {
       got === '{"v":"versioned"}');
     ok('P: такое зеркало не удалено автоматически',
       globalThis.localStorage.getItem('cw-state-mirror:rec-mixed') !== null);
+  }
+
+
+  console.log('\nДеградация: защёлка и отсутствие ложных успехов');
+
+  /* Та же нагрузка после технического отказа не должна проходить по короткому
+     пути «канон уже это содержит»: cache после сбоя равен именно ей. */
+  {
+    const st = CWState.create('deg-same');
+    await st.init();
+    await st.writeOutcome('{"v":"base"}');
+    const beaconBefore = globalThis.localStorage.getItem('cw-state-rev:deg-same');
+    const diskBefore = await raw('deg-same');
+
+    let mutateCalls = 0;
+    const realMutate = CWDB.state.mutate;
+    CWDB.state.mutate = (...a) => { mutateCalls++; return Promise.reject(new Error('транзакция прервана')); };
+    const first = await st.writeOutcome('{"v":"X"}');
+    CWDB.state.mutate = (...a) => { mutateCalls++; return realMutate.apply(CWDB.state, a); };
+
+    ok('первая запись после сбоя — failed', first === 'failed');
+    ok('экземпляр деградирован', st.degraded() === true && st.status() === 'degraded');
+    const mirrorAfterFirst = globalThis.localStorage.getItem('cw-state-mirror:deg-same');
+    const callsAfterFirst = mutateCalls;
+
+    const second = await st.writeOutcome('{"v":"X"}');   // ТА ЖЕ нагрузка
+    ok('повтор той же нагрузки — failed, а не мнимый успех', second === 'failed');
+    ok('второй mutate не вызывается', mutateCalls === callsAfterFirst, 'вызовов: ' + mutateCalls);
+    ok('зеркало не переписано',
+      globalThis.localStorage.getItem('cw-state-mirror:deg-same') === mirrorAfterFirst);
+    ok('маячок не изменился',
+      globalThis.localStorage.getItem('cw-state-rev:deg-same') === beaconBefore);
+    const diskAfter = await raw('deg-same');
+    ok('канон не изменился', diskAfter.payload === diskBefore.payload && diskAfter.rev === diskBefore.rev);
+
+    const sync = st.writeSyncOutcome('{"v":"X"}');
+    ok('writeSyncOutcome в деградации — failed', sync === 'failed');
+    ok('unload в деградации не трогает маячок',
+      globalThis.localStorage.getItem('cw-state-rev:deg-same') === beaconBefore);
+    ok('unload в деградации не переписывает зеркало',
+      globalThis.localStorage.getItem('cw-state-mirror:deg-same') === mirrorAfterFirst);
+    CWDB.state.mutate = realMutate;
+  }
+
+  /* REFUSED не деградация: канон исправен, отклонена устаревшая запись. */
+  {
+    const { A, B, beacon } = twoTabs('deg-refused');
+    await A.init(); await B.init();
+    await A.writeOutcome('{"v":"a1"}');
+    B.onForeign(() => true); await beacon();
+    await B.writeOutcome('{"v":"b2"}');
+    A.onForeign(() => false); await beacon();
+    const out = await A.writeOutcome('{"v":"stale"}');
+    ok('REFUSED остаётся refused', out === 'refused');
+    ok('REFUSED не включает деградацию', A.degraded() === false);
+    ok('статус конфликтный, а не деградированный', A.status() === 'conflict');
+  }
+
+  /* База недоступна на старте: деградация, зеркало не применяется. */
+  {
+    globalThis.localStorage.setItem('cw-state-mirror:deg-init',
+      JSON.stringify({ at: Date.now() + 9999, payload: '{"v":"mirror"}', rev: 0, writerId: 'w' }));
+    const realGet = CWDB.state.get;
+    CWDB.state.get = () => Promise.reject(new Error('база не открылась'));
+    const st = CWState.create('deg-init');
+    const got = await st.init();
+    CWDB.state.get = realGet;
+    ok('недоступная база на старте — деградация', st.degraded() === true && st.status() === 'degraded');
+    ok('зеркало не применено вслепую', got === null);
+    ok('зеркало сохранено для следующего запуска',
+      globalThis.localStorage.getItem('cw-state-mirror:deg-init') !== null);
+    const out = await st.writeOutcome('{"v":"after"}');
+    ok('запись при недоступной базе — failed', out === 'failed');
+  }
+
+  /* Отсутствие общего слоя целиком — тоже read-only, а не legacy-запись. */
+  {
+    const realCWDB = globalThis.CWDB;
+    globalThis.CWDB = undefined;
+    const st = CWState.create('deg-nostack');
+    await st.init();
+    globalThis.CWDB = realCWDB;
+    ok('нет CWDB — деградация', st.degraded() === true && st.status() === 'degraded');
+    const out = await st.writeOutcome('{"v":"x"}');
+    ok('нет CWDB — запись failed', out === 'failed');
+  }
+
+
+  console.log('\nBaseline: стартовое состояние не считается правкой');
+
+  /* Модель отношения baseline ↔ domainDirty ровно та же, что в модулях:
+     baseline снимается после полной стартовой нормализации, дальше любое
+     расхождение с ним — правка человека. Здесь проверяется сама логика
+     (включая исключение activeId), без DOM. */
+  function makeDirtyModel() {
+    let baseline = null;
+    const norm = (raw) => {
+      try { const o = JSON.parse(raw); if (o && typeof o === 'object' && !Array.isArray(o)) delete o.activeId;
+            return JSON.stringify(o); } catch (e) { return raw; }
+    };
+    return {
+      bootstrap(state) { baseline = JSON.stringify(state); },
+      dirty(state) { return baseline === null ? false : norm(JSON.stringify(state)) !== norm(baseline); },
+      confirm(raw) { baseline = raw; },
+    };
+  }
+
+  {
+    const m = makeDirtyModel();
+    // Свежая установка: bootstrap создал первый конгресс — это НЕ правка.
+    const fresh = { congresses: [{ id: 'c1', tasks: [] }], activeId: 'c1', settings: {}, series: [] };
+    m.bootstrap(fresh);
+    ok('свежая установка не считается изменённой', m.dirty(fresh) === false);
+
+    // Навигация: сменился только activeId.
+    const navigated = JSON.parse(JSON.stringify(fresh));
+    navigated.congresses.push({ id: 'c2', tasks: [] });
+    m.bootstrap(navigated);
+    const onlyNav = JSON.parse(JSON.stringify(navigated));
+    onlyNav.activeId = 'c2';
+    ok('смена выбранного конгресса не создаёт ложную правку', m.dirty(onlyNav) === false);
+
+    // Настоящая доменная правка.
+    const edited = JSON.parse(JSON.stringify(navigated));
+    edited.congresses[0].tasks.push({ id: 't1' });
+    ok('доменная правка распознана', m.dirty(edited) === true);
+
+    // Подтверждённая запись сдвигает baseline, отказ — нет.
+    m.confirm(JSON.stringify(edited));
+    ok('после подтверждённой записи состояние снова чистое', m.dirty(edited) === false);
+  }
+
+  /* Гонка переноса: baseline уже стоит, подтверждения ещё нет, пользователь
+     правит — правка обязана быть видна как грязная, иначе чужое состояние
+     стёрло бы её. */
+  {
+    const m = makeDirtyModel();
+    const migrating = { congresses: [{ id: 'c1', tasks: [] }], activeId: 'c1', settings: {}, series: [] };
+    m.bootstrap(migrating);            // baseline есть, канон ещё не подтверждён
+    const edited = JSON.parse(JSON.stringify(migrating));
+    edited.congresses[0].tasks.push({ id: 'during-migration' });
+    ok('правка во время незавершённого переноса видна как несохранённая',
+      m.dirty(edited) === true);
   }
 
   console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\nКонверт записи и атомарность ревизии соблюдены.');

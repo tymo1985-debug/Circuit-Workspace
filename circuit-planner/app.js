@@ -673,6 +673,47 @@
        *  работаем на прежнем ключе `historyKey`, как до переезда. */
       history: null,
       source: 'legacy',
+
+      /* ── Признак несохранённой ДОМЕННОЙ правки ─────────────────────────────
+         `CWPersist.pending()` для этого не годится: он гаснет в момент
+         ОТПРАВКИ записи (`doWrite()` ставит dirty=false до вызова write()), то
+         есть задолго до подтверждения коммита. Вкладка с отклонённой записью
+         выглядела бы чистой, и чужое состояние молча затёрло бы правку.
+
+         `lastWrittenPayload` тоже не годится как признак подтверждённого: он
+         означает «что эта вкладка ОТПРАВИЛА», на нём держатся снимки,
+         unload-страж и currentStored(). Роли намеренно разделены. */
+      domainBaselinePayload: null,   // от чего считаем правку
+      lastConfirmedPayload: null,    // что ТОЧНО лежит в каноне
+      degraded: false,
+      conflict: false,
+
+      /** Есть ли в памяти доменная правка, которой нет в baseline. */
+      domainDirty() {
+        if (this.domainBaselinePayload === null) return false;
+        try { return JSON.stringify(App.state.app) !== this.domainBaselinePayload; }
+        catch (e) { return true; }     // не смогли сравнить — считаем грязным
+      },
+
+      /** Разрешение на запись. НЕ available(): тот отвечает про прошлое. */
+      canWrite() {
+        const r = this.remote;
+        return !!(r && typeof r.status === 'function' && r.status() === 'writable');
+      },
+
+      enterDegraded() {
+        if (this.degraded) return;
+        this.degraded = true;
+        App.ui.applyDegraded(true);
+        App.utils.toast(App.utils.t('msg_storage_readonly'));
+      },
+      enterConflict() {
+        if (this.conflict) return;
+        this.conflict = true;
+        App.utils.toast(App.utils.t('msg_tab_conflict'));
+      },
+      clearConflict() { this.conflict = false; },
+
       load() {
         const usable = !!(this.remote && this.remote.available());
         let saved = usable ? this.remote.get() : null;
@@ -684,6 +725,9 @@
         this.source = usable ? 'db' : 'legacy';
         try {
           this.lastWrittenPayload = saved || null;
+          /* Подтверждённым считаем только то, что реально прочитано из канона.
+             Данные из прежнего ключа — вход миграции, а не подтверждение. */
+          if (usable && !fromLegacy) this.lastConfirmedPayload = saved || null;
           App.state.app = saved ? this.migrate(JSON.parse(saved)) : this.createDefaultData();
         } catch (error) {
           console.error('Storage load failed', error);
@@ -746,8 +790,19 @@
         try {
           this.snapshotIfDue();
           const payload = JSON.stringify(App.state.app);
-          if (this.source === 'db') this.remote.write(payload);
-          else localStorage.setItem(App.config.storageKey, payload);
+          /* Фаза B: прежний ключ БОЛЬШЕ НЕ записывается. Он остаётся снимком
+             «как было до переезда» и входом миграции — то есть читается, но
+             канонические данные живут только в общей базе. Нет базы — режим
+             только для чтения, а не запасная запись в localStorage. */
+          if (this.source !== 'db' || !this.canWrite()) { this.enterDegraded(); return; }
+          this.remote.writeOutcome(payload).then((outcome) => {
+            if (outcome === 'written') { this.lastConfirmedPayload = payload; this.domainBaselinePayload = payload; this.clearConflict(); return; }
+            /* Отказ по ревизии: канон не тронут, правка жива в памяти, baseline
+               НЕ сдвигается — иначе следующее чужое состояние сочло бы вкладку
+               чистой и стёрло бы правку. */
+            if (outcome === 'refused') { this.enterConflict(); return; }
+            this.enterDegraded();
+          }).catch(() => this.enterDegraded());
           // Remember exactly what this tab wrote, so the unload-time safety net can tell
           // "storage still holds my data" apart from "another tab has since written newer data".
           this.lastWrittenPayload = payload;
@@ -777,14 +832,11 @@
             this.lastWrittenPayload = payload;
             return;
           }
-          const current = localStorage.getItem(App.config.storageKey);
-          if (current && this.lastWrittenPayload && current !== this.lastWrittenPayload) {
-            // Storage changed underneath us — another tab owns the newer data. Don't clobber it.
-            return;
-          }
-          // Именно writeNow(): этот путь и есть запись, ставить её обратно в
-          // очередь на закрытии вкладки значило бы не записать вовсе.
-          this.writeNow();
+          /* Фаза B: канона нет — значит писать некуда. Прежний ключ на
+             закрытии вкладки больше не получает канонических данных: ни
+             записи, ни маячка, ни отметки «сохранено». */
+          this.enterDegraded();
+          return;
         } catch (error) {
           console.error('Guarded save failed', error);
         }
@@ -837,16 +889,12 @@
         if (h && h.available()) {
           return h.add({ at: Date.now(), label: label || '', meta: this.snapshotMeta(current), payload: current });
         }
-        try {
-          const raw = localStorage.getItem(App.config.historyKey);
-          const history = raw ? JSON.parse(raw) : [];
-          history.push({ at: Date.now(), data: current });
-          while (history.length > App.config.maxSnapshots) history.shift();
-          localStorage.setItem(App.config.historyKey, JSON.stringify(history));
-        } catch (error) {
-          // History is a convenience safety net, not core data — never let it block a real save.
-          console.error('Snapshot failed (non-fatal)', error);
-        }
+        /* Фаза B: в прежний ключ истории больше не пишем. Он остаётся доступен
+           для чтения и восстановления, но новые контрольные точки живут только
+           в общей базе. Недоступное хранилище снимков означает «точка не
+           снята» — и это по-прежнему НЕ фатально: страховка не имеет права
+           ронять то, ради чего заведена. */
+        console.warn('Snapshot store unavailable — checkpoint skipped (non-fatal)');
         return Promise.resolve(null);
       },
       /**
@@ -873,19 +921,8 @@
           this.checkpointNow();
           return;
         }
-        try {
-          const raw = localStorage.getItem(App.config.historyKey);
-          const history = raw ? JSON.parse(raw) : [];
-          const last = history[history.length - 1];
-          if (last && now - last.at < App.config.snapshotIntervalMs) return;
-          const current = this.currentStored();
-          if (!current) return; // nothing to checkpoint yet (very first save of a fresh install)
-          history.push({ at: now, data: current });
-          while (history.length > App.config.maxSnapshots) history.shift();
-          localStorage.setItem(App.config.historyKey, JSON.stringify(history));
-        } catch (error) {
-          console.error('Snapshot failed (non-fatal)', error);
-        }
+        /* Фаза B: см. checkpointNow() — прежний ключ истории только читается. */
+        console.warn('Snapshot store unavailable — periodic checkpoint skipped (non-fatal)');
       },
       /** Шапки снимков, НОВЫЕ → СТАРЫЕ: `{ id, at, meta }`. Блобы не поднимаются
        *  в память — окну истории нужны только дата и сводка. */
@@ -939,11 +976,12 @@
         } catch (error) { console.error('Reading history failed', error); return Promise.resolve(false); }
         const snap = history[Number(String(id).replace('legacy:', ''))];
         if (!snap) return Promise.resolve(false);
-        try {
-          const current = this.currentStored();
-          if (current) { history.push({ at: Date.now(), data: current }); while (history.length > App.config.maxSnapshots) history.shift(); localStorage.setItem(App.config.historyKey, JSON.stringify(history)); }
-        } catch (error) { console.error('Pre-restore checkpoint failed', error); }
-        return Promise.resolve(this.applySnapshot(snap.data));
+        /* Фаза B: предохранительная точка в прежний ключ больше не пишется.
+           Восстановление старого снимка остаётся возможным, но применяется в
+           КАНОНИЧЕСКОЕ хранилище — и только если оно доступно для записи.
+           Иначе восстановление означало бы правку, которую некуда сохранить. */
+        if (!this.canWrite()) { this.enterDegraded(); return Promise.resolve(false); }
+        return this.checkpointNow('pre-restore').then(() => this.applySnapshot(snap.data));
       },
     },
 
@@ -1808,7 +1846,93 @@
         if (App.els.holidaysToggle) App.els.holidaysToggle.checked = !!App.state.app.settings.showHolidays;
         if (App.els.autoShowRemindersToggle) App.els.autoShowRemindersToggle.checked = !!App.state.app.settings.autoShowReminders;
         this.updatePinButton();
+        /* Блокировка доменных контролов ставится ПОСЛЕ перерисовки: renderAll()
+           пересоздаёт разметку календаря, событий и настроек, и без повторного
+           вызова новые элементы остались бы редактируемыми — интерфейс выглядел
+           бы рабочим, а запись молча отклонялась. */
+        this.applyDegraded();
       },
+
+      /* ── Режим только для чтения ───────────────────────────────────────────
+         КРИТЕРИЙ ОТБОРА. Контрол попадает сюда тогда и только тогда, когда его
+         обработчик меняет ДОМЕННЫЕ поля `App.state.app`. Переключение экранов
+         живёт в `App.state.selectedScreen` — вне канонического блоба, поэтому
+         навигация в этот список не входит и в режиме чтения работает.
+
+         ЧТО НЕ БЛОКИРУЕТСЯ: навигация, печать, экспорт, S-302, справка,
+         напоминания (только чтение), смена темы и языка, PIN-оверлей. */
+      DEGRADED_MUTATING_IDS: [
+        // Создание, правка и удаление событий/визитов
+        'newEventBtn', 'saveEventBtn', 'deleteEventBtn', 'editorSaveBtn', 'editorDeleteBtn',
+        'resetEventBtn', 'deleteAllEventsBtn',
+        'eventDeleteHereBtn', 'eventDeleteEverywhereBtn',
+        // Номера собраний и массовое заполнение
+        'fillCongNumbersBtn', 'fillNumbersApplyBtn',
+        // Планировщик расстановки — применяет изменения к данным
+        'plannerApplyBtn',
+        // Формуляр посещения: добавление строк меняет данные визита
+        'vfAddDayBtn', 'vfAddMealBtn', 'vfAddMeetingBtn', 'vfAddPastoralBtn',
+        // Письмо: сохранение шаблона и отметка об отправке
+        'composerSaveBtn', 'composerEditBtn', 'letterSendBtn', 'letterSnapshotBtn',
+        'letterEmailBodyResetToDefaultBtn',
+        // Импорт и сброс — крупные необратимые операции
+        'importInput', 'syncImportInput', 'resetAppBtn',
+        // Геокодирование записывает координаты в данные
+        'geocodeEventBtn', 'geocodeHomeBtn',
+        // Служебные годы
+        'addYearBtn', 'addNextYearBtn', 'addYearInput',
+      ],
+      /* ДИНАМИЧЕСКИЕ контролы: создаются при renderAll()/renderCalendar(), в
+         index.html их нет, поэтому статической сверки идентификаторов мало.
+         Классификация по графу вызовов: элемент попадает сюда, если его
+         обработчик доходит до App.store.save()/flushNow().
+           [data-entry-flag] — переключатели признаков визита в календаре
+           [data-week-flag]  — признак недели
+         НЕ входят (проверено): [data-screen] и [data-detail-calendar-item] —
+         навигация; [data-add-date]/[data-edit-event]/[data-edit-calendar-item]
+         — открывают редактор, а сама запись идёт через editorSaveBtn, который
+         уже в списке; [data-export-type]/[data-pdf-type]/[data-ics-id]/
+         [data-copy-*] — экспорт и печать; [data-planner-event] — выбор в
+         предпросмотре, применяет plannerApplyBtn. */
+      DEGRADED_MUTATING_DYNAMIC: [
+        '[data-entry-flag]',
+        '[data-week-flag]',
+      ],
+      DEGRADED_MUTATING_SELECTORS: [
+        '#eventEditorModal input', '#eventEditorModal select', '#eventEditorModal textarea',
+        '#calendarEditor input', '#calendarEditor select', '#calendarEditor textarea',
+        '#visitFormModal input', '#visitFormModal select', '#visitFormModal textarea',
+        '#settingsPanelData input', '#settingsPanelData select',
+        '#settingsPanelLetter input', '#settingsPanelLetter select', '#settingsPanelLetter textarea',
+        '#senderNameInput', '#senderAddressInput', '#senderPhoneInput', '#senderEmailInput',
+        '#homeAddressInput', '#owaUrlInput',
+        '#holidaysToggle', '#autoShowRemindersToggle',
+      ],
+
+      applyDegraded(on) {
+        if (typeof on === 'boolean') this._degradedUI = on;
+        if (!this._degradedUI) return;
+        this.DEGRADED_MUTATING_IDS.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.disabled = true;
+          el.setAttribute('aria-disabled', 'true');
+        });
+        this.DEGRADED_MUTATING_DYNAMIC.forEach((sel) => {
+          document.querySelectorAll(sel).forEach((el) => {
+            el.disabled = true;
+            el.setAttribute('aria-disabled', 'true');
+          });
+        });
+        this.DEGRADED_MUTATING_SELECTORS.forEach((sel) => {
+          document.querySelectorAll(sel).forEach((el) => {
+            if (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio') el.disabled = true;
+            else el.readOnly = true;      // значение остаётся копируемым
+            el.setAttribute('aria-disabled', 'true');
+          });
+        });
+      },
+
       updateReminderButtonBadge() {
         const count = App.data.getUpcomingReminders().length;
         if (App.els.checkRemindersBtnMain) App.els.checkRemindersBtnMain.textContent = count ? App.utils.t('reminders_btn_count', { count }) : App.utils.t('reminders_btn');
@@ -2211,6 +2335,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           if (week) { if (e.target.dataset.weekFlag === 's302') week.flagS302 = e.target.checked; if (e.target.dataset.weekFlag === 'letter') week.flagLetter = e.target.checked; App.store.save(); }
           App.ui.renderCalendarDetails(item);
         }));
+        /* Частичная перерисовка пересоздаёт [data-entry-flag]/[data-week-flag],
+           поэтому блокировку нужно поставить заново — renderAll() здесь не
+           вызывается, и без этого контролы снова стали бы кликабельными. */
+        App.ui.applyDegraded();
       },
       renderServiceYearDayDetails(dateIso) {
         if (!App.els.calendarSideTitle || !App.els.calendarSideMeta || !App.els.calendarSideDetails) return;
@@ -2277,6 +2405,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
         document.querySelectorAll('[data-ics-id]').forEach((btn) => btn.addEventListener('click', () => App.actions.exportSingleEventIcs(btn.dataset.icsId)));
         document.querySelectorAll('[data-entry-flag]').forEach((input) => input.addEventListener('change', () => App.actions.toggleEntrySentFlag(input.dataset.entryId, input.dataset.entryFlag, input.checked)));
+        /* Частичная перерисовка пересоздаёт [data-entry-flag]/[data-week-flag],
+           поэтому блокировку нужно поставить заново — renderAll() здесь не
+           вызывается, и без этого контролы снова стали бы кликабельными. */
+        App.ui.applyDegraded();
       },
       openCalendarEditor(data, isEdit) {
         this.ensureEditorNoteField();
@@ -4669,6 +4801,22 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       this.state.calendarView = this.state.app.settings.calendarView || 'month';
       this.state.app.settings.showTeamPanel = true;
       if (!this.state.app.settings.fontSize) this.state.app.settings.fontSize = '100';
+
+      /* Baseline ставится ИМЕННО ЗДЕСЬ: все детерминированные стартовые правки
+         канонического блоба уже позади (load, i18nBridge.adopt, shared.adopt,
+         ensureServiceYear, getWeeksForYear, showTeamPanel, fontSize), а
+         обработчики ввода ещё не привязаны — bind() ниже. Раньше — и правки
+         bootstrap'а считались бы правкой человека, то есть свежая установка
+         сразу оказалась бы «грязной»; позже — и первая настоящая правка
+         осталась бы незамеченной.
+         Это НЕ «подтверждённый канон»: им ведает lastConfirmedPayload, и
+         подделывать его здесь нельзя. */
+      try { App.store.domainBaselinePayload = JSON.stringify(App.state.app); }
+      catch (e) { /* сравнивать будет нечем — domainDirty() ответит «грязно» */ }
+      /* Нет общего слоя, база не открылась или уже деградировали — только
+         чтение. Прежний ключ с фазы B не является запасной записью. */
+      if (!App.store.canWrite()) App.store.enterDegraded();
+
       this.ui.closeMobileMenu();
       this.ui.renderAll();
       this.bind();
@@ -4705,13 +4853,25 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
          никакой ошибки нигде. */
       if (App.store.source === 'db') {
         App.store.remote.onForeign((payload) => {
-          const p = App.store.persist();
-          if (p && p.pending()) { App.store.flushNow('conflict'); return; }
+          /* Прежде здесь при `pending()` вызывался flushNow('conflict'). Это
+             было опасно вдвойне: общий слой к моменту вызова колбэка УЖЕ поднял
+             baseRev до чужой ревизии, поэтому локальный блоб мог успешно лечь
+             поверх только что пришедшего чужого коммита; а возврат undefined
+             означал «чужое принято», и baseRev не откатывался.
+             Теперь: есть своя неподтверждённая доменная правка — ничего не
+             пишем, ничего не принимаем, возвращаем false. Общий слой откатит
+             baseRev, вкладка получит baseRev < seenRev и станет конфликтной,
+             обе стороны останутся целы. */
+          if (App.store.domainDirty()) { App.store.enterConflict(); return false; }
           try {
             App.state.app = App.store.migrate(JSON.parse(payload));
             App.store.lastWrittenPayload = payload;
+            App.store.lastConfirmedPayload = payload;
+            App.store.domainBaselinePayload = payload;
+            App.store.clearConflict();
             App.ui.renderAll();
-          } catch (err) { console.error('Cross-tab sync failed', err); }
+            return true;
+          } catch (err) { console.error('Cross-tab sync failed', err); return false; }
         });
       }
       window.addEventListener('storage', (e) => {

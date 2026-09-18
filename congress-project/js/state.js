@@ -1,4 +1,5 @@
 // Auto-generated module: state.js
+import { applyDegradedUI } from "./degraded.js";
 import { $ } from "./dom.js";
 import { CONGRESS_CONTEXT, CONGRESS_TEMPLATE_ID, builtinTemplate } from "./letters.js";
 import { render } from "./render.js";
@@ -128,6 +129,40 @@ export function persist(){
 let remote=null;
 export let source="legacy";
 
+/* ── Признак несохранённой ДОМЕННОЙ правки ───────────────────────────────────
+   `CWPersist.pending()` для этого не годится: он гаснет в момент отправки
+   записи (`doWrite()` ставит dirty=false ДО вызова write()), то есть ещё до
+   того, как IndexedDB подтвердила коммит. Вкладка с отклонённой или
+   провалившейся записью выглядела бы «чистой», и следующее чужое состояние
+   молча затёрло бы правку пользователя.
+
+   `remote.get()` тоже не годится: `writeOutcome()` кладёт payload в свой кэш
+   ДО завершения put(), поэтому после refused/failed там лежит неподтверждённое.
+
+   Отсюда два разных понятия, их нельзя смешивать:
+   `domainBaselinePayload` — от чего считаем «правку» (ставится после старта,
+   после подтверждённой записи и после принятого чужого состояния);
+   `lastConfirmedPayload` — что ТОЧНО лежит в каноне (только подтверждённое). */
+let domainBaselinePayload=null;
+let lastConfirmedPayload=null;
+
+/* `activeId` — выбранный конгресс, то есть состояние ВИДА, которое исторически
+   лежит внутри канонического блоба. Навигация не должна выглядеть доменной
+   правкой и порождать конфликт. Исключается ровно это одно доказанное поле,
+   никакого общего diff-механизма здесь нет. */
+function domainPayload(raw){
+  try{let o=JSON.parse(raw);if(o&&typeof o==="object"&&!Array.isArray(o))delete o.activeId;
+    return JSON.stringify(o)}
+  catch(e){return raw}}
+
+/** Есть ли в памяти доменная правка, которой нет в baseline. */
+export function domainDirty(){
+  if(domainBaselinePayload===null)return false;
+  return domainPayload(JSON.stringify(store.st))!==domainPayload(domainBaselinePayload)}
+
+/** Обе отметки после подтверждённого канонического состояния. */
+function markConfirmed(payload){domainBaselinePayload=payload;lastConfirmedPayload=payload}
+
 /* ── Где лежат автокопии (фаза 4 миграции на shared/db.js) ───────────────────
    Десять копий — это десять ПОЛНЫХ состояний рядом с рабочим; вместе с
    историей Клиндария именно они и упирались в квоту localStorage. С фазы 4
@@ -193,13 +228,19 @@ function writeNow(){let payload=JSON.stringify(store.st);
   if(source==="db"){
     if(payload===remote.get()){markSaved();return}
     remote.writeOutcome(payload).then(outcome=>{
-      if(outcome==="written"){clearConflict();markSaved();return}
+      if(outcome==="written"){markConfirmed(payload);clearConflict();markSaved();return}
+      /* Отказ по ревизии: канон не тронут, правка жива в памяти, baseline НЕ
+         сдвигается — иначе следующее чужое состояние сочло бы вкладку чистой
+         и стёрло бы правку. */
       if(outcome==="refused"){enterConflict();return}
-      markUnconfirmed()})
-      .catch(()=>markUnconfirmed());
+      /* Технический отказ: общий слой уже защёлкнул деградацию. */
+      enterDegraded()})
+      .catch(()=>enterDegraded());
     return}
-  localStorage.setItem(KEY,payload);
-  markSaved()}
+  /* Фаза B: прежний ключ БОЛЬШЕ НЕ записывается. Он остаётся входом миграции и
+     источником для чтения; канонические данные живут только в общей базе.
+     Если сюда дошли, значит канона нет — это read-only, а не запасная запись. */
+  enterDegraded()}
 function markSaved(){store.lastSavedAt=new Date();updateSaveStatus()}
 
 /* ── Конфликт между вкладками ────────────────────────────────────────────────
@@ -210,6 +251,23 @@ function markSaved(){store.lastSavedAt=new Date();updateSaveStatus()}
    каноническая на диске), автосохранение останавливается, и человек видит
    сообщение. Слияние — будущая фаза, обещать его здесь нельзя. */
 export let conflict=false;
+
+/* ── Деградация: хранилище недоступно, запись остановлена ────────────────────
+   Липкое состояние на сессию, как и в общем слое. Пользователь обязан увидеть
+   это СРАЗУ, а не обнаружить потом, что ничего не сохранилось: доменные
+   контролы блокируются, навигация и чтение остаются. */
+export let degraded=false;
+export function enterDegraded(){
+  if(degraded)return;
+  degraded=true;
+  let el=$("#saveStatus");
+  if(el){el.classList.add("stale");el.textContent=t("cong.msg.storage_readonly")}
+  applyDegradedUI(true)}
+
+/** Не только при сбое записи: отсутствие общего слоя — тоже read-only. */
+export function canWrite(){
+  return !!(remote&&typeof remote.status==="function"&&remote.status()==="writable")}
+
 function enterConflict(){
   conflict=true;
   let el=$("#saveStatus");
@@ -231,23 +289,36 @@ export function subscribeForeign(){
  *  незаписанная правка): общий слой оставит baseRev на прежней версии, и
  *  следующая запись будет отклонена внутри транзакции. */
 export function applyForeign(payload){
-  let p=persist();
-  if(p&&p.pending()){enterConflict();return false}
+  /* Решение принимается по baseline, а НЕ по `CWPersist.pending()`: тот гаснет
+     в момент отправки записи, поэтому вкладка с отклонённым коммитом выглядела
+     бы чистой, и правка пользователя исчезла бы здесь без следа. */
+  if(domainDirty()){enterConflict();return false}
   try{
     let x=JSON.parse(payload);
     if(!isValidState(x))return false;
+    /* Выбранный конгресс — состояние вида. Если он есть и в чужом состоянии,
+       оставляем выбор этой вкладки: экран не должен прыгать вслед за соседней.
+       Записи при этом не происходит. */
+    let keepActive=store.st&&store.st.activeId;
     store.st=x;
+    if(keepActive&&(x.congresses||[]).some(c=>c.id===keepActive))store.st.activeId=keepActive;
+    markConfirmed(payload);
     migrate();
     /* render() без save(): принятое чужое состояние не должно уехать
        обратно в базу новой ревизией — это был бы ping-pong между вкладками. */
     render();
     clearConflict();
     markSaved();
+    applyDegradedUI();
     return true}
   catch(e){console.error("Конгрессы: чужое состояние не разобрано",e);return false}}
 /** Запись не подтверждена: текст не трогаем, точку красим. */
 function markUnconfirmed(){let el=$("#saveStatus");if(el)el.classList.add("stale")}
-export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
+export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;
+  /* Деградация и конфликт устойчивы: обычная отметка «сохранено» их не снимает,
+     иначе индикатор соврал бы при следующей же успешной операции соседа. */
+  if(degraded||conflict)return;
+  el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
 /**
  * Автокопия состояния. Возвращает промис: с фазы 4 запись асинхронна.
  *
@@ -264,9 +335,12 @@ export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSa
 export function makeBackup(labelKey){
   let key=labelKey||"cong.msg.autobackup",lbl=t(key),at=Date.now();
   if(backups&&backups.available())return backups.add({at:at,label:lbl,labelKey:key,payload:JSON.stringify(store.st)});
-  try{let a=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");a.unshift({id:id(),date:new Date(at).toISOString(),label:lbl,labelKey:key,data:clone(store.st)});localStorage.setItem(BACKUP_KEY,JSON.stringify(a.slice(0,MAX_BACKUPS)))}
-  catch(e){console.error("Конгрессы: автокопия не сохранена",e);return Promise.resolve(null)}
-  return Promise.resolve("legacy")}
+  /* Фаза B: в прежний ключ копий больше не пишем — он только читается
+     (`listBackups()`/`getBackup()`) и служит входом переноса в `CWSnapshots`.
+     Недоступное хранилище снимков означает «копия не снята», и это по-прежнему
+     НЕ фатально: страховка не имеет права ронять то, ради чего заведена. */
+  console.warn("Конгрессы: хранилище копий недоступно, автокопия не снята");
+  return Promise.resolve(null)}
 
 /** Шапки автокопий, НОВЫЕ → СТАРЫЕ: `{id, at, label, labelKey}`. Состояний в
  *  память не поднимает — список окна автокопий их и не показывает.
@@ -309,11 +383,26 @@ export function load(){
      модуля снимается перед этим: операция необратимая. */
   if(fromLegacy&&usable){makeBackup("cong.backup.before_move_shared");
     /* Перенос из прежнего ключа — тоже запись: пока она не подтверждена,
-       статус не имеет права выглядеть успешным (I16). */
-    remote.write(raw).then(ok=>{if(!ok)markUnconfirmed()}).catch(()=>markUnconfirmed())}
+       статус не имеет права выглядеть успешным (I16), и подтверждённым канон
+       считать нельзя. */
+    remote.writeOutcome(raw).then(o=>{
+      if(o==="written"){lastConfirmedPayload=raw;return}
+      if(o==="refused"){enterConflict();return}
+      enterDegraded()}).catch(()=>enterDegraded())}
+  else if(usable&&raw!==null&&raw!==undefined&&!fromLegacy)lastConfirmedPayload=raw;
   migrate();adoptShared();
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
-  render();store.lastSavedAt=new Date();updateSaveStatus()}
+  render();store.lastSavedAt=new Date();updateSaveStatus();
+  /* Baseline ставится ПОСЛЕ стартовой нормализации (migrate/adoptShared и
+     возможного создания первого конгресса), но ДО пользовательского ввода.
+     Раньше — и правки bootstrap'а считались бы правкой человека; позже — и
+     первая настоящая правка не была бы замечена.
+     Это НЕ «подтверждённый канон»: перенос из прежнего ключа подтверждается
+     отдельно выше, когда запись разрешится. */
+  domainBaselinePayload=JSON.stringify(store.st);
+  /* Нет общего слоя или он не writable — read-only. Прежний ключ с фазы B не
+     является записываемым запасным путём. */
+  if(!canWrite())enterDegraded()}
 export function newC(n,p,d,t,seriesId,letterFields){let lf=letterFields||{};let c={id:id(),name:n,place:p||"",date:d||"",theme:"",language:"",notes:"",tasks:t||[],seriesId:seriesId||null,rehearsalDate:lf.rehearsalDate||"",rehearsalTime:lf.rehearsalTime||"",recordingDeadline:lf.recordingDeadline||"",responseDeadline:lf.responseDeadline||""};store.st.congresses.unshift(c);store.st.activeId=c.id;store.sel=c.tasks[0]?.id||null;save();return c}
 export function cloneTask(t,m){let n=clone(t);n.id=id();n.linkId=null;if(m==="emptyPeople"){n.participants=(n.participants||[]).map(()=>({name:"",congregation:"",phone:""}));n.confirmed=false;n.rehearsal=false;n.notes="";n.letterSent=false;n.letterSentDate="";n.status="Не назначено"}return n}
 

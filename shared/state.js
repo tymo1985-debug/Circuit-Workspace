@@ -128,6 +128,11 @@
     var ready = false;       // init() отработал
     var usable = false;      // база доступна и ей можно пользоваться
     var hadRecord = false;   // в базе уже была запись — значит переезд состоялся раньше
+    /* Деградация: канон недоступен, писать некуда. Состояние ЛИПКОЕ на всю
+       жизнь этого экземпляра — см. комментарий у latchDegraded(). */
+    var degraded = false;
+    var degradedReason = null;   // 'init' | 'failed'
+
     var ownRev = null;       // маячок, который поставили мы сами
     /* baseRev — каноническая ревизия, НА КОТОРОЙ основан блоб в памяти этой
        вкладки. Двигается только при initial load, своём подтверждённом
@@ -179,6 +184,18 @@
       }
     }
 
+    /* Защёлка деградации. Обратного перехода нет и не должно быть: пока
+       экземпляр был деградирован, канон мог уйти вперёд в соседней вкладке, а
+       проверить это нечем — `baseRev` этой вкладки относится к состоянию до
+       сбоя. Вернуться в записываемый режим можно только перезагрузкой, где
+       init() честно прочитает канон заново. */
+    function latchDegraded(reason) {
+      if (degraded) return;
+      degraded = true;
+      degradedReason = reason;
+      console.warn('CWState: хранилище недоступно, запись остановлена (' + reason + ')');
+    }
+
     function bumpRev() {
       ownRev = String(Date.now()) + '.' + Math.random().toString(36).slice(2, 8);
       lsSet(revKey, ownRev);
@@ -202,8 +219,13 @@
         }
         return queuedPromise;
       }
+      /* ЕДИНСТВЕННЫЙ вход записи, поэтому проверка деградации стоит здесь, а не
+         в публичных методах: очередь вызывает put() рекурсивно из .then ниже и
+         публичный слой минует. После защёлки ни mutate, ни зеркало, ни маячок
+         больше не трогаются — ожидающие просто получают технический отказ. */
+      if (degraded) return Promise.resolve(FAILED);
       var store = db();
-      if (!store) return Promise.resolve(FAILED);
+      if (!store) { latchDegraded('init'); return Promise.resolve(FAILED); }
       inFlight = writeRecord(store, payload)
         .then(function (outcome) {
           if (outcome === FAILED) {
@@ -232,7 +254,12 @@
              закрытая база. Здесь зеркало уместно: это спасение одной
              незавершённой правки, основанной на актуальной ревизии. */
           console.error('CWState: запись в базу не удалась, состояние ушло в зеркало', error);
+          /* ПОРЯДОК ВАЖЕН: сначала зеркало по правилам фазы A — эта правка уже
+             сделана пользователем и должна пережить сбой, — и только потом
+             защёлка. После неё зеркал больше не будет: набор блобов с
+             непроверяемой базой опаснее, чем их отсутствие. */
           writeMirror(payload);
+          latchDegraded('failed');
           return FAILED;
         })
         .then(function (outcome) {
@@ -268,6 +295,7 @@
            не сдвинулся. */
         console.warn('CWState: CWDB без mutate() — канон не трогаем, правка в зеркало');
         writeMirror(payload);
+        latchDegraded('failed');
         return Promise.resolve(FAILED);
       }
       var refused = false;
@@ -320,7 +348,9 @@
       init: function () {
         if (ready) return Promise.resolve(cache);
         var store = db();
-        if (!store) { ready = true; return Promise.resolve(null); }
+        /* Общего слоя нет вовсе (смешанный кэш, старая оболочка). Прежде это
+           означало «работаем на прежнем ключе»; с фазы B — read-only. */
+        if (!store) { ready = true; latchDegraded('init'); return Promise.resolve(null); }
 
         var mirror = readMirror();
         var timeout = new Promise(function (resolve) {
@@ -330,8 +360,15 @@
         return Promise.race([store.get(moduleId).catch(function (e) { return e; }), timeout])
           .then(function (record) {
             if (record === 'timeout' || record instanceof Error) {
-              console.error('CWState: база недоступна, модуль работает на прежнем ключе', record);
+              /* База не открылась. Зеркало здесь НЕ применяется: его базовую
+                 ревизию не с чем сравнить, а применить вслепую — значит
+                 перезаписать канон, которого мы не видели. Оно остаётся
+                 лежать до следующего запуска.
+                 Прежде здесь было «модуль работает на прежнем ключе» — с фазы B
+                 прежний ключ только читается, писать в него канон нельзя. */
+              console.error('CWState: база недоступна, запись остановлена', record);
               ready = true;
+              latchDegraded('init');
               return null;
             }
             usable = true;
@@ -431,9 +468,14 @@
            из ничего, в том числе у вкладки, которая только что приняла чужое
            состояние и ничего не меняла. Успех здесь честен: требуемое
            содержимое на диске есть. */
+        /* ПОРЯДОК КРИТИЧЕН: деградация проверяется ПЕРВОЙ, до оптимизации
+           «канон уже содержит это». После неудачной записи `cache` уже равен
+           той самой нагрузке, поэтому повтор ТОЙ ЖЕ правки прошёл бы по
+           короткому пути и вернул WRITTEN — успех записи, которой не было. */
+        if (degraded) return Promise.resolve(FAILED);
         if (payload === cache && baseRev === seenRev) return Promise.resolve(WRITTEN);
         cache = payload;
-        if (!usable) return Promise.resolve(FAILED);
+        if (!usable) { latchDegraded('init'); return Promise.resolve(FAILED); }
         return put(payload);
       },
 
@@ -453,9 +495,14 @@
        *  даёт стартовое сравнение базовой ревизии зеркала с канонической —
        *  поэтому зеркало и несёт baseRev. */
       writeSyncOutcome: function (payload) {
-        // То же, что в writeOutcome: совпадающее состояние не порождает ревизию.
+        /* ПОРЯДОК КРИТИЧЕН, как и в writeOutcome: деградация проверяется
+           ПЕРВОЙ. После неудачной записи `cache` уже равен той нагрузке, и
+           короткий путь «канон уже это содержит» вернул бы WRITTEN для
+           записи, которой не было. Закрытие вкладки в деградации не пишет
+           ничего: ни канон, ни прежний ключ, ни зеркало, ни маячок. */
+        if (degraded) return FAILED;
         if (payload === cache && baseRev === seenRev) return WRITTEN;
-        if (!usable) return FAILED;
+        if (!usable) { latchDegraded('init'); return FAILED; }
         if (baseRev < seenRev) {
           /* Конфликт известен уже сейчас: ни зеркала, ни записи. Закрытие
              конфликтной вкладки не должно оставлять после себя ничего. */
@@ -519,6 +566,30 @@
       },
 
       /** Ревизия, на которой основан блоб в памяти вкладки. */
+      /**
+       * Разрешение на запись, приоритет degraded > conflict > writable.
+       *
+       * Это НЕ замена `available()`: тот отвечает на вопрос о прошлом —
+       * «инициализация прошла и хранилище было достижимо». Разрешение на
+       * СЛЕДУЮЩУЮ запись даёт только этот метод: после успешного старта
+       * экземпляр может деградировать, и `available()` при этом остаётся
+       * `true` — его исторический смысл намеренно не переопределяется.
+       *
+       * До завершения init() отвечает 'degraded': писать пока нельзя ничего,
+       * и выдать разрешение авансом опаснее, чем ответить консервативно.
+       */
+      status: function () {
+        if (degraded || !ready) return 'degraded';
+        if (baseRev < seenRev) return 'conflict';
+        return 'writable';
+      },
+
+      /** Короткая форма: писать нельзя до перезагрузки. */
+      degraded: function () { return degraded; },
+
+      /** Причина деградации: 'init' | 'failed' | null. Диагностика. */
+      degradedReason: function () { return degradedReason; },
+
       baseRev: function () { return baseRev; },
 
       /** Последняя каноническая ревизия, о которой вкладка узнала. */
