@@ -664,6 +664,11 @@
     initLanguage();
     load();
 
+    /* Фаза C1: sender остаётся синхронным (backend не менялся), реального
+       ожидания здесь нет — точка нужна заранее для фазы C2, когда ниже
+       renderSenderPanel()/renderLetter() начнут зависеть от общей базы. */
+    if (self.CWSender) self.CWSender.ready();
+
     var version = (self.CW_MODULES && self.CW_MODULES[MODULE_ID] || {}).version;
     if (version) $('#moduleVersion').textContent = 'v' + version;
 

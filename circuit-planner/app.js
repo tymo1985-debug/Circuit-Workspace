@@ -4788,6 +4788,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       // Сразу после load(): язык нужен раньше первого renderAll(), а
       // store.lastWrittenPayload здесь ещё показывает, была ли установка новой.
       this.i18nBridge.adopt();
+      /* Фаза C1: sender остаётся синхронным (backend не менялся), реального
+         ожидания здесь нет — точка нужна заранее для фазы C2, когда
+         shared.adopt() ниже начнёт читать канон из общей базы. */
+      if (typeof CWSender !== 'undefined') CWSender.ready();
       this.shared.adopt();
       const currentSY = this.utils.getServiceYearForDate(new Date());
       this.data.ensureServiceYear(currentSY);

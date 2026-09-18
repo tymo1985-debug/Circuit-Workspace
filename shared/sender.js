@@ -35,6 +35,18 @@
 
   var listeners = [];
   var cache = null;
+  /* ФАЗА C1: инфраструктура готовности для будущего C2, канон-источник пока
+     НЕ меняется. Один промис на страницу: повторные вызовы init()/ready()
+     не создают новых чтений и не дублируют работу. В C1 backend остаётся
+     localStorage, поэтому промис разрешается сразу после уже существующего
+     синхронного load() — реальной асинхронности здесь ещё нет, это только
+     контракт, за который позже, без переписывания вызывающего кода, встанет
+     чтение из общей базы. */
+  var readyPromise = null;
+  function init() {
+    if (!readyPromise) readyPromise = Promise.resolve().then(function () { load(); });
+    return readyPromise;
+  }
 
   function read() {
     try { return global.localStorage.getItem(KEY); } catch (e) { return null; }
@@ -82,6 +94,16 @@
 
   var CWSender = {
     FIELDS: FIELDS,
+
+    /**
+     * Готовность sender. В C1 backend синхронный, поэтому промис разрешается
+     * практически сразу — реального ожидания ещё нет. Контракт нужен уже
+     * сейчас: в C2 под этим же именем появится настоящая асинхронная загрузка
+     * из общей базы, и вызывающему коду не придётся меняться повторно.
+     * @returns {Promise<void>}
+     */
+    init: init,
+    ready: init,
 
     /** @returns {Object} копия — вызывающий не может испортить кэш. */
     get: function () {

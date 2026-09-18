@@ -55,7 +55,11 @@ document.addEventListener("DOMContentLoaded",()=>{try{self.CWDocLang?.init({modu
 // запуск модуля его НЕ ждёт: чтение стартует ЗДЕСЬ, параллельно с состоянием,
 // а до готовности pickTemplate() читает прежний источник.
 let templatesReady=self.CWTemplates?.init?.()||Promise.resolve();
-initState().then(()=>{load();initMobile();subscribeForeign();
+/* Фаза C1: sender уже подключён и синхронен, поэтому здесь нет реального
+   ожидания — только точка, которую C2 сможет расширить, не трогая остальной
+   порядок загрузки. */
+let senderReady=self.CWSender?.ready?.()||Promise.resolve();
+Promise.all([initState(),senderReady]).then(()=>{load();initMobile();subscribeForeign();
 // ⚠️ Перенос идёт ПОСЛЕ load(), а не по готовности хранилища. Раньше это были
 // две несвязанные цепочки, и цепочка шаблонов стабильно приходила первой:
 // adoptTemplates() читал ещё дефолтное store.st, не находил правленых

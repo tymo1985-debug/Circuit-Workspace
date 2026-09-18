@@ -170,6 +170,12 @@ const CHECKS = [
     deps: ['fake-indexeddb'],
   },
   {
+    file: 'check-sender-readiness.mjs',
+    title: 'Готовность sender (Фаза C1)',
+    why: 'подключение будущих зависимостей CWState не должно тихо сломать offline или сменить канон раньше времени',
+    deps: [],
+  },
+  {
     file: 'check-degraded.mjs',
     title: 'Режим только для чтения',
     why: 'блокировка доменных правок и отсутствие записи в прежние ключи при недоступном каноне',

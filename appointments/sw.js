@@ -42,6 +42,8 @@ const ASSETS = [
   '../shared/update.js',
   '../shared/i18n.js',
   '../shared/sender.js',
+  '../shared/state.js',
+  '../shared/db.js',
   '../shared/escape.js',
   '../shared/doclang.js',
   '../shared/print.js',

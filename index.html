@@ -20,6 +20,10 @@
 <script src="shared/i18n/common.js"></script>
 <script src="shared/backup.js"></script>
 <script src="shared/sender.js"></script>
+<!-- Фаза C1: подготовка к переносу sender в общую базу (Фаза C2). Сам файл
+     ничего не открывает при подключении — CWState.create() ещё нигде на этой
+     странице не вызывается. -->
+<script src="shared/state.js"></script>
 <style>
   .cw-hub-header {
     position: relative;
@@ -1523,7 +1527,10 @@
 
     CWSender.onChange(fill);
     CWI18n.onChange(function () { renderState(CWSender.get()); });
-    fill();
+    /* Фаза C1: ready() пока разрешается сразу после уже синхронного load() —
+       видимой задержки нет. Точка ожидания нужна уже сейчас, чтобы фаза C2
+       (канон — общая база) не потребовала находить и править это место снова. */
+    CWSender.ready().then(fill);
   })();
 
   // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js).

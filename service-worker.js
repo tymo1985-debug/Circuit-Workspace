@@ -26,6 +26,7 @@ const SHELL_FILES = [
   './shared/theme.js',
   './shared/backup.js',
   './shared/sender.js',
+  './shared/state.js',
   './shared/version.js',
   './shared/release-manifest.js',
   './shared/update.js',

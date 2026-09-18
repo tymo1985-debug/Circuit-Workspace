@@ -45,6 +45,7 @@ const ASSETS = [
   // хранилища шаблонов. Без предварительного кэширования офлайн-запуск падал
   // бы на CWTemplates is not defined ещё до первой отрисовки.
   '../shared/sender.js',
+  '../shared/state.js',
   '../shared/db.js',
   '../shared/templates/namespaces.js',
   '../shared/templates/builtin.js',
