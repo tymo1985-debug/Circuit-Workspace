@@ -163,8 +163,17 @@ export function initState(){
 function onWrite(reason){
   if(reason==="unload"&&source==="db"){
     let payload=JSON.stringify(store.st);
-    remote.writeSync(payload);
-    store.lastSavedAt=new Date();updateSaveStatus();
+    /* Нечего писать: состояние вкладки уже совпадает с каноническим. Без
+       этой проверки безусловный flush() на закрытии создавал бы новую
+       ревизию из ничего — в том числе у вкладки, которая только что
+       приняла чужое состояние и ничего не меняла. */
+    if(payload===remote.get())return;
+    let outcome=remote.writeSyncOutcome(payload);
+    if(outcome==="refused"){enterConflict();return}
+    /* Зеркало — не подтверждение записи в базу (I16): показывать «сохранено»
+       здесь значило бы обещать то, чего ещё нет. Отметка остаётся прежней,
+       точка становится жёлтой. */
+    markUnconfirmed();
     return}
   writeNow()}
 export function save(){let p=persist();
@@ -175,10 +184,69 @@ export function save(){let p=persist();
 /** Записать немедленно, минуя очередь: там, где сразу после этого читается
  *  СОХРАНЁННОЕ значение, а не состояние в памяти. */
 export function flushNow(reason){let p=persist();if(p)p.flush(reason||"flush");else writeNow()}
+/* Статус сохранения показывается ТОЛЬКО после подтверждённой записи (I16).
+   Прежде отметка ставилась сразу после вызова remote.write(), то есть до
+   разрешения промиса: пользователь читал «сохранено в 14:32» в тот момент,
+   когда транзакция ещё могла быть прервана. В legacy-режиме запись
+   синхронная, и там отметка по-прежнему ставится сразу — это правда. */
 function writeNow(){let payload=JSON.stringify(store.st);
-  if(source==="db")remote.write(payload);
-  else localStorage.setItem(KEY,payload);
-  store.lastSavedAt=new Date();updateSaveStatus()}
+  if(source==="db"){
+    if(payload===remote.get()){markSaved();return}
+    remote.writeOutcome(payload).then(outcome=>{
+      if(outcome==="written"){clearConflict();markSaved();return}
+      if(outcome==="refused"){enterConflict();return}
+      markUnconfirmed()})
+      .catch(()=>markUnconfirmed());
+    return}
+  localStorage.setItem(KEY,payload);
+  markSaved()}
+function markSaved(){store.lastSavedAt=new Date();updateSaveStatus()}
+
+/* ── Конфликт между вкладками ────────────────────────────────────────────────
+   Возникает, когда соседняя вкладка записала новое каноническое состояние,
+   а в этой лежит НЕЗАПИСАННАЯ правка. Автоматически выбрать сторону нельзя:
+   применить чужое — стереть правку под курсором, записать своё — стереть
+   чужой коммит. Поэтому обе стороны остаются на месте (локальная в памяти,
+   каноническая на диске), автосохранение останавливается, и человек видит
+   сообщение. Слияние — будущая фаза, обещать его здесь нельзя. */
+export let conflict=false;
+function enterConflict(){
+  conflict=true;
+  let el=$("#saveStatus");
+  if(el){el.classList.add("stale");el.textContent=t("cong.msg.tab_conflict")}}
+function clearConflict(){
+  if(!conflict)return;
+  conflict=false;
+  let el=$("#saveStatus");if(el)el.classList.remove("stale")}
+
+/** Подписка на запись из соседней вкладки. Ставится один раз после init().
+ *  Уведомление приходит маячком в localStorage (запись в IndexedDB события
+ *  `storage` не порождает) — механизм прежний, BroadcastChannel это будущая
+ *  отдельная фаза. */
+export function subscribeForeign(){
+  if(source!=="db"||!remote)return;
+  remote.onForeign(payload=>applyForeign(payload))}
+
+/** Чужое каноническое состояние. Возврат `false` = НЕ приняли (есть своя
+ *  незаписанная правка): общий слой оставит baseRev на прежней версии, и
+ *  следующая запись будет отклонена внутри транзакции. */
+export function applyForeign(payload){
+  let p=persist();
+  if(p&&p.pending()){enterConflict();return false}
+  try{
+    let x=JSON.parse(payload);
+    if(!isValidState(x))return false;
+    store.st=x;
+    migrate();
+    /* render() без save(): принятое чужое состояние не должно уехать
+       обратно в базу новой ревизией — это был бы ping-pong между вкладками. */
+    render();
+    clearConflict();
+    markSaved();
+    return true}
+  catch(e){console.error("Конгрессы: чужое состояние не разобрано",e);return false}}
+/** Запись не подтверждена: текст не трогаем, точку красим. */
+function markUnconfirmed(){let el=$("#saveStatus");if(el)el.classList.add("stale")}
 export function updateSaveStatus(){let el=$("#saveStatus");if(!el||!store.lastSavedAt)return;el.classList.remove("stale");el.textContent=t("cong.msg.saved_at",{time:store.lastSavedAt.toLocaleTimeString(self.CWI18n?.getLang?.()||"ru",{hour:"2-digit",minute:"2-digit",second:"2-digit"})})}
 /**
  * Автокопия состояния. Возвращает промис: с фазы 4 запись асинхронна.
@@ -239,7 +307,10 @@ export function load(){
      есть — ДО migrate(), чтобы в базу уехало ровно то, что лежало под ключом,
      и перенос нельзя было спутать с правкой данных. Снимок в собственные копии
      модуля снимается перед этим: операция необратимая. */
-  if(fromLegacy&&usable){makeBackup("cong.backup.before_move_shared");remote.write(raw)}
+  if(fromLegacy&&usable){makeBackup("cong.backup.before_move_shared");
+    /* Перенос из прежнего ключа — тоже запись: пока она не подтверждена,
+       статус не имеет права выглядеть успешным (I16). */
+    remote.write(raw).then(ok=>{if(!ok)markUnconfirmed()}).catch(()=>markUnconfirmed())}
   migrate();adoptShared();
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
   render();store.lastSavedAt=new Date();updateSaveStatus()}

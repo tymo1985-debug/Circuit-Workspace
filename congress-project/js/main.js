@@ -8,7 +8,7 @@ import { allLetters, copyComposerText, openLetter, openLettersMode, printLetter,
 import { openPrintColumns, planFitReduce, planFitRotate, planFitTwoPages, planFitZoom, printSelectedPlan } from "./plan.js";
 import { printWithOrientation } from "./printing.js";
 import { render, renderLists, renderSettings, renderTasks } from "./render.js";
-import { A, KEY, S, adoptTemplates, baseSettings, demo, flushNow, initState, isValidState, load, makeBackup, migrate, newC, save, store } from "./state.js";
+import { A, KEY, S, adoptTemplates, baseSettings, demo, flushNow, initState, isValidState, load, makeBackup, migrate, subscribeForeign, newC, save, store } from "./state.js";
 import { addTask, checkProgram, drawParts, duplicateCurrent, getParts, initEtToggles, saveEdit } from "./tasks.js";
 import { openMatchReport } from "./matching.js";
 import { initMobile } from "./mobile.js";
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded",()=>{try{self.CWDocLang?.init({modu
 // запуск модуля его НЕ ждёт: чтение стартует ЗДЕСЬ, параллельно с состоянием,
 // а до готовности pickTemplate() читает прежний источник.
 let templatesReady=self.CWTemplates?.init?.()||Promise.resolve();
-initState().then(()=>{load();initMobile();
+initState().then(()=>{load();initMobile();subscribeForeign();
 // ⚠️ Перенос идёт ПОСЛЕ load(), а не по готовности хранилища. Раньше это были
 // две несвязанные цепочки, и цепочка шаблонов стабильно приходила первой:
 // adoptTemplates() читал ещё дефолтное store.st, не находил правленых

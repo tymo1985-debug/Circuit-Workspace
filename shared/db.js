@@ -237,6 +237,73 @@
         return payload.id;
       },
 
+      /**
+       * Атомарное чтение-изменение-запись: `get`, вычисление и `put` внутри
+       * ОДНОЙ readwrite-транзакции.
+       *
+       * ЗАЧЕМ ОТДЕЛЬНО ОТ `update()`. `update()` принимает готовый патч, то
+       * есть значение вычислено ДО транзакции. Для номера ревизии этого мало:
+       * две вкладки прочитали бы `rev = N` и обе записали бы `N + 1`, и на
+       * диске остался бы один из двух вариантов без всякого признака, что
+       * второй потерян. Здесь вычисление происходит внутри транзакции, а
+       * IndexedDB упорядочивает readwrite-транзакции с пересекающейся областью
+       * в пределах базы — в том числе из разных вкладок. Поэтому одинаковый
+       * следующий `rev` получить нельзя.
+       *
+       * `fn(current)` ОБЯЗАНА БЫТЬ СИНХРОННОЙ. Любое ожидание промиса между
+       * `get` и `put` закрывает транзакцию — та же ловушка, что описана у
+       * `update()`, только здесь её легче не заметить.
+       *
+       * @param {IDBValidKey} id
+       * @param {(current: Object|null) => (Object|undefined)} fn
+       *        `current` — текущая запись или `null`, если её нет.
+       *        Возврат `undefined` = не писать ничего; транзакция при этом
+       *        завершается УСПЕШНО, и промис отдаёт текущую запись.
+       *        Исключение из `fn` прерывает транзакцию: частичной записи не
+       *        бывает, промис отклоняется этим же исключением.
+       * @returns {Promise<Object|null>} записанная (или оставшаяся) запись.
+       */
+      async mutate(id, fn) {
+        if (typeof fn !== 'function') {
+          throw new TypeError(`CWDB.${storeName}.mutate: нужна функция fn(current)`);
+        }
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(storeName, 'readwrite');
+          const store = transaction.objectStore(storeName);
+          let result = null;
+          let failure = null;
+          const getReq = store.get(id);
+          getReq.onsuccess = () => {
+            const current = getReq.result === undefined ? null : getReq.result;
+            let next;
+            try {
+              next = fn(current);
+            } catch (error) {
+              // Прерываем ДО put: записи не было, откатывать нечего.
+              failure = error;
+              transaction.abort();
+              return;
+            }
+            if (next === undefined) { result = current; return; }
+            // id ставится ПОСЛЕ спреда — как в add()/put(): вернуть из fn чужой
+            // или пустой id и молча переехать на другой ключ нельзя.
+            result = { ...next, id };
+            store.put(result);
+          };
+          // Ошибка самого get прерывает транзакцию — ловим её причину, чтобы
+          // наружу ушла она, а не безымянный abort.
+          getReq.onerror = () => { failure = failure || getReq.error; };
+          // Только oncomplete: put.onsuccess означает «запрос принят», а не
+          // «транзакция зафиксирована». Разница и есть правдивый статус.
+          transaction.oncomplete = () => resolve(result);
+          transaction.onerror = () => reject(failure || transaction.error);
+          transaction.onabort = () => reject(
+            failure || transaction.error || new Error(`CWDB.${storeName}.mutate: транзакция прервана`)
+          );
+        });
+      },
+
       /** Удалить запись по id */
       async remove(id) {
         const store = await tx(storeName, 'readwrite');
