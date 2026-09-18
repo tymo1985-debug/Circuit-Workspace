@@ -75,18 +75,20 @@ console.log('\nВсе 6 оболочек: sender подключён и wired н�
   const hub = read('index.html');
   ok('хаб пишет sender (CWSender.set) — учтён как 6-й consumer/writer',
     /CWSender\.set\(patch\)/.test(hub));
-  ok('хаб вызывает CWSender.ready() перед первым fill()',
-    /CWSender\.ready\(\)\.then\(fill\)/.test(hub));
+  /* Форма вызова допускает защиту совместимости: старый sender без ready()
+     считается готовым (см. раздел ниже про апгрейд со смешанным кэшем). */
+  ok('хаб дожидается готовности sender перед первым fill()',
+    /CWSender\.ready\(\)[\s\S]{0,80}\.then\(fill\)/.test(hub));
   ok('хаб подключает shared/state.js', /<script src="shared\/state\.js">/.test(hub));
 
   const congress = read('congress-project/js/main.js');
   ok('Конгрессы: senderReady участвует в цепочке старта',
-    /senderReady=self\.CWSender\?\.ready\?\.\(\)/.test(congress)
+    /senderReady=[\s\S]{0,120}CWSender[\s\S]{0,60}ready/.test(congress)
     && /Promise\.all\(\[initState\(\),senderReady\]\)/.test(congress));
 
   const docs = read('documents/js/app.js');
   ok('Документы: CWSender.ready() в boot()',
-    /function boot\(\) \{[\s\S]{0,200}CWSender\.ready\(\)/.test(docs));
+    /function boot\(\) \{[\s\S]{0,400}CWSender\.ready\(\)/.test(docs));
   const docsHtml = read('documents/index.html');
   ok('Документы: подключён shared/state.js', /shared\/state\.js/.test(docsHtml));
 
@@ -168,6 +170,45 @@ console.log('\nКанон, backup-реестр и версия базы не и�
 
   const dbSrc = read('shared/db.js');
   ok('DB_VERSION не изменена в этой фазе', /const DB_VERSION = 5;/.test(dbSrc));
+}
+
+console.log('\nЗащита апгрейда со смешанным кэшем');
+{
+  /* A. Новый потребитель не должен падать, встретив pre-C1 sender без ready(). */
+  const consumers = [
+    ['хаб', 'index.html'],
+    ['Клиндарий', 'circuit-planner/app.js'],
+    ['Конгрессы', 'congress-project/js/main.js'],
+    ['Школа', 'pioneer-school/js/app.js'],
+    ['Назначения', 'appointments/js/app.js'],
+    ['Документы', 'documents/js/app.js'],
+  ];
+  for (const [name, file] of consumers) {
+    const src = read(file);
+    ok(`${name}: вызов ready() защищён проверкой типа (старый sender не роняет старт)`,
+      /typeof\s+(self\.|window\.)?CWSender\.ready\s*===\s*['"]function['"]/.test(src)
+      || /CWSender\?\.ready\?\./.test(src));
+  }
+
+  /* A (исполняемая часть): старый API без ready() — потребитель обязан выжить. */
+  const legacySender = { FIELDS: [], get: () => ({}), set: () => ({}), adopt: () => false, onChange: () => {} };
+  const guarded = (s) => (s && typeof s.ready === 'function' ? s.ready() : Promise.resolve());
+  let survived = true;
+  try { guarded(legacySender); } catch (e) { survived = false; }
+  ok('модель защиты: старый CWSender без ready() не бросает исключение', survived);
+
+  /* B. Новый sender с ready() действительно ожидается. */
+  const modern = { ready: () => Promise.resolve('awaited') };
+  ok('модель защиты: новый CWSender с ready() реально вызывается',
+    guarded(modern) instanceof Promise);
+
+  /* E. Активный кэш Клиндария не мутируется фоново release-bound скриптами. */
+  const plannerSw = read('circuit-planner/sw.js');
+  ok('Клиндарий: release-bound скрипты не перезаписываются в активном кэше',
+    /releaseBound/.test(plannerSw)
+    && /if\s*\(!releaseBound\)/.test(plannerSw));
+  ok('Клиндарий: ревалидация сохранена для не связанных с релизом файлов',
+    /cacheFirst/.test(plannerSw));
 }
 
 console.log(failed

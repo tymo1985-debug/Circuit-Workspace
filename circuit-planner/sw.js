@@ -283,14 +283,30 @@ async function staleWhileRevalidate(request) {
 async function offlineFirst(request, fallbackUrl) {
   const cached = await matchOwn(request);
   if (cached) {
-    fetch(request, { cache: 'no-cache' })
-      .then(async (res) => {
-        if (res && res.ok) {
-          const cache = await caches.open(CACHE_RUNTIME);
-          try { await cache.put(request, res.clone()); } catch (_) {}
-        }
-      })
-      .catch(() => {});
+    /* НЕ ревалидируем release-bound скрипты и стили в фоне.
+       ПОЧЕМУ: прежде фоновой ответ клался в CACHE_RUNTIME ТЕКУЩЕЙ активной
+       версии, а matchOwn() читает runtime раньше static. В результате внутри
+       одного активного worker'а файлы подменялись по одному, и страница
+       получала смесь поколений — новый app.js рядом со старым
+       shared/sender.js (падало на `CWSender.ready is not a function`).
+       Набор релиза обязан быть неизменяемым после install: новая версия
+       наполняет СВОЙ versioned cache и становится видимой только после
+       активации своего worker'а. Ревалидация остаётся для картинок и
+       шрифтов — они не связаны с поколением релиза (см. cacheFirst). */
+    const releaseBound = request.destination === 'script'
+      || request.destination === 'style'
+      || request.destination === 'document'
+      || request.destination === 'manifest';
+    if (!releaseBound) {
+      fetch(request, { cache: 'no-cache' })
+        .then(async (res) => {
+          if (res && res.ok) {
+            const cache = await caches.open(CACHE_RUNTIME);
+            try { await cache.put(request, res.clone()); } catch (_) {}
+          }
+        })
+        .catch(() => {});
+    }
     return cached;
   }
   return networkFirst(request, fallbackUrl);

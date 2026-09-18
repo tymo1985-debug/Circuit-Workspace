@@ -58,7 +58,9 @@ let templatesReady=self.CWTemplates?.init?.()||Promise.resolve();
 /* Фаза C1: sender уже подключён и синхронен, поэтому здесь нет реального
    ожидания — только точка, которую C2 сможет расширить, не трогая остальной
    порядок загрузки. */
-let senderReady=self.CWSender?.ready?.()||Promise.resolve();
+/* ЗАЩИТА ОБНОВЛЕНИЯ: `?.ready?.()` уже безопасен к отсутствию метода, но
+   оставляем явную форму — старый sender без ready() считается готовым. */
+let senderReady=(self.CWSender&&typeof self.CWSender.ready==="function")?self.CWSender.ready():Promise.resolve();
 Promise.all([initState(),senderReady]).then(()=>{load();initMobile();subscribeForeign();
 // ⚠️ Перенос идёт ПОСЛЕ load(), а не по готовности хранилища. Раньше это были
 // две несвязанные цепочки, и цепочка шаблонов стабильно приходила первой:

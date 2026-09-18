@@ -1417,7 +1417,9 @@ window.addEventListener('DOMContentLoaded', () => {
      (подстановка шапки при генерации писем/S-257 и т.п.), собственного
      обращения к CWSender в этом модуле нет. Backend не менялся — реального
      ожидания здесь нет, точка нужна заранее для фазы C2. */
-  if (window.CWSender) window.CWSender.ready();
+  /* ЗАЩИТА ОБНОВЛЕНИЯ: при смешанном поколении кэша сюда может попасть старый
+     shared/sender.js без ready(). Он синхронный и уже готов — не падаем. */
+  if (window.CWSender && typeof window.CWSender.ready === 'function') window.CWSender.ready();
   $('#version-sub').textContent = `v${APP_VERSION} · S-255-U`;
   // Язык поднимаем ДО первого showRoute(): экраны строятся в JS, и язык должен
   // быть известен раньше первой отрисовки. Перерисовку при смене языка делает

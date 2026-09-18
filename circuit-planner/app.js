@@ -4791,7 +4791,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       /* Фаза C1: sender остаётся синхронным (backend не менялся), реального
          ожидания здесь нет — точка нужна заранее для фазы C2, когда
          shared.adopt() ниже начнёт читать канон из общей базы. */
-      if (typeof CWSender !== 'undefined') CWSender.ready();
+      /* ЗАЩИТА ОБНОВЛЕНИЯ: новый app.js мог встретиться со СТАРЫМ
+         shared/sender.js из прежнего кэша — именно это падало с
+         `CWSender.ready is not a function`. Готовность аддитивна: нет
+         ready() — sender синхронный и уже готов. */
+      if (typeof CWSender !== 'undefined' && typeof CWSender.ready === 'function') CWSender.ready();
       this.shared.adopt();
       const currentSY = this.utils.getServiceYearForDate(new Date());
       this.data.ensureServiceYear(currentSY);

@@ -1509,7 +1509,9 @@
   function boot() {
     /* Фаза C1: sender остаётся синхронным (backend не менялся), реального
        ожидания здесь нет — точка нужна заранее для фазы C2. */
-    if (self.CWSender) self.CWSender.ready();
+    /* ЗАЩИТА ОБНОВЛЕНИЯ: старый shared/sender.js из прежнего кэша не имеет
+       ready() — такой sender синхронный и уже готов. */
+    if (self.CWSender && typeof self.CWSender.ready === 'function') self.CWSender.ready();
     if (self.CWI18n) {
       /* ИСПРАВЛЕНО 29.08.2026. Здесь стояло `init({ selectEl })` — опции с
          таким именем у init() нет и не было, поэтому аргумент молча
