@@ -422,11 +422,13 @@
   /* --- Панель отправителя -------------------------------------------- */
   function renderSenderPanel() {
     var sd = sender();
+    var locked = !!(self.CWSender && typeof self.CWSender.status === 'function' && self.CWSender.status() === 'degraded');
     Object.keys(SENDER_MAP).forEach(function (id) {
       var el = document.getElementById(id);
       /* Не перетираем поле, в котором сейчас печатают: обновление может
          прийти из другой вкладки или другого модуля. */
       if (el && document.activeElement !== el) el.value = sd[SENDER_MAP[id]] || '';
+      if (el) el.disabled = locked;
     });
   }
 
@@ -556,6 +558,7 @@
     /* Данные могли поменять в другом модуле или в соседней вкладке. */
     if (self.CWSender) {
       self.CWSender.onChange(function () { renderSenderPanel(); renderLetter(); });
+      if (typeof self.CWSender.onStatusChange === 'function') self.CWSender.onStatusChange(renderSenderPanel);
     }
 
     /* Собрание запоминается в подсказки — но только когда его дописали до

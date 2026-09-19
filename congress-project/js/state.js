@@ -91,7 +91,12 @@ export function adoptTemplates(){
        Интерфейс из этого файла не трогаем: state.js про данные. */
     return "failed"})}
 
-export function adoptShared(){let s=S();if(self.CWSender){self.CWSender.adopt({name:s.senderName,code:s.senderCode,address:s.senderAddress,phone1:s.senderPhone1,phone2:s.senderPhone2,email:s.senderEmail});["senderName","senderCode","senderAddress","senderPhone1","senderPhone2","senderEmail"].forEach(k=>delete s[k])}if(self.CWDocLang){if(s.language)self.CWDocLang.adopt(s.language);delete s.language}save()}
+/* Фаза C2: CWSender.adopt() асинхронный. НАЙДЕНО: прежде поля отправителя
+   удалялись безусловно, не читая исход adopt() вовсе — неудачный перенос
+   стирал бы единственную копию данных. Теперь удаление ждёт confirmed
+   WRITTEN; до него функция не бросает исключения и не блокирует остальной
+   старт — docLang и save() идут своим чередом синхронно, как раньше. */
+export function adoptShared(){let s=S();if(self.CWSender){Promise.resolve(self.CWSender.adopt({name:s.senderName,code:s.senderCode,address:s.senderAddress,phone1:s.senderPhone1,phone2:s.senderPhone2,email:s.senderEmail})).then(taken=>{if(taken){["senderName","senderCode","senderAddress","senderPhone1","senderPhone2","senderEmail"].forEach(k=>delete s[k]);save()}})}if(self.CWDocLang){if(s.language)self.CWDocLang.adopt(s.language);delete s.language}save()}
 
 export function row(o={}){return{id:id(),time:"",number:"",title:"",type:"Пункт програми",kind:"",duration:"",participants:[],confirmed:false,rehearsal:false,notes:"",section:false,recordingMedia:"аудіо",recordingKind:"інтерв’ю",status:"Не назначено",letterSent:false,letterSentDate:"",linkId:null,...o}}
 export function demo(){return[row({time:"9:30",title:"РАНКОВА ПРОГРАМА",type:"Раздел",section:true,recordingMedia:"",recordingKind:""}),row({time:"9:40",title:"Музика",type:"Музика",recordingMedia:"аудіо",recordingKind:"інтерв’ю",status:"Назначено"}),row({time:"9:50",title:"Пісня — і молитва",type:"Пісня і молитва",participants:[{name:"",congregation:""}],recordingMedia:"аудіо",recordingKind:"інтерв’ю"}),row({time:"10:00",number:"1",title:"Why “Trust In Jehovah With All Your Heart”?",type:"Промова",duration:"15",participants:[{name:"",congregation:""}],recordingMedia:"аудіо",recordingKind:"промову"}),row({time:"13:20",title:"ПОПОЛУДНЕВА ПРОГРАМА",type:"Раздел",section:true,recordingMedia:"",recordingKind:""})]}

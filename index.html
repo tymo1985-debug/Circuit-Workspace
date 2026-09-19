@@ -1517,6 +1517,14 @@
       renderState(data);
     }
 
+    // Канон недоступен (фаза C2, сеть CWState) — поля закрываются для правки.
+    // Липкая деградация: обратно не открываются без перезагрузки, ровно как
+    // сам CWSender не выходит из read-only без неё.
+    function applySenderLock() {
+      var locked = (typeof CWSender.status === 'function') && CWSender.status() === 'degraded';
+      Object.keys(inputs).forEach(function (field) { inputs[field].disabled = locked; });
+    }
+
     Object.keys(inputs).forEach(function (field) {
       inputs[field].addEventListener('input', function () {
         var patch = {};
@@ -1526,6 +1534,7 @@
     });
 
     CWSender.onChange(fill);
+    if (typeof CWSender.onStatusChange === 'function') CWSender.onStatusChange(applySenderLock);
     CWI18n.onChange(function () { renderState(CWSender.get()); });
     /* Фаза C1: ready() пока разрешается сразу после уже синхронного load() —
        видимой задержки нет. Точка ожидания нужна уже сейчас, чтобы фаза C2
@@ -1536,7 +1545,7 @@
        аддитивный API: нет ready() — значит sender синхронный и уже готов. */
     (self.CWSender && typeof self.CWSender.ready === 'function'
       ? self.CWSender.ready()
-      : Promise.resolve()).then(fill);
+      : Promise.resolve()).then(function () { fill(); applySenderLock(); });
   })();
 
   // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js).

@@ -57,7 +57,7 @@ export function renderCongresses(){let b=$("#congressList");let series=store.st.
      нужно поставить здесь заново — иначе контролы снова кликабельны. */
   applyDegradedUI();
 }
-export function renderSettings(){let s=S(),sd=sender();$("#letterLanguage").value=docLang();$("#letterFont").value=s.font;$("#letterFontSize").value=s.fontSize;let m={senderName:"name",senderCode:"code",senderEmail:"email",senderPhone1:"phone1",senderPhone2:"phone2",senderAddress:"address"};Object.keys(m).forEach(id=>$("#"+id).value=sd[m[id]]||"")}
+export function renderSettings(){let s=S(),sd=sender();$("#letterLanguage").value=docLang();$("#letterFont").value=s.font;$("#letterFontSize").value=s.fontSize;let m={senderName:"name",senderCode:"code",senderEmail:"email",senderPhone1:"phone1",senderPhone2:"phone2",senderAddress:"address"};let locked=!!(self.CWSender&&typeof self.CWSender.status==="function"&&self.CWSender.status()==="degraded");Object.keys(m).forEach(id=>{let el=$("#"+id);el.value=sd[m[id]]||"";el.disabled=locked})}
 export function peopleHTML(t){let a=(t.participants||[]).filter(p=>p.name||p.congregation);return a.length?a.map(p=>`<div class="participant-line">${esc(p.name||"")}${p.congregation?` <span class="muted">(${esc(p.congregation)})</span>`:""}</div>`).join(""):`<span class="no-part"><span class="muted no-part__dash">—</span><span class="no-part__text">${esc(tr_("cong.msg.no_participant"))}</span></span>`}
 /* Индикатор состояния письма (фаза UI-упрощения, решение по колонке
 «Письмо»): `letterSent` НЕ дублирует `status` в модели — это независимое

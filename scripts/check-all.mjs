@@ -177,9 +177,15 @@ const CHECKS = [
   },
   {
     file: 'check-sender-readiness.mjs',
-    title: 'Готовность sender (Фаза C1)',
-    why: 'подключение будущих зависимостей CWState не должно тихо сломать offline или сменить канон раньше времени',
+    title: 'Готовность sender (Фаза C2)',
+    why: 'канон, backup-реестр и совместимость с прежним кэшем не должны разойтись со сменой хранилища отправителя',
     deps: [],
+  },
+  {
+    file: 'check-c2-sender.mjs',
+    title: 'CWSender: миграция, WRITTEN/REFUSED/FAILED, cross-tab, adopt()',
+    why: 'канон отправителя решает конфликт соседней вкладки и деградацию сам — молчаливая ошибка здесь стирает или путает шапку письма',
+    deps: ['fake-indexeddb'],
   },
   {
     file: 'check-degraded.mjs',

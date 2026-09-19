@@ -4015,7 +4015,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
     },
 
     bind() {
@@ -4682,16 +4682,21 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         },
       },
 
-      // Разовый перенос своих данных в общий слой. CWSender.adopt() запишет
-      // их, только если общая запись ещё пуста, поэтому порядок открытия
-      // модулей не важен и повторный вызов безвреден.
+      // Разовый перенос своих данных в общий слой. CWSender.adopt() (фаза C2)
+      // асинхронный: пишет их, только если общая запись ещё пуста, и
+      // разрешается true ТОЛЬКО после подтверждённой канонической записи.
+      // Свои поля удаляются РОВНО в этот момент — раньше нельзя: неудачный
+      // или неподтверждённый перенос должен повториться при следующем
+      // запуске, а не потерять данные молча.
       adopt() {
         const s = App.state.app.settings;
         if (typeof CWSender !== 'undefined') {
-          const taken = CWSender.adopt({ name: s.senderName, address: s.senderAddress,
-                                         phone1: s.senderPhone, email: s.senderEmail });
-          if (taken) { delete s.senderName; delete s.senderAddress; delete s.senderPhone; delete s.senderEmail; App.store.save(); }
+          Promise.resolve(CWSender.adopt({ name: s.senderName, address: s.senderAddress,
+                                           phone1: s.senderPhone, email: s.senderEmail })).then((taken) => {
+            if (taken) { delete s.senderName; delete s.senderAddress; delete s.senderPhone; delete s.senderEmail; App.store.save(); }
+          });
           CWSender.onChange(() => App.ui.renderSettings());
+          if (typeof CWSender.onStatusChange === 'function') CWSender.onStatusChange(() => App.ui.renderSettings());
         }
         if (typeof CWDocLang !== 'undefined') {
           // Языки, на которых модуль умеет выпускать документы: тема письма

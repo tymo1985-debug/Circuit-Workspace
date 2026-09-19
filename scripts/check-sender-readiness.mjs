@@ -2,10 +2,11 @@
 /**
  * Circuit Workspace — scripts/check-sender-readiness.mjs
  *
- * Фаза C1: подготовка `CWSender` к переносу канона в общую базу (Фаза C2)
- * БЕЗ смены самого канона. Эта проверка доказывает ровно границу C1:
- * инфраструктура готовности и будущие зависимости на месте, а поведение
- * хранения не изменилось ни на бит.
+ * Фаза C2: канон отправителя переехал из localStorage(`cw-sender`) в запись
+ * `shared:sender` хранилища `state` общей базы. Эта проверка доказывает
+ * границу C2: канон, миграция A–D, WRITTEN/REFUSED/FAILED, async adopt(),
+ * backup-реестр и restore-мост — на месте, а инфраструктура готовности и
+ * защита апгрейда со смешанным кэшем (унаследованы от C1) не сломаны.
  *
  * ПОЧЕМУ ЭТА ПРОВЕРКА ЗДЕСЬ, А НЕ ТОЛЬКО В check-shared-precache.mjs.
  * Тот гейт статически сверяет script-теги с precache для пяти оболочек с
@@ -32,41 +33,50 @@ const ok = (label, cond, extra) => {
 
 const sender = read('shared/sender.js');
 
-/* ── 1–6. Сам shared/sender.js: контракт готовности, backend не тронут ───── */
-console.log('\nshared/sender.js: контракт готовности');
+/* ── 1–6. Сам shared/sender.js: канон переехал в CWState('shared:sender') ── */
+console.log('\nshared/sender.js: канон фазы C2');
 {
   ok('CWSender.init() объявлен', /init:\s*init/.test(sender));
   ok('CWSender.ready() объявлен', /ready:\s*init/.test(sender));
   ok('init/ready — одна и та же функция (один промис на страницу)',
-    /var readyPromise = null/.test(sender) && /if \(!readyPromise\)/.test(sender));
+    /var readyPromise = null;/.test(sender) && /if \(!readyPromise\) readyPromise = start\(\);/.test(sender));
   ok('get() остаётся синхронным (не возвращает Promise)',
-    /get:\s*function\s*\(\)\s*\{[\s\S]{0,120}return copy;/.test(sender));
-  ok('set() по-прежнему пишет в localStorage(cw-sender)',
-    /function write\(value\)[\s\S]{0,120}localStorage\.setItem\(KEY, value\)/.test(sender));
-  ok('adopt() остаётся синхронным (возвращает boolean, не Promise)',
-    /adopt:\s*function \(seed\)[\s\S]{0,400}return true;/.test(sender));
-  ok('KEY canonical — по-прежнему cw-sender', /var KEY = 'cw-sender'/.test(sender));
-  ok('никакой записи в state/shared:sender внутри sender.js',
-    !sender.includes("'shared:sender'") && !sender.includes('"shared:sender"'));
-  ok('CWSender.create(...) / CWState.create внутри sender.js не вызывается',
-    !/CWState\.create/.test(sender));
+    /get: function \(\) \{[\s\S]{0,150}return copy;/.test(sender));
+  ok('STATE_ID канон — shared:sender', /var STATE_ID = 'shared:sender';/.test(sender));
+  ok('LEGACY_KEY (cw-sender) объявлен как прежний ключ', /var LEGACY_KEY = 'cw-sender';/.test(sender));
+  ok('канон создаётся через CWState.create(STATE_ID)',
+    /state = global\.CWState\.create\(STATE_ID\);/.test(sender));
+  ok('НИ ОДНОЙ записи в прежний ключ: setItem(LEGACY_KEY/cw-sender) отсутствует',
+    !/localStorage\.setItem\([^)]*LEGACY_KEY/.test(sender) && !/setItem\(['"]cw-sender['"]/.test(sender));
+  ok('adopt() теперь асинхронный — возвращает Promise через init().then(...)',
+    /adopt: function \(seed\) \{[\s\S]{0,200}return init\(\)\.then\(function \(\) \{/.test(sender));
+  ok('status()/onStatusChange() экспортированы для UI деградации',
+    /status: status,/.test(sender) && /onStatusChange: function/.test(sender));
+  ok('dirty() экспортирован (домен-правка не подтверждена каноном)',
+    /dirty: isDirty,/.test(sender));
 }
 
-/* ── 7. Planner: опасный adopt() call site зафиксирован, не стал async ──── */
-console.log('\nCircuit Planner: adopt() call site');
+/* ── 7. Planner/Congress: adopt() теперь асинхронный, удаление — по confirmed */
+console.log('\nCircuit Planner и Конгрессы: adopt() call site (C2 — async)');
 {
   const planner = read('circuit-planner/app.js');
   const i = planner.indexOf('adopt() {');
   const body = planner.slice(i, i + 700);
-  ok('adopt() Клиндария остаётся синхронным методом (не async)',
-    i > -1 && !/async adopt/.test(planner.slice(Math.max(0, i - 20), i + 20)));
-  ok('CWSender.adopt(...) вызывается синхронно, без await',
-    /const taken = CWSender\.adopt\(/.test(body) && !/await CWSender\.adopt/.test(body));
-  ok('удаление старых полей sender остаётся условным на synchronous taken (безопасно только в C1)',
-    /if \(taken\) \{ delete s\.senderName/.test(body));
-  ok('CWSender.ready() вызывается ДО shared.adopt() при старте',
+  ok('Planner: CWSender.adopt(...) оборачивается в Promise.resolve(...).then(...)',
+    i > -1 && /Promise\.resolve\(CWSender\.adopt\(/.test(body) && /\.then\(\(taken\) => \{/.test(body));
+  ok('Planner: удаление старых полей — ТОЛЬКО внутри .then, на подтверждённом taken',
+    /\.then\(\(taken\) => \{\s*if \(taken\) \{ delete s\.senderName/.test(body));
+  ok('Planner: CWSender.ready() вызывается ДО shared.adopt() при старте',
     planner.indexOf('CWSender.ready()') > -1
     && planner.indexOf('CWSender.ready()') < planner.indexOf('this.shared.adopt();'));
+
+  const congState = read('congress-project/js/state.js');
+  const iC = congState.indexOf('export function adoptShared()');
+  const bodyC = congState.slice(iC, iC + 500);
+  ok('Congress: adoptShared() оборачивает adopt() в Promise.resolve(...).then(...)',
+    iC > -1 && /Promise\.resolve\(self\.CWSender\.adopt\(/.test(bodyC) && /\.then\(taken=>\{/.test(bodyC));
+  ok('Congress: НАЙДЕННЫЙ БАГ исправлен — удаление полей внутри if(taken), не безусловно',
+    /\.then\(taken=>\{if\(taken\)\{\["senderName"/.test(bodyC));
 }
 
 /* ── 8/9. Хаб как писатель, все 6 оболочек wired ─────────────────────────── */
@@ -78,7 +88,7 @@ console.log('\nВсе 6 оболочек: sender подключён и wired н�
   /* Форма вызова допускает защиту совместимости: старый sender без ready()
      считается готовым (см. раздел ниже про апгрейд со смешанным кэшем). */
   ok('хаб дожидается готовности sender перед первым fill()',
-    /CWSender\.ready\(\)[\s\S]{0,80}\.then\(fill\)/.test(hub));
+    /CWSender\.ready\(\)[\s\S]{0,80}\.then\(function \(\) \{ fill\(\); applySenderLock\(\); \}\)/.test(hub));
   ok('хаб подключает shared/state.js', /<script src="shared\/state\.js">/.test(hub));
 
   const congress = read('congress-project/js/main.js');
@@ -130,46 +140,28 @@ console.log('\nPrecache новых зависимостей');
     /'\.\.\/shared\/state\.js'/.test(apptSw) && /'\.\.\/shared\/db\.js'/.test(apptSw));
 }
 
-/* ── 6. "Нет лишнего open DB": лениво по построению ───────────────────────── */
-console.log('\nПодключение файлов не открывает базу и не создаёт canonical sender');
-{
-  const db = read('shared/db.js');
-  ok('shared/db.js не вызывает openDb() на верхнем уровне (только внутри методов)',
-    !/^\s*openDb\(\);?\s*$/m.test(db.replace(/function openDb[\s\S]*?\n  \}\n/, '')));
-  const state = read('shared/state.js');
-  ok('shared/state.js не обращается к CWDB на верхнем уровне (только внутри create())',
-    (() => {
-      const i = state.indexOf('function create(');
-      // Убираем блочные и строчные комментарии — иначе документация,
-      // упоминающая CWDB.mutate() как объяснение формата, ложно проваливает
-      // проверку кода, которого там на самом деле нет.
-      const stripped = state.slice(0, i)
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/\/\/.*$/gm, '');
-      return !/CWDB/.test(stripped);
-    })());
-  ok('нигде в изменённых файлах не создаётся CWState.create(\'shared:sender\')',
-    !/CWState\.create\(['"]shared:sender['"]\)/.test(
-      sender + read('index.html') + read('circuit-planner/app.js')
-      + read('congress-project/js/main.js') + read('documents/js/app.js')
-      + read('pioneer-school/js/app.js') + read('appointments/js/app.js')));
-}
-
-/* ── 12/13/14. Backup/канон/версия не изменились ─────────────────────────── */
-console.log('\nКанон, backup-реестр и версия базы не изменены');
+/* ── 12/13/14. Backup-реестр и версия базы — C2 ──────────────────────────── */
+console.log('\nКанон, backup-реестр и версия базы (C2)');
 {
   const backup = read('shared/backup.js');
   const shared = backup.slice(0, backup.indexOf('var MODULES'));
-  ok('SHARED.local всё ещё содержит cw-sender', /cw-sender/.test(shared));
-  const modulesBlock = backup.slice(backup.indexOf('var MODULES'), backup.indexOf('};', backup.indexOf('var MODULES')));
-  const sharedLocalCount = (modulesBlock.match(/sharedLocal: \['cw-sender'\]/g) || []).length;
-  ok('реестр модулей: sharedLocal по-прежнему cw-sender у всех прежних потребителей',
-    sharedLocalCount >= 4, 'найдено: ' + sharedLocalCount);
-  ok('в реестре нет sharedStores-записи для shared:sender (C2 ещё не начата)',
-    !modulesBlock.includes("ids: ['shared:sender']") && !modulesBlock.includes('"shared:sender"'));
+  ok('SHARED.local БОЛЬШЕ НЕ содержит cw-sender', !/local: \['cw-lang', 'cw-doclang', 'cw-sender'\]/.test(shared)
+    && /local: \['cw-lang', 'cw-doclang'\]/.test(shared));
+  ok('EXCLUDE глушит запись cw-sender при восстановлении',
+    /var EXCLUDE = \['syp-pin-hash', 'cw-sender'\];/.test(backup));
+  const modulesBlock = backup.slice(backup.indexOf('var MODULES'), backup.indexOf('\n  };', backup.indexOf('var MODULES')));
+  ok('реестр модулей: sharedLocal БОЛЬШЕ НЕ несёт cw-sender ни у одного потребителя',
+    !/sharedLocal: \['cw-sender'\]/.test(modulesBlock));
+  const senderStateIdCount = (modulesBlock.match(/'shared:sender'/g) || []).length;
+  ok('реестр: shared:sender объявлена адресной записью state у всех 4 прежних потребителей',
+    senderStateIdCount >= 4, 'найдено: ' + senderStateIdCount);
+  ok('restore-мост переносит легаси в канон (extractLegacySenderRow/writeExtraSenderRow)',
+    /function extractLegacySenderRow/.test(backup) && /function writeExtraSenderRow/.test(backup));
+  ok('канон (в файле ИЛИ уже на диске) побеждает легаси при восстановлении',
+    /req\(store\.get\(SENDER_ID\)\)\.then\(function \(existing\) \{\s*if \(existing\) \{/.test(backup));
 
   const dbSrc = read('shared/db.js');
-  ok('DB_VERSION не изменена в этой фазе', /const DB_VERSION = 5;/.test(dbSrc));
+  ok('DB_VERSION не поднята фазой C2 (нового store не заводили)', /const DB_VERSION = 5;/.test(dbSrc));
 }
 
 console.log('\nЗащита апгрейда со смешанным кэшем');
@@ -213,5 +205,5 @@ console.log('\nЗащита апгрейда со смешанным кэшем'
 
 console.log(failed
   ? `\nПРОВАЛЕНО проверок: ${failed}`
-  : '\nГотовность sender подготовлена; канон остаётся cw-sender.');
+  : '\nФаза C2: канон отправителя — state/shared:sender; cw-sender только для чтения.');
 process.exit(failed ? 1 : 0);

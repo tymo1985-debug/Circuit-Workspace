@@ -163,17 +163,23 @@ await put(db, 'snapshots', [
 ]);
 db.close();
 
-/* Берём первый модуль, которому реально что-то нужно от общего слоя. */
-const subject = Object.keys(CWBackup.MODULES).find((id) => (CWBackup.MODULES[id].sharedLocal || []).length);
-if (!subject) {
-  console.log('  ! ни один модуль не объявил зависимости — сценарий пропущен');
-} else {
+/* С фазы C2 sharedLocal у всех реальных модулей пуст (канон отправителя ушёл
+   в `state`, других общих localStorage-ключей модули не объявляют) — поэтому
+   зависимость подмешивается на время проверки, тем же приёмом, что уже
+   использован ниже для sharedStores. Механизм партиционного слияния — это то,
+   что проверяет сценарий, а не то, какие именно ключи его сегодня используют
+   в продакшене. Синтетический ключ, а не `cw-sender`: последний с этой фазы в
+   EXCLUDE, и использовать его как пробу для «должен переписаться» было бы
+   противоречием самому себе. */
+{
+  const subject = 'appointments';
+  CWBackup.MODULES[subject].sharedLocal = ['cw-test-shared-key'];
   /* Хранилище общей базы подмешиваем на время проверки: пока ни один модуль
-     от неё не зависит, но фаза 2 это изменит, и механизм должен работать
+     от неё не зависит явно этим набором, но механизм должен работать
      заранее, а не «когда понадобится». */
   CWBackup.MODULES[subject].sharedStores = { [DB]: ['templates', { store: 'state', ids: ['own-module'] }, { store: 'snapshots', prefix: 'own-module:' }] };
 
-  mem.set('cw-sender', JSON.stringify({ name: 'Тест Тестович' }));
+  mem.set('cw-test-shared-key', JSON.stringify({ name: 'Тест Тестович' }));
   mem.set('cw-lang', 'pl');
 
   const snap = await CWBackup.snapshot([subject]);
@@ -196,7 +202,7 @@ if (!subject) {
     'снимок — это полное состояние модуля; без отбора копия увозила бы чужие данные в файле, который уходит почтой');
 
   /* Портим состояние и восстанавливаем: сосед обязан уцелеть. */
-  mem.set('cw-sender', JSON.stringify({ name: 'испорчено' }));
+  mem.set('cw-test-shared-key', JSON.stringify({ name: 'испорчено' }));
   /* Без указания версии: восстановление заводит схему общей базы штатным путём
      (CWDB.init), поэтому база законно стоит на DB_VERSION, а не на единице. */
   db = await open(DB);
@@ -208,7 +214,7 @@ if (!subject) {
 
   await CWBackup.restore(snap);
   console.log('\nВосстановление копии модуля');
-  ok('свои данные восстановлены', JSON.parse(mem.get('cw-sender')).name === 'Тест Тестович');
+  ok('свои данные восстановлены', JSON.parse(mem.get('cw-test-shared-key')).name === 'Тест Тестович');
   ok('глобальный язык хаба не тронут', mem.get('cw-lang') === 'pl');
   const t = Object.fromEntries((await rows(DB, 'templates')).map((r) => [r.id, r]));
   ok('своё хранилище восстановлено', t.tpl_own?.body === 'шаблон проверяемого модуля');
@@ -480,7 +486,9 @@ ok('отказ базы: localStorage НЕ переписан из файла',
   'localStorage пишется только после успешной записи всех баз — иначе откатывать нечем');
 
 /* 6.2. Успешное восстановление localStorage всё-таки пишет — иначе фаза C
-   могла бы «пройти» просто потому, что её выкинули. */
+   могла бы «пройти» просто потому, что её выкинули. Проба — `cw-lang`, а не
+   `cw-sender`: с фазы C2 последний в EXCLUDE (см. ниже), и писать его не
+   должен даже успешный полный проход. */
 await wipe(DB);
 d6 = await open(DB, SCHEMA, (x) => { x.createObjectStore('templates', { keyPath: 'id' }); });
 d6.close();
@@ -493,13 +501,137 @@ await CWBackup.restore({
   modules: [],
   sections: {
     shared: {
-      local: { 'cw-sender': JSON.stringify({ name: 'ИзКопии' }) },
+      local: { 'cw-lang': 'ИзКопии' },
       idb: { [DB]: { version: SCHEMA, stores: { templates: store([{ id: 'tpl_ok' }]) } } },
     },
   },
 });
-ok('успешное восстановление: localStorage переписан', JSON.parse(mem.get('cw-sender')).name === 'ИзКопии');
+ok('успешное восстановление: localStorage переписан', mem.get('cw-lang') === 'ИзКопии');
 ok('успешное восстановление: база записана', (await rows(DB, 'templates')).some((r) => r.id === 'tpl_ok'));
+
+/* --- 7. Легаси-мост отправителя (фаза C2) -------------------------------
+   Старый файл несёт `cw-sender` в `sections.shared.local`; канон с этой фазы —
+   строка `state` с id `shared:sender`. Восстановление обязано перенести его в
+   канон, ни разу не записав легаси-ключ обратно, и уступить любому канону,
+   который уже есть — хоть в самом файле, хоть на диске от прежней работы. */
+console.log('\nЛегаси-мост отправителя');
+
+/* 7.1. Старый файл, канона нигде нет — легаси переносится в канон один раз. */
+await wipe(DB);
+let d7 = await open(DB, SCHEMA, (x) => {
+  x.createObjectStore('templates', { keyPath: 'id' });
+  x.createObjectStore('state', { keyPath: 'id' });
+});
+await put(d7, 'state', [{ id: 'congress-project', payload: '{"x":1}', rev: 3, savedAt: 1, writerId: 'w' }]);
+d7.close();
+mem.set('cw-sender', JSON.stringify({ name: 'НЕ ДОЛЖНО ПОПАСТЬ В LOCALSTORAGE' }));
+const legacyFields = { name: 'Легаси Имя', code: 'PL-01', address: 'ул. Тест 1', phone1: '', phone2: '', email: '' };
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+  sections: { shared: { local: { 'cw-sender': JSON.stringify(legacyFields) },
+    idb: { [DB]: { version: SCHEMA, stores: {
+      templates: store([{ id: 'tpl_x' }]),
+      state: store([{ id: 'congress-project', payload: '{"x":1}', rev: 3, savedAt: 1, writerId: 'w' }]),
+    } } } } },
+});
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('легаси перенесён в канон shared:sender', st['shared:sender']
+    && JSON.parse(st['shared:sender'].payload).name === 'Легаси Имя');
+  ok('перенесённая строка получает rev=1', st['shared:sender'] && st['shared:sender'].rev === 1);
+  ok('сосед по state (congress-project) не тронут', st['congress-project']?.rev === 3);
+  ok('легаси-ключ НЕ переписан в localStorage',
+    JSON.parse(mem.get('cw-sender')).name === 'НЕ ДОЛЖНО ПОПАСТЬ В LOCALSTORAGE');
+}
+
+/* 7.2. Файл несёт ОБА формата — канон в файле побеждает, легаси не участвует. */
+await wipe(DB);
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+  sections: { shared: { local: { 'cw-sender': JSON.stringify({ name: 'Устаревшее из легаси' }) },
+    idb: { [DB]: { version: SCHEMA, stores: {
+      state: store([{ id: 'shared:sender', payload: JSON.stringify({ name: 'Канон из файла', code: '', address: '', phone1: '', phone2: '', email: '' }), rev: 7, savedAt: 1, writerId: 'w' }]),
+    } } } } },
+});
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('канон файла побеждает легаси того же файла',
+    st['shared:sender'] && JSON.parse(st['shared:sender'].payload).name === 'Канон из файла' && st['shared:sender'].rev === 7);
+}
+
+/* 7.3. Частичное (модульное) восстановление СТАРОГО файла не должно откатить
+   канон, уже подтверждённый на устройстве реальной работой — merge не чистит
+   `state`, но без проверки диска легаси всё равно лёг бы поверх канона. */
+await wipe(DB);
+let d73 = await open(DB, SCHEMA, (x) => {
+  x.createObjectStore('templates', { keyPath: 'id' });
+  x.createObjectStore('state', { keyPath: 'id' });
+});
+await put(d73, 'state', [{ id: 'shared:sender', payload: JSON.stringify({ name: 'Текущий канон устройства', code: '', address: '', phone1: '', phone2: '', email: '' }), rev: 5, savedAt: 1, writerId: 'w' }]);
+d73.close();
+CWBackup.MODULES['appointments'].sharedLocal = ['cw-sender'];
+CWBackup.MODULES['appointments'].sharedStores = { [DB]: ['templates'] };
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'module',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: ['appointments'],
+  sections: {
+    shared: { partial: true, local: { 'cw-sender': JSON.stringify({ name: 'Легаси из старой копии Назначений' }) },
+      idb: { [DB]: { version: SCHEMA, stores: { templates: store([{ id: 'tpl_appt' }]) } } } },
+    appointments: { local: {} },
+  },
+});
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('канон устройства не откачен частичным восстановлением старой копии',
+    st['shared:sender'] && JSON.parse(st['shared:sender'].payload).name === 'Текущий канон устройства' && st['shared:sender'].rev === 5);
+}
+
+/* 7.4. Чистое устройство: базы нет вовсе, старый файл даже без хранилища
+   `state` в дампе. prepareSchema()/CWDB.init() обязаны завести схему v5
+   (подтверждённый факт), канон — появиться, DB_VERSION — не превысить 5,
+   и последующая обычная запись — продолжить нумерацию с rev=1. */
+await wipe(DB);
+mem.set('cw-sender', JSON.stringify({ name: 'НЕ ТРОГАТЬ' }));
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+  sections: { shared: { local: { 'cw-sender': JSON.stringify({ name: 'С чистого устройства', code: '', address: '', phone1: '', phone2: '', email: '' }) },
+    idb: { [DB]: { version: 2, stores: { templates: store([{ id: 'tpl_old' }]) } } } } },
+});
+ok('чистое устройство: база открывается версией CWDB.DB_VERSION', await versionOf(DB) === SCHEMA);
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('чистое устройство: канон создан из легаси', st['shared:sender']
+    && JSON.parse(st['shared:sender'].payload).name === 'С чистого устройства' && st['shared:sender'].rev === 1);
+}
+ok('чистое устройство: легаси-ключ не тронут', JSON.parse(mem.get('cw-sender')).name === 'НЕ ТРОГАТЬ');
+{
+  // Следующая обычная запись (не восстановление) продолжает нумерацию 1 -> 2.
+  const next = await CWDB.state.mutate('shared:sender', (cur) => ({
+    id: 'shared:sender', payload: cur.payload, savedAt: Date.now(), rev: (cur ? cur.rev : 0) + 1, writerId: 'w2',
+  }));
+  ok('следующая запись продолжает rev 1 -> 2 после переноса', next && next.rev === 2);
+}
+
+/* 7.5. Порядок восстановления: шаг переноса отправителя — структурно между
+   Фазой B и Фазой C, с тем же catch(closeAll + throw), что и любой другой шаг
+   восстановления. Полноценная проверка отказа этого КОНКРЕТНОГО шага без
+   имитации сбоя транзакции IndexedDB на уровне выше — здесь не проверяется
+   отдельно: это тот же класс отказа, что и у writeDb() Фазы B, для которого
+   этот файл уже проверяет ordering-контракт сценариями 6.1/6.2, а не подменой
+   реализации IndexedDB под конкретный внутренний шаг. */
+{
+  const backupSrc = readFileSync(join(ROOT, 'shared/backup.js'), 'utf8');
+  const iBridge = backupSrc.indexOf('/* Легаси-мост отправителя');
+  const iPhaseC = backupSrc.indexOf('/* Фаза C. */');
+  const between = backupSrc.slice(iBridge, iPhaseC);
+  ok('перенос отправителя расположен между Фазой B и Фазой C',
+    iBridge > -1 && iPhaseC > iBridge);
+  ok('его отказ ловится тем же catch(closeAll + throw), что и остальные фазы',
+    /\}\)\.catch\(function \(e\) \{\s*closeAll\(\);\s*throw e;\s*\}\)/.test(backupSrc.slice(iPhaseC - 400, iPhaseC)));
+}
 
 /* 6.3. Предохранительный снимок переживает полное восстановление.
    Это и есть причина, по которой он лежит в отдельной базе, а не в хранилище
