@@ -27,5 +27,7 @@ self.CW_RELEASE = {
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
   version: '0.41.36',
-  changes: [],
+  changes: [
+    { module: 'circuit-planner', version: '9.94.14', note: 'Исправлено предупреждение об отсутствующем переводе cp.letter_due' },
+  ],
 };
