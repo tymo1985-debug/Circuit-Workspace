@@ -90,6 +90,13 @@ console.log('\nВсе 6 оболочек: sender подключён и wired н�
   ok('хаб дожидается готовности sender перед первым fill()',
     /CWSender\.ready\(\)[\s\S]{0,80}\.then\(function \(\) \{ fill\(\); applySenderLock\(\); \}\)/.test(hub));
   ok('хаб подключает shared/state.js', /<script src="shared\/state\.js">/.test(hub));
+  ok('хаб подключает shared/db.js СТАТИЧЕСКИМ тегом (не динамической инъекцией)',
+    /<script src="shared\/db\.js">/.test(hub));
+  ok('хаб: shared/db.js расположен ДО CWSender.ready() в порядке документа',
+    hub.indexOf('<script src="shared/db.js">') > -1
+    && hub.indexOf('<script src="shared/db.js">') < hub.indexOf('self.CWSender.ready()'));
+  ok('хаб: гонка динамической инъекции db.js устранена (createElement для db.js отсутствует)',
+    !/createElement\('script'\)[\s\S]{0,200}shared\/db\.js/.test(hub));
 
   const congress = read('congress-project/js/main.js');
   ok('Конгрессы: senderReady участвует в цепочке старта',
