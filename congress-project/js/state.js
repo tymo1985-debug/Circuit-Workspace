@@ -385,16 +385,47 @@ export function load(){
   /* Переезд: данные нашлись только в старом ключе. Копируем их в базу как
      есть — ДО migrate(), чтобы в базу уехало ровно то, что лежало под ключом,
      и перенос нельзя было спутать с правкой данных. Снимок в собственные копии
-     модуля снимается перед этим: операция необратимая. */
-  if(fromLegacy&&usable){makeBackup("cong.backup.before_move_shared");
-    /* Перенос из прежнего ключа — тоже запись: пока она не подтверждена,
-       статус не имеет права выглядеть успешным (I16), и подтверждённым канон
-       считать нельзя. */
-    remote.writeOutcome(raw).then(o=>{
-      if(o==="written"){lastConfirmedPayload=raw;return}
-      if(o==="refused"){enterConflict();return}
-      enterDegraded()}).catch(()=>enterDegraded())}
-  else if(usable&&raw!==null&&raw!==undefined&&!fromLegacy)lastConfirmedPayload=raw;
+     модуля снимается перед этим: операция необратимая.
+     Фаза F: легаси-ключ удаляется ТОЛЬКО после подтверждённой записи (WRITTEN)
+     ЕЩЁ РАЗ проверенного на isValidState() содержимого — remote.migrated()
+     (запись уже была) доказывает только СУЩЕСТВОВАНИЕ строки, не её
+     пригодность, и сам исход writeOutcome() тоже ничего не говорит о форме
+     того, что записано. Ни один из этих двух фактов сам по себе не даёт
+     права стирать единственную копию. */
+  if(fromLegacy&&usable){
+    let legacyValid=false;
+    try{legacyValid=isValidState(JSON.parse(raw))}catch{}
+    if(legacyValid){
+      makeBackup("cong.backup.before_move_shared");
+      /* Перенос из прежнего ключа — тоже запись: пока она не подтверждена,
+         статус не имеет права выглядеть успешным (I16), и подтверждённым канон
+         считать нельзя. */
+      remote.writeOutcome(raw).then(o=>{
+        if(o==="written"){
+          lastConfirmedPayload=raw;
+          try{localStorage.removeItem(KEY)}catch{}
+          return}
+        /* Отказ по ревизии: канон не тронут, правка жива в памяти, легаси
+           остаётся — следующая загрузка повторит перенос. */
+        if(o==="refused"){enterConflict();return}
+        enterDegraded()}).catch(()=>enterDegraded())
+    }
+    /* Легаси не прошёл isValidState() — НЕ пишем в канон и НЕ удаляем ключ:
+       испорченные/чужие данные лучше оставить как есть, их ещё можно достать
+       руками, чем стереть безвозвратно. */
+  }
+  else if(usable&&raw!==null&&raw!==undefined&&!fromLegacy){
+    lastConfirmedPayload=raw;
+    /* Уже мигрировавшая установка (канон существовал ДО этой сессии — сама
+       по себе remote.migrated()/факт существования строки недостаточна).
+       Если легаси-ключ ещё жив (переезд состоялся раньше, чем появилась эта
+       логика удаления), убираем его теперь — но только когда САМ канон
+       проходит isValidState(): иначе есть риск стереть легаси, за которым
+       на самом деле стоит негодная запись. */
+    let canonValid=false;
+    try{canonValid=isValidState(JSON.parse(raw))}catch{}
+    if(canonValid){try{localStorage.removeItem(KEY)}catch{}}
+  }
   migrate();adoptShared();
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());
   render();store.lastSavedAt=new Date();updateSaveStatus();

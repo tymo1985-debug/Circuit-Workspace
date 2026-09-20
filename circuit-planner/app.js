@@ -656,6 +656,23 @@
         return app;
       },
       migrate(appData) { return this.normalizeApp(appData && appData.schema === 'sp-backup-v2' ? this.convertLegacyBackup(appData) : appData); },
+      /**
+       * Фаза F: минимальная проверка формы для решения «мигрировать/удалить
+       * легаси», а не для отображения. `normalizeApp()` НАРОЧНО всеяден —
+       * любой объект превращается в валидное-на-вид пустое состояние без
+       * единой ошибки, поэтому «write прошёл» само по себе ничего не говорит
+       * о том, была ли это настоящая копия Клиндария или случайный мусор.
+       * Три проверки ниже — ровно те же типовые инварианты, которые
+       * normalizeApp() иначе тихо подставил бы дефолтом (Array.isArray(events),
+       * Array.isArray(entries), serviceYears — объект): `{}` и `{foo:'bar'}`
+       * не проходят ни одну из трёх и, в отличие от normalizeApp(), здесь
+       * это отказ, а не молчаливая починка.
+       */
+      isValidPersistedState(x) {
+        return !!x && typeof x === 'object' && !Array.isArray(x)
+          && Array.isArray(x.events) && Array.isArray(x.entries)
+          && !!x.serviceYears && typeof x.serviceYears === 'object' && !Array.isArray(x.serviceYears);
+      },
       /* ── Где лежат данные (фаза 2 миграции на shared/db.js) ──────────────
          Источник истины — хранилище `state` общей базы через `CWState`.
          Прежний ключ localStorage остаётся: пока в базе записи нет, он и есть
@@ -737,15 +754,49 @@
         }
         /* Переезд: данные нашлись только в старом ключе. Копируем их в базу
            как есть — без разбора и без нормализации, чтобы перенос нельзя было
-           спутать со сменой модели. Старый ключ остаётся на месте. */
+           спутать со сменой модели. Старый ключ удаляется ТОЛЬКО после
+           подтверждённой записи ЕЩЁ РАЗ проверенного на isValidPersistedState()
+           содержимого (фаза F) — remote.migrated() доказывает лишь
+           существование строки в канoне, не её пригодность, а сам исход
+           writeOutcome() ничего не говорит о форме того, что записано:
+           normalizeApp() всеяден и превратит любой мусор в валидное на вид
+           пустое состояние. Ни один из этих двух фактов сам по себе не даёт
+           права стирать единственную копию. */
         if (fromLegacy && this.source === 'db') {
-          /* Снимок перед необратимым переносом. Ждать его нельзя: `load()`
-             синхронна, а после неё сразу идёт отрисовка. Промис снимка не
-             отклоняется, отказ уходит в консоль — потерять из-за него сам
-             перенос было бы хуже: старый ключ при этом остаётся на месте и
-             остаётся полноценным путём отката. */
-          this.snapshotForMigration();
-          this.remote.write(saved);
+          let legacyValid = false;
+          try { legacyValid = this.isValidPersistedState(JSON.parse(saved)); } catch (e) { legacyValid = false; }
+          if (legacyValid) {
+            /* Снимок перед необратимым переносом. Ждать его нельзя: `load()`
+               синхронна, а после неё сразу идёт отрисовка. Промис снимка не
+               отклоняется, отказ уходит в консоль — потерять из-за него сам
+               перенос было бы хуже: старый ключ при этом остаётся на месте и
+               остаётся полноценным путём отката. */
+            this.snapshotForMigration();
+            this.remote.writeOutcome(saved).then((outcome) => {
+              if (outcome === 'written') {
+                this.lastConfirmedPayload = saved;
+                try { localStorage.removeItem(App.config.storageKey); } catch (e) { /* noop */ }
+                return;
+              }
+              /* Отказ по ревизии: канон не тронут, легаси остаётся —
+                 следующая загрузка повторит перенос. */
+              if (outcome === 'refused') { this.enterConflict(); return; }
+              this.enterDegraded();
+            }).catch(() => this.enterDegraded());
+          }
+          /* Легаси не прошёл isValidPersistedState() — НЕ пишем в канон и НЕ
+             удаляем ключ: испорченные/чужие данные лучше оставить как есть,
+             их ещё можно достать руками, чем стереть безвозвратно. */
+        } else if (usable && saved !== null && saved !== undefined && !fromLegacy) {
+          /* Уже мигрировавшая установка (канон существовал ДО этой сессии —
+             сам факт существования строки недостаточен). Если легаси-ключ ещё
+             жив (переезд состоялся раньше, чем появилась эта логика удаления),
+             убираем его теперь — но только когда САМ канон проходит
+             isValidPersistedState(): иначе есть риск стереть легаси, за
+             которым на самом деле стоит негодная запись. */
+          let canonValid = false;
+          try { canonValid = this.isValidPersistedState(JSON.parse(saved)); } catch (e) { canonValid = false; }
+          if (canonValid) { try { localStorage.removeItem(App.config.storageKey); } catch (e) { /* noop */ } }
         }
       },
       /* ── Отложенная запись (shared/persist.js, фаза 1 миграции на CWDB) ──
