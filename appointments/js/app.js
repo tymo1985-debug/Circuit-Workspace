@@ -14,7 +14,86 @@
   'use strict';
 
   var MODULE_ID = 'appointments';
-  var STORE_KEY = 'cw-appointments-v1';
+  var STORE_KEY = 'cw-appointments-v1';   /* Прежний ключ — ТОЛЬКО чтение (см. ниже). */
+
+  /* ─── Фаза D: канон переехал в CWState('appointments') ──────────────────
+     Прежний ключ localStorage писала любая вкладка независимо — та же
+     причина, по которой фаза C2 увела отправителя в общий слой. Внутренняя
+     модель данных (включая PNG-подпись внутри state.signature) не менялась
+     ни на бит: меняется только то, КУДА уходит тот же самый JSON-блоб.
+
+     `remote`/`source`/`domainBaselinePayload`/degraded/conflict — тот же
+     набор понятий и тот же смысл, что в congress-project/js/state.js (первый
+     модуль, прошедший этот путь): `remote.get()` внутри CWState хранит
+     НЕПОДТВЕРЖДЁННОЕ (кэш пишется до resolve put()), поэтому «есть ли
+     несохранённая правка» считается ОТДЕЛЬНО, от подтверждённого рубежа, а
+     не от remote.get() и не от факта «таймер ещё не сработал». */
+  var remote = null;
+  var source = 'legacy';               // 'db' | 'legacy'
+  var domainBaselinePayload = null;
+  var degraded = false;
+  var conflict = false;
+
+  function domainDirty() {
+    if (domainBaselinePayload === null) return false;
+    return JSON.stringify(state) !== domainBaselinePayload;
+  }
+  function markConfirmed(payload) { domainBaselinePayload = payload; }
+
+  function initState() {
+    if (!self.CWState || !self.CWDB) return Promise.resolve(false);
+    remote = self.CWState.create(MODULE_ID);
+    return remote.init().then(function () { return remote.available(); })
+      .catch(function (e) {
+        console.error('Назначения: общая база недоступна, работаем на прежнем ключе', e);
+        return false;
+      });
+  }
+
+  /** Липкая деградация: канон недоступен — read-only на всю сессию, без
+   *  отката в прежний ключ как в записываемый запасной путь. Блокируется
+   *  весь редактируемый борт (`<aside class="editor">`) — предпросмотр
+   *  письма остаётся читаемым и печатаемым. */
+  function enterDegraded() {
+    if (degraded) return;
+    degraded = true;
+    var el = $('#saveStatus');
+    if (el) { el.textContent = t('ap.storage_readonly'); el.dataset.state = 'error'; }
+    lockEditor(true);
+  }
+  function lockEditor(locked) {
+    document.querySelectorAll('.editor input, .editor button, .editor textarea, .editor select')
+      .forEach(function (el) { el.disabled = locked; });
+  }
+  function enterConflict() {
+    conflict = true;
+    var el = $('#saveStatus');
+    if (el) { el.textContent = t('ap.tab_conflict'); el.dataset.state = 'dirty'; }
+  }
+  function clearConflict() { conflict = false; }
+
+  /** Чужое каноническое состояние из соседней вкладки. `false` = не приняли
+   *  (своя неподтверждённая правка) — CWState вернёт baseRev назад, и канон
+   *  на диске останется чужим до следующей успешной записи. */
+  function applyForeign(payload) {
+    if (domainDirty()) { enterConflict(); return false; }
+    var parsed;
+    try { parsed = JSON.parse(payload); } catch (e) { return false; }
+    if (!parsed || typeof parsed !== 'object') return false;
+    applyLoadedState(parsed);
+    markConfirmed(payload);
+    clearConflict();
+    syncBasicFields();
+    fillCongregations();
+    LISTS.forEach(renderList);
+    renderSignaturePanel();
+    renderLetter();
+    return true;
+  }
+  function subscribeForeign() {
+    if (source !== 'db' || !remote) return;
+    remote.onForeign(applyForeign);
+  }
 
   /* Языки документа. Язык интерфейса сюда не заглядывает вообще — это две
      независимые настройки (см. shared/doclang.js). Добавление языка = код
@@ -85,45 +164,124 @@
 
   var state = defaults();
 
+  /** Общая нормализация формы — используется и при обычной загрузке, и при
+   *  приёме чужого канонического состояния (см. applyForeign выше): подпись
+   *  валидируется отдельно (в <img src> нельзя пускать что попало), высота
+   *  зажимается в диапазон регулятора, иначе значение из будущей версии
+   *  сломает вёрстку письма. */
+  function applyLoadedState(saved) {
+    state = Object.assign(defaults(), saved);
+    state.lists = Object.assign(defaults().lists, saved.lists || {});
+    if (!Array.isArray(state.knownCongregations)) state.knownCongregations = [];
+    var sig = Object.assign(defaults().signature, saved.signature || {});
+    sig.image = (typeof sig.image === 'string' && /^data:image\//.test(sig.image)) ? sig.image : '';
+    sig.heightMm = clampHeight(sig.heightMm);
+    state.signature = sig;
+  }
+
+  /**
+   * Читает канон. Промис не отклоняется: недоступная база означает работу
+   * на прежнем ключе (read-only), а не отказ запуска — тот же контракт, что
+   * у congress-project/js/state.js:initState()/load().
+   *
+   * СЛУЧАЙ A (канон есть) — он и побеждает, прежний ключ не читается вовсе.
+   * СЛУЧАЙ B (канона нет, прежний ключ есть) — разовый перенос, успешным
+   *   считается ТОЛЬКО после подтверждённой записи; до неё рубеж не двигается,
+   *   и следующий запуск повторит перенос.
+   * СЛУЧАЙ C (нет ни того, ни другого) — рубеж не заводится, ни одной
+   *   записи из ничего.
+   * СЛУЧАЙ D (база недоступна) — read-only, прежний ключ только для показа.
+   */
   function load() {
-    var raw = read(STORE_KEY);
-    if (!raw) return;
-    try {
-      var saved = JSON.parse(raw);
-      if (!saved || typeof saved !== 'object') return;
-      state = Object.assign(defaults(), saved);
-      state.lists = Object.assign(defaults().lists, saved.lists || {});
-      if (!Array.isArray(state.knownCongregations)) state.knownCongregations = [];
-      /* Подпись валидируем отдельно: в <img src> нельзя пускать что попало
-         из хранилища, а высоту — зажимаем в диапазон регулятора, иначе
-         сохранённое из будущей версии значение сломает вёрстку письма. */
-      var sig = Object.assign(defaults().signature, saved.signature || {});
-      sig.image = (typeof sig.image === 'string' && /^data:image\//.test(sig.image)) ? sig.image : '';
-      sig.heightMm = clampHeight(sig.heightMm);
-      state.signature = sig;
-    } catch (e) {
-      console.warn('Назначения: сохранённые данные повреждены, начинаем с чистого листа', e);
-    }
+    return initState().then(function (usable) {
+      source = usable ? 'db' : 'legacy';
+      if (usable) subscribeForeign();
+      var raw = usable ? remote.get() : null;
+      var fromLegacy = false;
+      if (raw === null || raw === undefined) {
+        raw = read(STORE_KEY);
+        fromLegacy = !!raw;
+      }
+      if (raw) {
+        try {
+          var saved = JSON.parse(raw);
+          if (saved && typeof saved === 'object') applyLoadedState(saved);
+        } catch (e) {
+          console.warn('Назначения: сохранённые данные повреждены, начинаем с чистого листа', e);
+        }
+      }
+      if (fromLegacy && usable) {
+        var payload = JSON.stringify(state);
+        return remote.writeOutcome(payload).then(function (outcome) {
+          if (outcome === 'written') { markConfirmed(payload); return; }
+          if (outcome === 'refused') { enterConflict(); return; }
+          enterDegraded();
+        }).catch(function () { enterDegraded(); });
+      }
+      /* СЛУЧАЙ C нуждается в рубеже ТОЧНО так же, как случай A: без него
+         `domainBaselinePayload` остаётся null, а domainDirty() трактует
+         null как «правки нет» БЕЗУСЛОВНО — значит первая же чужая запись
+         в это самое окно (до первого собственного сохранения) молча
+         перезапишет ещё не подтверждённый ввод пользователя. Рубежом
+         пустого старта служит сама пустая state — это и есть то, что уже
+         «подтверждено» (ничего). */
+      if (usable && !fromLegacy) markConfirmed(raw !== null && raw !== undefined ? raw : JSON.stringify(state));
+    });
   }
 
   var saveTimer = null;
   function save() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () {
-      try {
-        localStorage.setItem(STORE_KEY, JSON.stringify(state));
-        var el = $('#saveStatus');
-        var time = new Date().toLocaleTimeString(self.CWI18n ? self.CWI18n.getLang() : 'ru',
-          { hour: '2-digit', minute: '2-digit' });
-        /* data-state красит точку .md-savestatus: зелёная при успехе,
-           красная при ошибке. Текст без состояния оставлял бы точку
-           всегда зелёной, в том числе на неудавшемся сохранении. */
-        if (el) { el.textContent = t('ap.saved_at', { time: time }); el.dataset.state = 'saved'; }
-      } catch (e) {
-        var s = $('#saveStatus');
-        if (s) { s.textContent = t('ap.save_failed'); s.dataset.state = 'error'; }
-      }
-    }, 400);
+    saveTimer = setTimeout(function () { saveTimer = null; writeNow(); }, 400);
+  }
+
+  /** Статус «сохранено» — ТОЛЬКО после подтверждённой записи, не раньше. */
+  function markSaved() {
+    var el = $('#saveStatus');
+    if (!el || degraded || conflict) return;   // деградация/конфликт устойчивы
+    var time = new Date().toLocaleTimeString(self.CWI18n ? self.CWI18n.getLang() : 'ru',
+      { hour: '2-digit', minute: '2-digit' });
+    el.textContent = t('ap.saved_at', { time: time }); el.dataset.state = 'saved';
+  }
+
+  function writeNow() {
+    var payload = JSON.stringify(state);
+    if (source === 'db') {
+      if (payload === remote.get()) { markSaved(); return; }
+      remote.writeOutcome(payload).then(function (outcome) {
+        if (outcome === 'written') { markConfirmed(payload); clearConflict(); markSaved(); return; }
+        if (outcome === 'refused') { enterConflict(); return; }   // REFUSED — не сохранением
+        enterDegraded();                                          // FAILED — не сохранением
+      }).catch(function () { enterDegraded(); });
+      return;
+    }
+    /* Канон недостижим — прежний ключ БОЛЬШЕ НЕ записывается: это read-only,
+       а не запасная запись (фаза D). */
+    enterDegraded();
+  }
+
+  /* Синхронный флеш на закрытие/скрытие вкладки — иначе последняя правка в
+     400-мс окне дебаунса пропадала бы бесшумно (issue уже существовал в C1
+     до этой фазы; синхронное зеркало CWState его закрывает). */
+  if (self.addEventListener) {
+    var onHide = function () {
+      if (saveTimer === null) return;
+      clearTimeout(saveTimer); saveTimer = null;
+      if (source !== 'db') return;              // читать нечем — иначе это была бы запись в легаси
+      var payload = JSON.stringify(state);
+      if (payload === remote.get()) return;
+      var outcome = remote.writeSyncOutcome(payload);
+      if (outcome === 'written') { markConfirmed(payload); return; }
+      if (outcome === 'refused') { enterConflict(); return; }
+      enterDegraded();
+    };
+    self.addEventListener('pagehide', onHide);
+    self.addEventListener('beforeunload', onHide);
+    if (self.document && self.document.addEventListener) {
+      self.document.addEventListener('visibilitychange', function () {
+        if (self.document.visibilityState === 'hidden') onHide();
+      });
+    }
   }
 
   /* --- Данные отправителя ---------------------------------------------
@@ -482,6 +640,18 @@
   }
 
   /* --- Связывание полей ----------------------------------------------- */
+  /* id → ключ state. Общий список: bind() ставит слушатели и начальные
+     значения, syncBasicFields() — переставляет значения без слушателей
+     (после приёма чужого канонического состояния — см. applyForeign выше). */
+  var BASIC_FIELDS = { letterDate: 'date', congName: 'congregation', coordinator: 'coordinator', coordinatorAddress: 'coordinatorAddress' };
+
+  function syncBasicFields() {
+    Object.keys(BASIC_FIELDS).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && document.activeElement !== el) el.value = state[BASIC_FIELDS[id]];
+    });
+  }
+
   function bindField(id, key) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -494,10 +664,7 @@
   }
 
   function bind() {
-    bindField('letterDate', 'date');
-    bindField('congName', 'congregation');
-    bindField('coordinator', 'coordinator');
-    bindField('coordinatorAddress', 'coordinatorAddress');
+    Object.keys(BASIC_FIELDS).forEach(function (id) { bindField(id, BASIC_FIELDS[id]); });
 
     var newLetterBtn = $('#newLetterBtn');
     if (newLetterBtn) {
@@ -665,7 +832,6 @@
   /* --- Старт ----------------------------------------------------------- */
   function start() {
     initLanguage();
-    load();
 
     /* Фаза C1: sender остаётся синхронным (backend не менялся), реального
        ожидания здесь нет — точка нужна заранее для фазы C2, когда ниже
@@ -677,12 +843,20 @@
     if (version) $('#moduleVersion').textContent = 'v' + version;
 
     initDocLanguage();
-    bind();
-    fillCongregations();
-    LISTS.forEach(renderList);
-    renderSenderPanel();
-    renderSignaturePanel();
-    renderLetter();
+
+    /* Фаза D: load() теперь асинхронный (CWState.init() — промис). bind()
+       читает state[key] СРАЗУ, чтобы проставить значения в поля (см.
+       bindField()), поэтому он обязан ждать вместе с рендером — иначе поля
+       заполнились бы значениями по умолчанию и остались бы такими: rebind
+       после load() задвоил бы обработчики ввода. */
+    load().then(function () {
+      bind();
+      fillCongregations();
+      LISTS.forEach(renderList);
+      renderSenderPanel();
+      renderSignaturePanel();
+      renderLetter();
+    });
 
     // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).
     if (typeof CWUpdate !== 'undefined') CWUpdate.init({ swUrl: 'sw.js', ui: 'silent', hubHref: '../index.html' });

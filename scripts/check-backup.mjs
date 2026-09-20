@@ -573,6 +573,7 @@ await put(d73, 'state', [{ id: 'shared:sender', payload: JSON.stringify({ name: 
 d73.close();
 CWBackup.MODULES['appointments'].sharedLocal = ['cw-sender'];
 CWBackup.MODULES['appointments'].sharedStores = { [DB]: ['templates'] };
+const realAppointmentsRegistry = { sharedLocal: [], sharedStores: { [DB]: [{ store: 'state', ids: ['appointments', 'shared:sender'] }] } };
 await CWBackup.restore({
   format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'module',
   createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: ['appointments'],
@@ -587,6 +588,10 @@ await CWBackup.restore({
   ok('канон устройства не откачен частичным восстановлением старой копии',
     st['shared:sender'] && JSON.parse(st['shared:sender'].payload).name === 'Текущий канон устройства' && st['shared:sender'].rev === 5);
 }
+/* Восстанавливаем реальный реестр модуля — иначе все дальнейшие сценарии
+   (в том числе новые, про Назначения) видели бы эту тестовую подмену. */
+CWBackup.MODULES['appointments'].sharedLocal = realAppointmentsRegistry.sharedLocal;
+CWBackup.MODULES['appointments'].sharedStores = realAppointmentsRegistry.sharedStores;
 
 /* 7.4. Чистое устройство: базы нет вовсе, старый файл даже без хранилища
    `state` в дампе. prepareSchema()/CWDB.init() обязаны завести схему v5
@@ -624,13 +629,97 @@ ok('чистое устройство: легаси-ключ не тронут',
    реализации IndexedDB под конкретный внутренний шаг. */
 {
   const backupSrc = readFileSync(join(ROOT, 'shared/backup.js'), 'utf8');
-  const iBridge = backupSrc.indexOf('/* Легаси-мост отправителя');
+  const iBridge = backupSrc.indexOf('/* Легаси-мосты (отправитель + Назначения)');
   const iPhaseC = backupSrc.indexOf('/* Фаза C. */');
   const between = backupSrc.slice(iBridge, iPhaseC);
   ok('перенос отправителя расположен между Фазой B и Фазой C',
     iBridge > -1 && iPhaseC > iBridge);
   ok('его отказ ловится тем же catch(closeAll + throw), что и остальные фазы',
     /\}\)\.catch\(function \(e\) \{\s*closeAll\(\);\s*throw e;\s*\}\)/.test(backupSrc.slice(iPhaseC - 400, iPhaseC)));
+}
+
+/* --- 8. Легаси-мост Назначений (фаза D) ---------------------------------
+   Тот же мост (extractLegacyStateRow/writeExtraStateRow), другая пара
+   ключ/id. Форма модуля мостом не разбирается — переносится как есть,
+   поэтому подпись (PNG data URL внутри signature.image) обязана доехать
+   в канон байт в байт, без какой-либо нормализации на стороне backup.js. */
+console.log('\nЛегаси-мост Назначений');
+
+const apptState = {
+  date: '2026-09-01', congregation: 'Тест', coordinator: 'Иванов', coordinatorAddress: '',
+  knownCongregations: ['Тест'], lists: { elders: ['А'], servants: [''], removed: [''] },
+  signature: { image: 'data:image/png;base64,AAAA', heightMm: 18 },
+};
+
+/* 8.1. Старый файл, канона нет — легаси переносится как есть, подпись цела. */
+await wipe(DB);
+mem.set('cw-appointments-v1', JSON.stringify({ congregation: 'НЕ ДОЛЖНО ПОПАСТЬ В LOCALSTORAGE' }));
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+  sections: { shared: { local: {}, idb: { [DB]: { version: SCHEMA, stores: {} } } },
+    appointments: { local: { 'cw-appointments-v1': JSON.stringify(apptState) } } },
+});
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('легаси Назначений перенесён в канон appointments', st['appointments']
+    && JSON.parse(st['appointments'].payload).coordinator === 'Иванов');
+  ok('подпись (PNG data URL) доехала байт в байт',
+    JSON.parse(st['appointments'].payload).signature.image === 'data:image/png;base64,AAAA');
+  ok('перенесённая строка получает rev=1', st['appointments'] && st['appointments'].rev === 1);
+  ok('легаси-ключ Назначений НЕ переписан в localStorage',
+    JSON.parse(mem.get('cw-appointments-v1')).congregation === 'НЕ ДОЛЖНО ПОПАСТЬ В LOCALSTORAGE');
+}
+
+/* 8.2. Файл несёт оба формата — канон файла побеждает легаси того же файла. */
+await wipe(DB);
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+  sections: { shared: { local: {}, idb: { [DB]: { version: SCHEMA, stores: {
+    state: store([{ id: 'appointments', payload: JSON.stringify(Object.assign({}, apptState, { coordinator: 'Канон из файла' })), rev: 4, savedAt: 1, writerId: 'w' }]),
+  } } } },
+    appointments: { local: { 'cw-appointments-v1': JSON.stringify(Object.assign({}, apptState, { coordinator: 'Устаревшее из легаси' })) } } },
+});
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('канон файла побеждает легаси Назначений того же файла',
+    st['appointments'] && JSON.parse(st['appointments'].payload).coordinator === 'Канон из файла' && st['appointments'].rev === 4);
+}
+
+/* 8.3. Частичное восстановление старой копии Назначений не откатывает канон,
+   уже подтверждённый на устройстве (тот же регресс, что и у отправителя). */
+await wipe(DB);
+let d83 = await open(DB, SCHEMA, (x) => { x.createObjectStore('state', { keyPath: 'id' }); });
+await put(d83, 'state', [{ id: 'appointments', payload: JSON.stringify(Object.assign({}, apptState, { coordinator: 'Текущий канон устройства' })), rev: 9, savedAt: 1, writerId: 'w' }]);
+d83.close();
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'module',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: ['appointments'],
+  sections: {
+    shared: { partial: true, local: {}, idb: { [DB]: { version: SCHEMA, stores: {} } } },
+    appointments: { local: { 'cw-appointments-v1': JSON.stringify(Object.assign({}, apptState, { coordinator: 'Легаси из старой копии' })) } },
+  },
+});
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('канон Назначений не откачен частичным восстановлением старой копии',
+    st['appointments'] && JSON.parse(st['appointments'].payload).coordinator === 'Текущий канон устройства' && st['appointments'].rev === 9);
+}
+
+/* 8.4. Чистое устройство: базы нет вовсе — та же гарантия schema v5. */
+await wipe(DB);
+await CWBackup.restore({
+  format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+  createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+  sections: { shared: { local: {}, idb: { [DB]: { version: 2, stores: {} } } },
+    appointments: { local: { 'cw-appointments-v1': JSON.stringify(apptState) } } },
+});
+ok('чистое устройство (Назначения): база открывается версией CWDB.DB_VERSION', await versionOf(DB) === SCHEMA);
+{
+  const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+  ok('чистое устройство: канон Назначений создан из легаси', st['appointments']
+    && JSON.parse(st['appointments'].payload).coordinator === 'Иванов' && st['appointments'].rev === 1);
 }
 
 /* 6.3. Предохранительный снимок переживает полное восстановление.

@@ -188,6 +188,12 @@ const CHECKS = [
     deps: ['fake-indexeddb'],
   },
   {
+    file: 'check-d-appointments.mjs',
+    title: 'Назначения (Фаза D): миграция, WRITTEN/REFUSED/FAILED, cross-tab, деградация, подпись',
+    why: 'canon Назначений переехал в общую базу — молчаливая ошибка здесь стирает бланк или PNG-подпись целиком, не только текст',
+    deps: ['fake-indexeddb', 'jsdom'],
+  },
+  {
     file: 'check-degraded.mjs',
     title: 'Режим только для чтения',
     why: 'блокировка доменных правок и отсутствие записи в прежние ключи при недоступном каноне',

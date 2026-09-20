@@ -105,6 +105,12 @@
   var LEGACY_SENDER = 'cw-sender';
   var SENDER_FIELDS = ['name', 'code', 'address', 'phone1', 'phone2', 'email'];
 
+  /* Идентификатор канонической записи Назначений в хранилище `state`
+     (фаза D) и прежний ключ — тот же смысл и та же гарантия, что у
+     отправителя выше: только чтение, только вход миграции/старой копии. */
+  var APPOINTMENTS_ID = 'appointments';
+  var LEGACY_APPOINTMENTS = 'cw-appointments-v1';
+
   /* Где лежат данные каждого модуля. Ключи вида `cw-lang:<id>` и
      `cw-doclang:<id>` добавляются автоматически — это выбор языка внутри
      модуля, он логично едет вместе с модулем, а не с общим слоем.
@@ -199,11 +205,16 @@
       sharedStores: { 'circuit-workspace-db': ['templates', 'documents'] },
     },
     'appointments': {
-      local: ['cw-appointments-v1'],
+      /* Фаза D: canon Назначений переехал в `state`/`appointments` — см.
+         `sharedStores` ниже, тем же адресным путём, что и у остальных
+         модулей. `local`/`sharedLocal` больше не несут cw-appointments-v1:
+         прежний ключ остаётся на устройстве только как вход миграции/старой
+         копии (см. `EXCLUDE` и восстановление ниже). Подпись (PNG) едет
+         внутри той же строки — своя модель данных не менялась. */
+      local: [],
       idb: [],
-      /* Письмо о назначении подписывается районным надзирателем. */
       sharedLocal: [],
-      sharedStores: { 'circuit-workspace-db': [{ store: 'state', ids: ['shared:sender'] }] },
+      sharedStores: { 'circuit-workspace-db': [{ store: 'state', ids: ['appointments', 'shared:sender'] }] },
     },
   };
 
@@ -232,11 +243,13 @@
      проверкой check-backup.mjs. */
 
   /* Никогда не попадает в файл копии, даже при полной выгрузке.
-     `cw-sender` добавлен фазой C2: старые файлы всё ещё могут нести его в
-     `sections.shared.local`, и это единственное место, которое гарантированно
-     глушит запись ЛЮБОГО такого ключа обратно в localStorage — независимо от
-     того, полная это копия или частичная (см. восстановление ниже). */
-  var EXCLUDE = ['syp-pin-hash', 'cw-sender'];
+     `cw-sender` добавлен фазой C2, `cw-appointments-v1` — фазой D: старые
+     файлы всё ещё могут нести их (первый — в `sections.shared.local`, второй
+     — в `sections.appointments.local`), и это единственное место, которое
+     гарантированно глушит запись ЛЮБОГО такого ключа обратно в localStorage
+     — независимо от того, полная это копия или частичная (см.
+     восстановление ниже). */
+  var EXCLUDE = ['syp-pin-hash', 'cw-sender', 'cw-appointments-v1'];
 
   /**
    * Объединённые зависимости от общего слоя для набора модулей.
@@ -635,44 +648,64 @@
    * (merge:true) — соседние записи `state` в любом случае не трогаются.
    */
 
-  /** Есть ли каноническая строка `shared:sender` В САМОМ ФАЙЛЕ — неважно, в
+  /** Есть ли каноническая строка `state` с этим id В САМОМ ФАЙЛЕ — неважно, в
    *  какой секции она физически лежит (полная копия несёт её в `shared`,
    *  частичная — там же, как часть партиции общего слоя). Это ТОЛЬКО быстрый
    *  отсев: не парсить и не переносить легаси, если он в файле явно не
    *  нужен. Решающая проверка — на диске, непосредственно перед put(), см.
-   *  writeExtraSenderRow(): у файла нет и не может быть данных о том, что уже
+   *  writeExtraStateRow(): у файла нет и не может быть данных о том, что уже
    *  подтверждено на этом устройстве после снятия копии. */
-  function hasCanonicalSenderRow(snap) {
+  function hasCanonicalStateRow(snap, stateId) {
     return Object.keys(snap.sections).some(function (id) {
       var idb = (snap.sections[id] || {}).idb || {};
       var dump = idb[SHARED_DB];
       var st = dump && dump.stores && dump.stores.state;
-      return !!(st && (st.rows || []).some(function (r) { return r && r.id === SENDER_ID; }));
+      return !!(st && (st.rows || []).some(function (r) { return r && r.id === stateId; }));
     });
   }
+
+  /**
+   * Одна запись легаси-моста: старый ключ localStorage → каноническая строка
+   * `state`. `fields`, если задан, — фиксированный набор строковых полей
+   * (как у отправителя: несколько модулей исторически писали в один и тот же
+   * ключ, форму надо ЗАДАТЬ). `fields: null` — модуль ровно один, форма его
+   * собственная и валидируется при чтении самим модулем; мост здесь только
+   * проверяет, что это разбираемый JSON-объект, и переносит как есть, ничего
+   * в нём не домысливая (иначе backup.js пришлось бы знать схему Назначений).
+   */
+  var LEGACY_STATE_BRIDGES = [
+    { sectionId: 'shared', legacyKey: LEGACY_SENDER, stateId: SENDER_ID, fields: SENDER_FIELDS },
+    { sectionId: 'appointments', legacyKey: LEGACY_APPOINTMENTS, stateId: APPOINTMENTS_ID, fields: null },
+  ];
 
   /**
    * @returns {?Object} строка `state` для точечной записи, либо null — нечего
    *   переносить (легаси нет, пуст, или в файле уже есть канон — он побеждает).
    */
-  function extractLegacySenderRow(snap) {
-    var shared = snap.sections && snap.sections.shared;
-    var raw = shared && shared.local && shared.local[LEGACY_SENDER];
+  function extractLegacyStateRow(snap, bridge) {
+    var section = snap.sections && snap.sections[bridge.sectionId];
+    var raw = section && section.local && section.local[bridge.legacyKey];
     if (typeof raw !== 'string' || !raw) return null;
     var parsed;
     try { parsed = JSON.parse(raw); } catch (e) { return null; }
-    if (!parsed || typeof parsed !== 'object') return null;
-    var out = {};
-    var empty = true;
-    SENDER_FIELDS.forEach(function (f) {
-      out[f] = typeof parsed[f] === 'string' ? parsed[f] : '';
-      if (out[f].trim()) empty = false;
-    });
-    if (empty) return null;                 // пустой легаси — переносить нечего
-    if (hasCanonicalSenderRow(snap)) return null;  // канон в файле уже есть — он и побеждает
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    var payload;
+    if (bridge.fields) {
+      var out = {};
+      var empty = true;
+      bridge.fields.forEach(function (f) {
+        out[f] = typeof parsed[f] === 'string' ? parsed[f] : '';
+        if (out[f].trim()) empty = false;
+      });
+      if (empty) return null;                 // пустой легаси — переносить нечего
+      payload = JSON.stringify(out);
+    } else {
+      payload = JSON.stringify(parsed);        // форма — дело самого модуля
+    }
+    if (hasCanonicalStateRow(snap, bridge.stateId)) return null;  // канон в файле уже есть — он и побеждает
     return {
-      id: SENDER_ID,
-      payload: JSON.stringify(out),
+      id: bridge.stateId,
+      payload: payload,
       savedAt: Date.now(),
       rev: 1,
       writerId: 'restore-bridge',
@@ -685,32 +718,31 @@
    *  остальные шаги восстановления, это должно остановить Фазу C.
    *
    *  ⚠️ ВТОРАЯ, РЕШАЮЩАЯ ПРОВЕРКА КАНОНА — ЗДЕСЬ, а не только в
-   *  extractLegacySenderRow(). Та смотрит лишь В САМ ФАЙЛ: файл может не
+   *  extractLegacyStateRow(). Та смотрит лишь В САМ ФАЙЛ: файл может не
    *  нести канона вовсе и при этом устройство уже имеет свежую каноническую
    *  запись из реальной работы (Клиндарий писал её на этой неделе). Частичное
    *  (модульное) восстановление идёт СЛИЯНИЕМ — writeDb() для него clear() не
    *  вызывает, — значит эта запись после Фазы B ещё на месте. Если бы легаси
    *  из старого файла клался поверх неё без проверки диска, восстановление
-   *  копии ОДНОГО модуля тихо откатывало бы отправителя всей экосистемы к
-   *  снимку на день той копии. Поэтому непосредственно перед put() читаем
-   *  диск: канон там уже есть (из файла ИЛИ из прежней работы) — легаси не
-   *  пишем вовсе. */
-  function writeExtraSenderRow(row) {
+   *  копии ОДНОГО модуля тихо откатывало бы канон к снимку на день той копии.
+   *  Поэтому непосредственно перед put() читаем диск: канон там уже есть (из
+   *  файла ИЛИ из прежней работы) — легаси не пишем вовсе. */
+  function writeExtraStateRow(row) {
     return prepareSchema(SHARED_DB).then(function () {
       return openExisting(SHARED_DB);
     }).then(function (db) {
       if (!db.objectStoreNames.contains('state')) {
         /* CWDB недоступен вовсе (крайне вырожденный случай — обычно
            недостижимо, см. подтверждённый факт про prepareSchema/CWDB.init):
-           перенести отправителя некуда. Остальное восстановление при этом не
-           обязано падать — это тот же выбор, что и у prepareSchema() выше:
-           «база не готовится — работаем прежним путём». */
+           перенести некуда. Остальное восстановление при этом не обязано
+           падать — это тот же выбор, что и у prepareSchema() выше: «база не
+           готовится — работаем прежним путём». */
         db.close();
         return;
       }
       var tx = db.transaction(['state'], 'readwrite');
       var store = tx.objectStore('state');
-      return req(store.get(SENDER_ID)).then(function (existing) {
+      return req(store.get(row.id)).then(function (existing) {
         if (existing) {
           /* Канон уже на диске — из только что записанной Фазы B ИЛИ из
              прежней работы приложения. Легаси не пишем: он никогда не имеет
@@ -932,14 +964,19 @@
         throw e;
       });
     }).then(function () {
-      /* Легаси-мост отправителя — см. комментарий у extractLegacySenderRow().
-         Адресный шаг ПОСЛЕ обычной Фазы B (после возможного clear() полной
-         копии), но ДО Фазы C: ошибка здесь так же обязана остановить
-         восстановление и не дать дойти до localStorage, как и любая другая
-         ошибка Фазы B. */
-      var legacyRow = extractLegacySenderRow(snap);
-      if (!legacyRow) return;
-      return writeExtraSenderRow(legacyRow);
+      /* Легаси-мосты (отправитель + Назначения) — см. комментарий у
+         extractLegacyStateRow(). Адресный шаг ПОСЛЕ обычной Фазы B (после
+         возможного clear() полной копии), но ДО Фазы C: ошибка здесь так же
+         обязана остановить восстановление и не дать дойти до localStorage,
+         как и любая другая ошибка Фазы B. Последовательно, не Promise.all —
+         та же причина, что и у Фазы A: разбирать параллельный отказ нечем. */
+      return LEGACY_STATE_BRIDGES.reduce(function (chain, bridge) {
+        return chain.then(function () {
+          var legacyRow = extractLegacyStateRow(snap, bridge);
+          if (!legacyRow) return;
+          return writeExtraStateRow(legacyRow);
+        });
+      }, Promise.resolve());
     }).catch(function (e) {
       closeAll();
       throw e;

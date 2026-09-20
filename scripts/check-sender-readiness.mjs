@@ -119,7 +119,7 @@ console.log('\nВсе 6 оболочек: sender подключён и wired н�
   ok('Назначения: CWSender.ready() до renderSenderPanel()/renderLetter()',
     (() => {
       const i = appt.indexOf('function start() {');
-      const body = appt.slice(i, i + 900)
+      const body = appt.slice(i, i + 1600)
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/\/\/.*$/gm, '');
       const r = body.indexOf('CWSender.ready()');
@@ -154,18 +154,18 @@ console.log('\nКанон, backup-реестр и версия базы (C2)');
   const shared = backup.slice(0, backup.indexOf('var MODULES'));
   ok('SHARED.local БОЛЬШЕ НЕ содержит cw-sender', !/local: \['cw-lang', 'cw-doclang', 'cw-sender'\]/.test(shared)
     && /local: \['cw-lang', 'cw-doclang'\]/.test(shared));
-  ok('EXCLUDE глушит запись cw-sender при восстановлении',
-    /var EXCLUDE = \['syp-pin-hash', 'cw-sender'\];/.test(backup));
+  ok('EXCLUDE глушит запись cw-sender/cw-appointments-v1 при восстановлении',
+    /var EXCLUDE = \['syp-pin-hash', 'cw-sender', 'cw-appointments-v1'\];/.test(backup));
   const modulesBlock = backup.slice(backup.indexOf('var MODULES'), backup.indexOf('\n  };', backup.indexOf('var MODULES')));
   ok('реестр модулей: sharedLocal БОЛЬШЕ НЕ несёт cw-sender ни у одного потребителя',
     !/sharedLocal: \['cw-sender'\]/.test(modulesBlock));
   const senderStateIdCount = (modulesBlock.match(/'shared:sender'/g) || []).length;
   ok('реестр: shared:sender объявлена адресной записью state у всех 4 прежних потребителей',
     senderStateIdCount >= 4, 'найдено: ' + senderStateIdCount);
-  ok('restore-мост переносит легаси в канон (extractLegacySenderRow/writeExtraSenderRow)',
-    /function extractLegacySenderRow/.test(backup) && /function writeExtraSenderRow/.test(backup));
+  ok('restore-мост переносит легаси в канон (extractLegacyStateRow/writeExtraStateRow)',
+    /function extractLegacyStateRow/.test(backup) && /function writeExtraStateRow/.test(backup));
   ok('канон (в файле ИЛИ уже на диске) побеждает легаси при восстановлении',
-    /req\(store\.get\(SENDER_ID\)\)\.then\(function \(existing\) \{\s*if \(existing\) \{/.test(backup));
+    /req\(store\.get\(row\.id\)\)\.then\(function \(existing\) \{\s*if \(existing\) \{/.test(backup));
 
   const dbSrc = read('shared/db.js');
   ok('DB_VERSION не поднята фазой C2 (нового store не заводили)', /const DB_VERSION = 5;/.test(dbSrc));
