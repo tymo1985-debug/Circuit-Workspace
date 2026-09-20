@@ -740,12 +740,32 @@
           fromLegacy = !!saved;
         }
         this.source = usable ? 'db' : 'legacy';
+
+        /* Легаси — вход миграции, а НЕ подтверждённые данные приложения.
+           normalizeApp() всеяден и молча принял бы ЛЮБОЙ JSON-объект как
+           «новые данные приложения» — структурно чужой легаси
+           ({"foo":"bar"}) стал бы App.state.app, а оттуда `foo` уехал бы в
+           канон при первом же save() обычного runtime, ДО того, как решение
+           «мигрировать/удалить» вообще успело сработать. НАЙДЕНО ЖИВЫМ
+           ПРОГОНОМ В CHROME: первый запуск корректно НЕ мигрировал такой
+           легаси, но нормальный старт создавал канон, содержащий это `foo`.
+           Поэтому валидность легаси проверяется ЗДЕСЬ, до migrate(), одним
+           и тем же предикатом, что и решение о переносе ниже — вычисляется
+           один раз, используется дважды. `null` = данные не из легаси,
+           проверка неприменима (канон — не подвергается этой проверке). */
+        let legacyValid = null;
+        if (fromLegacy) {
+          legacyValid = false;
+          try { legacyValid = this.isValidPersistedState(JSON.parse(saved)); } catch (e) { legacyValid = false; }
+        }
+
         try {
           this.lastWrittenPayload = saved || null;
           /* Подтверждённым считаем только то, что реально прочитано из канона.
              Данные из прежнего ключа — вход миграции, а не подтверждение. */
           if (usable && !fromLegacy) this.lastConfirmedPayload = saved || null;
-          App.state.app = saved ? this.migrate(JSON.parse(saved)) : this.createDefaultData();
+          const trustedForApp = !!saved && (!fromLegacy || legacyValid);
+          App.state.app = trustedForApp ? this.migrate(JSON.parse(saved)) : this.createDefaultData();
         } catch (error) {
           console.error('Storage load failed', error);
           App.state.app = this.createDefaultData();
@@ -763,8 +783,6 @@
            пустое состояние. Ни один из этих двух фактов сам по себе не даёт
            права стирать единственную копию. */
         if (fromLegacy && this.source === 'db') {
-          let legacyValid = false;
-          try { legacyValid = this.isValidPersistedState(JSON.parse(saved)); } catch (e) { legacyValid = false; }
           if (legacyValid) {
             /* Снимок перед необратимым переносом. Ждать его нельзя: `load()`
                синхронна, а после неё сразу идёт отрисовка. Промис снимка не
@@ -790,13 +808,28 @@
         } else if (usable && saved !== null && saved !== undefined && !fromLegacy) {
           /* Уже мигрировавшая установка (канон существовал ДО этой сессии —
              сам факт существования строки недостаточен). Если легаси-ключ ещё
-             жив (переезд состоялся раньше, чем появилась эта логика удаления),
-             убираем его теперь — но только когда САМ канон проходит
-             isValidPersistedState(): иначе есть риск стереть легаси, за
-             которым на самом деле стоит негодная запись. */
+             жив, убираем его — но ТОЛЬКО когда ОБЕ стороны валидны:
+             - сам канон проходит isValidPersistedState();
+             - И ОТДЕЛЬНО, само содержимое легаси-ключа ТОЖЕ проходит
+               isValidPersistedState().
+             НАЙДЕНО ЖИВЫМ ПРОГОНОМ: структурно чужой легаси ({"foo":"bar"})
+             на первом запуске корректно не мигрирует (см. проверку выше) —
+             но обычный runtime (App.init()/рендер) заводит валидный
+             дефолтный канон в том же запуске. Проверка только канона на
+             СЛЕДУЮЩЕМ запуске стёрла бы легаси, который был единственной
+             копией чужого содержимого, а не дефолта. Валидность канона в
+             одиночку НИКОГДА не даёт права удалить легаси. */
           let canonValid = false;
           try { canonValid = this.isValidPersistedState(JSON.parse(saved)); } catch (e) { canonValid = false; }
-          if (canonValid) { try { localStorage.removeItem(App.config.storageKey); } catch (e) { /* noop */ } }
+          if (canonValid) {
+            let legacyRaw = null;
+            try { legacyRaw = localStorage.getItem(App.config.storageKey); } catch (e) { legacyRaw = null; }
+            let legacyRawValid = false;
+            if (legacyRaw) {
+              try { legacyRawValid = this.isValidPersistedState(JSON.parse(legacyRaw)); } catch (e) { legacyRawValid = false; }
+            }
+            if (legacyRawValid) { try { localStorage.removeItem(App.config.storageKey); } catch (e) { /* noop */ } }
+          }
         }
       },
       /* ── Отложенная запись (shared/persist.js, фаза 1 миграции на CWDB) ──

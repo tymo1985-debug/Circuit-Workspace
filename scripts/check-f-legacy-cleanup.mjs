@@ -219,13 +219,21 @@ const plannerValid = { settings: { fontSize: '100' }, serviceYears: {}, events: 
   ok('канон невалиден: легаси сохранён', storage.getItem('service-year-planner-v9-4-2') !== null);
 }
 
-/* 8. ДВА ЗАПУСКА (LIVE FAIL): структурно чужой легаси ({"foo":"bar"}).
-      Первый запуск корректно отказывает мигрировать его, но обычный
-      runtime сам заводит валидный дефолтный канон (здесь — прямым save(),
-      без ожидания полного App.init(), который в этом стенде не поднимается
-      без разметки). Второй запуск (свежий контекст — настоящая перезагрузка,
-      не повторный вызов load() в той же вкладке) НЕ имеет права стереть
-      легаси только на основании того, что канон уже валиден. */
+/* 8. ДВА ЗАПУСКА (LIVE FAIL, воспроизведено в реальном Chrome): структурно
+      чужой легаси ({"foo":"bar"}). Первый запуск корректно отказывает
+      мигрировать его — И, что здесь главное, `foo` не имеет права попасть
+      даже в App.state.app (это и был реальный баг: migrate()/normalizeApp()
+      скармливался невалидный легаси ДО проверки пригодности, поэтому
+      обычный runtime, сохраняя это состояние, заносил `foo` в канон как
+      «нормализованные данные»). Явный save() здесь — стенд-in для «что-то
+      в обычном runtime рано или поздно сохраняет текущее состояние»
+      (в реальном Chrome это происходит без явного вызова из теста; каким
+      именно кодом — не важно для этой проверки, важно, что ДО save()
+      App.state.app уже обязан быть чист от `foo`). Второй запуск (свежий
+      контекст — настоящая перезагрузка, не повторный вызов load() в той же
+      вкладке) не имеет права стереть легаси только на основании валидности
+      канона, и канон не имеет права содержать `foo` ни после первого, ни
+      после второго запуска. */
 {
   await wipeDb();
   const { window: w, storage } = makePlannerCtx();
@@ -234,11 +242,15 @@ const plannerValid = { settings: { fontSize: '100' }, serviceYears: {}, events: 
   await settle();
   ok('два запуска (Клиндарий): после 1-го запуска легаси цел, миграция отказала',
     storage.getItem('service-year-planner-v9-4-2') !== null);
+  ok('два запуска (Клиндарий): App.state.app НЕ содержит foo из легаси (корень бага)',
+    !Object.prototype.hasOwnProperty.call(w.App.state.app, 'foo'));
   w.App.store.save();
   await settle();
   const rowAfterFirst = await rawStateRow('circuit-planner');
   ok('два запуска (Клиндарий): 1-й запуск завёл валидный канон обычным runtime-путём (не миграцией)',
     rowAfterFirst && Array.isArray(JSON.parse(rowAfterFirst.payload).events));
+  ok('два запуска (Клиндарий): канон после 1-го запуска НЕ содержит foo',
+    rowAfterFirst && !Object.prototype.hasOwnProperty.call(JSON.parse(rowAfterFirst.payload), 'foo'));
 
   // Второй запуск — СВЕЖИЙ контекст (настоящая перезагрузка), тот же диск.
   const { window: w2 } = makePlannerCtx(storage);
@@ -246,6 +258,11 @@ const plannerValid = { settings: { fontSize: '100' }, serviceYears: {}, events: 
   await settle();
   ok('два запуска (Клиндарий): легаси ЦЕЛ и после 2-го запуска, несмотря на валидный канон',
     storage.getItem('service-year-planner-v9-4-2') !== null);
+  ok('два запуска (Клиндарий): легаси на диске всё ещё точно {"foo":"bar"} — не переписан',
+    storage.getItem('service-year-planner-v9-4-2') === JSON.stringify({ foo: 'bar' }));
+  const rowAfterSecond = await rawStateRow('circuit-planner');
+  ok('два запуска (Клиндарий): канон после 2-го запуска НЕ содержит foo',
+    rowAfterSecond && !Object.prototype.hasOwnProperty.call(JSON.parse(rowAfterSecond.payload), 'foo'));
 }
 
 /* 9. Валидный канон + невалидный легаси (без второго запуска) — легаси цел. */
