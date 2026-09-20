@@ -134,6 +134,12 @@ const CHECKS = [
     deps: [],
   },
   {
+    file: 'check-update-orchestration.mjs',
+    title: 'Оркестрация обновления (checkAll/applyAll)',
+    why: 'хаб решает за все модули, что они обновились, — гонка update()/installing/waiting или пропущенный timedOut даёт ложное "обновлено" без реальной активации',
+    deps: [],
+  },
+  {
     file: 'check-manifests.mjs',
     title: 'Манифесты: область и идентичность',
     why: 'scope разрешается от адреса манифеста, а id — от ORIGIN: относительный id молча делает идентичностью корень сайта, и два приложения считаются одним',

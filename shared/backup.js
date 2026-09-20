@@ -111,6 +111,18 @@
   var APPOINTMENTS_ID = 'appointments';
   var LEGACY_APPOINTMENTS = 'cw-appointments-v1';
 
+  /* Фаза E: тот же мост, ещё два главных блоба модулей (Клиндарий,
+     Конгрессы). Только основной ключ — `-history`/`-backups` в мост НЕ
+     входят: их читает и УДАЛЯЕТ shared/snapshots.js своим собственным
+     migrateLegacy() (массив снимков → хранилище `snapshots`, другая форма и
+     другое назначение), и блокировать их в EXCLUDE значило бы сломать этот
+     уже рабочий путь. `service-year-planner-accent` тоже не трогается: ни
+     одного чтения/записи этого ключа в приложении нет вовсе. */
+  var PLANNER_ID = 'circuit-planner';
+  var LEGACY_PLANNER = 'service-year-planner-v9-4-2';
+  var CONGRESS_ID = 'congress-project';
+  var LEGACY_CONGRESS = 'congress-pwa-v34-speakers';
+
   /* Где лежат данные каждого модуля. Ключи вида `cw-lang:<id>` и
      `cw-doclang:<id>` добавляются автоматически — это выбор языка внутри
      модуля, он логично едет вместе с модулем, а не с общим слоем.
@@ -128,7 +140,12 @@
          подряд; иначе копия Конгрессов таскала бы справочник собраний. */
   var MODULES = {
     'congress-project': {
-      local: ['congress-pwa-v34-speakers', 'congress-pwa-v34-speakers-backups'],
+      /* Фаза E: главный ключ `congress-pwa-v34-speakers` убран — канон едет
+         адресной записью `state` ниже; легаси остаётся только входом
+         restore-моста (EXCLUDE), не обычным local-ключом. `-backups`
+         остаётся: его читает и удаляет shared/snapshots.js своим
+         migrateLegacy(), другая форма (массив), другое назначение. */
+      local: ['congress-pwa-v34-speakers-backups'],
       idb: [],
       /* Блок отправителя печатается в шапке каждого письма участнику,
          а с 12.08.2026 в общей базе лежат и сами шаблоны писем.
@@ -150,8 +167,12 @@
       sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['congress-project', 'shared:sender'] }, { store: 'snapshots', prefix: 'congress-project:' }] },
     },
     'circuit-planner': {
+      /* Фаза E: главный ключ `service-year-planner-v9-4-2` убран — та же
+         причина, что у Конгрессов выше. `-history`/`-accent` остаются:
+         `-history` мигрирует отдельно через shared/snapshots.js (массив
+         снимков → хранилище `snapshots`), `-accent` нигде не читается и не
+         пишется — трогать нечего. */
       local: [
-        'service-year-planner-v9-4-2',
         'service-year-planner-v9-4-2-history',
         'service-year-planner-accent',
       ],
@@ -243,13 +264,16 @@
      проверкой check-backup.mjs. */
 
   /* Никогда не попадает в файл копии, даже при полной выгрузке.
-     `cw-sender` добавлен фазой C2, `cw-appointments-v1` — фазой D: старые
-     файлы всё ещё могут нести их (первый — в `sections.shared.local`, второй
-     — в `sections.appointments.local`), и это единственное место, которое
-     гарантированно глушит запись ЛЮБОГО такого ключа обратно в localStorage
-     — независимо от того, полная это копия или частичная (см.
-     восстановление ниже). */
-  var EXCLUDE = ['syp-pin-hash', 'cw-sender', 'cw-appointments-v1'];
+     `cw-sender` добавлен фазой C2, `cw-appointments-v1` — фазой D,
+     `service-year-planner-v9-4-2`/`congress-pwa-v34-speakers` — фазой E: старые
+     файлы всё ещё могут нести их (в `sections.shared.local` для отправителя,
+     в `sections.<модуль>.local` для остальных), и это единственное место,
+     которое гарантированно глушит запись ЛЮБОГО такого ключа обратно в
+     localStorage — независимо от того, полная это копия или частичная (см.
+     восстановление ниже). Соседние ключи `-history`/`-backups`/`-accent`
+     сюда НЕ входят — см. комментарий у LEGACY_PLANNER/LEGACY_CONGRESS выше. */
+  var EXCLUDE = ['syp-pin-hash', 'cw-sender', 'cw-appointments-v1',
+    'service-year-planner-v9-4-2', 'congress-pwa-v34-speakers'];
 
   /**
    * Объединённые зависимости от общего слоя для набора модулей.
@@ -676,6 +700,8 @@
   var LEGACY_STATE_BRIDGES = [
     { sectionId: 'shared', legacyKey: LEGACY_SENDER, stateId: SENDER_ID, fields: SENDER_FIELDS },
     { sectionId: 'appointments', legacyKey: LEGACY_APPOINTMENTS, stateId: APPOINTMENTS_ID, fields: null },
+    { sectionId: 'circuit-planner', legacyKey: LEGACY_PLANNER, stateId: PLANNER_ID, fields: null },
+    { sectionId: 'congress-project', legacyKey: LEGACY_CONGRESS, stateId: CONGRESS_ID, fields: null },
   ];
 
   /**

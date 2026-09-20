@@ -155,7 +155,7 @@ console.log('\nКанон, backup-реестр и версия базы (C2)');
   ok('SHARED.local БОЛЬШЕ НЕ содержит cw-sender', !/local: \['cw-lang', 'cw-doclang', 'cw-sender'\]/.test(shared)
     && /local: \['cw-lang', 'cw-doclang'\]/.test(shared));
   ok('EXCLUDE глушит запись cw-sender/cw-appointments-v1 при восстановлении',
-    /var EXCLUDE = \['syp-pin-hash', 'cw-sender', 'cw-appointments-v1'\];/.test(backup));
+    /var EXCLUDE = \[[^\]]*'cw-sender'[^\]]*'cw-appointments-v1'[^\]]*\];/.test(backup));
   const modulesBlock = backup.slice(backup.indexOf('var MODULES'), backup.indexOf('\n  };', backup.indexOf('var MODULES')));
   ok('реестр модулей: sharedLocal БОЛЬШЕ НЕ несёт cw-sender ни у одного потребителя',
     !/sharedLocal: \['cw-sender'\]/.test(modulesBlock));

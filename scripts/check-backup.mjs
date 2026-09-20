@@ -722,6 +722,127 @@ ok('чистое устройство (Назначения): база откр�
     && JSON.parse(st['appointments'].payload).coordinator === 'Иванов' && st['appointments'].rev === 1);
 }
 
+/* --- 9. Легаси-мост Клиндария и Конгрессов (фаза E) ----------------------
+   Тот же generic-мост (fields: null), ещё два главных блоба. Пять категорий
+   на каждый модуль: чистое устройство, канон-в-файле, канон-на-диске,
+   испорченный легаси, вложенная структура (не просто строка — массивы
+   объектов, как в реальном состоянии обоих модулей). */
+console.log('\nЛегаси-мост Клиндария и Конгрессов');
+
+const plannerNested = {
+  services: [
+    { date: '2026-01-05', congregations: [{ name: 'Тест', visits: [{ id: 1, notes: 'первый визит' }, { id: 2, notes: 'второй' }] }] },
+  ],
+  settings: { font: 'Arial', fontSize: 12 },
+};
+const congressNested = {
+  congresses: [
+    { id: 'c1', theme: 'Тема', tasks: [{ id: 't1', kind: 'інтерв’ю', assignee: { name: 'Іван' } }, { id: 't2', kind: 'аудіо', assignee: null }] },
+  ],
+  series: [],
+};
+
+const plannerCongressBridges = [
+  { moduleId: 'circuit-planner', legacyKey: 'service-year-planner-v9-4-2', nested: plannerNested, label: 'Клиндарий' },
+  { moduleId: 'congress-project', legacyKey: 'congress-pwa-v34-speakers', nested: congressNested, label: 'Конгрессы' },
+];
+for (const { moduleId, legacyKey, nested, label } of plannerCongressBridges) {
+  console.log(`  ${label} (${moduleId}):`);
+
+  // 9.1 Чистое устройство: базы нет вовсе, легаси есть.
+  {
+    await wipe(DB);
+    mem.set(legacyKey, JSON.stringify({ marker: 'НЕ ТРОГАТЬ' }));
+    await CWBackup.restore({
+      format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+      createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+      sections: { shared: { local: {}, idb: { [DB]: { version: 2, stores: {} } } },
+        [moduleId]: { local: { [legacyKey]: JSON.stringify(nested) } } },
+    });
+    ok(`  чистое устройство: DB_VERSION = CWDB.DB_VERSION`, await versionOf(DB) === SCHEMA);
+    const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+    ok(`  чистое устройство: канон создан из легаси`, st[moduleId]
+      && JSON.stringify(JSON.parse(st[moduleId].payload)) === JSON.stringify(nested));
+    ok(`  чистое устройство: легаси-ключ не тронут`, JSON.parse(mem.get(legacyKey)).marker === 'НЕ ТРОГАТЬ');
+  }
+
+  // 9.2 Канон в файле побеждает легаси того же файла.
+  {
+    await wipe(DB);
+    await CWBackup.restore({
+      format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+      createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+      sections: { shared: { local: {}, idb: { [DB]: { version: SCHEMA, stores: {
+        state: store([{ id: moduleId, payload: JSON.stringify({ marker: 'Канон из файла' }), rev: 4, savedAt: 1, writerId: 'w' }]),
+      } } } },
+        [moduleId]: { local: { [legacyKey]: JSON.stringify({ marker: 'Устаревшее из легаси' }) } } },
+    });
+    const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+    ok(`  канон файла побеждает легаси того же файла`,
+      st[moduleId] && JSON.parse(st[moduleId].payload).marker === 'Канон из файла' && st[moduleId].rev === 4);
+  }
+
+  // 9.3 Частичное восстановление старой копии не откатывает канон устройства.
+  {
+    await wipe(DB);
+    let d = await open(DB, SCHEMA, (x) => { x.createObjectStore('state', { keyPath: 'id' }); });
+    await put(d, 'state', [{ id: moduleId, payload: JSON.stringify({ marker: 'Текущий канон устройства' }), rev: 9, savedAt: 1, writerId: 'w' }]);
+    d.close();
+    await CWBackup.restore({
+      format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'module',
+      createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [moduleId],
+      sections: {
+        shared: { partial: true, local: {}, idb: { [DB]: { version: SCHEMA, stores: {} } } },
+        [moduleId]: { local: { [legacyKey]: JSON.stringify({ marker: 'Легаси из старой копии' }) } },
+      },
+    });
+    const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+    ok(`  канон устройства не откачен частичным восстановлением старой копии`,
+      st[moduleId] && JSON.parse(st[moduleId].payload).marker === 'Текущий канон устройства' && st[moduleId].rev === 9);
+  }
+
+  // 9.4 Испорченный легаси (не JSON / массив вместо объекта) — не роняет восстановление.
+  {
+    await wipe(DB);
+    await CWBackup.restore({
+      format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+      createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+      sections: { shared: { local: {}, idb: { [DB]: { version: SCHEMA, stores: { templates: store([{ id: 'tpl_ok' }]) } } } },
+        [moduleId]: { local: { [legacyKey]: '{не json' } } },
+    });
+    ok(`  испорченный JSON: восстановление не упало, остальное записалось`,
+      (await rows(DB, 'templates')).some((r) => r.id === 'tpl_ok'));
+    const st1 = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+    ok(`  испорченный JSON: строка канона не создана`, !st1[moduleId]);
+
+    await wipe(DB);
+    await CWBackup.restore({
+      format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+      createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+      sections: { shared: { local: {}, idb: { [DB]: { version: SCHEMA, stores: {} } } },
+        [moduleId]: { local: { [legacyKey]: JSON.stringify([1, 2, 3]) } } },
+    });
+    ok(`  массив вместо объекта: восстановление не упало`, true);
+    const st2 = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+    ok(`  массив вместо объекта: строка канона не создана`, !st2[moduleId]);
+  }
+
+  // 9.5 Вложенная структура — переносится целиком, без потери формы.
+  {
+    await wipe(DB);
+    await CWBackup.restore({
+      format: CWBackup.FORMAT, formatVersion: CWBackup.FORMAT_VERSION, scope: 'full',
+      createdAt: new Date().toISOString(), app: { hub: '0.0.0', modules: {} }, modules: [],
+      sections: { shared: { local: {}, idb: { [DB]: { version: SCHEMA, stores: {} } } },
+        [moduleId]: { local: { [legacyKey]: JSON.stringify(nested) } } },
+    });
+    const st = Object.fromEntries((await rows(DB, 'state')).map((r) => [r.id, r]));
+    const restored = st[moduleId] && JSON.parse(st[moduleId].payload);
+    ok(`  вложенная структура сохранена целиком`,
+      restored && JSON.stringify(restored) === JSON.stringify(nested));
+  }
+}
+
 /* 6.3. Предохранительный снимок переживает полное восстановление.
    Это и есть причина, по которой он лежит в отдельной базе, а не в хранилище
    `snapshots` общей: полная копия заменяет общую базу целиком и стёрла бы
