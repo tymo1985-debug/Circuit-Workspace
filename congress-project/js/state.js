@@ -418,13 +418,25 @@ export function load(){
     lastConfirmedPayload=raw;
     /* Уже мигрировавшая установка (канон существовал ДО этой сессии — сама
        по себе remote.migrated()/факт существования строки недостаточна).
-       Если легаси-ключ ещё жив (переезд состоялся раньше, чем появилась эта
-       логика удаления), убираем его теперь — но только когда САМ канон
-       проходит isValidState(): иначе есть риск стереть легаси, за которым
-       на самом деле стоит негодная запись. */
+       Если легаси-ключ ещё жив, убираем его — но ТОЛЬКО когда ОБЕ стороны
+       валидны: сам канон проходит isValidState(), И ОТДЕЛЬНО содержимое
+       легаси-ключа ТОЖЕ проходит isValidState(). Валидность канона в
+       одиночку НИКОГДА не даёт права удалить легаси: структурно чужой
+       легаси ({"foo":"bar"}) на первом запуске корректно не мигрирует
+       (canonicalValid из ветки выше не достигается), но обычный
+       runtime-путь (newC() создаёт демо-конгресс на пустом store.st и сам
+       же его сохраняет) заводит валидный канон уже В ТОМ ЖЕ запуске —
+       проверка только канона на следующем запуске стёрла бы легаси,
+       который был единственной копией чужого содержимого, а не демо. */
     let canonValid=false;
     try{canonValid=isValidState(JSON.parse(raw))}catch{}
-    if(canonValid){try{localStorage.removeItem(KEY)}catch{}}
+    if(canonValid){
+      let legacyRaw=null;
+      try{legacyRaw=localStorage.getItem(KEY)}catch{legacyRaw=null}
+      let legacyValid=false;
+      if(legacyRaw){try{legacyValid=isValidState(JSON.parse(legacyRaw))}catch{}}
+      if(legacyValid){try{localStorage.removeItem(KEY)}catch{}}
+    }
   }
   migrate();adoptShared();
   if(!store.st.congresses.length)newC(t("cong.msg.first_congress"),"SZ Warszawa","2026-11-07",demo());

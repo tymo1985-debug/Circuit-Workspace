@@ -100,10 +100,10 @@ function makeStorage() {
 const DB_SRC = read('shared/db.js');
 const STATE_SRC = read('shared/state.js');
 
-function makePlannerCtx() {
+function makePlannerCtx(existingStorage) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://example.test/circuit-planner/index.html', pretendToBeVisual: true });
   const w = dom.window;
-  const storage = makeStorage();
+  const storage = existingStorage || makeStorage();
   Object.defineProperty(w, 'localStorage', { configurable: true, value: storage });
   w.indexedDB = indexedDB; w.IDBKeyRange = IDBKeyRange;
   const ctx = vm.createContext(w);
@@ -219,6 +219,68 @@ const plannerValid = { settings: { fontSize: '100' }, serviceYears: {}, events: 
   ok('канон невалиден: легаси сохранён', storage.getItem('service-year-planner-v9-4-2') !== null);
 }
 
+/* 8. ДВА ЗАПУСКА (LIVE FAIL): структурно чужой легаси ({"foo":"bar"}).
+      Первый запуск корректно отказывает мигрировать его, но обычный
+      runtime сам заводит валидный дефолтный канон (здесь — прямым save(),
+      без ожидания полного App.init(), который в этом стенде не поднимается
+      без разметки). Второй запуск (свежий контекст — настоящая перезагрузка,
+      не повторный вызов load() в той же вкладке) НЕ имеет права стереть
+      легаси только на основании того, что канон уже валиден. */
+{
+  await wipeDb();
+  const { window: w, storage } = makePlannerCtx();
+  storage.setItem('service-year-planner-v9-4-2', JSON.stringify({ foo: 'bar' }));
+  await w.App.store.load();
+  await settle();
+  ok('два запуска (Клиндарий): после 1-го запуска легаси цел, миграция отказала',
+    storage.getItem('service-year-planner-v9-4-2') !== null);
+  w.App.store.save();
+  await settle();
+  const rowAfterFirst = await rawStateRow('circuit-planner');
+  ok('два запуска (Клиндарий): 1-й запуск завёл валидный канон обычным runtime-путём (не миграцией)',
+    rowAfterFirst && Array.isArray(JSON.parse(rowAfterFirst.payload).events));
+
+  // Второй запуск — СВЕЖИЙ контекст (настоящая перезагрузка), тот же диск.
+  const { window: w2 } = makePlannerCtx(storage);
+  await w2.App.store.load();
+  await settle();
+  ok('два запуска (Клиндарий): легаси ЦЕЛ и после 2-го запуска, несмотря на валидный канон',
+    storage.getItem('service-year-planner-v9-4-2') !== null);
+}
+
+/* 9. Валидный канон + невалидный легаси (без второго запуска) — легаси цел. */
+{
+  await wipeDb();
+  await seedStateRow('circuit-planner', JSON.stringify(plannerValid), 1);
+  const { window: w, storage } = makePlannerCtx();
+  storage.setItem('service-year-planner-v9-4-2', JSON.stringify({ foo: 'bar' }));
+  await w.App.store.load();
+  await settle();
+  ok('валидный канон + структурно чужой легаси: легаси цел', storage.getItem('service-year-planner-v9-4-2') !== null);
+}
+
+/* 10. Валидный канон + испорченный (не-JSON) легаси — легаси цел. */
+{
+  await wipeDb();
+  await seedStateRow('circuit-planner', JSON.stringify(plannerValid), 1);
+  const { window: w, storage } = makePlannerCtx();
+  storage.setItem('service-year-planner-v9-4-2', '{не json');
+  await w.App.store.load();
+  await settle();
+  ok('валидный канон + испорченный JSON легаси: легаси цел', storage.getItem('service-year-planner-v9-4-2') === '{не json');
+}
+
+/* 11. Валидный канон + валидный легаси (два запуска) — легаси удаляется. */
+{
+  await wipeDb();
+  await seedStateRow('circuit-planner', JSON.stringify(plannerValid), 1);
+  const { window: w, storage } = makePlannerCtx();
+  storage.setItem('service-year-planner-v9-4-2', JSON.stringify(plannerValid));
+  await w.App.store.load();
+  await settle();
+  ok('валидный канон + валидный легаси: легаси удалён', storage.getItem('service-year-planner-v9-4-2') === null);
+}
+
 console.log(failed ? `\nПРОВАЛЕНО (Клиндарий): ${failed}` : '\nКлиндарий: удаление легаси-ключа безопасно во всех проверенных сценариях.');
 const plannerFailed = failed;
 failed = 0;
@@ -227,10 +289,10 @@ console.log('\nФаза F: удаление легаси-ключа Конгре
 
 const congressValid = { congresses: [{ id: 'c1', theme: 'Тема', tasks: [] }], activeId: null, settings: null, series: [] };
 
-async function makeCongressCtx() {
+async function makeCongressCtx(existingStorage) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://example.test/congress-project/index.html', pretendToBeVisual: true });
   const w = dom.window;
-  const storage = makeStorage();
+  const storage = existingStorage || makeStorage();
   Object.defineProperty(w, 'localStorage', { configurable: true, value: storage });
   w.indexedDB = indexedDB; w.IDBKeyRange = IDBKeyRange;
   const script = new w.Function('return this')();
@@ -358,6 +420,70 @@ async function makeCongressCtx() {
   try { mod.load(); } catch (e) { /* render() требует разметки, которой в тесте нет — миграция уже отработала до этой точки синхронно, а подтверждение придёт следующим тиком */ }
   await settle();
   ok('канон невалиден: легаси сохранён', storage.getItem('congress-pwa-v34-speakers') !== null);
+}
+
+/* 8. ДВА ЗАПУСКА (LIVE FAIL, тот же класс, что у Клиндария): структурно
+      чужой легаси ({"foo":"bar"}). Конгрессы сами создают демо-конгресс
+      на пустом congresses[] (`newC()` внутри load()) и сами его сохраняют —
+      то есть валидный канон заводится ОБЫЧНЫМ runtime-путём уже на первом
+      запуске, без единого вызова миграции. Второй запуск (свежий контекст)
+      не должен стереть легаси только на основании валидности канона. */
+{
+  await wipeDb();
+  const { storage, mod } = await makeCongressCtx();
+  storage.setItem('congress-pwa-v34-speakers', JSON.stringify({ foo: 'bar' }));
+  await mod.initState();
+  try { mod.load(); } catch (e) { /* render() требует разметки, которой в тесте нет */ }
+  await settle();
+  ok('два запуска (Конгрессы): после 1-го запуска легаси цел', storage.getItem('congress-pwa-v34-speakers') !== null);
+  const rowAfterFirst = await rawStateRow('congress-project');
+  ok('два запуска (Конгрессы): 1-й запуск завёл валидный канон обычным runtime-путём (демо-конгресс)',
+    rowAfterFirst && Array.isArray(JSON.parse(rowAfterFirst.payload).congresses));
+
+  // Второй запуск — СВЕЖИЙ контекст (настоящая перезагрузка), тот же диск
+  // (та же localStorage-подложка и та же fake-indexeddb база).
+  const second = await makeCongressCtx(storage);
+  await second.mod.initState();
+  try { second.mod.load(); } catch (e) { /* см. выше */ }
+  await settle();
+  ok('два запуска (Конгрессы): легаси ЦЕЛ и после 2-го запуска, несмотря на валидный канон',
+    storage.getItem('congress-pwa-v34-speakers') !== null);
+}
+
+/* 9. Валидный канон + невалидный легаси (без второго запуска) — легаси цел. */
+{
+  await wipeDb();
+  await seedStateRow('congress-project', JSON.stringify(congressValid), 1);
+  const { storage, mod } = await makeCongressCtx();
+  storage.setItem('congress-pwa-v34-speakers', JSON.stringify({ foo: 'bar' }));
+  await mod.initState();
+  try { mod.load(); } catch (e) { /* см. выше */ }
+  await settle();
+  ok('валидный канон + структурно чужой легаси: легаси цел', storage.getItem('congress-pwa-v34-speakers') !== null);
+}
+
+/* 10. Валидный канон + испорченный (не-JSON) легаси — легаси цел. */
+{
+  await wipeDb();
+  await seedStateRow('congress-project', JSON.stringify(congressValid), 1);
+  const { storage, mod } = await makeCongressCtx();
+  storage.setItem('congress-pwa-v34-speakers', '{не json');
+  await mod.initState();
+  try { mod.load(); } catch (e) { /* см. выше */ }
+  await settle();
+  ok('валидный канон + испорченный JSON легаси: легаси цел', storage.getItem('congress-pwa-v34-speakers') === '{не json');
+}
+
+/* 11. Валидный канон + валидный легаси (два запуска) — легаси удаляется. */
+{
+  await wipeDb();
+  await seedStateRow('congress-project', JSON.stringify(congressValid), 1);
+  const { storage, mod } = await makeCongressCtx();
+  storage.setItem('congress-pwa-v34-speakers', JSON.stringify(congressValid));
+  await mod.initState();
+  try { mod.load(); } catch (e) { /* см. выше */ }
+  await settle();
+  ok('валидный канон + валидный легаси: легаси удалён', storage.getItem('congress-pwa-v34-speakers') === null);
 }
 
 console.log(failed ? `\nПРОВАЛЕНО (Конгрессы): ${failed}` : '\nКонгрессы: удаление легаси-ключа безопасно во всех проверенных сценариях.');
