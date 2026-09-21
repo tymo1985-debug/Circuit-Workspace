@@ -26,7 +26,7 @@
   'use strict';
 
   const DB_NAME = 'circuit-workspace-db';
-  const DB_VERSION = 5;
+  const DB_VERSION = 6;
 
   /** Схема хранилищ: имя store → keyPath + индексы */
   const STORES = {
@@ -79,6 +79,22 @@
        Работать напрямую модули не должны: точка входа — CWSnapshots
        (shared/snapshots.js). */
     snapshots:   { keyPath: 'id', indexes: ['module', 'at'] },
+    /* Журнал (v6, фаза J2). Четыре собственных хранилища модуля, нормализованные
+       строки вместо блоба в `state`: у Журнала поиск, связи, архив и (J8)
+       шифрование ПО ЗАПИСЯМ, а блоб в `state` к тому же зеркалится CWState в
+       localStorage — для защищённых записей это недопустимо.
+       Апгрейд 5→6 чисто аддитивный: общий обработчик ниже создаёт только
+       отсутствующие хранилища и не трогает существующие.
+       Индексы — только по полям с валидными ключами IndexedDB: булево значение
+       ключом не является, поэтому «открыт на следующее посещение» хранится
+       строкой-селектором `carryKey = '<nodeId>:open'`, а у закрытых записей
+       поле отсутствует (такие записи в индекс не попадают вовсе).
+       Работать напрямую модули не должны: точка входа — CWJournal
+       (journal/js/data.js). */
+    journalNodes:   { keyPath: 'id', indexes: ['parentId', 'circuitId', 'kind', 'status', 'updatedAt'] },
+    journalEntries: { keyPath: 'id', indexes: ['nodeId', 'circuitId', 'type', 'status', 'updatedAt', 'dueDate', 'carryKey'] },
+    journalLinks:   { keyPath: 'id', indexes: ['from', 'to', 'rel'] },
+    journalMeta:    { keyPath: 'id' },
   };
 
   let dbPromise = null;
@@ -351,6 +367,14 @@
     state: makeCrud('state', 'st'),
     /** История снимков состояния. Через CWSnapshots (shared/snapshots.js), не напрямую. */
     snapshots: makeCrud('snapshots', 'snap'),
+    /** Журнал: дерево район → собрание → группа. Через CWJournal, не напрямую. */
+    journalNodes: makeCrud('journalNodes', 'jn'),
+    /** Журнал: универсальные рабочие записи. Через CWJournal, не напрямую. */
+    journalEntries: makeCrud('journalEntries', 'je'),
+    /** Журнал: типизированные связи по URN. Через CWJournal, не напрямую. */
+    journalLinks: makeCrud('journalLinks', 'jl'),
+    /** Журнал: служебные записи модуля (схема, в J8 — крипто-материал). */
+    journalMeta: makeCrud('journalMeta', 'jm'),
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,

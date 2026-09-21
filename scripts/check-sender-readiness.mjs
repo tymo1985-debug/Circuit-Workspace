@@ -168,7 +168,12 @@ console.log('\nКанон, backup-реестр и версия базы (C2)');
     /req\(store\.get\(row\.id\)\)\.then\(function \(existing\) \{\s*if \(existing\) \{/.test(backup));
 
   const dbSrc = read('shared/db.js');
-  ok('DB_VERSION не поднята фазой C2 (нового store не заводили)', /const DB_VERSION = 5;/.test(dbSrc));
+  /* До J2 здесь стояло буквальное `DB_VERSION = 5`. Смысл проверки — фаза C2
+     не завела для отправителя собственного хранилища (канон — строка в
+     `state`); номер схемы законно растёт в других фазах (v6 — Журнал, J2),
+     поэтому проверяется намерение, а не число. */
+  ok('фаза C2 не завела отдельного хранилища для sender (канон — строка state)',
+    !/^\s*sender\w*\s*:\s*\{\s*keyPath/m.test(dbSrc) && /state:\s*\{\s*keyPath: 'id'\s*\}/.test(dbSrc));
 }
 
 console.log('\nЗащита апгрейда со смешанным кэшем');

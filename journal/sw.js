@@ -12,16 +12,15 @@ const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['journal']
 const CACHE_PREFIX = 'journal-cache-v';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 
-// J1 — оболочка. Хранилищ данных ещё нет, поэтому список короче, чем у
-// модулей с CWState/CWDB: shared/state.js и shared/db.js этой версии
-// Журнала не нужны и не подключены в index.html — добавятся вместе с
-// CWJournal в фазе J2.
+// shared/state.js здесь нет и не будет: Журнал хранит данные строками в
+// собственных хранилищах общей базы через shared/db.js (journal/AGENTS.md).
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/styles.css',
   './js/app.js',
+  './js/data.js',
   './i18n/dict.js',
   './icons/favicon-32.png',
   './icons/icon-192.png',
@@ -34,6 +33,7 @@ const ASSETS = [
   '../shared/nav.js',
   '../shared/theme.js',
   '../shared/backup.js',
+  '../shared/db.js',
   '../shared/version.js',
   '../shared/update.js',
   '../shared/i18n.js',
