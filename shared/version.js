@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.41.38';
+self.CW_VERSION = '0.41.39';
 
 /**
  * Реестр модулей хаба.
@@ -35,9 +35,13 @@ self.CW_VERSION = '0.41.38';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы',       version: '4.46.60' },
+  'congress-project': { title: 'Конгрессы',       version: '4.46.61' },
   'circuit-planner':  { title: 'Клиндарий',       version: '9.94.16' },
-  'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.36' },
-  'appointments':     { title: 'Назначения',      version: '5.5.75'  },
-  'documents':        { title: 'Документы и данные', version: '1.10.26'  },
+  'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.37' },
+  'appointments':     { title: 'Назначения',      version: '5.5.76'  },
+  'documents':        { title: 'Документы и данные', version: '1.10.27'  },
+  /* Журнал — фаза J1 (оболочка + визуальная основа), 20.09.2026. Только
+     каркас: реальных данных, IndexedDB-хранилищ и CRUD в этой версии нет —
+     см. journal/AGENTS.md после его появления в фазе J2. */
+  'journal':          { title: 'Журнал',          version: '0.1.0'   },
 };

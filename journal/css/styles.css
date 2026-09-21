@@ -1,0 +1,129 @@
+/**
+ * Журнал — стили модуля (J1: только Обзор и Район).
+ *
+ * Оболочка (.md-shell, .md-topbar-v2, .md-sidenav, .md-bottomnav, .md-page,
+ * .md-segmented, .md-chip, .md-fab, .md-status и т.д.) целиком берётся из
+ * shared/style.css — здесь не переопределяется и не дублируется. Ниже —
+ * только то, чего в общем слое нет: карточки-секции Журнала и строки списка
+ * внутри них, специфичные для этого модуля.
+ *
+ * Брейкпоинты — только из реестра scripts/check-breakpoints.mjs (600, 900),
+ * те же, на которых уже переключаются .md-shell__body/.md-sidenav/.md-bottomnav.
+ */
+
+/* --- Шапка: те же мелочи, что в остальных модулях (появляются заново в
+   каждом module-local css, т.к. shared/style.css их сознательно не несёт —
+   см. appointments/css/styles.css, откуда скопировано без изменений). --- */
+#moduleVersion { font-variant-numeric: tabular-nums; }
+.lang-select {
+  height: 32px; padding: 0 10px;
+  border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-full);
+  background: var(--md-surface); color: var(--md-on-surface);
+  font: 500 12px/16px var(--md-font-family); cursor: pointer;
+}
+
+/* --- Секция-карточка ------------------------------------------------------- */
+.j-sec {
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  padding: var(--cw-space-4);
+  margin-bottom: var(--cw-space-4);
+}
+.j-sec__head {
+  display: flex; align-items: center; gap: var(--cw-space-2);
+  margin-bottom: var(--cw-space-3);
+}
+.j-sec__title { font: 500 15px/20px var(--md-font-family); margin: 0; letter-spacing: 0.1px; }
+.j-sec__count {
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
+  padding: 1px 8px; border-radius: var(--md-radius-full);
+  background: var(--md-surface-container-highest); color: var(--md-on-surface-variant);
+}
+.j-sec__more {
+  margin-left: auto; font: 500 13px/18px var(--md-font-family); color: var(--md-primary);
+  background: none; border: 0; cursor: pointer; padding: 0;
+}
+.j-sec__hint {
+  font: 400 13px/20px var(--md-font-family); letter-spacing: 0.15px;
+  color: var(--md-on-surface-variant); margin: 0;
+}
+
+/* --- Строка списка ---------------------------------------------------------- */
+.j-row {
+  display: flex; gap: var(--cw-space-3); padding: var(--cw-space-3) 0;
+  border-top: 1px solid var(--md-outline-variant); align-items: flex-start;
+}
+.j-sec .j-row:first-of-type { border-top: 0; padding-top: 0; }
+.j-row__ico {
+  width: 32px; height: 32px; flex: 0 0 auto; border-radius: var(--md-radius-sm);
+  display: grid; place-items: center; background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+}
+.j-row__ico svg { width: 17px; height: 17px; }
+.j-row__ico--accent { background: var(--cw-module-container); color: var(--cw-module-on-container); }
+.j-row__body { min-width: 0; flex: 1 1 auto; }
+.j-row__title { font: 400 14px/20px var(--md-font-family); margin: 0 0 2px; letter-spacing: 0.1px; }
+.j-row__title b { font-weight: 500; }
+.j-row__meta {
+  font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant); margin: 0;
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+.j-row__meta .j-dot { opacity: 0.5; }
+.j-row__end {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--cw-space-2);
+  color: var(--md-on-surface-variant);
+}
+.j-row__end svg { width: 18px; height: 18px; opacity: 0.6; }
+
+/* Бейдж «перенесено N раз» — на строке «к следующему визиту» */
+.j-carrybadge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.4px;
+  padding: 1px 8px; border-radius: var(--md-radius-full);
+  background: var(--status-important-bg); color: var(--status-important);
+}
+.j-carrybadge svg { width: 12px; height: 12px; }
+
+/* Мелкие тег-бейджи: ссылка на связанный объект / архив */
+.j-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 500 11px/16px var(--md-font-family); letter-spacing: 0.4px;
+  padding: 1px 8px; border-radius: var(--md-radius-full);
+  border: 1px solid var(--md-outline-variant); color: var(--md-on-surface-variant);
+}
+.j-tag svg { width: 12px; height: 12px; flex: 0 0 auto; }
+.j-tag--link { border-color: transparent; background: #123f3a; color: var(--cw-teal); }
+
+/* Дерево района: вложенные группы/предгруппы под собранием */
+.j-tree__child { padding-left: var(--cw-space-6); position: relative; }
+.j-tree__child::before {
+  content: ""; position: absolute; left: 24px; top: 0; bottom: 0;
+  width: 1px; background: var(--md-outline-variant);
+}
+
+/* Хлебные крошки */
+.j-crumb {
+  display: flex; align-items: center; gap: var(--cw-space-1);
+  font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant);
+  margin-bottom: var(--cw-space-2); flex-wrap: wrap;
+}
+.j-crumb b { font-weight: 500; color: var(--md-on-surface); }
+.j-crumb svg { width: 14px; height: 14px; opacity: 0.6; flex: 0 0 auto; }
+
+/* Ряд чипов-счётчиков на карточке «Записи уровня района» */
+.j-chip-row { display: flex; gap: var(--cw-space-2); flex-wrap: wrap; margin-top: var(--cw-space-3); }
+.j-chip-row .md-chip svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
+/* Сегменты вкладок на узком экране: пять вкладок обязаны влезть в 420px
+   (см. j1-scope: "district segmented tabs fitting on 420px") — не трогая
+   общее правило .md-segmented, только плотность внутри модуля. */
+@media (max-width: 600px) {
+  .j-tabs.md-segmented { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .j-tabs.md-segmented button { padding: 0 12px; font-size: 13px; white-space: nowrap; }
+}
+
+/* --- Заглушка ещё не реализованного раздела (Задачи/Поиск/Архив) ----------- */
+.j-placeholder { padding-top: var(--cw-space-6); }

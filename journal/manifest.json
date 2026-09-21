@@ -1,0 +1,31 @@
+{
+  "name": "Журнал — Circuit Workspace",
+  "short_name": "Журнал",
+  "description": "Локальные рабочие записи района: собрания, визиты, проекты и задачи",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#140d28",
+  "theme_color": "#5a4100",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "lang": "ru",
+  "id": "/Circuit-Workspace/journal/index.html"
+}

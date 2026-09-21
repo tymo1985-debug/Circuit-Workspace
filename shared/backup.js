@@ -237,6 +237,19 @@
       sharedLocal: [],
       sharedStores: { 'circuit-workspace-db': [{ store: 'state', ids: ['appointments', 'shared:sender'] }] },
     },
+    /* Журнал — фаза J1 (оболочка). Данных ещё нет: DB_VERSION не поднят,
+       хранилищ `journalNodes/journalEntries/journalLinks/journalMeta` не
+       существует. Запись заведена ЗАРАНЕЕ, пустой, по тому же правилу, что
+       требует check-backup.mjs — модуль обязан явно объявить зависимость от
+       общего слоя, пусть и «ничего». Наполнение — фаза J2, вместе с подъёмом
+       схемы; тогда же сюда добавятся собственные хранилища и `communities`
+       (справочник собраний, на который ссылаются узлы Журнала). */
+    'journal': {
+      local: [],
+      idb: [],
+      sharedLocal: [],
+      sharedStores: {},
+    },
   };
 
   /* ⚠️ ХРАНИЛИЩЕ `state` — ЕДИНСТВЕННОЕ, ГДЕ ВЫГРУЖАТЬ ЦЕЛИКОМ НЕЛЬЗЯ.

@@ -124,6 +124,8 @@
       'module.appointments.desc': 'Письмо о назначении и вычёркивании старейшин и служителей собрания.',
       'module.documents.title': 'Документы и данные',
       'module.documents.desc': 'Шаблоны писем и общие справочники.',
+      'module.journal.title': 'Журнал',
+      'module.journal.desc': 'Локальные рабочие записи района: собрания, визиты, проекты и задачи.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -258,6 +260,8 @@
       'module.appointments.desc': 'Лист про призначення і викреслення старійшин та служителів збору.',
       'module.documents.title': 'Документи й дані',
       'module.documents.desc': 'Шаблони листів і спільні довідники.',
+      'module.journal.title': 'Журнал',
+      'module.journal.desc': 'Локальні робочі записи округу: збори, відвідування, проєкти та завдання.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -392,6 +396,8 @@
       'module.appointments.desc': 'Letter about appointing and deleting elders and ministerial servants.',
       'module.documents.title': 'Documents and Data',
       'module.documents.desc': 'Letter templates and shared directories.',
+      'module.journal.title': 'Journal',
+      'module.journal.desc': 'Local working notes for the circuit: congregations, visits, projects and tasks.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -526,6 +532,8 @@
       'module.appointments.desc': 'List o mianowaniu i skreśleniu starszych oraz sług pomocniczych.',
       'module.documents.title': 'Dokumenty i dane',
       'module.documents.desc': 'Szablony listów i wspólne spisy.',
+      'module.journal.title': 'Dziennik',
+      'module.journal.desc': 'Lokalne notatki robocze obwodu: zbory, odwiedziny, projekty i zadania.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -660,6 +668,8 @@
       'module.appointments.desc': 'Brief über Ernennung und Streichung von Ältesten und Dienstamtgehilfen.',
       'module.documents.title': 'Dokumente und Daten',
       'module.documents.desc': 'Briefvorlagen und gemeinsame Verzeichnisse.',
+      'module.journal.title': 'Journal',
+      'module.journal.desc': 'Lokale Arbeitsnotizen des Kreises: Versammlungen, Besuche, Projekte und Aufgaben.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны

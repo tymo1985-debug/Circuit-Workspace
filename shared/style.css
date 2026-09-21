@@ -824,6 +824,12 @@ body.cw-root {
   --cw-module-on-container: #eddcff;
   --cw-module-edge: #4be0d0;
 }
+[data-module="journal"] {                   /* bgGrad 45% #b9860f → 100% #2fb3a5 */
+  --cw-module: #ffd08a;
+  --cw-module-container: #5a4100;
+  --cw-module-on-container: #ffe3b8;
+  --cw-module-edge: #4be0d0;
+}
 
 [data-theme="light"][data-module="congress-project"],
 [data-theme="light"] [data-module="congress-project"] {
@@ -844,6 +850,11 @@ body.cw-root {
 [data-theme="light"] [data-module="appointments"] {
   --cw-module: #7b3fd0; --cw-module-container: #eddcff;
   --cw-module-on-container: #290055; --cw-module-edge: #2fb3a5;
+}
+[data-theme="light"][data-module="journal"],
+[data-theme="light"] [data-module="journal"] {
+  --cw-module: #8a6000; --cw-module-container: #ffe6c2;
+  --cw-module-on-container: #2b1d00; --cw-module-edge: #2fb3a5;
 }
 
 /* --- 4.8 Компактный режим ------------------------------------------------- */

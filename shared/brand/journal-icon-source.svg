@@ -1,0 +1,54 @@
+<svg width="1024" height="1024" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Журнал — иконка модуля Circuit Workspace</title>
+<defs>
+<linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#3a2400"/>
+<stop offset="45%" stop-color="#b9860f"/>
+<stop offset="100%" stop-color="#2fb3a5"/>
+</linearGradient>
+<radialGradient id="glow1" cx="30%" cy="22%" r="60%">
+<stop offset="0%" stop-color="#ffd08a" stop-opacity="0.5"/>
+<stop offset="100%" stop-color="#ffd08a" stop-opacity="0"/>
+</radialGradient>
+
+<linearGradient id="glassPanel" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#ffffff" stop-opacity="0.42"/>
+<stop offset="45%" stop-color="#ffe6c2" stop-opacity="0.14"/>
+<stop offset="100%" stop-color="#7b8fe0" stop-opacity="0.10"/>
+</linearGradient>
+<linearGradient id="sheen" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
+<stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+</linearGradient>
+<clipPath id="iconClip"><rect x="20" y="20" width="640" height="640" rx="150"/></clipPath>
+</defs>
+<g clip-path="url(#iconClip)"><g>
+<rect x="20" y="20" width="640" height="640" fill="url(#bgGrad)"/><rect x="20" y="20" width="640" height="640" fill="url(#glow1)"/>
+<circle cx="146.0" cy="552.0" r="222.0" fill="#2fb3a5" opacity="0.20"/>
+<circle cx="556.0" cy="146.0" r="178.0" fill="#ffd08a" opacity="0.20"/>
+
+<!-- Раскрытая книга: две страницы от общего корешка -->
+<path d="M 340 220 L 340 470 Q 340 486 324 486 L 176 486 Q 160 486 160 470 L 160 236 Q 160 220 176 220 Z"
+      fill="url(#glassPanel)" stroke="#eef2ff" stroke-opacity="0.6" stroke-width="6"/>
+<path d="M 340 220 L 340 470 Q 340 486 356 486 L 504 486 Q 520 486 520 470 L 520 236 Q 520 220 504 220 Z"
+      fill="url(#glassPanel)" stroke="#eef2ff" stroke-opacity="0.6" stroke-width="6"/>
+<line x1="340" y1="212" x2="340" y2="486" stroke="#ffffff" stroke-opacity="0.5" stroke-width="7"/>
+
+<g stroke="#ffffff" stroke-opacity="0.5" stroke-width="9" stroke-linecap="round">
+<line x1="196" y1="288" x2="308" y2="288"/>
+<line x1="196" y1="330" x2="296" y2="330"/>
+<line x1="196" y1="372" x2="304" y2="372"/>
+</g>
+<g stroke="#ffffff" stroke-opacity="0.34" stroke-width="9" stroke-linecap="round">
+<line x1="372" y1="288" x2="472" y2="288"/>
+<line x1="372" y1="330" x2="484" y2="330"/>
+</g>
+
+<!-- Закладка-флажок, отсылка к «на следующее посещение» -->
+<path d="M 452 170 L 452 268 L 484 244 L 516 268 L 516 170 Z"
+      fill="#ffd08a" opacity="0.92" stroke="#3a2400" stroke-opacity="0.25" stroke-width="4"/>
+
+<path d="M 20 60 Q 20 20 60 20 L 340 20 L 130 240 Q 20 220 20 150 Z" fill="url(#sheen)" opacity="0.45"/>
+</g></g>
+<rect x="21" y="21" width="638" height="638" rx="149" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2"/>
+</svg>
