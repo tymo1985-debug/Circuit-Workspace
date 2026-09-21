@@ -281,5 +281,112 @@ ok('копия с хранилищем из будущей схемы откло
 ok('версия базы не превысила CWDB.DB_VERSION', (await describe(DB)).version === CWDB.DB_VERSION);
 ok('отклонённое восстановление не тронуло Журнал', !!(await J.nodes.get(lateNode)));
 
+/* ═══ 7. J3a — реальное дерево: иерархия, CRUD, порядок, safe delete ══════ */
+console.log('\nДерево района (J3a)');
+
+// 7.1 Создание района: parentId=ROOT_PARENT, circuitId = собственный id.
+const t3circuit = await J.nodes.add({ id: 't3a-circuit', kind: 'circuit', parentId: CWJournal.ROOT_PARENT, label: 'EU-T-01' });
+const t3circuitRow = await J.nodes.get(t3circuit);
+ok('район: parentId = ROOT_PARENT', t3circuitRow.parentId === CWJournal.ROOT_PARENT);
+ok('район: circuitId = собственный id', t3circuitRow.circuitId === t3circuit);
+ok('район: status по умолчанию active', t3circuitRow.status === 'active');
+
+// 7.2 Собрание под районом — circuitId наследуется от родителя.
+const t3cong = await J.nodes.add({ id: 't3a-cong', kind: 'congregation', parentId: t3circuit, label: 'Северное' });
+const t3congRow = await J.nodes.get(t3cong);
+ok('собрание: circuitId унаследован от района', t3congRow.circuitId === t3circuit);
+ok('собрание: parentId = район', t3congRow.parentId === t3circuit);
+
+// 7.3 Группа и предгруппа под собранием.
+const t3group = await J.nodes.add({ id: 't3a-group', kind: 'group', parentId: t3cong, label: 'Центральная' });
+const t3pregroup = await J.nodes.add({ id: 't3a-pregroup', kind: 'pregroup', parentId: t3cong, label: 'Озёрная' });
+ok('группа: circuitId унаследован через собрание', (await J.nodes.get(t3group)).circuitId === t3circuit);
+ok('предгруппа: circuitId унаследован через собрание', (await J.nodes.get(t3pregroup)).circuitId === t3circuit);
+ok('у собрания оба ребёнка', (await J.nodes.byParent(t3cong)).length === 2);
+
+// 7.4 Недопустимая иерархия отклоняется НА СЛОЕ ДАННЫХ, а не только в UI.
+async function rejects(fn) { try { await fn(); return null; } catch (e) { return e.message; } }
+ok('группа НЕ может быть прямо под районом',
+  (await rejects(() => J.nodes.add({ kind: 'group', parentId: t3circuit, label: 'x' }))) === 'journal-invalid-hierarchy');
+ok('собрание НЕ может быть под собранием',
+  (await rejects(() => J.nodes.add({ kind: 'congregation', parentId: t3cong, label: 'x' }))) === 'journal-invalid-hierarchy');
+ok('район НЕ может иметь родителя кроме ROOT_PARENT',
+  (await rejects(() => J.nodes.add({ kind: 'circuit', parentId: t3circuit, label: 'x' }))) === 'journal-invalid-hierarchy');
+ok('несуществующий родитель отклонён',
+  (await rejects(() => J.nodes.add({ kind: 'congregation', parentId: 'nope', label: 'x' }))) === 'journal-invalid-hierarchy');
+ok('неизвестный kind отклонён',
+  (await rejects(() => J.nodes.add({ kind: 'district', parentId: CWJournal.ROOT_PARENT, label: 'x' }))) === 'journal-invalid-kind');
+// 7.4b Иммутабельность kind/parentId (корректирующий проход J3a).
+const t3circuit2 = await J.nodes.add({ id: 't3a-circuit-2', kind: 'circuit', parentId: CWJournal.ROOT_PARENT, label: 'EU-T-02' });
+ok('район не может стать собранием с самим собой родителем',
+  (await rejects(() => J.nodes.update(t3circuit, { kind: 'congregation', parentId: t3circuit }))) === 'journal-immutable-kind');
+ok('собрание не может сменить родителя на другой район',
+  (await rejects(() => J.nodes.update(t3cong, { parentId: t3circuit2 }))) === 'journal-immutable-parent');
+ok('группа не может сменить родителя вовсе',
+  (await rejects(() => J.nodes.update(t3group, { parentId: t3circuit2 }))) === 'journal-immutable-parent');
+ok('патч с тем же значением kind/parentId не отклоняется',
+  (await J.nodes.update(t3group, { kind: 'group', parentId: t3cong, label: 'Центральная' })).label === 'Центральная');
+await J.nodes.remove(t3circuit2);
+
+// 7.5 Переименование сохраняет id/createdAt, обновляет updatedAt.
+const beforeRename = await J.nodes.get(t3cong);
+await new Promise((r) => setTimeout(r, 5));
+const afterRename = await J.nodes.update(t3cong, { label: 'Северное (переим.)' });
+ok('rename: id не изменился', afterRename.id === t3cong);
+ok('rename: createdAt не изменился', afterRename.createdAt === beforeRename.createdAt);
+ok('rename: label обновился', afterRename.label === 'Северное (переим.)');
+ok('rename: updatedAt продвинулся', afterRename.updatedAt > beforeRename.updatedAt);
+
+// 7.6 Архивирование / восстановление — это status, не отдельное хранилище.
+await J.nodes.update(t3group, { status: 'archived' });
+ok('архивирование: status = archived', (await J.nodes.get(t3group)).status === 'archived');
+await J.nodes.update(t3group, { status: 'active' });
+ok('восстановление из архива: status = active', (await J.nodes.get(t3group)).status === 'active');
+
+// 7.7 Порядок братьев: детерминированная сортировка по sort, затем label/id.
+const t3a = await J.nodes.add({ id: 't3a-sib-a', kind: 'congregation', parentId: t3circuit, label: 'Бета' });
+const t3b = await J.nodes.add({ id: 't3a-sib-b', kind: 'congregation', parentId: t3circuit, label: 'Альфа' });
+const sibsBefore = await J.nodes.byParent(t3circuit);
+const rowA = sibsBefore.find((n) => n.id === t3a), rowB = sibsBefore.find((n) => n.id === t3b);
+ok('новый узел получает sort = max(siblings)+1 (после предыдущих)', rowB.sort === rowA.sort + 1);
+const orderedBefore = CWJournal.sortNodes(sibsBefore.filter((n) => n.id === t3a || n.id === t3b));
+ok('сортировка по sort: Бета (создана раньше) идёт первой', orderedBefore[0].id === t3a);
+// Обмен sort — тот же приём, что использует «переместить вверх/вниз» в UI.
+await J.nodes.update(t3a, { sort: rowB.sort });
+await J.nodes.update(t3b, { sort: rowA.sort });
+const orderedAfter = CWJournal.sortNodes(await J.nodes.byParent(t3circuit).then((l) => l.filter((n) => n.id === t3a || n.id === t3b)));
+ok('после обмена sort порядок меняется на противоположный', orderedAfter[0].id === t3b);
+const equalSort = CWJournal.sortNodes([
+  { id: 'z', label: 'Юг', sort: 5 }, { id: 'a', label: 'Альфа', sort: 5 }, { id: 'm', label: 'Альфа', sort: 5 },
+]);
+ok('при равном sort — по label, затем по id', equalSort[0].id === 'a' && equalSort[1].id === 'm' && equalSort[2].id === 'z');
+
+// 7.8 Safe delete: узел с детьми/записями/связями не удаляется молча.
+ok('нельзя удалить собрание с детьми (группа+предгруппа)',
+  (await rejects(() => J.nodes.remove(t3cong))) === 'journal-node-has-children');
+ok('узел с детьми уцелел после отказа', !!(await J.nodes.get(t3cong)));
+
+const leafForEntry = await J.nodes.add({ id: 't3a-leaf-entry', kind: 'congregation', parentId: t3circuit, label: 'Лист-запись' });
+await J.entries.add({ id: 't3a-entry', type: 'note', nodeId: leafForEntry, circuitId: t3circuit, status: 'open' });
+ok('нельзя удалить узел с собственной записью',
+  (await rejects(() => J.nodes.remove(leafForEntry))) === 'journal-node-has-entries');
+await J.entries.remove('t3a-entry');
+ok('после удаления записи узел уже удаляется', (await rejects(() => J.nodes.remove(leafForEntry))) === null);
+
+const leafForLink = await J.nodes.add({ id: 't3a-leaf-link', kind: 'congregation', parentId: t3circuit, label: 'Лист-связь' });
+const linkId = await J.links.add({ from: J.urn.node(leafForLink), to: J.urn.node(t3circuit), rel: 'relates' });
+ok('нельзя удалить узел, на который/от которого есть связь',
+  (await rejects(() => J.nodes.remove(leafForLink))) === 'journal-node-has-links');
+await J.links.remove(linkId);
+ok('после удаления связи узел уже удаляется', (await rejects(() => J.nodes.remove(leafForLink))) === null);
+
+// 7.9 Итоговая очистка дерева J3a (лист → группа/предгруппа → собрание → район).
+await J.nodes.remove(t3pregroup);
+await J.nodes.remove(t3group);
+await J.nodes.remove(t3a);
+await J.nodes.remove(t3b);
+await J.nodes.remove(t3cong);
+ok('район удаляется, когда все дети убраны', (await rejects(() => J.nodes.remove(t3circuit))) === null);
+
 console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\nХранение Журнала: все проверки пройдены.');
 process.exit(failed ? 1 : 0);

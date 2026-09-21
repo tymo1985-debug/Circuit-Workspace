@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.41.40';
+self.CW_VERSION = '0.41.41';
 
 /**
  * Реестр модулей хаба.
@@ -35,12 +35,13 @@ self.CW_VERSION = '0.41.40';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы',       version: '4.46.62' },
+  'congress-project': { title: 'Конгрессы',       version: '4.46.63' },
   'circuit-planner':  { title: 'Клиндарий',       version: '9.94.16' },
-  'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.38' },
-  'appointments':     { title: 'Назначения',      version: '5.5.77'  },
-  'documents':        { title: 'Документы и данные', version: '1.10.28'  },
-  /* Журнал — J2 (слой хранения в общей базе v6); UI пока на фикстурах.
-     Правила модуля — journal/AGENTS.md. */
-  'journal':          { title: 'Журнал',          version: '0.2.0'   },
+  'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.39' },
+  'appointments':     { title: 'Назначения',      version: '5.5.78'  },
+  'documents':        { title: 'Документы и данные', version: '1.10.29'  },
+  /* Журнал — J3a: реальное дерево район→собрание→группа/предгруппа на
+     CWJournal (создание/переименование/архив/удаление/порядок). Обзор
+     остаётся фикстурой J1. Правила модуля — journal/AGENTS.md. */
+  'journal':          { title: 'Журнал',          version: '0.3.0'   },
 };

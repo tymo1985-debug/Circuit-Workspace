@@ -59,6 +59,10 @@ const PAGES = [
   { title: 'Конгрессы', dir: 'congress-project' },
   { title: 'Документы', dir: 'documents' },
   { title: 'Школа пионеров', dir: 'pioneer-school' },
+  /* Добавлен в J3a: до этого проверка ни разу не видела journal/css/styles.css
+     и не заметила необъявленный --cw-teal в .j-tag--link (найден и заменён
+     на --status-success/-bg в этой же фазе). */
+  { title: 'Журнал', dir: 'journal' },
 ];
 
 const EXTS = ['.css', '.html', '.js'];

@@ -1,5 +1,5 @@
 /**
- * Журнал — стили модуля (J1: только Обзор и Район).
+ * Журнал — стили модуля (Обзор — фикстура J1; Районы — реальное дерево, J3a).
  *
  * Оболочка (.md-shell, .md-topbar-v2, .md-sidenav, .md-bottomnav, .md-page,
  * .md-segmented, .md-chip, .md-fab, .md-status и т.д.) целиком берётся из
@@ -94,7 +94,15 @@
   border: 1px solid var(--md-outline-variant); color: var(--md-on-surface-variant);
 }
 .j-tag svg { width: 12px; height: 12px; flex: 0 0 auto; }
-.j-tag--link { border-color: transparent; background: #123f3a; color: var(--cw-teal); }
+/* До J3a: `color: var(--cw-teal)` — токен, не объявленный нигде в проекте
+   (проверка не ловила: journal отсутствовал в PAGES check-css-vars.mjs).
+   Неразрешимый var() делает всё объявление color недействительным целиком,
+   а не просто «не тем цветом» — реальным цветом был унаследованный от
+   .j-tag (--md-on-surface-variant), фон оставался жёстко тёмным в любой
+   теме. Замена на готовую пару --status-success/-bg: она уже объявлена и
+   для тёмной, и для светлой темы (shared/style.css), смысл тот же
+   (акцентная связь), новый токен вводить не пришлось. */
+.j-tag--link { border-color: transparent; background: var(--status-success-bg); color: var(--status-success); }
 
 /* Дерево района: вложенные группы/предгруппы под собранием */
 .j-tree__child { padding-left: var(--cw-space-6); position: relative; }
@@ -127,3 +135,17 @@
 
 /* --- Заглушка ещё не реализованного раздела (Задачи/Поиск/Архив) ----------- */
 .j-placeholder { padding-top: var(--cw-space-6); }
+
+/* --- J3a (исправлено в корректирующем проходе): действия строки скрыты за
+   обычным шевроном — постоянные ▲/▼/⋮ рядом с каждой строкой расходились с
+   принятым макетом (02-district-m.jpg показывает чистую строку, без них).
+   Шеврон остаётся визуально тем же (opacity в .j-row__end svg), кнопка —
+   лишь сброс паддинга/фона, чтобы не добавить рамку там, где в эталоне её
+   нет; обнаруживается по курсору и лёгкой подложке при наведении/фокусе. */
+.j-row--link { cursor: pointer; }
+.j-row__chevronbtn {
+  background: none; border: 0; padding: 6px; margin: -6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: inherit; cursor: pointer; border-radius: var(--md-radius-full);
+}
+.j-row__chevronbtn:hover, .j-row__chevronbtn:focus-visible { background: var(--md-surface-container-highest); }
