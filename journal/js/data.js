@@ -188,11 +188,19 @@
      обязан явно выбрать API посещения. Чтение не ограничено.
      Сам CWJournal.visits работает через приватный entriesBase. */
   var VISIT_USE_FACADE = 'journal-visit-use-facade';
+  /* J4b: тот же класс защиты для записей ПОСЕЩЕНИЯ (fields.visitId). Их
+     инварианты (узел/район от посещения, неизменяемая привязка, правка
+     только в открытом посещении, удаление без связей) держит
+     CWJournal.visitRecords; общий фасад их не создаёт, не правит и не
+     удаляет и не может «приписать» обычную запись к посещению. */
+  var VISIT_RECORD_USE_FACADE = 'journal-visit-record-use-facade';
+  function hasVisitRef(obj) { return !!(obj && obj.fields && obj.fields.visitId !== undefined && obj.fields.visitId !== null); }
   var entries = {
     get: entriesBase.get,
     getAll: entriesBase.getAll,
     add: function (record) {
       if (record && record.type === 'visit') return Promise.reject(new Error(VISIT_USE_FACADE));
+      if (hasVisitRef(record)) return Promise.reject(new Error(VISIT_RECORD_USE_FACADE));
       return entriesBase.add(record);
     },
     update: async function (id, patch) {
@@ -200,11 +208,13 @@
       if ((current && current.type === 'visit') || (patch && patch.type === 'visit')) {
         throw new Error(VISIT_USE_FACADE);
       }
+      if (hasVisitRef(current) || hasVisitRef(patch)) throw new Error(VISIT_RECORD_USE_FACADE);
       return entriesBase.update(id, patch);
     },
     remove: async function (id) {
       var current = await entriesBase.get(id);
       if (current && current.type === 'visit') throw new Error(VISIT_USE_FACADE);
+      if (hasVisitRef(current)) throw new Error(VISIT_RECORD_USE_FACADE);
       return entriesBase.remove(id);
     },
     byNode: function (nodeId) { return entriesBase.by('nodeId', nodeId); },
@@ -274,7 +284,7 @@
     byNode: async function (nodeId) {
       return sortVisits((await entriesBase.by('nodeId', nodeId)).filter(function (e) { return e.type === 'visit'; }));
     },
-    /** Записи, созданные внутри посещения (J4b заполнит; сейчас всегда []). */
+    /** Записи посещения (J4b), без сортировки — для порядка см. visitRecords.byVisit. */
     children: async function (id) { return visitChildren(await visitOrThrow(id)); },
     add: async function (record) {
       record = record || {};
@@ -339,6 +349,141 @@
     },
   };
 
+  /* ═══ Записи посещения (J4b) ═════════════════════════════════════════════
+   * Строки journalEntries с fields.visitId. Пятого хранилища нет.
+   *  - type: note | observation | question | todo (VISIT_RECORD_TYPES);
+   *  - nodeId/circuitId берутся ИЗ посещения; fields.visitId ставит фасад;
+   *    все три неизменяемы — перенос записи между посещениями не поддержан;
+   *  - текст пользователя — ТОЛЬКО верхнеуровневый body (граница J8: позже он
+   *    уйдёт в sec). fields несёт лишь { visitId, format, seq } — ни копии
+   *    текста, ни HTML;
+   *  - format: paragraph | heading2 | list | quote; у todo — checklist;
+   *  - status: note/observation/question — 'open' (стабильные записи);
+   *    todo — 'open' ↔ 'done' только через complete/reopen;
+   *  - тип меняется в пределах note/observation/question через update();
+   *    превращение в задачу — явный convertToTodo() (однонаправленно);
+   *  - править/создавать/удалять можно только в ОТКРЫТОМ посещении;
+   *    завершённое/архивное — только чтение (journal-visit-readonly);
+   *  - порядок: fields.seq (max+1 при создании), затем createdAt, затем id;
+   *  - remove() отказывает, если на запись/от записи есть связи. */
+  var VISIT_RECORD_TYPES = ['note', 'observation', 'question', 'todo'];
+  var TEXT_TYPES = ['note', 'observation', 'question'];
+  var TEXT_FORMATS = ['paragraph', 'heading2', 'list', 'quote'];
+
+  function cleanBody(body) {
+    if (typeof body !== 'string' || !body.trim()) throw new Error('journal-visit-record-empty');
+    return body.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+  }
+  async function editableVisit(visitId) {
+    var v = visitId ? await entriesBase.get(visitId) : null;
+    if (!v || v.type !== 'visit') throw new Error('journal-visit-not-found');
+    if (v.status !== 'open') throw new Error('journal-visit-readonly');
+    return v;
+  }
+  async function recordOrThrow(id) {
+    var r = await entriesBase.get(id);
+    if (!r || r.type === 'visit' || !hasVisitRef(r)) throw new Error('journal-visit-record-not-found');
+    return r;
+  }
+  function sortRecords(list) {
+    return list.slice().sort(function (a, b) {
+      var sa = a.fields && typeof a.fields.seq === 'number' ? a.fields.seq : Number.MAX_SAFE_INTEGER;
+      var sb = b.fields && typeof b.fields.seq === 'number' ? b.fields.seq : Number.MAX_SAFE_INTEGER;
+      if (sa !== sb) return sa - sb;
+      if ((a.createdAt || '') !== (b.createdAt || '')) return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+
+  var visitRecords = {
+    TYPES: VISIT_RECORD_TYPES,
+    TEXT_TYPES: TEXT_TYPES,
+    FORMATS: TEXT_FORMATS.concat(['checklist']),
+    get: async function (id) {
+      var r = await entriesBase.get(id);
+      return r && r.type !== 'visit' && hasVisitRef(r) ? r : null;
+    },
+    byVisit: async function (visitId) {
+      var v = await entriesBase.get(visitId);
+      if (!v || v.type !== 'visit') return [];
+      return sortRecords(await visitChildren(v));
+    },
+    /** add(visitId, { type, body, format }). Остальные поля вызывающего
+     *  (nodeId, circuitId, fields.visitId, status, title…) не принимаются. */
+    add: async function (visitId, record) {
+      record = record || {};
+      if (VISIT_RECORD_TYPES.indexOf(record.type) === -1) throw new Error('journal-visit-record-invalid-type');
+      var v = await editableVisit(visitId);
+      var body = cleanBody(record.body);
+      var format = record.type === 'todo' ? 'checklist' : (record.format || 'paragraph');
+      if (record.type !== 'todo' && TEXT_FORMATS.indexOf(format) === -1) throw new Error('journal-visit-record-invalid-format');
+      var siblings = await visitChildren(v);
+      var seq = siblings.reduce(function (m, r) {
+        return Math.max(m, r.fields && typeof r.fields.seq === 'number' ? r.fields.seq : 0);
+      }, 0) + 1;
+      return entriesBase.add({
+        type: record.type,
+        nodeId: v.nodeId,
+        circuitId: v.circuitId,
+        status: 'open',
+        body: body,
+        fields: { visitId: v.id, format: format, seq: seq },
+      });
+    },
+    /** update(id, { body?, format?, type? }). Любое другое поле — отказ:
+     *  привязка неизменяема, статус задачи — только complete/reopen. */
+    update: async function (id, patch) {
+      patch = patch || {};
+      var r = await recordOrThrow(id);
+      await editableVisit(r.fields.visitId);
+      var allowed = ['body', 'format', 'type'];
+      Object.keys(patch).forEach(function (k) {
+        if (allowed.indexOf(k) === -1) throw new Error('journal-visit-record-immutable');
+      });
+      var out = {};
+      if ('body' in patch) out.body = cleanBody(patch.body);
+      var nextType = 'type' in patch ? patch.type : r.type;
+      if ('type' in patch && patch.type !== r.type) {
+        if (r.type === 'todo' || TEXT_TYPES.indexOf(patch.type) === -1) throw new Error('journal-visit-record-invalid-type');
+        out.type = patch.type;
+      }
+      if ('format' in patch && patch.format !== r.fields.format) {
+        if (nextType === 'todo' || TEXT_FORMATS.indexOf(patch.format) === -1) throw new Error('journal-visit-record-invalid-format');
+        out.fields = Object.assign({}, r.fields, { format: patch.format });
+      }
+      return entriesBase.update(id, out);
+    },
+    /** Явное превращение текстовой записи в задачу (кнопки «Сделать
+     *  задачей» / «Галочки»). Однонаправленно, статус — open. */
+    convertToTodo: async function (id) {
+      var r = await recordOrThrow(id);
+      await editableVisit(r.fields.visitId);
+      if (r.type === 'todo') throw new Error('journal-visit-record-invalid-type');
+      return entriesBase.update(id, { type: 'todo', status: 'open', fields: Object.assign({}, r.fields, { format: 'checklist' }) });
+    },
+    complete: async function (id) {
+      var r = await recordOrThrow(id);
+      await editableVisit(r.fields.visitId);
+      if (r.type !== 'todo' || r.status !== 'open') throw new Error('journal-visit-record-invalid-transition');
+      return entriesBase.update(id, { status: 'done' });
+    },
+    reopen: async function (id) {
+      var r = await recordOrThrow(id);
+      await editableVisit(r.fields.visitId);
+      if (r.type !== 'todo' || r.status !== 'done') throw new Error('journal-visit-record-invalid-transition');
+      return entriesBase.update(id, { status: 'open' });
+    },
+    remove: async function (id) {
+      var r = await recordOrThrow(id);
+      await editableVisit(r.fields.visitId);
+      var ref = 'journal:entry/' + id;
+      var asFrom = await db().journalLinks.byIndex('from', ref);
+      var asTo = await db().journalLinks.byIndex('to', ref);
+      if (asFrom.length || asTo.length) throw new Error('journal-visit-record-has-links');
+      return entriesBase.remove(id);
+    },
+  };
+
   /* Связи неизменяемы: поменять связь = удалить и завести новую. updatedAt им
      не нужен, поэтому свой add без stamped(). */
   var links = {
@@ -376,6 +521,7 @@
     nodes: nodes,
     entries: entries,
     visits: visits,
+    visitRecords: visitRecords,
     links: links,
     meta: meta,
     urn: urn,

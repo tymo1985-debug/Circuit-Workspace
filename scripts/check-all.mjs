@@ -200,6 +200,12 @@ const CHECKS = [
     deps: ['fake-indexeddb', 'acorn', 'acorn-walk'],
   },
   {
+    file: 'check-journal-visit-records.mjs',
+    title: 'Записи посещения Журнала',
+    why: 'содержимое посещения только через visitRecords: привязка из посещения и неизменяема, правка лишь в открытом посещении, общий фасад их не обходит, текст только в body',
+    deps: ['fake-indexeddb', 'acorn', 'acorn-walk'],
+  },
+  {
     file: 'check-shell-bump.mjs',
     title: 'Бамп при правке файлов оболочки',
     why: 'изменённый файл в прекэше без подъёма версии не доезжает до пользователя и даёт смесь поколений',

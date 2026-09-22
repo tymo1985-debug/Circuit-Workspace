@@ -456,19 +456,29 @@
           </div>
 
           <div class="j-editor">
-            <div class="j-editor__bar" role="toolbar" aria-disabled="true" data-i18n-aria-label="j.editor.toolbar" aria-label="Оформление записи">
-              <button type="button" class="j-tool active" disabled data-i18n="j.editor.paragraph">Абзац</button>
-              <button type="button" class="j-tool" disabled>H2</button>
-              <button type="button" class="j-tool" disabled data-i18n="j.editor.list">Список</button>
-              <button type="button" class="j-tool" disabled data-i18n="j.editor.checks">Галочки</button>
-              <button type="button" class="j-tool" disabled data-i18n="j.editor.quote">Цитата</button>
+            <div class="j-editor__bar" role="toolbar" data-i18n-aria-label="j.editor.toolbar" aria-label="Оформление записи">
+              <button type="button" class="j-tool active" data-format="paragraph" data-i18n="j.editor.paragraph">Абзац</button>
+              <button type="button" class="j-tool" data-format="heading2">H2</button>
+              <button type="button" class="j-tool" data-format="list" data-i18n="j.editor.list">Список</button>
+              <button type="button" class="j-tool" data-cmd="to-todo" data-i18n="j.editor.checks">Галочки</button>
+              <button type="button" class="j-tool" data-format="quote" data-i18n="j.editor.quote">Цитата</button>
               <span class="j-editor__spacer"></span>
-              <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg><span data-i18n="j.editor.to_task">В задачу</span></button>
+              <button type="button" class="j-tool" data-cmd="to-todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg><span data-i18n="j.editor.to_task">В задачу</span></button>
+              <!-- «На след. визит» — J5 (carryKey), «Связать» — J7 (связи): видимы, неактивны. -->
               <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg><span data-i18n="j.editor.next_visit">На след. визит</span></button>
               <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
             </div>
             <div class="j-editor__body">
-              <p class="j-editor__empty" data-i18n="j.visit.editor_pending">Записи этого посещения можно будет вести в следующей фазе.</p>
+              <!-- Записи посещения (J4b): блоки из CWJournal.visitRecords.
+                   Правка — по клику на блок, явное «Сохранить», без автосохранения. -->
+              <p class="j-editor__readonly" id="visitReadonly" hidden></p>
+              <div id="visitRecords"></div>
+              <div class="j-editor__foot" id="visitAddWrap">
+                <button type="button" class="md-btn md-btn-text" id="visitAddRecord">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  <span data-i18n="j.visit.add_record">Добавить запись</span>
+                </button>
+              </div>
             </div>
           </div>
 

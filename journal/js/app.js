@@ -288,6 +288,15 @@
       'journal-visit-has-links': 'j.error.visit_has_links',
       'journal-visit-not-found': 'j.error.visit_not_found',
       'journal-visit-use-facade': 'j.error.visit_use_facade',
+      'journal-visit-record-use-facade': 'j.error.visit_record_use_facade',
+      'journal-visit-record-empty': 'j.error.visit_record_empty',
+      'journal-visit-record-invalid-type': 'j.error.visit_record_type',
+      'journal-visit-record-invalid-format': 'j.error.visit_record_format',
+      'journal-visit-record-immutable': 'j.error.visit_record_immutable',
+      'journal-visit-record-invalid-transition': 'j.error.visit_record_transition',
+      'journal-visit-record-has-links': 'j.error.visit_record_has_links',
+      'journal-visit-record-not-found': 'j.error.visit_record_not_found',
+      'journal-visit-readonly': 'j.error.visit_readonly',
     };
     var key = known[err && err.message];
     return key ? t(key) : (err && err.message) || String(err);
@@ -666,13 +675,251 @@
     var st = visitStatusView(visit);
     $('#visitStatusChip').textContent = st.label;
 
-    var children = await CWJournal.visits.children(visit.id);
-    var tasks = children.filter(function (e) { return e.type === 'todo'; }).length;
-    var carry = children.filter(function (e) { return !!e.carryKey; }).length;
-    $('#visitSummaryTasks').textContent = tasks ? String(tasks) : t('j.visit.summary_none');
-    $('#visitSummaryCarry').textContent = carry ? String(carry) : t('j.visit.summary_none');
+    // Новый визит/переход на другой — черновик прежнего не переносится.
+    if (editor.visitId !== visit.id) editor = { visitId: visit.id, draft: null, busy: false };
+    editor.visit = visit;
+    await renderVisitRecords();
 
     wireVisitMenu(visit, node);
+  }
+
+  /* ═══ Редактор записей посещения (J4b) ═════════════════════════════════
+   * Один блок правится за раз (editor.draft); сохранение — явное, без
+   * автосохранения. Все записи — через CWJournal.visitRecords. Текст
+   * рендерится только через esc(); HTML не хранится и не собирается из
+   * пользовательского ввода. */
+  var editor = { visitId: null, visit: null, draft: null, busy: false };
+  var FORMAT_KEYS = { paragraph: 'j.editor.paragraph', list: 'j.editor.list', quote: 'j.editor.quote' };
+
+  function visitEditable() { return !!(editor.visit && editor.visit.status === 'open'); }
+
+  async function renderVisitRecords() {
+    var visit = editor.visit;
+    var records = await CWJournal.visitRecords.byVisit(visit.id);
+    var editable = visitEditable();
+    var box = $('#visitRecords');
+    box.innerHTML = '';
+
+    var ro = $('#visitReadonly');
+    ro.hidden = editable;
+    if (!editable) ro.textContent = t(visit.status === 'archived' ? 'j.visit.readonly_archived' : 'j.visit.readonly_completed');
+    if (!editable) editor.draft = null;
+    $('#visitAddWrap').hidden = !editable || !!(editor.draft && !editor.draft.id);
+    $all('#visitDetailView .j-editor__bar [data-format], #visitDetailView .j-editor__bar [data-cmd]').forEach(function (b) {
+      b.disabled = !editable;
+    });
+    syncToolbar();
+
+    if (!records.length && !(editor.draft && !editor.draft.id)) {
+      var empty = document.createElement('p');
+      empty.className = 'j-editor__empty';
+      empty.textContent = t(editable ? 'j.visit.records_empty' : 'j.visit.records_empty_readonly');
+      box.appendChild(empty);
+    }
+    records.forEach(function (r) {
+      box.appendChild(editor.draft && editor.draft.id === r.id ? editBlock(r) : viewBlock(r, editable));
+    });
+    if (editor.draft && !editor.draft.id) box.appendChild(editBlock(null));
+
+    var todos = records.filter(function (r) { return r.type === 'todo'; });
+    var done = todos.filter(function (r) { return r.status === 'done'; }).length;
+    $('#visitSummaryTasks').textContent = todos.length
+      ? t('j.visit.summary_tasks_counts').replace('%d', String(todos.length - done)).replace('%d', String(done))
+      : t('j.visit.summary_none');
+    // Перенос на следующее посещение — J5: пока всегда нейтрально.
+    $('#visitSummaryCarry').textContent = t('j.visit.summary_none');
+
+    var input = box.querySelector('.j-block__input');
+    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+  }
+
+  function syncToolbar() {
+    var fmt = editor.draft ? editor.draft.format : 'paragraph';
+    $all('#visitDetailView .j-editor__bar [data-format]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-format') === fmt);
+    });
+  }
+
+  function typeTag(r) {
+    if (r.type !== 'question' && r.type !== 'observation') return '';
+    return '<span class="j-tag j-block__tag">' + esc(t('j.record.type.' + r.type)) + '</span>';
+  }
+
+  function viewBlock(r, editable) {
+    var el = document.createElement('div');
+    var fmt = (r.fields && r.fields.format) || 'paragraph';
+    el.className = 'j-block j-block--' + (r.type === 'todo' ? 'checklist' : fmt) + (editable ? ' j-block--editable' : '');
+    el.dataset.recordId = r.id;
+    if (r.type === 'todo') {
+      var isDone = r.status === 'done';
+      el.innerHTML = '<div class="j-check' + (isDone ? ' j-check--done' : '') + '">' +
+        '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (editable ? '' : ' disabled') + '></button>' +
+        '<span class="j-check__text">' + esc(r.body) + '</span></div>';
+      el.querySelector('.j-check__box').addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!editable || editor.busy) return;
+        runRecordOp(function () { return isDone ? CWJournal.visitRecords.reopen(r.id) : CWJournal.visitRecords.complete(r.id); });
+      });
+    } else if (fmt === 'list') {
+      el.innerHTML = '<ul>' + r.body.split('\n').filter(function (l) { return l.trim(); }).map(function (l) {
+        return '<li>' + esc(l.replace(/^\s*[-•*]\s*/, '')) + '</li>';
+      }).join('') + '</ul>' + typeTag(r);
+    } else {
+      el.innerHTML = esc(r.body) + typeTag(r);
+    }
+    if (editable) {
+      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', t('j.record.edit'));
+      var start = function () {
+        if (editor.busy) return;
+        editor.draft = { id: r.id, type: r.type, format: fmt === 'checklist' ? 'checklist' : fmt, body: r.body, error: '' };
+        renderVisitRecords();
+      };
+      el.addEventListener('click', start);
+      el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target === el) { e.preventDefault(); start(); } });
+    }
+    return el;
+  }
+
+  function editBlock(r) {
+    var d = editor.draft;
+    var el = document.createElement('div');
+    el.className = 'j-block j-block--edit';
+    var isTodo = d.type === 'todo';
+    var typeOptions = isTodo ? '' : ['note', 'observation', 'question'].map(function (k) {
+      return '<option value="' + k + '"' + (d.type === k ? ' selected' : '') + '>' + esc(t('j.record.type.' + k)) + '</option>';
+    }).join('');
+    el.innerHTML =
+      '<textarea class="j-block__input j-block__input--' + esc(d.format) + '" rows="2" aria-label="' + esc(t('j.record.placeholder')) + '" placeholder="' + esc(t('j.record.placeholder')) + '"></textarea>' +
+      (d.error ? '<p class="j-dialog-error" role="alert">' + esc(d.error) + '</p>' : '');
+    el.querySelector('textarea').value = d.body || '';
+    el.querySelector('textarea').addEventListener('input', function (e) { d.body = e.target.value; });
+
+    var actions = document.createElement('div');
+    actions.className = 'j-block__actions';
+    actions.innerHTML =
+      '<button type="button" class="md-btn md-btn-filled" data-act="save">' + esc(t('j.action.save')) + '</button>' +
+      '<button type="button" class="md-btn md-btn-text" data-act="cancel">' + esc(t('j.action.cancel')) + '</button>' +
+      '<button type="button" class="md-btn md-btn-tonal" disabled>' + svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>', 'width="18" height="18"') + esc(t('j.editor.next_visit_long')) + '</button>' +
+      (isTodo ? '' : '<button type="button" class="md-btn md-btn-outlined" data-act="to-todo">' + svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="18" height="18"') + esc(t('j.editor.make_todo')) + '</button>') +
+      (isTodo ? '' : '<select class="j-block__type" data-act="type" aria-label="' + esc(t('j.record.type_label')) + '">' + typeOptions + '</select>') +
+      (r ? '<button type="button" class="md-btn md-btn-text" data-act="delete">' + esc(t('j.action.delete')) + '</button>' : '');
+    actions.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]');
+      if (!b || b.tagName === 'SELECT') return;
+      var act = b.getAttribute('data-act');
+      if (act === 'save') saveDraft();
+      else if (act === 'cancel') { editor.draft = null; renderVisitRecords(); }
+      else if (act === 'to-todo') draftToTodo();
+      else if (act === 'delete') deleteRecord(r);
+    });
+    var sel = actions.querySelector('select');
+    if (sel) sel.addEventListener('change', function () { d.type = sel.value; });
+    var wrap = document.createDocumentFragment();
+    wrap.appendChild(el);
+    wrap.appendChild(actions);
+    var holder = document.createElement('div');
+    holder.appendChild(wrap);
+    return holder;
+  }
+
+  /** Операция над записью: одна за раз; ошибка — видимая, данные на экране
+   *  перечитываются из базы после любого исхода (ничего «оптимистичного»). */
+  async function runRecordOp(fn, onError) {
+    if (editor.busy) return;
+    editor.busy = true;
+    try {
+      await fn();
+      editor.busy = false;
+    } catch (err) {
+      editor.busy = false;
+      if (onError) onError(err); else alert(errorMessage(err));
+    }
+    // Статус посещения мог смениться в другой вкладке — берём свежий.
+    var fresh = await CWJournal.visits.get(editor.visitId);
+    if (fresh) editor.visit = fresh;
+    renderVisitRecords();
+  }
+
+  function saveDraft() {
+    var d = editor.draft;
+    if (!d) return;
+    if (!d.body || !d.body.trim()) { d.error = t('j.error.visit_record_empty'); renderVisitRecords(); return; }
+    runRecordOp(async function () {
+      if (!d.id) {
+        await CWJournal.visitRecords.add(editor.visitId, { type: d.type, body: d.body, format: d.format });
+      } else {
+        var cur = await CWJournal.visitRecords.get(d.id);
+        var patch = {};
+        if (cur.body !== d.body) patch.body = d.body;
+        if (cur.type !== 'todo' && cur.type !== d.type) patch.type = d.type;
+        if (cur.type !== 'todo' && cur.fields.format !== d.format) patch.format = d.format;
+        if (Object.keys(patch).length) await CWJournal.visitRecords.update(d.id, patch);
+      }
+      editor.draft = null;
+    }, function (err) { d.error = errorMessage(err); });
+  }
+
+  function draftToTodo() {
+    var d = editor.draft;
+    if (!d || d.type === 'todo') return;
+    if (!d.body || !d.body.trim()) { d.error = t('j.error.visit_record_empty'); renderVisitRecords(); return; }
+    runRecordOp(async function () {
+      if (!d.id) {
+        await CWJournal.visitRecords.add(editor.visitId, { type: 'todo', body: d.body });
+      } else {
+        var cur = await CWJournal.visitRecords.get(d.id);
+        if (cur.body !== d.body) await CWJournal.visitRecords.update(d.id, { body: d.body });
+        await CWJournal.visitRecords.convertToTodo(d.id);
+      }
+      editor.draft = null;
+    }, function (err) { d.error = errorMessage(err); });
+  }
+
+  function deleteRecord(r) {
+    if (!confirm(t('j.confirm.delete_record'))) return;
+    runRecordOp(async function () {
+      await CWJournal.visitRecords.remove(r.id);
+      editor.draft = null;
+    }, function (err) { if (editor.draft) editor.draft.error = errorMessage(err); });
+  }
+
+  function wireVisitEditorChrome() {
+    $('#visitAddRecord').addEventListener('click', function () {
+      if (!visitEditable() || editor.busy) return;
+      editor.draft = { id: null, type: 'note', format: 'paragraph', body: '', error: '' };
+      renderVisitRecords();
+    });
+    $all('#visitDetailView .j-editor__bar [data-format]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!visitEditable() || editor.busy) return;
+        var d = editor.draft;
+        if (!d) {
+          // Без выбранного блока формат начинает новую запись в этом формате.
+          editor.draft = { id: null, type: 'note', format: b.getAttribute('data-format'), body: '', error: '' };
+          renderVisitRecords();
+          return;
+        }
+        if (d.type === 'todo') return;
+        d.format = b.getAttribute('data-format');
+        syncToolbar();
+        var input = $('#visitRecords .j-block__input');
+        if (input) { input.className = 'j-block__input j-block__input--' + d.format; input.focus(); }
+      });
+    });
+    $all('#visitDetailView .j-editor__bar [data-cmd="to-todo"]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!visitEditable() || editor.busy) return;
+        if (!editor.draft) {
+          // Без выбранного блока — новая задача (сохраняется явным «Сохранить»).
+          editor.draft = { id: null, type: 'todo', format: 'checklist', body: '', error: '' };
+          renderVisitRecords();
+          return;
+        }
+        draftToTodo();
+      });
+    });
   }
 
   function wireVisitMenu(visit, node) {
@@ -1273,6 +1520,7 @@
     if (self.CWI18n) self.CWI18n.init({ module: MODULE_ID });
     initLanguage();
     initVersion();
+    wireVisitEditorChrome();
     applyRoute();
 
     $('#searchBtn').addEventListener('click', function () { location.hash = '#search'; });

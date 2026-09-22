@@ -36,6 +36,17 @@
   unarchive. Записи внутри посещения несут `fields.visitId`; `visits.remove()`
   отказывает, пока есть записи или связи. Сезонная подпись («весна 2028») —
   производная от `dateFrom`, не хранится.
+- Записи посещения (J4b) — `journalEntries` с `fields.visitId`, только через
+  `CWJournal.visitRecords`; общие `entries.add/update/remove` их не создают,
+  не правят, не удаляют и не «приписывают» к посещению
+  (`journal-visit-record-use-facade`). Типы `note|observation|question|todo`;
+  `nodeId/circuitId/fields.visitId` берутся из посещения и неизменяемы.
+  Текст пользователя — только `body`; `fields` = `{ visitId, format, seq }`,
+  без копии текста и без HTML. `format`: `paragraph|heading2|list|quote`,
+  у задачи — `checklist`. Задача `open ↔ done` только через `complete/reopen`,
+  превращение в задачу — явный `convertToTodo`. Правка возможна только в
+  открытом посещении (`journal-visit-readonly`). Порядок — `fields.seq`.
+  Удаление отказывает при связях (`journal-visit-record-has-links`).
 - Маршрут — `journal/js/route.js` (`CWJournalRoute.parse/build`), один роутер;
   неполный хвост сводится к ближайшему валидному контексту.
 - «На следующее посещение» — строка `carryKey = '<nodeId>:open'`; у закрытых

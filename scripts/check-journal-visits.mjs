@@ -115,11 +115,13 @@ ok('unarchive открытого возвращает open', (await J.visits.una
 
 /* ═══ 6. Безопасное удаление ════════════════════════════════════════════ */
 console.log('\n6. Удаление');
-const child = await J.entries.add({ type: 'todo', nodeId: cong, circuitId: c, status: 'open', fields: { visitId: v1 } });
+// J4b: запись посещения создаётся только через visitRecords и только в открытом посещении.
+await J.visits.reopen(v1);
+const child = await J.visitRecords.add(v1, { type: 'todo', body: 'задача' });
 ok('children() находит запись посещения', (await J.visits.children(v1)).map((e) => e.id).join() === child);
 ok('удаление посещения с записями отклонено', (await rejects(() => J.visits.remove(v1))) === 'journal-visit-has-entries');
 ok('после отказа посещение и запись целы', !!(await J.visits.get(v1)) && !!(await J.entries.get(child)));
-await J.entries.remove(child);
+await J.visitRecords.remove(child);
 const lk = await J.links.add({ from: J.urn.entry(v1), to: J.urn.node(cong), rel: 'relates' });
 ok('удаление посещения со связью отклонено', (await rejects(() => J.visits.remove(v1))) === 'journal-visit-has-links');
 await J.links.remove(lk);
@@ -187,7 +189,7 @@ console.log('\n9. Обход через CWJournal.entries закрыт');
   }
   ok('после попыток обхода посещение не изменилось', JSON.stringify(await J.visits.get(bv)) === before);
 
-  const kid = await J.entries.add({ type: 'todo', nodeId: cong, circuitId: c, status: 'open', fields: { visitId: bv } });
+  const kid = await J.visitRecords.add(bv, { type: 'todo', body: 'задача' });
   ok('entries.remove(visit с записью) отклонён — обхода visits.remove нет', (await rejects(() => J.entries.remove(bv))) === E);
   ok('посещение и его запись целы', !!(await J.visits.get(bv)) && !!(await J.entries.get(kid)));
   ok('visits.remove по-прежнему отказывает с записью', (await rejects(() => J.visits.remove(bv))) === 'journal-visit-has-entries');
@@ -196,7 +198,7 @@ console.log('\n9. Обход через CWJournal.entries закрыт');
   ok('note → visit через entries.update запрещён', (await rejects(() => J.entries.update(note, { type: 'visit' }))) === E);
   ok('обычная запись: update работает', (await J.entries.update(note, { status: 'done' })).status === 'done');
   ok('обычная запись: remove работает', (await rejects(() => J.entries.remove(note))) === null && (await J.entries.get(note)) === null);
-  ok('обычная запись-ребёнок удаляется через entries.remove', (await rejects(() => J.entries.remove(kid))) === null);
+  ok('запись посещения удаляется только через visitRecords.remove', (await rejects(() => J.visitRecords.remove(kid))) === null);
 
   ok('visits.* работают штатно: update', (await J.visits.update(bv, { dateTo: '2028-09-13' })).dateTo === '2028-09-13');
   ok('visits.* работают штатно: complete/archive', (await J.visits.complete(bv)).status === 'completed' && (await J.visits.archive(bv)).status === 'archived');

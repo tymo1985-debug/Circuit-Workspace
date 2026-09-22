@@ -207,10 +207,71 @@
 .j-tool.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 .j-tool:disabled { opacity: 1; }
 .j-editor__body { padding: var(--cw-space-4); }
-.j-editor__empty {
-  margin: 0; font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px;
+.j-editor__empty, .j-editor__readonly {
+  margin: 0 0 var(--cw-space-3); font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px;
   color: var(--md-on-surface-variant);
 }
+.j-tool:not(:disabled) { cursor: pointer; }
+.j-tool:not(:disabled):hover { background: var(--md-surface-container-highest); }
+.j-tool.active:not(:disabled):hover { background: var(--md-secondary-container); }
+.j-tool:disabled { opacity: 0.55; }
+.j-tool.active:disabled { opacity: 1; }
+
+/* --- J4b: блоки записей посещения (эталон 04-visit) --------------------- */
+.j-block {
+  position: relative; padding: 2px 0 2px 26px; margin: 0 0 var(--cw-space-3);
+  color: var(--md-on-surface); overflow-wrap: anywhere;
+}
+.j-block::before {
+  content: "\283F"; position: absolute; left: 2px; top: 2px;
+  color: var(--md-outline); opacity: 0.5; font-size: 13px; line-height: 20px;
+}
+.j-block--editable { cursor: text; border-radius: var(--md-radius-sm); }
+.j-block--editable:hover { background: var(--md-surface-container); }
+.j-block--editable:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; }
+.j-block--heading2 { font: 500 16px/24px var(--md-font-family); letter-spacing: 0.1px; }
+.j-block--paragraph { font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px; white-space: pre-line; }
+.j-block--list ul { margin: 0; padding-left: 18px; font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px; }
+.j-block--list li { margin-bottom: 2px; }
+.j-block--quote { margin-left: 26px; padding-left: 12px; font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); white-space: pre-line; }
+.j-block--quote::before { left: -24px; }
+.j-block--quote::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--cw-module); }
+.j-block__tag { margin-left: var(--cw-space-2); vertical-align: 1px; }
+.j-check { display: flex; align-items: flex-start; gap: 10px; font: 400 14px/22px var(--md-font-family); }
+.j-check__box {
+  width: 18px; height: 18px; flex: 0 0 auto; margin-top: 2px; padding: 0;
+  border-radius: 4px; border: 2px solid var(--md-outline); background: transparent; cursor: pointer;
+}
+.j-check__box:disabled { cursor: default; }
+.j-check__box[aria-checked="true"] { background: var(--md-primary); border-color: var(--md-primary); }
+.j-check--done .j-check__text { text-decoration: line-through; color: var(--md-on-surface-variant); }
+.j-check__text { white-space: pre-line; }
+.j-block--edit {
+  padding: var(--cw-space-2) var(--cw-space-3) var(--cw-space-2) 26px;
+  border: 2px solid var(--cw-module); border-radius: var(--md-radius-md);
+  margin-left: -12px; margin-right: -12px;
+}
+.j-block--edit::before { left: 10px; top: 10px; }
+.j-block__input {
+  width: 100%; box-sizing: border-box; border: 0; background: transparent; resize: none;
+  color: var(--md-on-surface); font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px;
+  padding: 0; min-height: 44px; field-sizing: content;
+}
+.j-block__input:focus { outline: none; }
+.j-block__input--heading2 { font: 500 16px/24px var(--md-font-family); }
+.j-block__input--quote { font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-block__actions {
+  display: flex; flex-wrap: wrap; gap: var(--cw-space-2); align-items: center;
+  margin: var(--cw-space-3) 0 var(--cw-space-3) 14px;
+}
+.j-block__actions .md-btn > svg { width: 18px; height: 18px; }
+.j-block__type {
+  height: 36px; padding: 0 10px; border-radius: var(--md-radius-full);
+  border: 1px solid var(--md-outline-variant); background: var(--md-surface); color: var(--md-on-surface);
+  font: 500 13px/18px var(--md-font-family);
+}
+.j-editor__foot { margin-left: 14px; }
+.j-editor__foot .md-btn > svg { width: 18px; height: 18px; }
 .j-dialog-error {
   margin: var(--cw-space-2) 0 0; font: 400 13px/18px var(--md-font-family);
   color: var(--status-critical, var(--md-error));
