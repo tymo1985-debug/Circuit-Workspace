@@ -35,6 +35,7 @@
         <p class="md-topbar-v2__title" data-i18n="module.journal.title">Журнал</p>
         <p class="md-topbar-v2__sub">
           <span id="moduleVersion"></span>
+          <span id="topbarContext"></span>
         </p>
       </div>
     </div>
@@ -325,14 +326,16 @@
 
           <div class="md-toolbar">
             <div class="md-segmented j-tabs">
-              <button type="button" class="active" data-i18n="j.nav.overview">Обзор</button>
-              <button type="button" data-i18n="j.tab.visits" disabled>Посещения</button>
+              <button type="button" class="active" data-cong-tab="overview" data-i18n="j.nav.overview">Обзор</button>
+              <button type="button" data-cong-tab="visits" data-i18n="j.tab.visits">Посещения</button>
               <button type="button" data-i18n="j.tab.entries" disabled>Записи</button>
               <button type="button" data-i18n="j.nav.tasks" disabled>Задачи</button>
               <button type="button" data-i18n="j.nav.archive" disabled>Архив</button>
             </div>
           </div>
 
+          <!-- Вкладка «Обзор» собрания (J3b). -->
+          <div id="congOverviewPanel">
           <!-- Карточка идентичности собрания. Три взаимоисключающих состояния
                (linked/unlinked/broken) переключаются показом/скрытием трёх
                блоков ниже — разметка одной геометрии на все три, как того
@@ -408,10 +411,110 @@
           <!-- Будущие разделы (визиты/проекты района) — намеренно нейтральны:
                в J3b фиктивных данных нет (см. j-placeholder ниже и J3b spec). -->
           <div class="j-sec j-placeholder">
-            <p class="md-emptystate__text" data-i18n="j.congregation.future_hint">Посещения, записи и задачи этого собрания появятся здесь в одной из следующих фаз.</p>
+            <p class="md-emptystate__text" data-i18n="j.congregation.future_hint">Записи и задачи этого собрания появятся здесь в одной из следующих фаз.</p>
+          </div>
+          </div>
+
+          <!-- Вкладка «Посещения» (J4a): реальные посещения узла из
+               journalEntries (type:'visit'), новые сверху. -->
+          <div id="congVisitsPanel" hidden>
+            <div class="j-sec">
+              <div class="j-sec__head">
+                <span class="j-sec__title" data-i18n="j.tab.visits">Посещения</span>
+                <span class="j-sec__count" id="congVisitsCount"></span>
+              </div>
+              <div id="congVisitsList"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Посещение (J4a): #districts/<c>/congregation/<n>/visit/<v>.
+             Эталон — 04-visit-m.jpg / 04-visit-d.jpg. Баннер переноса (J5),
+             содержимое редактора (J4b) и связь с проектом (J7) здесь не
+             заполняются фиктивными данными: баннер скрыт, пока переносов нет,
+             редактор показывает нейтральное пустое состояние. -->
+        <div id="visitDetailView" hidden>
+          <p class="j-crumb">
+            <a href="#" id="visitCrumbCircuit"></a>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            <a href="#" id="visitCrumbCong"></a>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            <b id="visitCrumbLabel"></b>
+          </p>
+          <div class="md-page__header">
+            <div>
+              <h1 class="md-page__title" id="visitTitle"></h1>
+              <p class="md-page__lede" id="visitLede"></p>
+            </div>
+            <div class="j-visit__chips">
+              <span class="md-chip" id="visitStatusChip"></span>
+              <span class="md-chip" id="visitProtectionChip">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                <span data-i18n="j.visit.protection_normal">Обычная</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="j-editor">
+            <div class="j-editor__bar" role="toolbar" aria-disabled="true" data-i18n-aria-label="j.editor.toolbar" aria-label="Оформление записи">
+              <button type="button" class="j-tool active" disabled data-i18n="j.editor.paragraph">Абзац</button>
+              <button type="button" class="j-tool" disabled>H2</button>
+              <button type="button" class="j-tool" disabled data-i18n="j.editor.list">Список</button>
+              <button type="button" class="j-tool" disabled data-i18n="j.editor.checks">Галочки</button>
+              <button type="button" class="j-tool" disabled data-i18n="j.editor.quote">Цитата</button>
+              <span class="j-editor__spacer"></span>
+              <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg><span data-i18n="j.editor.to_task">В задачу</span></button>
+              <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg><span data-i18n="j.editor.next_visit">На след. визит</span></button>
+              <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
+            </div>
+            <div class="j-editor__body">
+              <p class="j-editor__empty" data-i18n="j.visit.editor_pending">Записи этого посещения можно будет вести в следующей фазе.</p>
+            </div>
+          </div>
+
+          <div class="j-sec">
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.visit.summary_title">Итоги визита</span>
+            </div>
+            <div class="j-row">
+              <div class="j-row__ico"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
+              <div class="j-row__body">
+                <p class="j-row__title" data-i18n="j.visit.summary_tasks">Задачи, созданные на этом визите</p>
+                <p class="j-row__meta" id="visitSummaryTasks"></p>
+              </div>
+            </div>
+            <div class="j-row">
+              <div class="j-row__ico"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg></div>
+              <div class="j-row__body">
+                <p class="j-row__title" data-i18n="j.visit.summary_carry">Помечено «на следующее посещение»</p>
+                <p class="j-row__meta" id="visitSummaryCarry"></p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      <!-- Диалог посещения: создание и правка дат (J4a). -->
+      <dialog id="visitDialog" class="md-dialog" aria-labelledby="visitDialogTitle">
+        <form method="dialog" id="visitDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="visitDialogTitle"></h3></div>
+          <div class="md-dialog-body">
+            <div class="md-field">
+              <input type="date" id="visitDialogFrom" required placeholder=" ">
+              <label for="visitDialogFrom" data-i18n="j.field.date_from">Начало</label>
+            </div>
+            <div class="md-field">
+              <input type="date" id="visitDialogTo" required placeholder=" ">
+              <label for="visitDialogTo" data-i18n="j.field.date_to">Окончание</label>
+            </div>
+            <p class="j-dialog-error" id="visitDialogError" role="alert" hidden></p>
+          </div>
+          <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" id="visitDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+            <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
+          </div>
+        </form>
+      </dialog>
 
       <!-- Диалог связывания со справочником: список кандидатов + создание новой
            записи. Один диалог на unlinked/broken — режим (link vs create)
@@ -569,6 +672,7 @@
 <script src="../shared/db.js"></script>
 <script src="../shared/directory.js"></script>
 <script src="js/data.js"></script>
+<script src="js/route.js"></script>
 <script src="js/app.js"></script>
 <script src="../shared/backup.js"></script>
 <script src="../shared/nav.js" defer></script>

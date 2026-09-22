@@ -26,12 +26,12 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.42',
+  version: '0.41.43',
   changes: [
-    { module: 'journal', version: '0.4.0', note: 'Экран собрания подключён к общему справочнику CWDirectory: связывание, создание записи, разрыв связи, расписание встреч остаётся своим полем Журнала' },
-    { module: 'congress-project', version: '4.46.64', note: 'Патч-бамп: правка общего слоя (shared/directory.js)' },
-    { module: 'pioneer-school', version: '1.14.40', note: 'Патч-бамп: правка общего слоя (shared/directory.js)' },
-    { module: 'appointments', version: '5.5.79', note: 'Патч-бамп: правка общего слоя (shared/directory.js)' },
-    { module: 'documents', version: '1.10.30', note: 'Патч-бамп: правка общего слоя (shared/directory.js)' },
+    { module: 'journal', version: '0.5.0', note: 'Посещения: вкладка «Посещения» собрания, экран посещения, создание/правка дат, завершение/архив, безопасное удаление' },
+    { module: 'congress-project', version: '4.46.65', note: 'Патч-бамп: правка общего слоя (реестр версий)' },
+    { module: 'pioneer-school', version: '1.14.41', note: 'Патч-бамп: правка общего слоя (реестр версий)' },
+    { module: 'appointments', version: '5.5.80', note: 'Патч-бамп: правка общего слоя (реестр версий)' },
+    { module: 'documents', version: '1.10.31', note: 'Патч-бамп: правка общего слоя (реестр версий)' },
   ],
 };

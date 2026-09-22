@@ -180,18 +180,163 @@
   }
 
   var entriesBase = rowsApi('journalEntries');
+  /* Общий фасад записей НЕ мутирует посещения. Инварианты посещения
+     (родитель, даты, неизменяемые поля, статус только через жизненный
+     цикл, удаление только без записей/связей) держит CWJournal.visits;
+     без этого стража entries.add/update/remove обходили бы их все через
+     тот же официальный фасад. Вызов не перенаправляется молча — вызывающий
+     обязан явно выбрать API посещения. Чтение не ограничено.
+     Сам CWJournal.visits работает через приватный entriesBase. */
+  var VISIT_USE_FACADE = 'journal-visit-use-facade';
   var entries = {
     get: entriesBase.get,
     getAll: entriesBase.getAll,
-    add: entriesBase.add,
-    update: entriesBase.update,
-    remove: entriesBase.remove,
+    add: function (record) {
+      if (record && record.type === 'visit') return Promise.reject(new Error(VISIT_USE_FACADE));
+      return entriesBase.add(record);
+    },
+    update: async function (id, patch) {
+      var current = await entriesBase.get(id);
+      if ((current && current.type === 'visit') || (patch && patch.type === 'visit')) {
+        throw new Error(VISIT_USE_FACADE);
+      }
+      return entriesBase.update(id, patch);
+    },
+    remove: async function (id) {
+      var current = await entriesBase.get(id);
+      if (current && current.type === 'visit') throw new Error(VISIT_USE_FACADE);
+      return entriesBase.remove(id);
+    },
     byNode: function (nodeId) { return entriesBase.by('nodeId', nodeId); },
     byCircuit: function (circuitId) { return entriesBase.by('circuitId', circuitId); },
     byType: function (type) { return entriesBase.by('type', type); },
     byStatus: function (status) { return entriesBase.by('status', status); },
     /** Открытые пункты «на следующее посещение» одного узла. */
     openCarry: function (nodeId) { return entriesBase.by('carryKey', carryKeyFor(nodeId)); },
+  };
+
+  /* ═══ Посещения (J4a) ═══════════════════════════════════════════════════
+   * Посещение — строка journalEntries с type:'visit'. Пятого хранилища нет.
+   *  - родитель: собрание, группа или предгруппа (VISIT_PARENT_KINDS);
+   *    circuitId наследуется от узла; type/nodeId/circuitId неизменяемы;
+   *  - dateFrom/dateTo — 'YYYY-MM-DD', обе обязательны, настоящие даты
+   *    календаря, dateTo >= dateFrom; пересечение посещений одного узла НЕ
+   *    запрещено (требования такого нет);
+   *  - status: 'open' → 'completed' (reopen обратно разрешён); из любого из
+   *    двух → 'archived' c archivedAt, unarchive возвращает прежний статус
+   *    (fields.statusBeforeArchive). Статус меняется ТОЛЬКО через complete/
+   *    reopen/archive/unarchive — update() его отклоняет;
+   *  - записи, созданные внутри посещения (J4b), несут fields.visitId и тот же
+   *    nodeId; remove() отказывает, пока такие записи или связи существуют;
+   *  - порядок byNode: dateFrom по убыванию, затем createdAt, затем id. */
+  var VISIT_PARENT_KINDS = ['congregation', 'group', 'pregroup'];
+  var VISIT_STATUSES = ['open', 'completed', 'archived'];
+
+  function isIsoDate(v) {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    var d = new Date(v + 'T00:00:00Z');
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+  }
+  function assertVisitDates(from, to) {
+    if (!isIsoDate(from) || !isIsoDate(to) || to < from) throw new Error('journal-visit-invalid-dates');
+  }
+  async function visitOrThrow(id) {
+    var v = await entriesBase.get(id);
+    if (!v || v.type !== 'visit') throw new Error('journal-visit-not-found');
+    return v;
+  }
+  function sortVisits(list) {
+    return list.slice().sort(function (a, b) {
+      if (a.dateFrom !== b.dateFrom) return a.dateFrom < b.dateFrom ? 1 : -1;
+      if ((a.createdAt || '') !== (b.createdAt || '')) return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+  async function visitChildren(visit) {
+    return (await entriesBase.by('nodeId', visit.nodeId)).filter(function (e) {
+      return e.id !== visit.id && e.fields && e.fields.visitId === visit.id;
+    });
+  }
+  async function setVisitStatus(id, from, to, extra) {
+    var v = await visitOrThrow(id);
+    if (from.indexOf(v.status) === -1) throw new Error('journal-visit-invalid-transition');
+    return entriesBase.update(id, Object.assign({ status: to }, extra ? extra(v) : {}));
+  }
+
+  var visits = {
+    STATUSES: VISIT_STATUSES,
+    PARENT_KINDS: VISIT_PARENT_KINDS,
+    isIsoDate: isIsoDate,
+    get: async function (id) {
+      var v = await entriesBase.get(id);
+      return v && v.type === 'visit' ? v : null;
+    },
+    byNode: async function (nodeId) {
+      return sortVisits((await entriesBase.by('nodeId', nodeId)).filter(function (e) { return e.type === 'visit'; }));
+    },
+    /** Записи, созданные внутри посещения (J4b заполнит; сейчас всегда []). */
+    children: async function (id) { return visitChildren(await visitOrThrow(id)); },
+    add: async function (record) {
+      record = record || {};
+      var node = record.nodeId ? await db().journalNodes.get(record.nodeId) : null;
+      if (!node || VISIT_PARENT_KINDS.indexOf(node.kind) === -1) throw new Error('journal-visit-invalid-parent');
+      assertVisitDates(record.dateFrom, record.dateTo);
+      return entriesBase.add({
+        type: 'visit',
+        nodeId: node.id,
+        circuitId: node.circuitId,
+        status: 'open',
+        dateFrom: record.dateFrom,
+        dateTo: record.dateTo,
+        fields: Object.assign({}, record.fields || {}),
+      });
+    },
+    /** Правка данных посещения. type/nodeId/circuitId неизменяемы, статус —
+     *  только через функции жизненного цикла. Даты проверяются на ИТОГОВОЙ
+     *  паре (одна дата может прийти без другой). */
+    update: async function (id, patch) {
+      patch = Object.assign({}, patch || {});
+      var v = await visitOrThrow(id);
+      ['type', 'nodeId', 'circuitId'].forEach(function (k) {
+        if (k in patch && patch[k] !== v[k]) throw new Error('journal-visit-immutable');
+      });
+      if (('status' in patch && patch.status !== v.status) || 'archivedAt' in patch) {
+        throw new Error('journal-visit-invalid-transition');
+      }
+      var from = 'dateFrom' in patch ? patch.dateFrom : v.dateFrom;
+      var to = 'dateTo' in patch ? patch.dateTo : v.dateTo;
+      assertVisitDates(from, to);
+      if (patch.fields) patch.fields = Object.assign({}, v.fields || {}, patch.fields);
+      return entriesBase.update(id, patch);
+    },
+    complete: function (id) { return setVisitStatus(id, ['open'], 'completed'); },
+    reopen: function (id) { return setVisitStatus(id, ['completed'], 'open'); },
+    archive: function (id) {
+      return setVisitStatus(id, ['open', 'completed'], 'archived', function (v) {
+        return { archivedAt: now(), fields: Object.assign({}, v.fields || {}, { statusBeforeArchive: v.status }) };
+      });
+    },
+    unarchive: function (id) {
+      return visitOrThrow(id).then(function (v) {
+        var back = (v.fields && v.fields.statusBeforeArchive) || 'completed';
+        return setVisitStatus(id, ['archived'], back, function (cur) {
+          var f = Object.assign({}, cur.fields || {});
+          delete f.statusBeforeArchive;
+          return { archivedAt: null, fields: f };
+        });
+      });
+    },
+    /** Удаление только «пустого» посещения: ни записей внутри, ни связей.
+     *  Иначе — отказ; безопасная альтернатива — archive(). */
+    remove: async function (id) {
+      var v = await visitOrThrow(id);
+      if ((await visitChildren(v)).length) throw new Error('journal-visit-has-entries');
+      var ref = 'journal:entry/' + id;
+      var asFrom = await db().journalLinks.byIndex('from', ref);
+      var asTo = await db().journalLinks.byIndex('to', ref);
+      if (asFrom.length || asTo.length) throw new Error('journal-visit-has-links');
+      return entriesBase.remove(id);
+    },
   };
 
   /* Связи неизменяемы: поменять связь = удалить и завести новую. updatedAt им
@@ -230,6 +375,7 @@
   global.CWJournal = {
     nodes: nodes,
     entries: entries,
+    visits: visits,
     links: links,
     meta: meta,
     urn: urn,

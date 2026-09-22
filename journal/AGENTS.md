@@ -27,6 +27,17 @@
 - Записи — универсальные, `type`: `note|project|question|todo|visit|observation`.
   Значения `kind/type/status/rel` — канонические данные, не подписи.
 - Архив — `status`/`archivedAt`, не отдельное хранилище.
+- Посещение (J4a) — `journalEntries` с `type:'visit'`, только через
+  `CWJournal.visits`; общие `entries.add/update/remove` посещение отклоняют
+  (`journal-visit-use-facade`), чтение через `entries.*` не ограничено. Родитель — собрание/группа/предгруппа; `type/nodeId/
+  circuitId` неизменяемы; `dateFrom/dateTo` — `YYYY-MM-DD`, `dateTo ≥ dateFrom`,
+  пересечения разрешены. Статус `open ↔ completed`, любой → `archived`
+  (`archivedAt`, возврат к прежнему) — только через complete/reopen/archive/
+  unarchive. Записи внутри посещения несут `fields.visitId`; `visits.remove()`
+  отказывает, пока есть записи или связи. Сезонная подпись («весна 2028») —
+  производная от `dateFrom`, не хранится.
+- Маршрут — `journal/js/route.js` (`CWJournalRoute.parse/build`), один роутер;
+  неполный хвост сводится к ближайшему валидному контексту.
 - «На следующее посещение» — строка `carryKey = '<nodeId>:open'`; у закрытых
   записей поле отсутствует. Булево значение ключом IndexedDB не является.
   Пункт не копируется между визитами — история лежит в `touches[]`.

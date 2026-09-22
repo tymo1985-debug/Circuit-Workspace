@@ -21,6 +21,7 @@ const ASSETS = [
   './css/styles.css',
   './js/app.js',
   './js/data.js',
+  './js/route.js',
   './i18n/dict.js',
   './icons/favicon-32.png',
   './icons/icon-192.png',

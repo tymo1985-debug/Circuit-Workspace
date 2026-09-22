@@ -16,30 +16,22 @@
   'use strict';
 
   var MODULE_ID = 'journal';
-  var ROUTES = ['overview', 'districts', 'tasks', 'search', 'archive'];
-  var DEFAULT_ROUTE = 'overview';
 
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function t(key) { return self.CWI18n ? CWI18n.t(key) : key; }
   function esc(s) { return self.CWEscape ? CWEscape.html(s) : String(s == null ? '' : s); }
 
-  function parseHash() {
-    var raw = (location.hash || '').replace(/^#/, '');
-    var parts = raw.split('/');
-    var route = ROUTES.indexOf(parts[0]) >= 0 ? parts[0] : DEFAULT_ROUTE;
-    var circuitId = route === 'districts' && parts[1] ? decodeURIComponent(parts[1]) : null;
-    /* Подсостояние собрания: #districts/<circuitId>/congregation/<nodeId>.
-       Тот же приём, что у circuitId — не отдельный ROUTES, а разбор хэша. */
-    var congregationId = (route === 'districts' && circuitId && parts[2] === 'congregation' && parts[3])
-      ? decodeURIComponent(parts[3]) : null;
-    return { route: route, circuitId: circuitId, congregationId: congregationId };
-  }
+  /* Разбор маршрута — в journal/js/route.js (чистая функция, покрыта
+     тестом). Роутер по-прежнему один: здесь только вызов. */
+  function parseHash() { return CWJournalRoute.parse(location.hash); }
+
 
   /* ═══ FAB: один элемент, подпись/действие меняются по месту ═══════════ */
   function fabSpecFor(state) {
     if (state.route === 'overview') return { labelKey: 'j.fab.new_entry', action: null };
-    if (state.route === 'districts' && state.congregationId) return null; // визит — не J3b
+    if (state.route === 'districts' && state.visitId) return null; // экран посещения — без FAB (эталон 04)
+    if (state.route === 'districts' && state.congregationId) return { labelKey: 'j.fab.new_visit', action: 'new-visit' };
     if (state.route === 'districts' && !state.circuitId) return { labelKey: 'j.fab.new_circuit', action: 'new-circuit' };
     if (state.route === 'districts' && state.circuitId) return { labelKey: 'j.fab.new_congregation', action: 'new-congregation' };
     return null;
@@ -134,6 +126,7 @@
     up: '<path d="m18 15-6-6-6 6"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
     dots: '<circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/>',
+    visit: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
     archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/>',
   };
   function svg(paths, attrs) {
@@ -287,6 +280,14 @@
       'journal-invalid-hierarchy': 'j.error.invalid_hierarchy',
       'journal-immutable-kind': 'j.error.immutable_kind',
       'journal-immutable-parent': 'j.error.immutable_parent',
+      'journal-visit-invalid-dates': 'j.error.visit_dates',
+      'journal-visit-invalid-parent': 'j.error.visit_parent',
+      'journal-visit-immutable': 'j.error.visit_immutable',
+      'journal-visit-invalid-transition': 'j.error.visit_transition',
+      'journal-visit-has-entries': 'j.error.visit_has_entries',
+      'journal-visit-has-links': 'j.error.visit_has_links',
+      'journal-visit-not-found': 'j.error.visit_not_found',
+      'journal-visit-use-facade': 'j.error.visit_use_facade',
     };
     var key = known[err && err.message];
     return key ? t(key) : (err && err.message) || String(err);
@@ -295,7 +296,8 @@
   function refreshCurrentView() {
     var state = parseHash();
     if (state.route !== 'districts') return;
-    if (state.congregationId) renderCongregationDetail(state.circuitId, state.congregationId);
+    if (state.visitId) renderVisitDetail(state.circuitId, state.congregationId, state.visitId);
+    else if (state.congregationId) renderCongregationDetail(state.circuitId, state.congregationId);
     else if (state.circuitId) renderDistrictDetail(state.circuitId);
     else renderCircuitsList();
   }
@@ -543,6 +545,233 @@
     }
 
     wireCongregationMenu(node);
+    applyCongregationTab(node);
+  }
+
+  /* ═══ Вкладки собрания: «Обзор» (J3b) и «Посещения» (J4a) ═════════════ */
+  function applyCongregationTab(node) {
+    var state = parseHash();
+    var tab = state.congTab === 'visits' ? 'visits' : 'overview';
+    $all('#congregationDetailView [data-cong-tab]').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-cong-tab') === tab);
+      btn.onclick = function () {
+        location.hash = btn.getAttribute('data-cong-tab') === 'visits'
+          ? CWJournalRoute.build.visits(node.circuitId, node.id)
+          : CWJournalRoute.build.congregation(node.circuitId, node.id);
+      };
+    });
+    $('#congOverviewPanel').hidden = tab !== 'overview';
+    $('#congVisitsPanel').hidden = tab !== 'visits';
+    if (tab === 'visits') renderCongregationVisits(node);
+  }
+
+  async function renderCongregationVisits(node) {
+    var list = await CWJournal.visits.byNode(node.id);
+    $('#congVisitsCount').textContent = String(list.length);
+    var box = $('#congVisitsList');
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML =
+        '<div class="md-emptystate">' +
+        '<div class="md-emptystate__icon" aria-hidden="true">' + svg(ICON.visit, 'width="32" height="32"') + '</div>' +
+        '<p class="md-emptystate__title">' + esc(t('j.visits.empty_title')) + '</p>' +
+        '<p class="md-emptystate__text">' + esc(t('j.visits.empty_text')) + '</p>' +
+        '</div>';
+      return;
+    }
+    list.forEach(function (visit) {
+      var st = visitStatusView(visit);
+      var row = document.createElement('div');
+      row.className = 'j-row j-row--link';
+      row.innerHTML =
+        '<div class="j-row__ico">' + svg(ICON.visit) + '</div>' +
+        '<div class="j-row__body">' +
+        '<p class="j-row__title">' + (visit.status === 'archived'
+          ? '<span class="u-muted">' + esc(capitalize(seasonLabel(visit.dateFrom))) + '</span>'
+          : '<b>' + esc(capitalize(seasonLabel(visit.dateFrom))) + '</b>') + '</p>' +
+        '<p class="j-row__meta">' + esc(formatRange(visit.dateFrom, visit.dateTo, false)) + '</p>' +
+        '</div>' +
+        '<div class="j-row__end">' + st.html + svg(ICON.chevron, 'width="18" height="18"') + '</div>';
+      row.addEventListener('click', function () {
+        location.hash = CWJournalRoute.build.visit(node.circuitId, node.id, visit.id);
+      });
+      box.appendChild(row);
+    });
+  }
+
+  /* ═══ Даты и подписи посещения (производные, не хранятся) ══════════════ */
+  function uiLang() { return self.CWI18n ? CWI18n.getLang() : 'ru'; }
+  function capitalize(s) { return s ? s.charAt(0).toLocaleUpperCase(uiLang()) + s.slice(1) : s; }
+  function isoToDate(iso) { var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  /** «весна 2028» — сезон по месяцу начала посещения. */
+  function seasonLabel(dateFrom) {
+    var m = +dateFrom.slice(5, 7);
+    var key = m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn';
+    return t('j.season.' + key) + ' ' + dateFrom.slice(0, 4);
+  }
+  /** «9–14 апреля 2028» (withYear) / «9–14 апреля». Хвост «г.»/«р.» у
+   *  славянских локалей убирается — в эталоне его нет. */
+  function formatRange(from, to, withYear) {
+    var opts = { day: 'numeric', month: 'long', timeZone: 'UTC' };
+    if (withYear) opts.year = 'numeric';
+    var text;
+    try {
+      var fmt = new Intl.DateTimeFormat(uiLang(), opts);
+      text = fmt.formatRange ? fmt.formatRange(isoToDate(from), isoToDate(to)) : fmt.format(isoToDate(from)) + ' – ' + fmt.format(isoToDate(to));
+    } catch (_) { text = from + ' – ' + to; }
+    return text.replace(/\s(г|р)\.$/, '');
+  }
+  function visitStatusView(visit) {
+    if (visit.status === 'archived') {
+      return { label: t('j.badge.archive'), html: '<span class="j-tag">' + svg(ICON.archive, 'width="12" height="12"') + '<span>' + esc(t('j.badge.archive')) + '</span></span>' };
+    }
+    var key, cls;
+    if (visit.status === 'completed') { key = 'j.visit.status.completed'; cls = 'md-status-success'; }
+    else if (todayIso() < visit.dateFrom) { key = 'j.visit.status.planned'; cls = 'md-status-important'; }
+    else { key = 'j.visit.status.open'; cls = 'md-status-success'; }
+    return { label: t(key), html: '<span class="md-status ' + cls + '">' + esc(t(key)) + '</span>' };
+  }
+
+  /* ═══ Экран посещения (J4a) ═════════════════════════════════════════════ */
+  async function renderVisitDetail(circuitId, nodeId, visitId) {
+    var node = await CWJournal.nodes.get(nodeId);
+    if (!node || node.kind !== 'congregation' || node.circuitId !== circuitId) {
+      location.replace(CWJournalRoute.build.circuit(circuitId));
+      return;
+    }
+    var visit = await CWJournal.visits.get(visitId);
+    if (!visit || visit.nodeId !== nodeId) {
+      // Неизвестное/чужое посещение — ближайший валидный контекст.
+      location.replace(CWJournalRoute.build.visits(circuitId, nodeId));
+      return;
+    }
+    var circuit = await CWJournal.nodes.get(circuitId);
+    if (!circuit) { location.replace('#districts'); return; }
+
+    var congName = canonicalName(node);
+    var season = seasonLabel(visit.dateFrom);
+    $('#visitCrumbCircuit').textContent = circuit.label;
+    $('#visitCrumbCircuit').setAttribute('href', CWJournalRoute.build.circuit(circuitId));
+    $('#visitCrumbCong').textContent = congName;
+    $('#visitCrumbCong').setAttribute('href', CWJournalRoute.build.visits(circuitId, nodeId));
+    $('#visitCrumbLabel').textContent = capitalize(season);
+    $('#visitTitle').textContent = t('j.visit.title').replace('%s', season);
+    $('#visitLede').textContent = formatRange(visit.dateFrom, visit.dateTo, true) + ' · ' + t('j.visit.kind.' + node.kind);
+    $('#topbarContext').textContent = congName + ' · ' + season;
+
+    var st = visitStatusView(visit);
+    $('#visitStatusChip').textContent = st.label;
+
+    var children = await CWJournal.visits.children(visit.id);
+    var tasks = children.filter(function (e) { return e.type === 'todo'; }).length;
+    var carry = children.filter(function (e) { return !!e.carryKey; }).length;
+    $('#visitSummaryTasks').textContent = tasks ? String(tasks) : t('j.visit.summary_none');
+    $('#visitSummaryCarry').textContent = carry ? String(carry) : t('j.visit.summary_none');
+
+    wireVisitMenu(visit, node);
+  }
+
+  function wireVisitMenu(visit, node) {
+    var btn = $('#moreBtn');
+    var panel = $('#moreMenuPanel');
+    var items = '<button type="button" class="md-menu__item" role="menuitem" data-action="edit-dates">' + esc(t('j.action.edit_dates')) + '</button>';
+    if (visit.status === 'open') items += '<button type="button" class="md-menu__item" role="menuitem" data-action="complete">' + esc(t('j.action.complete')) + '</button>';
+    if (visit.status === 'completed') items += '<button type="button" class="md-menu__item" role="menuitem" data-action="reopen">' + esc(t('j.action.reopen')) + '</button>';
+    items += visit.status === 'archived'
+      ? '<button type="button" class="md-menu__item" role="menuitem" data-action="unarchive">' + esc(t('j.action.unarchive')) + '</button>'
+      : '<button type="button" class="md-menu__item" role="menuitem" data-action="archive">' + esc(t('j.action.archive')) + '</button>';
+    items += '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
+    panel.innerHTML = items;
+    btn.setAttribute('data-i18n-aria-label', 'j.action.visit_menu');
+    btn.setAttribute('aria-label', t('j.action.visit_menu'));
+    var freshBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(freshBtn, btn);
+    wireMenuToggle(freshBtn, panel);
+    panel.querySelectorAll('.md-menu__item').forEach(function (el) {
+      el.onclick = function () {
+        panel.hidden = true;
+        handleVisitAction(el.getAttribute('data-action'), visit, node);
+      };
+    });
+  }
+
+  async function handleVisitAction(action, visit, node) {
+    try {
+      if (action === 'edit-dates') {
+        openVisitDialog({
+          title: t('j.dialog.edit_visit'), from: visit.dateFrom, to: visit.dateTo,
+          onSave: function (from, to) { return CWJournal.visits.update(visit.id, { dateFrom: from, dateTo: to }); },
+          onDone: refreshCurrentView,
+        });
+        return;
+      }
+      if (action === 'complete') await CWJournal.visits.complete(visit.id);
+      else if (action === 'reopen') await CWJournal.visits.reopen(visit.id);
+      else if (action === 'archive') await CWJournal.visits.archive(visit.id);
+      else if (action === 'unarchive') await CWJournal.visits.unarchive(visit.id);
+      else if (action === 'delete') {
+        if (!confirm(t('j.confirm.delete').replace('%s', capitalize(seasonLabel(visit.dateFrom))))) return;
+        await CWJournal.visits.remove(visit.id);
+        location.hash = CWJournalRoute.build.visits(node.circuitId, node.id);
+        return;
+      }
+      refreshCurrentView();
+    } catch (err) {
+      alert(errorMessage(err));
+    }
+  }
+
+  /** Создание/правка дат. Ошибка сохранения показывается в самом диалоге,
+   *  он остаётся открытым с введёнными значениями — состояние экрана и
+   *  данных не расходятся (запись либо сохранена целиком, либо нет). */
+  function openVisitDialog(opts) {
+    var dlg = $('#visitDialog');
+    var from = $('#visitDialogFrom');
+    var to = $('#visitDialogTo');
+    var errEl = $('#visitDialogError');
+    var form = $('#visitDialogForm');
+    var busy = false;
+    $('#visitDialogTitle').textContent = opts.title;
+    from.value = opts.from || '';
+    to.value = opts.to || '';
+    errEl.hidden = true; errEl.textContent = '';
+    dlg.showModal();
+    from.focus();
+
+    function showError(msg) { errEl.textContent = msg; errEl.hidden = false; }
+    function onSubmit(e) {
+      e.preventDefault();
+      if (busy) return;
+      var f = from.value, tt = to.value;
+      if (!CWJournal.visits.isIsoDate(f) || !CWJournal.visits.isIsoDate(tt) || tt < f) {
+        showError(t('j.error.visit_dates'));
+        return;
+      }
+      busy = true;
+      Promise.resolve(opts.onSave(f, tt)).then(function (result) {
+        busy = false;
+        cleanup();
+        dlg.close();
+        if (opts.onDone) opts.onDone(result);
+      }, function (err) {
+        busy = false;
+        showError(errorMessage(err));
+      });
+    }
+    function onCancel() { cleanup(); dlg.close(); }
+    var unbindClose;
+    function cleanup() {
+      form.removeEventListener('submit', onSubmit);
+      $('#visitDialogCancel').removeEventListener('click', onCancel);
+      if (unbindClose) unbindClose();
+    }
+    form.addEventListener('submit', onSubmit);
+    $('#visitDialogCancel').addEventListener('click', onCancel);
+    unbindClose = bindDialogCleanup(dlg, cleanup);
   }
 
   /** Три взаимоисключающих состояния карточки идентичности — см.
@@ -941,6 +1170,17 @@
 
   /* ═══ Создание района/собрания по FAB / пустому состоянию ═════════════ */
   async function runAction(action) {
+    if (action === 'new-visit') {
+      var vs = parseHash();
+      if (!vs.congregationId) return;
+      var today = todayIso();
+      openVisitDialog({
+        title: t('j.dialog.new_visit'), from: today, to: today,
+        onSave: function (f, tt) { return CWJournal.visits.add({ nodeId: vs.congregationId, dateFrom: f, dateTo: tt }); },
+        onDone: function (id) { location.hash = CWJournalRoute.build.visit(vs.circuitId, vs.congregationId, id); },
+      });
+      return;
+    }
     if (action === 'new-circuit') {
       openNodeDialog({
         title: t('j.dialog.new_circuit'),
@@ -977,17 +1217,28 @@
     });
 
     if (state.route === 'districts') {
-      var showCong = !!(state.circuitId && state.congregationId);
-      var showCircuit = !!state.circuitId && !showCong;
+      var showVisit = !!(state.circuitId && state.congregationId && state.visitId);
+      var showCong = !!(state.circuitId && state.congregationId) && !showVisit;
+      var showCircuit = !!state.circuitId && !showCong && !showVisit;
       var showList = !state.circuitId;
       $('#circuitsListView').hidden = !showList;
       $('#districtDetailView').hidden = !showCircuit;
       $('#congregationDetailView').hidden = !showCong;
-      if (showCong) renderCongregationDetail(state.circuitId, state.congregationId);
+      $('#visitDetailView').hidden = !showVisit;
+      if (!showVisit) $('#topbarContext').textContent = '';
+      if (state.normalized && state.congregationId) {
+        // Неполный хвост маршрута (…/visit без id и т.п.) — ближайший
+        // валидный контекст: вкладка «Посещения» этого собрания.
+        location.replace(CWJournalRoute.build.visits(state.circuitId, state.congregationId));
+        return;
+      }
+      if (showVisit) renderVisitDetail(state.circuitId, state.congregationId, state.visitId);
+      else if (showCong) renderCongregationDetail(state.circuitId, state.congregationId);
       else if (showCircuit) renderDistrictDetail(state.circuitId);
       else { renderCircuitsList(); resetMoreMenu(); }
     } else {
       resetMoreMenu();
+      $('#topbarContext').textContent = '';
     }
 
     var fab = $('#fab');

@@ -119,6 +119,10 @@
   margin-bottom: var(--cw-space-2); flex-wrap: wrap;
 }
 .j-crumb b { font-weight: 500; color: var(--md-on-surface); }
+/* Ссылки крошек — тем же цветом, что и текст крошки (эталоны 02/03/04):
+   без этого браузер красил их системным синим с подчёркиванием. */
+.j-crumb a { color: inherit; text-decoration: none; }
+.j-crumb a:hover, .j-crumb a:focus-visible { color: var(--md-on-surface); text-decoration: underline; }
 .j-crumb svg { width: 14px; height: 14px; opacity: 0.6; flex: 0 0 auto; }
 
 /* Ряд чипов-счётчиков на карточке «Записи уровня района» */
@@ -171,3 +175,50 @@
 .j-identity__actions {
   display: flex; gap: var(--cw-space-2); margin-top: var(--cw-space-4); flex-wrap: wrap;
 }
+
+/* --- J4a: экран посещения (эталон 04-visit-m/-d.jpg) ------------------------
+   Карточка редактора повторяет геометрию эталона: полоса инструментов
+   (типы блоков слева, действия справа) над телом. В J4a инструменты
+   неактивны — содержимое записей появится в J4b, фиктивных блоков нет. */
+.j-visit__chips { display: flex; gap: var(--cw-space-2); flex-wrap: wrap; align-items: center; }
+.j-visit__chips .md-chip svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.j-editor {
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--cw-space-4);
+}
+.j-editor__bar {
+  display: flex; align-items: center; gap: var(--cw-space-1); flex-wrap: wrap;
+  padding: var(--cw-space-2) var(--cw-space-3);
+  border-bottom: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container);
+}
+.j-editor__spacer { flex: 1 1 auto; }
+.j-tool {
+  height: 32px; min-width: 32px; padding: 0 10px;
+  border-radius: var(--md-radius-sm); border: 0; background: transparent;
+  color: var(--md-on-surface-variant); cursor: default;
+  font: 500 13px/18px var(--md-font-family);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.j-tool svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.j-tool.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.j-tool:disabled { opacity: 1; }
+.j-editor__body { padding: var(--cw-space-4); }
+.j-editor__empty {
+  margin: 0; font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px;
+  color: var(--md-on-surface-variant);
+}
+.j-dialog-error {
+  margin: var(--cw-space-2) 0 0; font: 400 13px/18px var(--md-font-family);
+  color: var(--status-critical, var(--md-error));
+}
+
+/* FAB модуля один и прячется атрибутом hidden (app.js, fabSpecFor). Общее
+   правило .md-fab { display: inline-flex } перебивает UA-стиль [hidden],
+   поэтому без этой строки FAB оставался видимым там, где действия нет
+   (экран посещения по эталону 04, заглушки разделов). Правка — только в
+   модуле: общий компонент не меняется. */
+#fab[hidden] { display: none; }
