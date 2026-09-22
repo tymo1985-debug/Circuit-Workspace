@@ -283,3 +283,67 @@
    (экран посещения по эталону 04, заглушки разделов). Правка — только в
    модуле: общий компонент не меняется. */
 #fab[hidden] { display: none; }
+
+/* --- J5: перенос «на следующее посещение» (эталон 05-carryover-m.jpg) ------ */
+.j-banner__text { margin: 0; }
+.md-banner--warn .md-banner__icon svg { width: 20px; height: 20px; display: block; }
+.j-kicker {
+  margin: 0 0 var(--cw-space-2); font: 500 11px/16px var(--md-font-family);
+  letter-spacing: 0.5px; text-transform: uppercase; color: var(--md-on-surface-variant);
+}
+.j-note { margin: var(--cw-space-3) 0 0; font: 400 11px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }
+.j-block__carry { margin-left: var(--cw-space-2); vertical-align: 1px; }
+.j-carry-row__state { flex: 0 0 auto; }
+.md-btn.is-pressed { background: var(--cw-module-container); color: var(--cw-module-on-container); }
+
+/* Лист: снизу на телефоне, по центру на широком экране. */
+.j-sheet {
+  width: min(560px, 100vw); max-width: 100vw; box-sizing: border-box;
+  padding: var(--cw-space-3) var(--cw-space-4) var(--cw-space-6);
+}
+.j-sheet__grip { width: 32px; height: 4px; border-radius: 2px; background: var(--md-outline-variant); margin: 0 auto var(--cw-space-4); }
+.j-sheet__title { margin: 0 0 6px; font: 500 16px/24px var(--md-font-family); letter-spacing: 0.15px; overflow-wrap: anywhere; }
+.j-sheet__meta { margin-bottom: var(--cw-space-4); }
+.j-sheet__actions { display: flex; flex-direction: column; gap: var(--cw-space-2); margin-top: var(--cw-space-4); }
+.j-sheet__row { display: flex; gap: var(--cw-space-2); }
+.j-sheet__row .md-btn { flex: 1 1 0; }
+.j-sheet .md-btn > svg { width: 18px; height: 18px; }
+@media (max-width: 600px) {
+  .j-sheet[open] {
+    margin: auto 0 0; width: 100vw; border-radius: 28px 28px 0 0;
+    max-height: 92vh; overflow-y: auto;
+  }
+}
+
+/* Лента истории пункта */
+.j-hist { list-style: none; margin: 0; padding: 0 0 0 6px; }
+.j-hist li { position: relative; padding: 0 0 var(--cw-space-4) var(--cw-space-5); }
+.j-hist li::before {
+  content: ""; position: absolute; left: 0; top: 5px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--md-outline);
+}
+.j-hist li::after {
+  content: ""; position: absolute; left: 4px; top: 14px; bottom: 0; width: 1px;
+  background: var(--md-outline-variant);
+}
+.j-hist li:last-child { padding-bottom: 0; }
+.j-hist li:last-child::after { display: none; }
+.j-hist li.is-now::before { background: var(--cw-module); }
+.j-hist__t { margin: 0; font: 400 13px/18px var(--md-font-family); }
+.j-hist__m { margin: 2px 0 0; font: 400 11px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }
+
+/* --- J5: экран «Задачи» ---------------------------------------------------- */
+.j-task { align-items: flex-start; }
+.j-task__main { flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.j-task__main[aria-disabled="true"] { cursor: default; }
+.j-task .j-check__box { margin-top: 3px; }
+.j-task--done .j-row__title { text-decoration: line-through; color: var(--md-on-surface-variant); }
+.md-field textarea { resize: vertical; }
+.j-row__title--clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Атрибут hidden в модуле всегда скрывает. Общие компоненты (.md-banner,
+   .md-btn, .md-field, .md-fab…) задают display и перебивают UA-правило
+   [hidden] — из-за этого уже прятались «невидимые» FAB (J4a), баннер
+   переноса и кнопка удаления в диалоге задачи. Правило только
+   восстанавливает смысл атрибута и действует лишь внутри модуля. */
+[data-module="journal"] [hidden] { display: none !important; }

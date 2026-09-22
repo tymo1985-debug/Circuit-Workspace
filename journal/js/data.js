@@ -195,12 +195,20 @@
      удаляет и не может «приписать» обычную запись к посещению. */
   var VISIT_RECORD_USE_FACADE = 'journal-visit-record-use-facade';
   function hasVisitRef(obj) { return !!(obj && obj.fields && obj.fields.visitId !== undefined && obj.fields.visitId !== null); }
+  /* J5: задачи (type 'todo') — только через CWJournal.tasks, перенос
+     (carryKey/touches) — только через CWJournal.carry. Общий фасад их не
+     создаёт, не правит и не удаляет; молчаливого перенаправления нет. */
+  var TASK_USE_FACADE = 'journal-task-use-facade';
+  var CARRY_USE_FACADE = 'journal-carry-use-facade';
+  function hasCarryFields(obj) { return !!(obj && ('carryKey' in obj || 'touches' in obj)); }
   var entries = {
     get: entriesBase.get,
     getAll: entriesBase.getAll,
     add: function (record) {
       if (record && record.type === 'visit') return Promise.reject(new Error(VISIT_USE_FACADE));
       if (hasVisitRef(record)) return Promise.reject(new Error(VISIT_RECORD_USE_FACADE));
+      if (record && record.type === 'todo') return Promise.reject(new Error(TASK_USE_FACADE));
+      if (hasCarryFields(record)) return Promise.reject(new Error(CARRY_USE_FACADE));
       return entriesBase.add(record);
     },
     update: async function (id, patch) {
@@ -209,12 +217,16 @@
         throw new Error(VISIT_USE_FACADE);
       }
       if (hasVisitRef(current) || hasVisitRef(patch)) throw new Error(VISIT_RECORD_USE_FACADE);
+      if ((current && current.type === 'todo') || (patch && patch.type === 'todo')) throw new Error(TASK_USE_FACADE);
+      if (hasCarryFields(current) || hasCarryFields(patch)) throw new Error(CARRY_USE_FACADE);
       return entriesBase.update(id, patch);
     },
     remove: async function (id) {
       var current = await entriesBase.get(id);
       if (current && current.type === 'visit') throw new Error(VISIT_USE_FACADE);
       if (hasVisitRef(current)) throw new Error(VISIT_RECORD_USE_FACADE);
+      if (current && current.type === 'todo') throw new Error(TASK_USE_FACADE);
+      if (hasCarryFields(current)) throw new Error(CARRY_USE_FACADE);
       return entriesBase.remove(id);
     },
     byNode: function (nodeId) { return entriesBase.by('nodeId', nodeId); },
@@ -341,6 +353,12 @@
     remove: async function (id) {
       var v = await visitOrThrow(id);
       if ((await visitChildren(v)).length) throw new Error('journal-visit-has-entries');
+      // J5: история переноса ссылается на посещение — удалить его значит
+      // оставить в touches[] висячий visitId.
+      var touched = (await entriesBase.by('nodeId', v.nodeId)).some(function (e) {
+        return Array.isArray(e.touches) && e.touches.some(function (tc) { return tc.visitId === id; });
+      });
+      if (touched) throw new Error('journal-visit-has-carry');
       var ref = 'journal:entry/' + id;
       var asFrom = await db().journalLinks.byIndex('from', ref);
       var asTo = await db().journalLinks.byIndex('to', ref);
@@ -461,26 +479,279 @@
       if (r.type === 'todo') throw new Error('journal-visit-record-invalid-type');
       return entriesBase.update(id, { type: 'todo', status: 'open', fields: Object.assign({}, r.fields, { format: 'checklist' }) });
     },
+    /* Жизненный цикл задачи — один: CWJournal.tasks (J5). Обёртки J4b
+       сохраняют свой API и делегируют ему. */
     complete: async function (id) {
       var r = await recordOrThrow(id);
       await editableVisit(r.fields.visitId);
-      if (r.type !== 'todo' || r.status !== 'open') throw new Error('journal-visit-record-invalid-transition');
-      return entriesBase.update(id, { status: 'done' });
+      if (r.type !== 'todo') throw new Error('journal-visit-record-invalid-transition');
+      return todoTransition(id, 'open', 'done', 'journal-visit-record-invalid-transition');
     },
     reopen: async function (id) {
       var r = await recordOrThrow(id);
       await editableVisit(r.fields.visitId);
-      if (r.type !== 'todo' || r.status !== 'done') throw new Error('journal-visit-record-invalid-transition');
-      return entriesBase.update(id, { status: 'open' });
+      if (r.type !== 'todo') throw new Error('journal-visit-record-invalid-transition');
+      return todoTransition(id, 'done', 'open', 'journal-visit-record-invalid-transition');
     },
     remove: async function (id) {
       var r = await recordOrThrow(id);
       await editableVisit(r.fields.visitId);
-      var ref = 'journal:entry/' + id;
-      var asFrom = await db().journalLinks.byIndex('from', ref);
-      var asTo = await db().journalLinks.byIndex('to', ref);
-      if (asFrom.length || asTo.length) throw new Error('journal-visit-record-has-links');
+      await assertRemovable(r, 'journal-visit-record-has-links');
       return entriesBase.remove(id);
+    },
+  };
+
+  /* ═══ Физическая замена записи (J5) ═════════════════════════════════════
+   * Слияние update() не умеет УДАЛИТЬ свойство, а закрытый перенос обязан
+   * потерять carryKey физически (индекс «открытых» держится на отсутствии
+   * поля; null/''/false туда не пишутся). mutate() в общей базе пишет запись
+   * целиком — fn получает копию и может удалить поле. Только для данных
+   * модуля; id и createdAt не меняются, updatedAt продвигается. */
+  function replaceEntry(id, fn) {
+    return db().journalEntries.mutate(id, function (current) {
+      if (!current) throw new Error('journal-entry-not-found');
+      var next = fn(Object.assign({}, current));
+      next.id = current.id;
+      next.createdAt = current.createdAt;
+      next.updatedAt = now();
+      return next;
+    });
+  }
+
+  /** Общие правила удаления записи с содержимым (задача/запись посещения):
+   *  ни связей (from/to), ни истории переноса в других посещениях. */
+  async function assertRemovable(r, linksError) {
+    var ref = 'journal:entry/' + r.id;
+    if ((await db().journalLinks.byIndex('from', ref)).length || (await db().journalLinks.byIndex('to', ref)).length) {
+      throw new Error(linksError);
+    }
+    var origin = hasVisitRef(r) ? r.fields.visitId : null;
+    if (Array.isArray(r.touches) && r.touches.some(function (tc) { return tc.visitId !== origin; })) {
+      throw new Error('journal-carry-has-history');
+    }
+  }
+
+  /* ═══ Задачи (J5) ═══════════════════════════════════════════════════════
+   * ОДИН жизненный цикл todo для всего Журнала:
+   *  - type 'todo', status 'open' | 'done' — только через complete/reopen;
+   *  - body — текст (только верхний уровень), dueDate — необязательная дата
+   *    'YYYY-MM-DD' в индексируемом верхнем поле; снятие срока — физическое
+   *    удаление поля (replaceEntry), не null;
+   *  - самостоятельная задача: узел любого вида, circuitId от узла, без
+   *    fields.visitId; задача посещения — та же строка с fields.visitId
+   *    (создаётся через visitRecords) и меняется ТОЛЬКО пока её посещение
+   *    открыто — экран «Задачи» этого правила не обходит;
+   *  - порядок: открытые — сначала со сроком, ранний срок раньше, затем
+   *    createdAt, id; выполненные — updatedAt по убыванию, затем id. */
+  async function taskOrThrow(id) {
+    var r = await entriesBase.get(id);
+    if (!r || r.type !== 'todo') throw new Error('journal-task-not-found');
+    return r;
+  }
+  async function assertTaskMutable(r) {
+    if (hasVisitRef(r)) await editableVisit(r.fields.visitId);
+  }
+  async function todoTransition(id, from, to, errCode) {
+    var r = await taskOrThrow(id);
+    await assertTaskMutable(r);
+    if (r.status !== from) throw new Error(errCode || 'journal-task-invalid-transition');
+    return entriesBase.update(id, { status: to });
+  }
+  function sortTasks(list) {
+    var open = list.filter(function (r) { return r.status !== 'done'; });
+    var done = list.filter(function (r) { return r.status === 'done'; });
+    open.sort(function (a, b) {
+      var ad = a.dueDate || null, bd = b.dueDate || null;
+      if (!!ad !== !!bd) return ad ? -1 : 1;
+      if (ad && bd && ad !== bd) return ad < bd ? -1 : 1;
+      if ((a.createdAt || '') !== (b.createdAt || '')) return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+    done.sort(function (a, b) {
+      if ((a.updatedAt || '') !== (b.updatedAt || '')) return (a.updatedAt || '') < (b.updatedAt || '') ? 1 : -1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+    return open.concat(done);
+  }
+
+  var tasks = {
+    get: async function (id) {
+      var r = await entriesBase.get(id);
+      return r && r.type === 'todo' ? r : null;
+    },
+    /** Все задачи Журнала (самостоятельные и из посещений) в порядке контракта. */
+    list: async function () { return sortTasks(await entriesBase.by('type', 'todo')); },
+    sort: sortTasks,
+    /** Можно ли сейчас менять задачу (для экрана): false, если её
+     *  посещение завершено/в архиве. Само правило держат методы ниже. */
+    isMutable: async function (id) {
+      var r = await taskOrThrow(id);
+      if (!hasVisitRef(r)) return true;
+      var v = await entriesBase.get(r.fields.visitId);
+      return !!(v && v.type === 'visit' && v.status === 'open');
+    },
+    /** Самостоятельная задача узла: add({ nodeId, body, dueDate? }). */
+    add: async function (record) {
+      record = record || {};
+      var node = record.nodeId ? await db().journalNodes.get(record.nodeId) : null;
+      if (!node) throw new Error('journal-task-invalid-node');
+      var body = cleanBody(record.body);
+      if (record.dueDate !== undefined && record.dueDate !== null && record.dueDate !== '' && !isIsoDate(record.dueDate)) {
+        throw new Error('journal-task-invalid-due');
+      }
+      var row = { type: 'todo', nodeId: node.id, circuitId: node.circuitId, status: 'open', body: body };
+      if (record.dueDate) row.dueDate = record.dueDate;
+      return entriesBase.add(row);
+    },
+    /** update(id, { body?, dueDate? }). dueDate: 'YYYY-MM-DD' или null/'' —
+     *  снять срок (поле удаляется физически). Другие поля — отказ. */
+    update: async function (id, patch) {
+      patch = patch || {};
+      var r = await taskOrThrow(id);
+      await assertTaskMutable(r);
+      Object.keys(patch).forEach(function (k) {
+        if (k !== 'body' && k !== 'dueDate') throw new Error('journal-task-immutable');
+      });
+      var body = 'body' in patch ? cleanBody(patch.body) : undefined;
+      var clearDue = 'dueDate' in patch && (patch.dueDate === null || patch.dueDate === '');
+      if ('dueDate' in patch && !clearDue && !isIsoDate(patch.dueDate)) throw new Error('journal-task-invalid-due');
+      return replaceEntry(id, function (next) {
+        if (body !== undefined) next.body = body;
+        if (clearDue) delete next.dueDate;
+        else if ('dueDate' in patch) next.dueDate = patch.dueDate;
+        return next;
+      });
+    },
+    complete: function (id) { return todoTransition(id, 'open', 'done'); },
+    reopen: function (id) { return todoTransition(id, 'done', 'open'); },
+    remove: async function (id) {
+      var r = await taskOrThrow(id);
+      await assertTaskMutable(r);
+      await assertRemovable(r, 'journal-task-has-links');
+      return entriesBase.remove(id);
+    },
+  };
+
+  /* ═══ Перенос «на следующее посещение» (J5) ════════════════════════════
+   * Один логический пункт — одна строка; между посещениями не копируется.
+   *  - переносимы записи посещения: note | observation | question | todo;
+   *    само посещение — нет; fields.visitId остаётся посещением-источником;
+   *  - открыт: carryKey = '<nodeId>:open'; закрыт: поля carryKey НЕТ;
+   *  - touches[] — история: { visitId, at, action }, action ∈ raised |
+   *    kept («оставить открытым») | deferred («перенести дальше») | closed.
+   *    Без текста пользователя (граница J8). Порядок — порядок добавления;
+   *  - mark/unmark — в открытом посещении-источнике; unmark — только пока
+   *    пункт не трогали другие посещения;
+   *  - touch — в открытом посещении V того же узла, строго ПОСЛЕ источника
+   *    (по dateFrom, затем createdAt, id); closed физически снимает carryKey;
+   *  - входящие для V: открытые пункты узла из более ранних посещений +
+   *    пункты, уже тронутые в V (в любом состоянии). Пункт, поднятый в самом
+   *    V, входящим для V не считается — он в markedIn(V). */
+  var CARRY_ACTIONS = ['raised', 'kept', 'deferred', 'closed'];
+
+  function visitBefore(a, b) {
+    if (a.dateFrom !== b.dateFrom) return a.dateFrom < b.dateFrom;
+    if ((a.createdAt || '') !== (b.createdAt || '')) return (a.createdAt || '') < (b.createdAt || '');
+    return a.id < b.id;
+  }
+  async function carryItemOrThrow(id) {
+    var r = await entriesBase.get(id);
+    if (!r || r.type === 'visit' || !hasVisitRef(r) || VISIT_RECORD_TYPES.indexOf(r.type) === -1) {
+      throw new Error('journal-carry-not-eligible');
+    }
+    return r;
+  }
+  function lastTouch(r) { return Array.isArray(r.touches) && r.touches.length ? r.touches[r.touches.length - 1] : null; }
+
+  var carry = {
+    ACTIONS: CARRY_ACTIONS,
+    isOpen: function (r) { return !!(r && 'carryKey' in r); },
+    /** Открытые пункты узла (индекс carryKey). */
+    openForNode: async function (nodeId) {
+      return (await entriesBase.by('carryKey', carryKeyFor(nodeId))).filter(hasVisitRef);
+    },
+    mark: async function (id) {
+      var r = await carryItemOrThrow(id);
+      var origin = await editableVisit(r.fields.visitId);
+      if ('carryKey' in r) throw new Error('journal-carry-already-open');
+      if (Array.isArray(r.touches) && r.touches.length) throw new Error('journal-carry-has-history');
+      return replaceEntry(id, function (next) {
+        next.carryKey = carryKeyFor(r.nodeId);
+        next.touches = [{ visitId: origin.id, at: now(), action: 'raised' }];
+        return next;
+      });
+    },
+    /** Снять пометку ошибочно поднятого пункта: только в посещении-источнике
+     *  и только пока его не трогали другие посещения. carryKey и touches
+     *  удаляются физически. */
+    unmark: async function (id) {
+      var r = await carryItemOrThrow(id);
+      var origin = await editableVisit(r.fields.visitId);
+      if (!('carryKey' in r)) throw new Error('journal-carry-not-open');
+      if ((r.touches || []).some(function (tc) { return tc.visitId !== origin.id; })) throw new Error('journal-carry-has-history');
+      return replaceEntry(id, function (next) {
+        delete next.carryKey;
+        delete next.touches;
+        return next;
+      });
+    },
+    /** Решение по пункту в более позднем посещении того же узла. */
+    touch: async function (id, visitId, action) {
+      if (['kept', 'deferred', 'closed'].indexOf(action) === -1) throw new Error('journal-carry-invalid-action');
+      var r = await carryItemOrThrow(id);
+      if (!('carryKey' in r)) throw new Error('journal-carry-not-open');
+      var v = await editableVisit(visitId);
+      if (v.nodeId !== r.nodeId) throw new Error('journal-carry-foreign-visit');
+      var origin = await entriesBase.get(r.fields.visitId);
+      if (!origin || origin.id === v.id || !visitBefore(origin, v)) throw new Error('journal-carry-not-incoming');
+      var last = lastTouch(r);
+      if (last && last.visitId === v.id && last.action === action) return r;
+      return replaceEntry(id, function (next) {
+        next.touches = (next.touches || []).concat([{ visitId: v.id, at: now(), action: action }]);
+        if (action === 'closed') delete next.carryKey;
+        return next;
+      });
+    },
+    /** Входящие пункты посещения V (см. контракт выше), по порядку источника. */
+    incoming: async function (visitId) {
+      var v = await entriesBase.get(visitId);
+      if (!v || v.type !== 'visit') return [];
+      var rows = (await entriesBase.by('nodeId', v.nodeId)).filter(function (e) {
+        return hasVisitRef(e) && e.type !== 'visit' && e.fields.visitId !== v.id;
+      });
+      var origins = {};
+      for (var i = 0; i < rows.length; i++) {
+        var oid = rows[i].fields.visitId;
+        if (!(oid in origins)) origins[oid] = await entriesBase.get(oid);
+      }
+      var list = rows.filter(function (e) {
+        var o = origins[e.fields.visitId];
+        var touchedHere = (e.touches || []).some(function (tc) { return tc.visitId === v.id; });
+        return touchedHere || ('carryKey' in e && o && visitBefore(o, v));
+      });
+      return list.sort(function (a, b) {
+        var oa = origins[a.fields.visitId], ob = origins[b.fields.visitId];
+        if (oa && ob && oa.id !== ob.id) return visitBefore(oa, ob) ? -1 : 1;
+        var sa = a.fields.seq || 0, sb = b.fields.seq || 0;
+        if (sa !== sb) return sa - sb;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+    },
+    /** Помечено в посещении V на следующее: открытые пункты, чьё последнее
+     *  событие — в V (поднят, оставлен или перенесён дальше). */
+    markedIn: async function (visitId) {
+      var v = await entriesBase.get(visitId);
+      if (!v || v.type !== 'visit') return [];
+      return (await carry.openForNode(v.nodeId)).filter(function (e) {
+        var last = lastTouch(e);
+        return last && last.visitId === v.id && last.action !== 'closed';
+      });
+    },
+    /** Состояние пункта относительно посещения V: 'pending' | 'kept' |
+     *  'deferred' | 'closed' — для экрана. */
+    stateIn: function (r, visitId) {
+      var mine = (r.touches || []).filter(function (tc) { return tc.visitId === visitId; });
+      return mine.length ? mine[mine.length - 1].action : 'pending';
     },
   };
 
@@ -522,6 +793,8 @@
     entries: entries,
     visits: visits,
     visitRecords: visitRecords,
+    tasks: tasks,
+    carry: carry,
     links: links,
     meta: meta,
     urn: urn,

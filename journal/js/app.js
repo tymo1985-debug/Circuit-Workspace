@@ -30,6 +30,7 @@
   /* ═══ FAB: один элемент, подпись/действие меняются по месту ═══════════ */
   function fabSpecFor(state) {
     if (state.route === 'overview') return { labelKey: 'j.fab.new_entry', action: null };
+    if (state.route === 'tasks') return { labelKey: 'j.fab.new_task', action: 'new-task' };
     if (state.route === 'districts' && state.visitId) return null; // экран посещения — без FAB (эталон 04)
     if (state.route === 'districts' && state.congregationId) return { labelKey: 'j.fab.new_visit', action: 'new-visit' };
     if (state.route === 'districts' && !state.circuitId) return { labelKey: 'j.fab.new_circuit', action: 'new-circuit' };
@@ -297,6 +298,23 @@
       'journal-visit-record-has-links': 'j.error.visit_record_has_links',
       'journal-visit-record-not-found': 'j.error.visit_record_not_found',
       'journal-visit-readonly': 'j.error.visit_readonly',
+      'journal-visit-has-carry': 'j.error.visit_has_carry',
+      'journal-task-use-facade': 'j.error.task_use_facade',
+      'journal-task-not-found': 'j.error.task_not_found',
+      'journal-task-invalid-node': 'j.task.scope_required',
+      'journal-task-invalid-due': 'j.error.task_due',
+      'journal-task-immutable': 'j.error.task_immutable',
+      'journal-task-invalid-transition': 'j.error.visit_record_transition',
+      'journal-task-has-links': 'j.error.visit_record_has_links',
+      'journal-carry-use-facade': 'j.error.carry_use_facade',
+      'journal-carry-has-history': 'j.error.carry_has_history',
+      'journal-carry-not-eligible': 'j.error.carry_not_eligible',
+      'journal-carry-already-open': 'j.error.carry_state',
+      'journal-carry-not-open': 'j.error.carry_state',
+      'journal-carry-foreign-visit': 'j.error.carry_foreign',
+      'journal-carry-not-incoming': 'j.error.carry_foreign',
+      'journal-carry-invalid-action': 'j.error.carry_state',
+      'journal-entry-not-found': 'j.error.visit_record_not_found',
     };
     var key = known[err && err.message];
     return key ? t(key) : (err && err.message) || String(err);
@@ -726,8 +744,19 @@
     $('#visitSummaryTasks').textContent = todos.length
       ? t('j.visit.summary_tasks_counts').replace('%d', String(todos.length - done)).replace('%d', String(done))
       : t('j.visit.summary_none');
-    // Перенос на следующее посещение — J5: пока всегда нейтрально.
-    $('#visitSummaryCarry').textContent = t('j.visit.summary_none');
+    // «Помечено на следующее посещение» — пункты, чьё последнее решение
+    // принято В ЭТОМ посещении и которые остаются открытыми (J5). Это не
+    // число входящих: входящие показаны выше, в баннере и секции переноса.
+    var marked = await CWJournal.carry.markedIn(visit.id);
+    $('#visitSummaryCarry').textContent = marked.length
+      ? t('j.visit.summary_marked').replace('%d', String(marked.length))
+      : t('j.visit.summary_none');
+    $all('#visitDetailView .j-editor__bar [data-cmd="carry"]').forEach(function (b) {
+      var target = editor.draft && editor.draft.id ? records.filter(function (r) { return r.id === editor.draft.id; })[0] : null;
+      b.disabled = !editable || !editor.draft;
+      b.classList.toggle('active', !!(target && 'carryKey' in target));
+    });
+    await renderCarryIncoming();
 
     var input = box.querySelector('.j-block__input');
     if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
@@ -738,6 +767,12 @@
     $all('#visitDetailView .j-editor__bar [data-format]').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-format') === fmt);
     });
+  }
+
+  function carryTag(r) {
+    if (!CWJournal.carry.isOpen(r)) return '';
+    return '<span class="j-carrybadge j-block__carry">' + svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>', 'width="12" height="12"') +
+      esc(t('j.carry.tag')) + '</span>';
   }
 
   function typeTag(r) {
@@ -754,7 +789,7 @@
       var isDone = r.status === 'done';
       el.innerHTML = '<div class="j-check' + (isDone ? ' j-check--done' : '') + '">' +
         '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (editable ? '' : ' disabled') + '></button>' +
-        '<span class="j-check__text">' + esc(r.body) + '</span></div>';
+        '<span class="j-check__text">' + esc(r.body) + '</span>' + carryTag(r) + '</div>';
       el.querySelector('.j-check__box').addEventListener('click', function (e) {
         e.stopPropagation();
         if (!editable || editor.busy) return;
@@ -763,9 +798,9 @@
     } else if (fmt === 'list') {
       el.innerHTML = '<ul>' + r.body.split('\n').filter(function (l) { return l.trim(); }).map(function (l) {
         return '<li>' + esc(l.replace(/^\s*[-•*]\s*/, '')) + '</li>';
-      }).join('') + '</ul>' + typeTag(r);
+      }).join('') + '</ul>' + typeTag(r) + carryTag(r);
     } else {
-      el.innerHTML = esc(r.body) + typeTag(r);
+      el.innerHTML = esc(r.body) + typeTag(r) + carryTag(r);
     }
     if (editable) {
       el.tabIndex = 0;
@@ -773,7 +808,7 @@
       el.setAttribute('aria-label', t('j.record.edit'));
       var start = function () {
         if (editor.busy) return;
-        editor.draft = { id: r.id, type: r.type, format: fmt === 'checklist' ? 'checklist' : fmt, body: r.body, error: '' };
+        editor.draft = { id: r.id, type: r.type, format: fmt === 'checklist' ? 'checklist' : fmt, body: r.body, error: '', carry: CWJournal.carry.isOpen(r) };
         renderVisitRecords();
       };
       el.addEventListener('click', start);
@@ -801,7 +836,8 @@
     actions.innerHTML =
       '<button type="button" class="md-btn md-btn-filled" data-act="save">' + esc(t('j.action.save')) + '</button>' +
       '<button type="button" class="md-btn md-btn-text" data-act="cancel">' + esc(t('j.action.cancel')) + '</button>' +
-      '<button type="button" class="md-btn md-btn-tonal" disabled>' + svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>', 'width="18" height="18"') + esc(t('j.editor.next_visit_long')) + '</button>' +
+      '<button type="button" class="md-btn md-btn-tonal' + (d.carry ? ' is-pressed' : '') + '" data-act="carry" aria-pressed="' + !!d.carry + '">' +
+        svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>', 'width="18" height="18"') + esc(t(d.carry ? 'j.carry.unmark' : 'j.editor.next_visit_long')) + '</button>' +
       (isTodo ? '' : '<button type="button" class="md-btn md-btn-outlined" data-act="to-todo">' + svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="18" height="18"') + esc(t('j.editor.make_todo')) + '</button>') +
       (isTodo ? '' : '<select class="j-block__type" data-act="type" aria-label="' + esc(t('j.record.type_label')) + '">' + typeOptions + '</select>') +
       (r ? '<button type="button" class="md-btn md-btn-text" data-act="delete">' + esc(t('j.action.delete')) + '</button>' : '');
@@ -812,6 +848,7 @@
       if (act === 'save') saveDraft();
       else if (act === 'cancel') { editor.draft = null; renderVisitRecords(); }
       else if (act === 'to-todo') draftToTodo();
+      else if (act === 'carry') draftToggleCarry();
       else if (act === 'delete') deleteRecord(r);
     });
     var sel = actions.querySelector('select');
@@ -877,12 +914,319 @@
     }, function (err) { d.error = errorMessage(err); });
   }
 
+  /** «На следующий визит» для выбранного блока: несохранённый текст
+   *  сохраняется первым, затем пункт помечается или пометка снимается —
+   *  всё через CWJournal.visitRecords / CWJournal.carry. */
+  function draftToggleCarry() {
+    var d = editor.draft;
+    if (!d) return;
+    if (!d.body || !d.body.trim()) { d.error = t('j.error.visit_record_empty'); renderVisitRecords(); return; }
+    runRecordOp(async function () {
+      var id = d.id;
+      if (!id) {
+        id = await CWJournal.visitRecords.add(editor.visitId, { type: d.type, body: d.body, format: d.type === 'todo' ? undefined : d.format });
+      } else {
+        var cur = await CWJournal.visitRecords.get(id);
+        var patch = {};
+        if (cur.body !== d.body) patch.body = d.body;
+        if (cur.type !== 'todo' && cur.type !== d.type) patch.type = d.type;
+        if (cur.type !== 'todo' && cur.fields.format !== d.format) patch.format = d.format;
+        if (Object.keys(patch).length) await CWJournal.visitRecords.update(id, patch);
+      }
+      var row = await CWJournal.visitRecords.get(id);
+      if (CWJournal.carry.isOpen(row)) await CWJournal.carry.unmark(id);
+      else await CWJournal.carry.mark(id);
+      editor.draft = null;
+    }, function (err) { d.error = errorMessage(err); });
+  }
+
   function deleteRecord(r) {
     if (!confirm(t('j.confirm.delete_record'))) return;
     runRecordOp(async function () {
       await CWJournal.visitRecords.remove(r.id);
       editor.draft = null;
     }, function (err) { if (editor.draft) editor.draft.error = errorMessage(err); });
+  }
+
+  /* ═══ Перенос: входящие пункты посещения (J5) ═══════════════════════════
+   * Список и решения — только через CWJournal.carry. Ничего не пишется при
+   * отрисовке; решение (kept/deferred/closed) — явная кнопка листа. */
+  var carryView = { items: [], index: 0, visits: {} };
+
+  async function visitCached(id) {
+    if (!(id in carryView.visits)) carryView.visits[id] = await CWJournal.visits.get(id);
+    return carryView.visits[id];
+  }
+
+  async function renderCarryIncoming() {
+    var visit = editor.visit;
+    carryView.visits = {};
+    var rows = await CWJournal.carry.incoming(visit.id);
+    var items = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var seen = {};
+      (r.touches || []).forEach(function (tc) { if (tc.visitId !== visit.id) seen[tc.visitId] = true; });
+      items.push({ row: r, origin: await visitCached(r.fields.visitId), state: CWJournal.carry.stateIn(r, visit.id), openVisits: Object.keys(seen).length });
+    }
+    carryView.items = items;
+
+    var pending = items.filter(function (it) { return it.state === 'pending'; });
+    var banner = $('#carryBanner');
+    banner.hidden = !pending.length;
+    if (pending.length) {
+      $('#carryBannerTitle').textContent = t('j.carry.banner_title').replace('%d', String(pending.length));
+      var oldest = pending.reduce(function (m, it) { return Math.max(m, it.openVisits); }, 0);
+      $('#carryBannerText').textContent = oldest >= 2 ? t('j.carry.banner_oldest').replace('%d', String(oldest)) : '';
+      $('#carryBannerText').hidden = oldest < 2;
+      $('#carryReviewBtn').disabled = !visitEditable();
+    }
+
+    $('#carrySec').hidden = !items.length;
+    $('#carryCount').textContent = String(items.length);
+    var list = $('#carryList');
+    list.innerHTML = '';
+    items.forEach(function (it, idx) {
+      var row = document.createElement('div');
+      row.className = 'j-row j-row--link';
+      row.innerHTML =
+        '<div class="j-row__ico j-row__ico--accent">' + svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>') + '</div>' +
+        '<div class="j-row__body"><p class="j-row__title j-row__title--clamp">' + esc(it.row.body) + '</p>' +
+        '<p class="j-row__meta">' + esc(it.origin ? seasonLabel(it.origin.dateFrom) : '') + '<span class="j-dot">·</span>' +
+        esc(t('j.carry.state.' + it.state)) + '</p></div>' +
+        '<div class="j-row__end">' + (it.openVisits ? '<span class="j-carrybadge">' +
+          svg('<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>', 'width="12" height="12"') +
+          String(it.openVisits) + '</span>' : '') + svg(ICON.chevron, 'width="18" height="18"') + '</div>';
+      row.addEventListener('click', function () { openCarrySheet(idx); });
+      list.appendChild(row);
+    });
+  }
+
+  /** Строка истории: подпись с сезоном жирным (как в эталоне), только
+   *  текстовые узлы — пользовательский текст сюда не попадает. */
+  function histLine(el, template, season) {
+    var parts = template.split('%s');
+    el.appendChild(document.createTextNode(parts[0] || ''));
+    var b = document.createElement('b');
+    b.textContent = season;
+    el.appendChild(b);
+    el.appendChild(document.createTextNode(parts.slice(1).join('%s')));
+  }
+
+  async function openCarrySheet(idx) {
+    var it = carryView.items[idx];
+    if (!it) return;
+    carryView.index = idx;
+    var visit = editor.visit;
+    var r = it.row;
+    $('#carrySheetKicker').textContent = t(r.type === 'question' ? 'j.carry.kicker_question' : 'j.carry.kicker')
+      .replace('%d', String(idx + 1)).replace('%d', String(carryView.items.length));
+    $('#carrySheetTitle').textContent = r.body;
+    var node = await CWJournal.nodes.get(r.nodeId);
+    var meta = (node ? canonicalName(node) : '') + ' · ' + t('j.carry.open_visits').replace('%d', String(it.openVisits));
+    if (r.type === 'todo') meta += ' · ' + t('j.record.type.todo') + ': ' + t(r.status === 'done' ? 'j.task.status_done' : 'j.task.status_open');
+    var metaEl = $('#carrySheetMeta');
+    metaEl.textContent = meta;
+    if (it.openVisits) {
+      var badge = document.createElement('span');
+      badge.className = 'j-carrybadge';
+      badge.innerHTML = svg('<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>', 'width="12" height="12"');
+      badge.appendChild(document.createTextNode(String(it.openVisits)));
+      metaEl.appendChild(badge);
+    }
+
+    var hist = $('#carrySheetHist');
+    hist.innerHTML = '';
+    var touches = r.touches || [];
+    for (var i = 0; i < touches.length; i++) {
+      var tv = await visitCached(touches[i].visitId);
+      var li = document.createElement('li');
+      var p1 = document.createElement('p'); p1.className = 'j-hist__t';
+      histLine(p1, t('j.carry.h.' + touches[i].action), tv ? seasonLabel(tv.dateFrom) : '—');
+      var p2 = document.createElement('p'); p2.className = 'j-hist__m';
+      p2.textContent = tv ? formatRange(tv.dateFrom, tv.dateTo, true) : '';
+      li.appendChild(p1); li.appendChild(p2);
+      hist.appendChild(li);
+    }
+    var now = document.createElement('li'); now.className = 'is-now';
+    var n1 = document.createElement('p'); n1.className = 'j-hist__t';
+    histLine(n1, t('j.carry.h.now'), seasonLabel(visit.dateFrom));
+    var n2 = document.createElement('p'); n2.className = 'j-hist__m';
+    n2.textContent = formatRange(visit.dateFrom, visit.dateTo, true);
+    now.appendChild(n1); now.appendChild(n2); hist.appendChild(now);
+
+    var canDecide = visitEditable() && CWJournal.carry.isOpen(r);
+    $all('#carrySheet [data-carry]').forEach(function (b) {
+      b.disabled = !canDecide;
+      b.classList.toggle('is-pressed', it.state === b.getAttribute('data-carry'));
+    });
+    $('#carrySheetError').hidden = true;
+    var dlg = $('#carrySheet');
+    if (!dlg.open) dlg.showModal();
+  }
+
+  async function decideCarry(action) {
+    var it = carryView.items[carryView.index];
+    if (!it || editor.busy) return;
+    editor.busy = true;
+    try {
+      await CWJournal.carry.touch(it.row.id, editor.visitId, action);
+    } catch (err) {
+      editor.busy = false;
+      var e = $('#carrySheetError'); e.textContent = errorMessage(err); e.hidden = false;
+      return;
+    }
+    editor.busy = false;
+    await renderVisitRecords();
+    var next = carryView.items.findIndex(function (x) { return x.state === 'pending'; });
+    if (next < 0) { $('#carrySheet').close(); return; }
+    openCarrySheet(next);
+  }
+
+  /* ═══ Экран «Задачи» (J5) ═════════════════════════════════════════════
+   * Все задачи Журнала через CWJournal.tasks; порядок — контракт
+   * tasks.list(). Задача завершённого/архивного посещения — только чтение
+   * (tasks.isMutable; само правило держит слой данных). */
+  var taskTab = 'open';
+
+  function ddmm(iso) { return iso.slice(8, 10) + '.' + iso.slice(5, 7); }
+
+  async function nodePath(nodesById, node) {
+    var parts = [];
+    var cur = node;
+    while (cur) {
+      parts.unshift(cur.kind === 'congregation' ? canonicalName(cur) : cur.label);
+      cur = cur.parentId && cur.parentId !== CWJournal.ROOT_PARENT ? nodesById[cur.parentId] : null;
+    }
+    return parts.join(' › ');
+  }
+
+  async function renderTasks() {
+    var all = await CWJournal.tasks.list();
+    var nodes = await CWJournal.nodes.getAll();
+    var byId = {};
+    nodes.forEach(function (n) { byId[n.id] = n; });
+    var open = all.filter(function (r) { return r.status !== 'done'; });
+    var done = all.filter(function (r) { return r.status === 'done'; });
+    $('#tasksLede').textContent = t('j.visit.summary_tasks_counts').replace('%d', String(open.length)).replace('%d', String(done.length));
+    $all('#route-tasks [data-task-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-task-tab') === taskTab); });
+    var list = taskTab === 'done' ? done : open;
+    var box = $('#tasksList');
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
+        svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="32" height="32"') + '</div>' +
+        '<p class="md-emptystate__title">' + esc(t(taskTab === 'done' ? 'j.task.empty_done' : 'j.task.empty_open')) + '</p>' +
+        '<p class="md-emptystate__text">' + esc(t('j.task.empty_text')) + '</p></div>';
+      return;
+    }
+    var today = todayIso();
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      var mutable = await CWJournal.tasks.isMutable(r.id);
+      var visit = r.fields && r.fields.visitId ? await CWJournal.visits.get(r.fields.visitId) : null;
+      var node = byId[r.nodeId];
+      var ctx = node ? await nodePath(byId, node) : '';
+      if (visit) ctx += ' · ' + capitalize(seasonLabel(visit.dateFrom));
+      var isDone = r.status === 'done';
+      var due = r.dueDate ? '<span class="md-status ' + (!isDone && r.dueDate <= today ? 'md-status-important' : 'md-status-normal') + '">' +
+        esc(t('j.task.due_short').replace('%s', ddmm(r.dueDate))) + '</span><span class="j-dot">·</span>' : '';
+      var row = document.createElement('div');
+      row.className = 'j-row j-task' + (isDone ? ' j-task--done' : '');
+      row.innerHTML =
+        '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (mutable ? '' : ' disabled') + '></button>' +
+        '<div class="j-task__main" role="button" tabindex="' + (mutable ? '0' : '-1') + '" aria-disabled="' + !mutable + '">' +
+        '<p class="j-row__title">' + esc(r.body) + '</p>' +
+        '<p class="j-row__meta">' + due + esc(ctx) + (mutable ? '' : '<span class="j-dot">·</span>' + esc(t('j.task.readonly'))) + '</p></div>';
+      (function (r, isDone, mutable) {
+        row.querySelector('.j-check__box').addEventListener('click', function () {
+          if (!mutable) return;
+          runTaskOp(function () { return isDone ? CWJournal.tasks.reopen(r.id) : CWJournal.tasks.complete(r.id); });
+        });
+        var main = row.querySelector('.j-task__main');
+        var edit = function () { if (mutable) openTaskDialog(r); };
+        main.addEventListener('click', edit);
+        main.addEventListener('keydown', function (e) { if (e.key === 'Enter') edit(); });
+      })(r, isDone, mutable);
+      box.appendChild(row);
+    }
+  }
+
+  async function runTaskOp(fn) {
+    try { await fn(); } catch (err) { alert(errorMessage(err)); }
+    renderTasks();
+  }
+
+  /** Создание самостоятельной задачи (row = null) или правка. Область
+   *  выбирается явно — владельца «по умолчанию» нет. */
+  async function openTaskDialog(row) {
+    var dlg = $('#taskDialog');
+    var form = $('#taskDialogForm');
+    var scope = $('#taskDialogScope');
+    var body = $('#taskDialogBody');
+    var due = $('#taskDialogDue');
+    var errEl = $('#taskDialogError');
+    var del = $('#taskDialogDelete');
+    var busy = false;
+    $('#taskDialogTitle').textContent = t(row ? 'j.task.edit' : 'j.task.new');
+    $('#taskScopeField').hidden = !!row;
+    scope.required = !row;
+    if (!row) {
+      var nodes = (await CWJournal.nodes.getAll()).filter(function (n) { return n.status !== 'archived'; });
+      var byId = {};
+      nodes.forEach(function (n) { byId[n.id] = n; });
+      var opts = [];
+      for (var i = 0; i < nodes.length; i++) opts.push({ id: nodes[i].id, label: await nodePath(byId, nodes[i]) });
+      opts.sort(function (a, b) { return a.label.localeCompare(b.label); });
+      scope.innerHTML = '<option value="">' + esc(t('j.task.scope_pick')) + '</option>' +
+        opts.map(function (o) { return '<option value="' + esc(o.id) + '">' + esc(o.label) + '</option>'; }).join('');
+    }
+    body.value = row ? row.body : '';
+    due.value = row && row.dueDate ? row.dueDate : '';
+    del.hidden = !row;
+    errEl.hidden = true;
+    dlg.showModal();
+    body.focus();
+
+    function showError(msg) { errEl.textContent = msg; errEl.hidden = false; }
+    async function onSubmit(e) {
+      e.preventDefault();
+      if (busy) return;
+      if (!row && !scope.value) { showError(t('j.task.scope_required')); return; }
+      if (!body.value.trim()) { showError(t('j.error.visit_record_empty')); return; }
+      busy = true;
+      try {
+        if (row) {
+          var patch = {};
+          if (body.value !== row.body) patch.body = body.value;
+          if ((due.value || '') !== (row.dueDate || '')) patch.dueDate = due.value || null;
+          if (Object.keys(patch).length) await CWJournal.tasks.update(row.id, patch);
+        } else {
+          await CWJournal.tasks.add({ nodeId: scope.value, body: body.value, dueDate: due.value || undefined });
+        }
+      } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      busy = false;
+      cleanup(); dlg.close(); renderTasks();
+    }
+    async function onDelete() {
+      if (!row || busy || !confirm(t('j.confirm.delete_record'))) return;
+      busy = true;
+      try { await CWJournal.tasks.remove(row.id); } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      busy = false;
+      cleanup(); dlg.close(); renderTasks();
+    }
+    function onCancel() { cleanup(); dlg.close(); }
+    var unbindClose;
+    function cleanup() {
+      form.removeEventListener('submit', onSubmit);
+      del.removeEventListener('click', onDelete);
+      $('#taskDialogCancel').removeEventListener('click', onCancel);
+      if (unbindClose) unbindClose();
+    }
+    form.addEventListener('submit', onSubmit);
+    del.addEventListener('click', onDelete);
+    $('#taskDialogCancel').addEventListener('click', onCancel);
+    unbindClose = bindDialogCleanup(dlg, cleanup);
   }
 
   function wireVisitEditorChrome() {
@@ -907,6 +1251,23 @@
         var input = $('#visitRecords .j-block__input');
         if (input) { input.className = 'j-block__input j-block__input--' + d.format; input.focus(); }
       });
+    });
+    $all('#visitDetailView .j-editor__bar [data-cmd="carry"]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!visitEditable() || editor.busy || !editor.draft) return;
+        draftToggleCarry();
+      });
+    });
+    $('#carryReviewBtn').addEventListener('click', function () {
+      var i = carryView.items.findIndex(function (it) { return it.state === 'pending'; });
+      openCarrySheet(i < 0 ? 0 : i);
+    });
+    $all('#carrySheet [data-carry]').forEach(function (b) {
+      b.addEventListener('click', function () { decideCarry(b.getAttribute('data-carry')); });
+    });
+    $('#carrySheetDone').addEventListener('click', function () { $('#carrySheet').close(); });
+    $all('#route-tasks [data-task-tab]').forEach(function (b) {
+      b.addEventListener('click', function () { taskTab = b.getAttribute('data-task-tab'); renderTasks(); });
     });
     $all('#visitDetailView .j-editor__bar [data-cmd="to-todo"]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1417,6 +1778,7 @@
 
   /* ═══ Создание района/собрания по FAB / пустому состоянию ═════════════ */
   async function runAction(action) {
+    if (action === 'new-task') { openTaskDialog(null); return; }
     if (action === 'new-visit') {
       var vs = parseHash();
       if (!vs.congregationId) return;
@@ -1486,6 +1848,7 @@
     } else {
       resetMoreMenu();
       $('#topbarContext').textContent = '';
+      if (state.route === 'tasks') renderTasks();
     }
 
     var fab = $('#fab');

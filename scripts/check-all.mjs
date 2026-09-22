@@ -206,6 +206,12 @@ const CHECKS = [
     deps: ['fake-indexeddb', 'acorn', 'acorn-walk'],
   },
   {
+    file: 'check-journal-carry-tasks.mjs',
+    title: 'Перенос и задачи Журнала',
+    why: 'один пункт — одна строка через все посещения; закрытие физически снимает carryKey; единый цикл задач; общий фасад их не обходит',
+    deps: ['fake-indexeddb', 'acorn', 'acorn-walk'],
+  },
+  {
     file: 'check-shell-bump.mjs',
     title: 'Бамп при правке файлов оболочки',
     why: 'изменённый файл в прекэше без подъёма версии не доезжает до пользователя и даёт смесь поколений',

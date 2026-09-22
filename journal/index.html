@@ -455,6 +455,24 @@
             </div>
           </div>
 
+          <!-- Перенос (J5): баннер — только пока есть нерассмотренные входящие
+               пункты; секция — все входящие этого посещения в любом состоянии. -->
+          <div class="md-banner md-banner--warn" id="carryBanner" hidden>
+            <span class="md-banner__icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg></span>
+            <div class="md-banner__body">
+              <p class="md-banner__title" id="carryBannerTitle"></p>
+              <p class="j-banner__text" id="carryBannerText"></p>
+            </div>
+            <div class="md-banner__actions"><button type="button" class="md-btn md-btn-tonal" id="carryReviewBtn" data-i18n="j.carry.review">Рассмотреть</button></div>
+          </div>
+          <div class="j-sec" id="carrySec" hidden>
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.carry.section_title">Перенесённые вопросы</span>
+              <span class="j-sec__count" id="carryCount"></span>
+            </div>
+            <div id="carryList"></div>
+          </div>
+
           <div class="j-editor">
             <div class="j-editor__bar" role="toolbar" data-i18n-aria-label="j.editor.toolbar" aria-label="Оформление записи">
               <button type="button" class="j-tool active" data-format="paragraph" data-i18n="j.editor.paragraph">Абзац</button>
@@ -464,8 +482,8 @@
               <button type="button" class="j-tool" data-format="quote" data-i18n="j.editor.quote">Цитата</button>
               <span class="j-editor__spacer"></span>
               <button type="button" class="j-tool" data-cmd="to-todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg><span data-i18n="j.editor.to_task">В задачу</span></button>
-              <!-- «На след. визит» — J5 (carryKey), «Связать» — J7 (связи): видимы, неактивны. -->
-              <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg><span data-i18n="j.editor.next_visit">На след. визит</span></button>
+              <!-- «На след. визит» — J5 (перенос выбранной записи); «Связать» — J7: видим, неактивен. -->
+              <button type="button" class="j-tool" data-cmd="carry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg><span data-i18n="j.editor.next_visit">На след. визит</span></button>
               <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
             </div>
             <div class="j-editor__body">
@@ -521,6 +539,62 @@
           </div>
           <div class="md-dialog-actions">
             <button type="button" class="md-btn md-btn-text" id="visitDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+            <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Лист разбора перенесённого пункта (J5, эталон 05-carryover-m.jpg).
+           Поле «Комментарий к решению» из эталона не заведено: текст в
+           touches[] стал бы вторым каналом открытого текста вне body
+           (граница J8). -->
+      <dialog id="carrySheet" class="md-dialog j-sheet" aria-labelledby="carrySheetTitle">
+        <div class="j-sheet__grip" aria-hidden="true"></div>
+        <p class="j-kicker" id="carrySheetKicker"></p>
+        <h2 class="j-sheet__title" id="carrySheetTitle"></h2>
+        <p class="j-row__meta j-sheet__meta" id="carrySheetMeta"></p>
+        <ul class="j-hist" id="carrySheetHist"></ul>
+        <p class="j-dialog-error" id="carrySheetError" role="alert" hidden></p>
+        <div class="j-sheet__actions">
+          <button type="button" class="md-btn md-btn-filled md-btn-full" data-carry="closed">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg>
+            <span data-i18n="j.carry.close">Закрыть вопрос</span>
+          </button>
+          <div class="j-sheet__row">
+            <button type="button" class="md-btn md-btn-outlined" data-carry="kept" data-i18n="j.carry.keep">Оставить открытым</button>
+            <button type="button" class="md-btn md-btn-tonal" data-carry="deferred">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              <span data-i18n="j.carry.defer">Перенести дальше</span>
+            </button>
+          </div>
+          <button type="button" class="md-btn md-btn-text md-btn-full" id="carrySheetDone" data-i18n="j.action.done">Готово</button>
+        </div>
+        <p class="j-note" data-i18n="j.carry.footnote">Запись одна и та же — она принадлежит собранию, а не посещению. Решение дописывает событие в историю, ничего не копируется и не теряется.</p>
+      </dialog>
+
+      <!-- Диалог задачи (J5): создание самостоятельной задачи и правка. -->
+      <dialog id="taskDialog" class="md-dialog" aria-labelledby="taskDialogTitle">
+        <form method="dialog" id="taskDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="taskDialogTitle"></h3></div>
+          <div class="md-dialog-body">
+            <div class="md-field" id="taskScopeField">
+              <select id="taskDialogScope" required></select>
+              <label for="taskDialogScope" data-i18n="j.task.scope">Где</label>
+            </div>
+            <div class="md-field">
+              <textarea id="taskDialogBody" rows="3" required placeholder=" "></textarea>
+              <label for="taskDialogBody" data-i18n="j.task.body">Задача</label>
+            </div>
+            <div class="md-field">
+              <input type="date" id="taskDialogDue" placeholder=" ">
+              <label for="taskDialogDue" data-i18n="j.task.due">Срок (необязательно)</label>
+            </div>
+            <p class="j-dialog-error" id="taskDialogError" role="alert" hidden></p>
+          </div>
+          <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" id="taskDialogDelete" data-i18n="j.action.delete" hidden>Удалить</button>
+            <span class="j-editor__spacer"></span>
+            <button type="button" class="md-btn md-btn-text" id="taskDialogCancel" data-i18n="j.action.cancel">Отмена</button>
             <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
           </div>
         </form>
@@ -619,11 +693,24 @@
       </dialog>
 
       <!-- ═══ Задачи / Поиск / Архив — вне рамок J1 ═══════════════════════ -->
-      <section class="md-page md-page--narrow j-placeholder" data-route="tasks" id="route-tasks" hidden>
-        <div class="md-emptystate">
-          <div class="md-emptystate__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
-          <p class="md-emptystate__title" data-i18n="j.placeholder.title">Экран появится в следующей фазе</p>
-          <p class="md-emptystate__text" data-i18n="j.placeholder.text">Этот раздел будет подключён в одной из следующих фаз.</p>
+      <section class="md-page md-page--narrow" data-route="tasks" id="route-tasks" hidden>
+        <!-- Задачи (J5): все todo Журнала — самостоятельные и из посещений —
+             через CWJournal.tasks. Задача завершённого/архивного посещения
+             показывается только для чтения (правило держит слой данных). -->
+        <div class="md-page__header">
+          <div>
+            <h1 class="md-page__title" data-i18n="j.nav.tasks">Задачи</h1>
+            <p class="md-page__lede" id="tasksLede"></p>
+          </div>
+        </div>
+        <div class="md-toolbar">
+          <div class="md-segmented j-tabs">
+            <button type="button" class="active" data-task-tab="open" data-i18n="j.task.tab_open">Открытые</button>
+            <button type="button" data-task-tab="done" data-i18n="j.task.tab_done">Выполненные</button>
+          </div>
+        </div>
+        <div class="j-sec">
+          <div id="tasksList"></div>
         </div>
       </section>
       <section class="md-page md-page--narrow j-placeholder" data-route="search" id="route-search" hidden>

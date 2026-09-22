@@ -175,9 +175,12 @@ ok('индекс status (узлы)', (await J.nodes.byStatus('archived')).map((r
 await J.nodes.remove(grp);
 ok('узел: remove', (await J.nodes.get(grp)) === null);
 
-const e1 = await J.entries.add({ type: 'question', nodeId: cong, circuitId: circuit, status: 'open', carryKey: J.carryKeyFor(cong), touches: [] });
+// J5: строки с carryKey и задачи общий фасад больше не создаёт (только
+// CWJournal.carry / CWJournal.tasks). Здесь проверяется сам индекс, поэтому
+// строки заводятся на уровне CWDB — как и закрытие ниже.
+const e1 = await CWDB.journalEntries.add({ type: 'question', nodeId: cong, circuitId: circuit, status: 'open', carryKey: J.carryKeyFor(cong), touches: [] });
 const e2 = await J.entries.add({ type: 'note', nodeId: cong, circuitId: circuit, status: 'open' });
-const e3 = await J.entries.add({ type: 'todo', nodeId: circuit, circuitId: circuit, status: 'done', dueDate: '2028-03-28' });
+const e3 = await CWDB.journalEntries.add({ type: 'todo', nodeId: circuit, circuitId: circuit, status: 'done', dueDate: '2028-03-28' });
 ok('запись: id с префиксом je_', /^je_/.test(e1), e1);
 ok('запись: get', (await J.entries.get(e2))?.type === 'note');
 ok('индекс nodeId', (await J.entries.byNode(cong)).length === 2);
@@ -200,7 +203,7 @@ try { await CWDB.journalEntries.add({ id: 'je_bool', carryKey: true }); } catch 
 const boolRow = await J.entries.get('je_bool');
 ok('булево carryKey не попадает в индекс (невалидный ключ)',
   boolRejected || ((await CWDB.journalEntries.byIndex('carryKey', IDBKeyRange.lowerBound(''))).every((r) => r.id !== 'je_bool') && !!boolRow));
-await J.entries.remove(e3);
+await CWDB.journalEntries.remove(e3);
 ok('запись: remove', (await J.entries.get(e3)) === null);
 
 const l1 = await J.links.add({ from: J.urn.entry(e2), to: J.urn.node(cong), rel: 'relates' });
