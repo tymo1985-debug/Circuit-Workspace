@@ -77,6 +77,7 @@ const SHELLS = [
   { sw: 'pioneer-school/sw.js', module: 'pioneer-school', title: 'Школа' },
   { sw: 'appointments/sw.js', module: 'appointments', title: 'Назначения' },
   { sw: 'documents/sw.js', module: 'documents', title: 'Документы' },
+  { sw: 'journal/sw.js', module: 'journal', title: 'Журнал' },
 ];
 
 let failed = 0;

@@ -149,3 +149,25 @@
   color: inherit; cursor: pointer; border-radius: var(--md-radius-full);
 }
 .j-row__chevronbtn:hover, .j-row__chevronbtn:focus-visible { background: var(--md-surface-container-highest); }
+
+/* --- Карточка идентичности собрания (J3b) ----------------------------------
+   Одна геометрия на три состояния (linked/unlinked/broken) — см.
+   03-congregation-m.jpg и J3b spec: разное наполнение, не разный макет. */
+.j-identity__head {
+  display: flex; align-items: center; gap: var(--cw-space-2);
+  margin-bottom: var(--cw-space-3); flex-wrap: wrap;
+}
+.j-identity__title { font: 500 16px/22px var(--md-font-family); margin: 0; }
+.j-identity__badge { display: inline-flex; align-items: center; gap: 4px; }
+.j-identity__badge svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.j-identity__line {
+  font: 400 14px/22px var(--md-font-family); letter-spacing: 0.15px;
+  color: var(--md-on-surface); margin: 0 0 var(--cw-space-2);
+}
+.j-identity__hint {
+  font: 400 12px/18px var(--md-font-family); letter-spacing: 0.15px;
+  color: var(--md-on-surface-variant); margin: var(--cw-space-2) 0 0;
+}
+.j-identity__actions {
+  display: flex; gap: var(--cw-space-2); margin-top: var(--cw-space-4); flex-wrap: wrap;
+}

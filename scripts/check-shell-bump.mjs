@@ -38,12 +38,21 @@ const SHELLS = [
   { id: 'pioneer-school',   dir: 'pioneer-school',   sw: 'pioneer-school/sw.js' },
   { id: 'appointments',     dir: 'appointments',     sw: 'appointments/sw.js' },
   { id: 'documents',        dir: 'documents',        sw: 'documents/sw.js' },
+  { id: 'journal',          dir: 'journal',           sw: 'journal/sw.js' },
 ];
 
 const base = process.env.CW_BUMP_BASE || '';
 let changed = [];
 try {
-  const out = execFileSync('git', ['diff', '--name-only', base || 'HEAD~1', 'HEAD'], {
+  /* Сравнение идёт с РАБОЧИМ ДЕРЕВОМ, а не с HEAD: цель проверки — поймать
+     недостающий бамп ПЕРЕД сборкой релизного ZIP, а несохранённые правки
+     на этот момент обычно ещё не закоммичены (тот же случай, что уже решён
+     в check-shared-bump.mjs — там сравнение всегда шло с деревом). `git
+     diff --name-only <base>` без второго аргумента-ревизии сравнивает
+     дерево (включая незакоммиченное и проиндексированное) с базой; когда
+     дерево чистое и совпадает с HEAD (обычный CI), результат тот же, что
+     и раньше — поведение для чистых деревьев не меняется. */
+  const out = execFileSync('git', ['diff', '--name-only', base || 'HEAD~1'], {
     cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
   });
   changed = out.split('\n').map((s) => s.trim()).filter(Boolean);

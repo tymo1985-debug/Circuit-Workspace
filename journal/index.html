@@ -306,7 +306,184 @@
             <div id="congregationsTree"></div>
           </div>
         </div>
+
+        <!-- Одно собрание: виден при #districts/<circuitId>/congregation/<nodeId>. -->
+        <div id="congregationDetailView" hidden>
+          <p class="j-crumb">
+            <a href="#districts" data-i18n="j.nav.districts">Районы</a>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            <a href="#" id="congCrumbCircuit"></a>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            <b id="congCrumbLabel"></b>
+          </p>
+          <div class="md-page__header">
+            <div>
+              <h1 class="md-page__title" id="congTitle"></h1>
+              <p class="md-page__lede" id="congMeta"></p>
+            </div>
+          </div>
+
+          <div class="md-toolbar">
+            <div class="md-segmented j-tabs">
+              <button type="button" class="active" data-i18n="j.nav.overview">Обзор</button>
+              <button type="button" data-i18n="j.tab.visits" disabled>Посещения</button>
+              <button type="button" data-i18n="j.tab.entries" disabled>Записи</button>
+              <button type="button" data-i18n="j.nav.tasks" disabled>Задачи</button>
+              <button type="button" data-i18n="j.nav.archive" disabled>Архив</button>
+            </div>
+          </div>
+
+          <!-- Карточка идентичности собрания. Три взаимоисключающих состояния
+               (linked/unlinked/broken) переключаются показом/скрытием трёх
+               блоков ниже — разметка одной геометрии на все три, как того
+               требует эталон 03-congregation-m.jpg (см. J3b spec). -->
+          <div class="j-sec j-identity" id="congIdentityCard">
+
+            <!-- A) LINKED: communityId разрешился в CWDirectory. -->
+            <div id="congIdentityLinked" hidden>
+              <div class="j-identity__head">
+                <span class="j-identity__title" data-i18n="j.identity.title">Собрание</span>
+                <span class="md-status md-status-success j-identity__badge">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l1.93-1.93a5 5 0 0 0-7.07-7.07L10.5 5.5"/><path d="M14 11a5 5 0 0 0-7.07 0L5 12.93a5 5 0 0 0 7.07 7.07l1.43-1.43"/></svg>
+                  <span data-i18n="j.identity.linked_badge">общий справочник</span>
+                </span>
+              </div>
+              <p class="j-identity__line" id="congIdentityLine1"></p>
+              <p class="j-identity__line" id="congIdentitySchedule"></p>
+              <p class="j-identity__line" id="congIdentityContact"></p>
+              <p class="j-identity__hint" id="congIdentityHint"></p>
+              <div class="j-identity__actions">
+                <button type="button" class="md-btn md-btn-text" id="congEditIdentityBtn" data-i18n="j.identity.edit">Изменить</button>
+                <button type="button" class="md-btn md-btn-text" id="congEditScheduleBtn" data-i18n="j.identity.edit_schedule">Расписание</button>
+              </div>
+            </div>
+
+            <!-- B) UNLINKED: локальная запись Журнала без связи. -->
+            <div id="congIdentityUnlinked" hidden>
+              <div class="j-identity__head">
+                <span class="j-identity__title" data-i18n="j.identity.title">Собрание</span>
+                <span class="md-status md-status-normal j-identity__badge" id="congUnlinkedBadge" data-i18n="j.identity.unlinked_badge">не связано со справочником</span>
+              </div>
+              <p class="j-identity__line" id="congUnlinkedLabel"></p>
+              <p class="j-identity__hint" data-i18n="j.identity.unlinked_hint">Название, номер, адрес и контакты появятся здесь после связывания с общим справочником.</p>
+              <div class="j-identity__actions">
+                <button type="button" class="md-btn md-btn-filled" id="congLinkBtn" data-i18n="j.identity.link_action">Связать со справочником</button>
+              </div>
+            </div>
+
+            <!-- C) BROKEN: communityId есть, но запись в справочнике не найдена. -->
+            <div id="congIdentityBroken" hidden>
+              <div class="j-identity__head">
+                <span class="j-identity__title" data-i18n="j.identity.title">Собрание</span>
+                <span class="md-status md-status-critical j-identity__badge" data-i18n="j.identity.broken_badge">связь не найдена</span>
+              </div>
+              <p class="j-identity__line" id="congBrokenLabel"></p>
+              <p class="j-identity__hint" data-i18n="j.identity.broken_hint">Запись справочника, на которую ссылалось это собрание, не найдена. Ссылка сохранена — выберите или создайте запись заново.</p>
+              <div class="j-identity__actions">
+                <button type="button" class="md-btn md-btn-filled" id="congRelinkBtn" data-i18n="j.identity.link_action">Связать со справочником</button>
+              </div>
+            </div>
+
+            <!-- D) UNAVAILABLE: справочник не прочитан/недоступен — это НЕ
+                 то же самое, что unlinked/broken. Никаких активных действий:
+                 communityId не трогаем, ссылку не предлагаем создавать. -->
+            <div id="congIdentityUnavailable" hidden>
+              <div class="j-identity__head">
+                <span class="j-identity__title" data-i18n="j.identity.title">Собрание</span>
+                <span class="md-status md-status-normal j-identity__badge" data-i18n="j.identity.unavailable_badge">справочник недоступен</span>
+              </div>
+              <p class="j-identity__line" id="congUnavailableLabel"></p>
+              <p class="j-identity__hint" data-i18n="j.identity.unavailable_hint">Общий справочник сейчас недоступен. Связь этого собрания не изменена — попробуйте обновить страницу позже.</p>
+            </div>
+          </div>
+
+          <div class="j-sec">
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.card.groups_title">Группы и предгруппы</span>
+              <span class="j-sec__count" id="congChildrenCount"></span>
+            </div>
+            <div id="congChildrenTree"></div>
+          </div>
+
+          <!-- Будущие разделы (визиты/проекты района) — намеренно нейтральны:
+               в J3b фиктивных данных нет (см. j-placeholder ниже и J3b spec). -->
+          <div class="j-sec j-placeholder">
+            <p class="md-emptystate__text" data-i18n="j.congregation.future_hint">Посещения, записи и задачи этого собрания появятся здесь в одной из следующих фаз.</p>
+          </div>
+        </div>
       </section>
+
+      <!-- Диалог связывания со справочником: список кандидатов + создание новой
+           записи. Один диалог на unlinked/broken — режим (link vs create)
+           определяет заголовок и то, какая ветка формы видна. -->
+      <dialog id="linkDialog" class="md-dialog" aria-labelledby="linkDialogTitle">
+        <form method="dialog" id="linkDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="linkDialogTitle" data-i18n="j.dialog.link_title">Связать со справочником</h3></div>
+          <div class="md-dialog-body">
+            <div class="md-field">
+              <input type="text" id="linkDialogSearch" placeholder=" " autocomplete="off">
+              <label for="linkDialogSearch" data-i18n="j.field.search_directory">Поиск по названию</label>
+            </div>
+            <div id="linkDialogCandidates" class="j-sec" style="margin-top: var(--cw-space-3);"></div>
+            <details id="linkDialogCreate">
+              <summary data-i18n="j.dialog.create_new">Создать новую запись</summary>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewName" placeholder=" " autocomplete="off" maxlength="120">
+                <label for="linkDialogNewName" data-i18n="j.field.name">Название</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewNumber" placeholder=" " autocomplete="off" maxlength="20">
+                <label for="linkDialogNewNumber" data-i18n="j.field.cong_number">Номер собрания</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewAddress" placeholder=" " autocomplete="off" maxlength="200">
+                <label for="linkDialogNewAddress" data-i18n="j.field.address">Адрес</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewContactName" placeholder=" " autocomplete="off" maxlength="120">
+                <label for="linkDialogNewContactName" data-i18n="j.field.contact_name">Контактное лицо</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewContactPhone" placeholder=" " autocomplete="off" maxlength="40">
+                <label for="linkDialogNewContactPhone" data-i18n="j.field.contact_phone">Телефон</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewContactEmail" placeholder=" " autocomplete="off" maxlength="120">
+                <label for="linkDialogNewContactEmail" data-i18n="j.field.contact_email">E-mail</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="linkDialogNewContactNote" placeholder=" " autocomplete="off" maxlength="200">
+                <label for="linkDialogNewContactNote" data-i18n="j.field.contact_note">Заметка о контакте</label>
+              </div>
+              <button type="button" class="md-btn md-btn-filled" id="linkDialogCreateBtn" data-i18n="j.action.save">Сохранить</button>
+            </details>
+          </div>
+          <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" id="linkDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Диалог редактирования расписания (Journal-owned, не CWDirectory). -->
+      <dialog id="scheduleDialog" class="md-dialog" aria-labelledby="scheduleDialogTitle">
+        <form method="dialog" id="scheduleDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="scheduleDialogTitle" data-i18n="j.dialog.schedule_title">Расписание встреч</h3></div>
+          <div class="md-dialog-body">
+            <div class="md-field">
+              <input type="text" id="scheduleDialogMidweek" placeholder=" " autocomplete="off" maxlength="80">
+              <label for="scheduleDialogMidweek" data-i18n="j.field.schedule_midweek">Серединное собрание</label>
+            </div>
+            <div class="md-field">
+              <input type="text" id="scheduleDialogWeekend" placeholder=" " autocomplete="off" maxlength="80">
+              <label for="scheduleDialogWeekend" data-i18n="j.field.schedule_weekend">Выходное собрание</label>
+            </div>
+          </div>
+          <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" id="scheduleDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+            <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
+          </div>
+        </form>
+      </dialog>
 
       <!-- Диалог создания/переименования узла (район/собрание/группа/
            предгруппа) — один на все четыре вида, kind предустановлен в JS,
@@ -333,21 +510,21 @@
         <div class="md-emptystate">
           <div class="md-emptystate__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
           <p class="md-emptystate__title" data-i18n="j.placeholder.title">Экран появится в следующей фазе</p>
-          <p class="md-emptystate__text" data-i18n="j.placeholder.text">В этой версии Журнала ещё нет данных — только оболочка и две демонстрационные фикстуры (Обзор и Районы).</p>
+          <p class="md-emptystate__text" data-i18n="j.placeholder.text">Этот раздел будет подключён в одной из следующих фаз.</p>
         </div>
       </section>
       <section class="md-page md-page--narrow j-placeholder" data-route="search" id="route-search" hidden>
         <div class="md-emptystate">
           <div class="md-emptystate__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></div>
           <p class="md-emptystate__title" data-i18n="j.placeholder.title">Экран появится в следующей фазе</p>
-          <p class="md-emptystate__text" data-i18n="j.placeholder.text">В этой версии Журнала ещё нет данных — только оболочка и две демонстрационные фикстуры (Обзор и Районы).</p>
+          <p class="md-emptystate__text" data-i18n="j.placeholder.text">Этот раздел будет подключён в одной из следующих фаз.</p>
         </div>
       </section>
       <section class="md-page md-page--narrow j-placeholder" data-route="archive" id="route-archive" hidden>
         <div class="md-emptystate">
           <div class="md-emptystate__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg></div>
           <p class="md-emptystate__title" data-i18n="j.placeholder.title">Экран появится в следующей фазе</p>
-          <p class="md-emptystate__text" data-i18n="j.placeholder.text">В этой версии Журнала ещё нет данных — только оболочка и две демонстрационные фикстуры (Обзор и Районы).</p>
+          <p class="md-emptystate__text" data-i18n="j.placeholder.text">Этот раздел будет подключён в одной из следующих фаз.</p>
         </div>
       </section>
     </div>
@@ -390,6 +567,7 @@
 <!-- J2: слой данных. db.js ленив (базу не открывает до первого вызова), UI
      в J2 по-прежнему статичен — чтений из хранилищ здесь ещё нет. -->
 <script src="../shared/db.js"></script>
+<script src="../shared/directory.js"></script>
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
 <script src="../shared/backup.js"></script>

@@ -266,7 +266,16 @@
 
   function reload() {
     var store = db();
-    if (!store) return Promise.resolve(false);
+    if (!store) {
+      // Хранилище исчезло между вызовами (не только «холодный» первый
+      // init() — переинициализация после сбоя должна честно откатить
+      // ready в false, а не оставить его от предыдущего успеха: иначе
+      // временная недоступность после уже удавшегося init() выглядела бы
+      // как «справочник по-прежнему прочитан», хотя кэш мог устареть, а
+      // источник данных пропал.
+      ready = false;
+      return Promise.resolve(false);
+    }
     return store.getAll().then(function (rows) {
       cache = (rows || []).filter(function (row) { return row && row.id; });
       cache.sort(function (a, b) {
@@ -278,7 +287,11 @@
     }).catch(function (error) {
       console.error('CWDirectory: не удалось прочитать справочник', error);
       /* Пустой кэш при недоступной базе — это «не знаем», а не «пусто».
-         ready остаётся false, чтобы вызывающий мог отличить одно от другого. */
+         ready становится false и здесь, а не только при первом холодном
+         отказе — иначе повторный сбой ПОСЛЕ уже удавшегося init() остался
+         бы незамеченным вызывающим кодом (тот же класс бага, что и в
+         раннем return выше). */
+      ready = false;
       return false;
     });
   }
@@ -292,6 +305,11 @@
     init: function () {
       if (!db()) {
         console.warn('CWDirectory: CWDB недоступен — справочник не подключён');
+        // Тот же откат, что и в раннем return reload() ниже: повторный
+        // init() ПОСЛЕ уже удавшегося предыдущего не должен оставлять
+        // ready залипшим в true — вызывающий код (Журнал: directoryReady)
+        // обязан увидеть именно текущее состояние, а не унаследованное.
+        ready = false;
         return Promise.resolve(false);
       }
       ownRev = lsGet(REV_KEY) || '';
@@ -329,6 +347,45 @@
     },
 
     /**
+     * Создать НОВУЮ запись без заранее известного id — для модулей вроде
+     * Журнала, у которых нет собственного домена для повторного использования
+     * (в отличие от Клиндария, который зеркалит `event.id`, см. app.js).
+     *
+     * Id не генерируется здесь: `CWDB.communities.add()` уже делает это сам
+     * (makeCrud('communities', 'com') в shared/db.js), когда record.id не
+     * передан. Эта функция — тонкая обёртка, не второй генератор id:
+     * нормализует вход той же normalize(), что и upsert(), пишет через
+     * add() (не put()), забирает готовый id и заводит запись в кэше тем же
+     * путём, что и upsert() — тот же маячок `cw-directory-rev`, тот же
+     * notify(), никакого второго cross-tab механизма.
+     *
+     * @param {Object} patch — без `id`; должен содержать `name`
+     * @param {string} [moduleId] — кто пишет; попадёт в `sources`
+     * @returns {Promise<Object|null>} копия созданной записи, либо null при отказе
+     */
+    create: function (patch, moduleId) {
+      var store = db();
+      if (!store) return Promise.resolve(null);
+      var input = Object.assign({}, patch);
+      delete input.id;
+      if (moduleId) input.sources = [moduleId];
+      var record = normalize(input, null);
+      delete record.id; // normalize(x, null) даёт '' — add() должен сам сгенерировать
+      return store.add(record).then(function (id) {
+        record.id = id;
+        cache.push(record);
+        cache.sort(function (a, b) { return normName(a.name).localeCompare(normName(b.name)); });
+        reindex();
+        bumpRev();
+        notify();
+        return Object.assign({}, record);
+      }).catch(function (error) {
+        console.error('CWDirectory: создание не удалось', error);
+        return null;
+      });
+    },
+
+    /**
      * Создать или обновить запись. Поля, которых нет в FIELDS, отбрасываются —
      * это и есть защита границы: модуль физически не может протащить сюда
      * свой цвет или расписание, даже передав их по ошибке.
@@ -360,6 +417,43 @@
         return Object.assign({}, record);
       }).catch(function (error) {
         console.error('CWDirectory: запись не удалась', error);
+        return null;
+      });
+    },
+
+    /**
+     * Заявить существующую запись за модулем — БЕЗ изменения полей
+     * идентичности. Нужен модулям, которые связываются с чужой записью
+     * (Журнал: «связать со справочником»), в отличие от upsert(), который
+     * пишет/меняет саму идентичность. Тонкая обёртка вокруг normalize() —
+     * тот же путь слияния sources[], что и в upsert(), без риска случайно
+     * затереть name/address чужой записи пустым патчем.
+     *
+     * @param {string} id — существующая запись; несуществующий id — отказ
+     * @param {string} moduleId — кто заявляет право
+     * @returns {Promise<Object|null>} копия записи, либо null при отказе
+     */
+    attach: function (id, moduleId) {
+      var store = db();
+      if (!store) return Promise.resolve(null);
+      var key = str(id);
+      var previous = index && index[key] ? index[key] : null;
+      if (!previous) return Promise.resolve(null); // нельзя заявить несуществующую запись
+      if (!moduleId) return Promise.resolve(Object.assign({}, previous)); // нечего добавлять
+      if ((previous.sources || []).indexOf(moduleId) >= 0) {
+        return Promise.resolve(Object.assign({}, previous)); // уже заявлено — не трогаем БД зря
+      }
+      var record = normalize({ id: key, sources: [moduleId] }, previous);
+      return store.put(record).then(function () {
+        for (var i = 0; i < cache.length; i++) {
+          if (cache[i].id === key) { cache[i] = record; break; }
+        }
+        reindex();
+        bumpRev();
+        notify();
+        return Object.assign({}, record);
+      }).catch(function (error) {
+        console.error('CWDirectory: attach не удался', error);
         return null;
       });
     },

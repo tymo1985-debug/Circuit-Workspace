@@ -34,6 +34,7 @@ const ASSETS = [
   '../shared/theme.js',
   '../shared/backup.js',
   '../shared/db.js',
+  '../shared/directory.js',
   '../shared/version.js',
   '../shared/update.js',
   '../shared/i18n.js',
