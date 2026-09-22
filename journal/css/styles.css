@@ -347,3 +347,50 @@
    переноса и кнопка удаления в диалоге задачи. Правило только
    восстанавливает смысл атрибута и действует лишь внутри модуля. */
 [data-module="journal"] [hidden] { display: none !important; }
+
+/* --- Поиск (J6) — эталоны 07-search-m / 07-search-d ------------------------
+   Поле — общий .md-search на всю ширину страницы; фильтры — .md-chip;
+   группы — те же .j-sec/.j-row. Подсветка — <mark class="j-hit">, текст
+   внутри только из textContent. */
+.j-search { max-width: none; width: 100%; min-width: 0; height: 40px; padding: 0 var(--cw-space-2) 0 var(--cw-space-4); gap: var(--cw-space-3); }
+.j-search > svg { flex: 0 0 auto; }
+.j-search input { font-size: 15px; line-height: 22px; }
+.j-search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.j-search__clear { flex: 0 0 auto; width: 32px; height: 32px; }
+.j-search__filters { margin: var(--cw-space-3) 0 var(--cw-space-3); }
+.j-search__filters .md-chip { font-variant-numeric: tabular-nums; }
+.j-sres__head { margin-bottom: 0; padding-bottom: var(--cw-space-3); }
+.j-sec .j-sres { padding: var(--cw-space-4) 0 var(--cw-space-5); border-top: 1px solid var(--md-outline-variant); }
+.j-sres:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; border-radius: var(--md-radius-sm); }
+.j-sres__text { font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+.j-sres .j-row__end { align-self: flex-start; }
+.j-path { margin-top: var(--cw-space-2); gap: 4px 6px; }
+.j-path__sep { display: inline-flex; opacity: 0.7; }
+.j-path__sep svg { width: 12px; height: 12px; }
+.j-hit {
+  background: var(--cw-module-container); color: var(--cw-module-on-container);
+  border-radius: 4px; padding: 0 3px;
+}
+.j-row__ico--project { background: var(--status-success-bg); color: var(--status-success); }
+.j-sres__locked {
+  display: flex; align-items: center; gap: var(--cw-space-3);
+  border: 1px dashed var(--md-outline-variant); border-radius: var(--md-radius-lg);
+  padding: var(--cw-space-3) var(--cw-space-4); margin-bottom: var(--cw-space-4);
+  color: var(--md-on-surface-variant);
+}
+.j-sres__lockico { display: inline-flex; flex: 0 0 auto; }
+.j-sres__locktext { margin: 0; font: 400 14px/20px var(--md-font-family); letter-spacing: 0.1px; }
+.j-sres__locktext b { font-weight: 500; color: var(--md-on-surface); }
+
+/* --- Архив (J6): те же строки, действие «Восстановить» справа ------------- */
+.j-arch { align-items: center; }
+.j-arch__open { cursor: pointer; }
+.j-arch__open:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; border-radius: var(--md-radius-sm); }
+.j-arch__restore { white-space: nowrap; }
+/* Узкий экран: «Восстановить» уходит отдельной строкой под текст, иначе
+   кнопка сжимает крошки и дату до трёх строк (живой прогон 420 px). */
+@media (max-width: 600px) {
+  .j-arch { flex-wrap: wrap; align-items: flex-start; }
+  .j-arch__open { flex: 1 1 calc(100% - 44px); }
+  .j-arch .j-row__end { flex: 1 1 100%; justify-content: flex-end; margin-top: calc(-1 * var(--cw-space-2)); }
+}

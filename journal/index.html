@@ -713,19 +713,43 @@
           <div id="tasksList"></div>
         </div>
       </section>
-      <section class="md-page md-page--narrow j-placeholder" data-route="search" id="route-search" hidden>
-        <div class="md-emptystate">
-          <div class="md-emptystate__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></div>
-          <p class="md-emptystate__title" data-i18n="j.placeholder.title">Экран появится в следующей фазе</p>
-          <p class="md-emptystate__text" data-i18n="j.placeholder.text">Этот раздел будет подключён в одной из следующих фаз.</p>
+      <section class="md-page md-page--narrow" data-route="search" id="route-search" hidden>
+        <!-- Поиск (J6): CWJournal.search — только чтение, в памяти, без
+             сохранённого индекса. Запрос не попадает ни в хэш, ни в историю,
+             ни в localStorage. Результаты строятся из текстовых узлов. -->
+        <div class="md-page__header">
+          <div>
+            <h1 class="md-page__title" data-i18n="j.nav.search">Поиск</h1>
+            <p class="md-page__lede" data-i18n="j.search.lede">По записям, задачам, визитам и архиву — сразу во всех районах</p>
+          </div>
         </div>
+        <div class="md-search j-search" role="search">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <input type="search" id="searchInput" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" data-i18n-placeholder="j.search.placeholder" placeholder="Слово, имя, собрание…" data-i18n-aria-label="j.search.field" aria-label="Поиск по Журналу">
+          <button type="button" class="md-icon-btn j-search__clear" id="searchClear" hidden data-i18n-aria-label="j.search.clear" aria-label="Очистить"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div class="j-chip-row j-search__filters" id="searchFilters" role="group" data-i18n-aria-label="j.search.filters" aria-label="Фильтр результатов" hidden></div>
+        <p class="sr-only" id="searchStatus" role="status" aria-live="polite"></p>
+        <div id="searchResults"></div>
       </section>
-      <section class="md-page md-page--narrow j-placeholder" data-route="archive" id="route-archive" hidden>
-        <div class="md-emptystate">
-          <div class="md-emptystate__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg></div>
-          <p class="md-emptystate__title" data-i18n="j.placeholder.title">Экран появится в следующей фазе</p>
-          <p class="md-emptystate__text" data-i18n="j.placeholder.text">Этот раздел будет подключён в одной из следующих фаз.</p>
+      <section class="md-page md-page--narrow" data-route="archive" id="route-archive" hidden>
+        <!-- Архив (J6): напрямую архивные узлы и посещения (status/archivedAt,
+             не отдельное хранилище). Восстановление — только выбранный объект,
+             без каскада. Удаления здесь нет. -->
+        <div class="md-page__header">
+          <div>
+            <h1 class="md-page__title" data-i18n="j.nav.archive">Архив</h1>
+            <p class="md-page__lede" id="archiveLede" data-i18n="j.archive.lede">Районы, собрания, группы и посещения, убранные в архив. Ничего не удаляется — любой объект можно вернуть.</p>
+          </div>
         </div>
+        <div class="md-toolbar">
+          <div class="md-segmented j-tabs">
+            <button type="button" class="active" data-archive-tab="all" data-i18n="j.archive.tab_all">Всё</button>
+            <button type="button" data-archive-tab="nodes" data-i18n="j.archive.tab_nodes">Районы и собрания</button>
+            <button type="button" data-archive-tab="visits" data-i18n="j.archive.tab_visits">Посещения</button>
+          </div>
+        </div>
+        <div id="archiveList"></div>
       </section>
     </div>
   </div>

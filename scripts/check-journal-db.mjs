@@ -341,9 +341,11 @@ ok('rename: label обновился', afterRename.label === 'Северное (
 ok('rename: updatedAt продвинулся', afterRename.updatedAt > beforeRename.updatedAt);
 
 // 7.6 Архивирование / восстановление — это status, не отдельное хранилище.
-await J.nodes.update(t3group, { status: 'archived' });
+// J6: статус архива — только через nodes.archive/unarchive; прямой патч
+// статуса отклоняется (журнал-страж жизненного цикла).
+await J.nodes.archive(t3group);
 ok('архивирование: status = archived', (await J.nodes.get(t3group)).status === 'archived');
-await J.nodes.update(t3group, { status: 'active' });
+await J.nodes.unarchive(t3group);
 ok('восстановление из архива: status = active', (await J.nodes.get(t3group)).status === 'active');
 
 // 7.7 Порядок братьев: детерминированная сортировка по sort, затем label/id.

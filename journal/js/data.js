@@ -25,6 +25,9 @@
  *    или связи (as from/to) — каскадного удаления в J3a нет.
  *
  * Бизнес-логики визитов/задач/переноса здесь нет — только доступ к строкам.
+ * J6: CWJournal.search (только чтение, в памяти, без индекса) и
+ * CWJournal.archive (выборка по status, восстановление через циклы узла/
+ * посещения).
  */
 (function (global) {
   'use strict';
@@ -160,7 +163,40 @@
         if ('kind' in patch && patch.kind !== current.kind) throw new Error('journal-immutable-kind');
         if ('parentId' in patch && patch.parentId !== current.parentId) throw new Error('journal-immutable-parent');
       }
+      /* J6: архив узла — только archive()/unarchive(). Патч со статусом,
+         отличным от текущего, или с archivedAt — отказ, а не молчаливая
+         переадресация (тот же класс защиты, что у посещений). */
+      if ('status' in patch || 'archivedAt' in patch) {
+        var cur = await nodesBase.get(id);
+        if (!cur) throw new Error('journal-node-not-found');
+        if ('archivedAt' in patch || patch.status !== cur.status) throw new Error('journal-node-use-lifecycle');
+      }
       return nodesBase.update(id, patch);
+    },
+
+    /** J6: в архив — status 'archived' + archivedAt. Каскада нет: дети
+     *  не меняются, «архивность в контексте» вычисляется при чтении
+     *  (search.effectiveArchived), не записывается. */
+    archive: async function (id) {
+      var cur = await nodesBase.get(id);
+      if (!cur) throw new Error('journal-node-not-found');
+      if (cur.status === 'archived') throw new Error('journal-node-invalid-transition');
+      return nodesBase.update(id, { status: 'archived', archivedAt: now() });
+    },
+    /** Восстановление ТОЛЬКО этого узла: status 'active', archivedAt
+     *  удаляется физически. Легаси-строка без archivedAt восстанавливается
+     *  так же. Родитель в архиве восстановлению не мешает — узел остаётся
+     *  достижим по дереву, архивным его делает родитель (см. AGENTS.md). */
+    unarchive: async function (id) {
+      var cur = await nodesBase.get(id);
+      if (!cur) throw new Error('journal-node-not-found');
+      if (cur.status !== 'archived') throw new Error('journal-node-invalid-transition');
+      return db().journalNodes.mutate(id, function (row) {
+        if (!row) throw new Error('journal-node-not-found');
+        var next = Object.assign({}, row, { status: 'active', updatedAt: now() });
+        delete next.archivedAt;
+        return next;
+      });
     },
   };
 
@@ -755,6 +791,340 @@
     },
   };
 
+  /* ═══ Поиск (J6) ═════════════════════════════════════════════════════════
+   * Только чтение, по требованию, в памяти. НЕТ ни сохранённого индекса, ни
+   * истории запросов, ни кэша открытого текста — ни в IndexedDB, ни в
+   * localStorage/CWState (граница J8: забытый индекс пережил бы шифрование).
+   * Каждый run() читает строки заново — поэтому архив/восстановление видны
+   * сразу, без перезагрузки.
+   *
+   * Нормализация (fold): toLowerCase → NFD → у ЛАТИНСКОЙ базы снимаются
+   * диакритики (é→e, ä→a, ó→o…), у кириллицы только ё→е (й, ї, ґ — отдельные
+   * буквы, не трогаются) → NFC; ß→ss, ł→l; любой пробельный символ → ' '.
+   * Запрос: fold, trim, схлопнуть пробелы, разбить на токены. Семантика — И:
+   * каждый токен обязан найтись подстрокой в тексте результата ИЛИ его
+   * контекста (район/собрание/группа/подпись справочника). Без нечёткого
+   * поиска и стемминга.
+   *
+   * Ранг (детерминированный): 3 — собственное поле целиком равно запросу;
+   * 2 — поле начинается с запроса; 1 — запрос целиком подстрока поля;
+   * 0 — совпало только по токенам/контексту. Далее updatedAt по убыванию,
+   * затем id. Группы экрана сохраняют этот порядок внутри себя.
+   *
+   * Строка с `sec` (защищённая, J8) текстом НЕ ищется вовсе — ни title/body,
+   * ни шифротекст; она только считается (protectedCount).
+   *
+   * Архивность «в контексте» вычисляется при чтении и нигде не пишется:
+   * узел — свой status или архивный предок; посещение — своё или узла;
+   * запись/задача — своя, узла или посещения-источника. Выполненная задача
+   * и закрытый перенос архивом НЕ являются. */
+  var FOLD_LATIN = /[a-z]/;
+  function foldChar(ch) {
+    if (/\s/.test(ch)) return ' ';
+    var low = ch.toLowerCase();
+    if (low === 'ß') return 'ss';
+    if (low === 'ł') return 'l';
+    var d = low.normalize('NFD');
+    if (d.length > 1) {
+      var base = d.charAt(0);
+      if (FOLD_LATIN.test(base)) return base;
+      if (base === 'е' && d.charAt(1) === '\u0308') return 'е';
+    }
+    return low.normalize('NFC');
+  }
+  /** fold(text) → { s, start[], end[] }: start[i]/end[i] — диапазон исходной
+   *  строки, из которого получен i-й символ s (для безопасной подсветки). */
+  function foldMap(text) {
+    text = String(text == null ? '' : text);
+    var s = '', start = [], end = [];
+    for (var i = 0; i < text.length;) {
+      var cp = text.codePointAt(i);
+      var len = cp > 0xffff ? 2 : 1;
+      var f = foldChar(text.slice(i, i + len));
+      for (var k = 0; k < f.length; k++) { s += f.charAt(k); start.push(i); end.push(i + len); }
+      i += len;
+    }
+    return { s: s, start: start, end: end };
+  }
+  function fold(text) { return foldMap(text).s; }
+  function normalizeQuery(q) { return fold(q).replace(/ +/g, ' ').trim(); }
+  function tokensOf(q) { var n = normalizeQuery(q); return n ? n.split(' ') : []; }
+
+  /** Сегменты текста с отметкой совпадений: [{ text, hit }]. Позиции — по
+   *  ИСХОДНОЙ строке; разметку строит вызывающий из текстовых узлов. */
+  function highlight(text, query) {
+    text = String(text == null ? '' : text);
+    var toks = tokensOf(query).filter(Boolean);
+    if (!toks.length || !text) return [{ text: text, hit: false }];
+    var m = foldMap(text);
+    var marks = [];
+    toks.forEach(function (tok) {
+      var from = 0, at;
+      while ((at = m.s.indexOf(tok, from)) >= 0) {
+        marks.push([m.start[at], m.end[at + tok.length - 1]]);
+        from = at + tok.length;
+      }
+    });
+    if (!marks.length) return [{ text: text, hit: false }];
+    marks.sort(function (a, b) { return a[0] - b[0] || b[1] - a[1]; });
+    var merged = [];
+    marks.forEach(function (r) {
+      var last = merged[merged.length - 1];
+      if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+      else merged.push([r[0], r[1]]);
+    });
+    var out = [], pos = 0;
+    merged.forEach(function (r) {
+      if (r[0] > pos) out.push({ text: text.slice(pos, r[0]), hit: false });
+      out.push({ text: text.slice(r[0], r[1]), hit: true });
+      pos = r[1];
+    });
+    if (pos < text.length) out.push({ text: text.slice(pos), hit: false });
+    return out;
+  }
+
+  /** Отрывок вокруг первого совпадения: переносы строк → пробел, края
+   *  обрезаются по словам с «…». Возвращает сегменты highlight(). */
+  function snippet(text, query, before, after) {
+    before = before || 40; after = after || 110;
+    var flat = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+    var segs = highlight(flat, query);
+    var first = 0, found = false;
+    for (var i = 0; i < segs.length; i++) { if (segs[i].hit) { found = true; break; } first += segs[i].text.length; }
+    var a = found ? Math.max(0, first - before) : 0;
+    var b = Math.min(flat.length, (found ? first : 0) + after);
+    if (a > 0) { var sp = flat.indexOf(' ', a); if (sp >= 0 && sp < first) a = sp + 1; }
+    if (b < flat.length) { var sb = flat.lastIndexOf(' ', b); if (sb > first) b = sb; }
+    var cut = flat.slice(a, b);
+    var out = highlight(cut, query);
+    if (a > 0) out.unshift({ text: '…', hit: false });
+    if (b < flat.length) out.push({ text: '…', hit: false });
+    return out;
+  }
+
+  function isProtected(row) { return !!(row && row.sec !== undefined && row.sec !== null); }
+  function ts(r) { return (r && (r.updatedAt || r.createdAt)) || ''; }
+
+  /** Снимок данных на один run(): узлы/записи читаются ОДИН раз, дальше —
+   *  словари в памяти (без квадратичных повторных выборок). */
+  async function snapshot() {
+    var nodesAll = await nodesBase.getAll();
+    var entriesAll = await entriesBase.getAll();
+    var nodeById = {}, entryById = {};
+    nodesAll.forEach(function (n) { nodeById[n.id] = n; });
+    entriesAll.forEach(function (e) { entryById[e.id] = e; });
+    var archMemo = {};
+    function nodeArchived(id) {
+      if (id in archMemo) return archMemo[id];
+      archMemo[id] = false; // защита от цикла в повреждённых данных
+      var n = nodeById[id];
+      var res = !!n && (n.status === 'archived' || (!!n.parentId && n.parentId !== ROOT_PARENT && nodeArchived(n.parentId)));
+      archMemo[id] = res;
+      return res;
+    }
+    function entryArchived(e) {
+      if (!e) return false;
+      if (e.status === 'archived' || nodeArchived(e.nodeId)) return true;
+      if (e.type !== 'visit' && hasVisitRef(e)) {
+        var v = entryById[e.fields.visitId];
+        if (v && (v.status === 'archived' || nodeArchived(v.nodeId))) return true;
+      }
+      return false;
+    }
+    /** Цепочка предков узла сверху вниз (включая сам узел). */
+    function chain(id) {
+      var out = [], seen = {}, cur = nodeById[id];
+      while (cur && !seen[cur.id]) {
+        seen[cur.id] = true;
+        out.unshift(cur);
+        cur = cur.parentId && cur.parentId !== ROOT_PARENT ? nodeById[cur.parentId] : null;
+      }
+      return out;
+    }
+    return { nodes: nodesAll, entries: entriesAll, nodeById: nodeById, entryById: entryById,
+      nodeArchived: nodeArchived, entryArchived: entryArchived, chain: chain };
+  }
+
+  /** Тексты контекста (район/собрание/группа) — с подписью справочника,
+   *  если resolve() её дал. Обогащение ТОЛЬКО в памяти, никуда не пишется. */
+  function contextTexts(snap, nodeId, resolve) {
+    var out = [];
+    snap.chain(nodeId).forEach(function (n) {
+      if (n.label) out.push(n.label);
+      if (n.kind === 'congregation' && n.communityId && resolve) {
+        var d = null;
+        try { d = resolve(n.communityId); } catch (_) { d = null; }
+        if (d) ['name', 'congNumber', 'address', 'contactName'].forEach(function (k) { if (d[k]) out.push(String(d[k])); });
+      }
+    });
+    return out;
+  }
+  function ownNodeTexts(n, resolve) {
+    var own = [n.label || ''];
+    if (n.kind === 'congregation' && n.communityId && resolve) {
+      var d = null;
+      try { d = resolve(n.communityId); } catch (_) { d = null; }
+      if (d) {
+        if (d.name) own.unshift(String(d.name));
+        ['congNumber', 'address', 'contactName'].forEach(function (k) { if (d[k]) own.push(String(d[k])); });
+      }
+    }
+    return own.filter(Boolean);
+  }
+
+  function scoreOf(ownFolded, q) {
+    var best = 0;
+    ownFolded.forEach(function (f) {
+      var t = f.replace(/ +/g, ' ').trim();
+      if (!t) return;
+      if (t === q) best = Math.max(best, 3);
+      else if (t.indexOf(q) === 0) best = Math.max(best, 2);
+      else if (t.indexOf(q) >= 0) best = Math.max(best, 1);
+    });
+    return best;
+  }
+
+  /** Вид результата по строке: node | visit | record (запись посещения) |
+   *  entry (самостоятельная запись/проект) | task (любая задача). */
+  function entryKind(e) {
+    if (e.type === 'visit') return 'visit';
+    if (e.type === 'todo') return 'task';
+    return hasVisitRef(e) ? 'record' : 'entry';
+  }
+
+  var search = {
+    fold: fold,
+    normalizeQuery: normalizeQuery,
+    tokens: tokensOf,
+    highlight: highlight,
+    snippet: snippet,
+    isProtected: isProtected,
+    /**
+     * run(query, { includeArchive, resolveCommunity, labelVisit }) →
+     *   { query, tokens, results[], archivedCount, protectedCount }
+     * results[]: { kind, id, row, nodeId, visitId, archived, score, texts,
+     *   chain, visit } — texts: собственные поля (для отрывка) в исходном
+     *   виде; chain: узлы сверху вниз; visit: посещение-источник. Ссылки на
+     *   строки снимка этого прогона — нигде не сохраняются.
+     * resolveCommunity(id) → запись справочника или null; labelVisit(v) →
+     * производная подпись («осень 2027»). Обе — только в памяти.
+     * При includeArchive=false архивные в контексте результаты не
+     * возвращаются, но считаются (archivedCount) — для счётчика фильтра.
+     */
+    run: async function (query, opts) {
+      opts = opts || {};
+      var q = normalizeQuery(query);
+      var toks = q ? q.split(' ') : [];
+      var out = { query: q, tokens: toks, results: [], archivedCount: 0, protectedCount: 0 };
+      if (!toks.length) return out;
+      var resolve = typeof opts.resolveCommunity === 'function' ? opts.resolveCommunity : null;
+      var labelVisit = typeof opts.labelVisit === 'function' ? opts.labelVisit : null;
+      function visitTexts(v) {
+        var t = [];
+        if (labelVisit) { try { var l = labelVisit(v); if (l) t.push(String(l)); } catch (_) { /* подпись — только представление */ } }
+        if (v.dateFrom) t.push(v.dateFrom);
+        if (v.dateTo && v.dateTo !== v.dateFrom) t.push(v.dateTo);
+        return t;
+      }
+      var snap = await snapshot();
+      var ctxMemo = {};
+      function ctxFolded(nodeId) {
+        if (!(nodeId in ctxMemo)) ctxMemo[nodeId] = contextTexts(snap, nodeId, resolve).map(fold).join(' \u0000 ');
+        return ctxMemo[nodeId];
+      }
+      /* Контекст дополняет, но не подменяет: у узла и записи хотя бы один
+         токен обязан быть в СОБСТВЕННОМ тексте — иначе запрос «Приозёрное»
+         вернул бы каждую запись собрания. Посещению своего текста нет,
+         оно находится и по одному контексту. */
+      function consider(kind, row, own, nodeId, archived, extraCtx) {
+        var ownFolded = own.map(fold);
+        var ownHay = ownFolded.join(' \u0000 ');
+        var hay = ownHay + ' \u0000 ' + ctxFolded(nodeId) + (extraCtx ? ' \u0000 ' + extraCtx : '');
+        for (var i = 0; i < toks.length; i++) if (hay.indexOf(toks[i]) === -1) return;
+        if (kind !== 'visit' && !toks.some(function (tk) { return ownHay.indexOf(tk) >= 0; })) return;
+        if (archived) out.archivedCount++;
+        if (archived && !opts.includeArchive) return;
+        out.results.push({
+          kind: kind, id: row.id, row: row, nodeId: nodeId,
+          visitId: kind === 'visit' ? row.id : (hasVisitRef(row) ? row.fields.visitId : null),
+          archived: archived, score: scoreOf(ownFolded, q), texts: own,
+          chain: snap.chain(nodeId),
+          visit: kind === 'visit' ? row : (hasVisitRef(row) ? snap.entryById[row.fields.visitId] || null : null),
+        });
+      }
+
+      snap.nodes.forEach(function (n) {
+        consider('node', n, ownNodeTexts(n, resolve), n.id, snap.nodeArchived(n.id));
+      });
+      snap.entries.forEach(function (e) {
+        var kind = entryKind(e);
+        var archived = snap.entryArchived(e);
+        if (isProtected(e)) {
+          if (archived && !opts.includeArchive) return;
+          out.protectedCount++;
+          return;
+        }
+        var own = [];
+        if (typeof e.title === 'string' && e.title) own.push(e.title);
+        if (typeof e.body === 'string' && e.body) own.push(e.body);
+        var extra = '';
+        if (kind === 'visit') {
+          // У посещения своего текста нет: ищется по контексту и датам.
+          own = visitTexts(e);
+        } else if (hasVisitRef(e)) {
+          var v = snap.entryById[e.fields.visitId];
+          if (v) extra = visitTexts(v).map(fold).join(' \u0000 ');
+        }
+        if (!own.length && kind !== 'visit') return;
+        consider(kind, e, own, e.nodeId, archived, extra);
+      });
+
+      out.results.sort(function (a, b) {
+        if (a.score !== b.score) return b.score - a.score;
+        var ta = ts(a.row), tb = ts(b.row);
+        if (ta !== tb) return ta < tb ? 1 : -1;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+      return out;
+    },
+  };
+
+  /* ═══ Архив (J6) ═════════════════════════════════════════════════════════
+   * Не хранилище, а выборка по status 'archived' — узлы и посещения, у
+   * которых ЕСТЬ жизненный цикл архива. Выполненные задачи, закрытый
+   * перенос и обычные записи посещения сюда не входят — это другие понятия.
+   * Показываются только НАПРЯМУЮ архивные объекты (потомки архивного узла
+   * не размножаются); у объекта с архивным предком — флаг parentArchived.
+   * Порядок: archivedAt ‖ updatedAt ‖ createdAt по убыванию (легаси-узел
+   * без archivedAt не теряется), затем id. Восстановление — только
+   * nodes.unarchive / visits.unarchive, без каскада. */
+  var archive = {
+    list: async function () {
+      var snap = await snapshot();
+      var items = [];
+      snap.nodes.forEach(function (n) {
+        if (n.status !== 'archived') return;
+        var parentArchived = !!(n.parentId && n.parentId !== ROOT_PARENT && snap.nodeArchived(n.parentId));
+        items.push({ kind: 'node', id: n.id, row: n, archivedAt: n.archivedAt || null,
+          sortAt: n.archivedAt || n.updatedAt || n.createdAt || '', parentArchived: parentArchived });
+      });
+      snap.entries.forEach(function (e) {
+        if (e.type !== 'visit' || e.status !== 'archived') return;
+        items.push({ kind: 'visit', id: e.id, row: e, archivedAt: e.archivedAt || null,
+          sortAt: e.archivedAt || e.updatedAt || e.createdAt || '', parentArchived: snap.nodeArchived(e.nodeId) });
+      });
+      items.forEach(function (it) { it.chain = snap.chain(it.kind === 'node' ? it.row.parentId : it.row.nodeId); });
+      return items.sort(function (a, b) {
+        if (a.sortAt !== b.sortAt) return a.sortAt < b.sortAt ? 1 : -1;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+    },
+    restore: function (item) {
+      if (!item) return Promise.reject(new Error('journal-node-not-found'));
+      return item.kind === 'visit' ? visits.unarchive(item.id) : nodes.unarchive(item.id);
+    },
+  };
+
   /* Связи неизменяемы: поменять связь = удалить и завести новую. updatedAt им
      не нужен, поэтому свой add без stamped(). */
   var links = {
@@ -795,6 +1165,8 @@
     visitRecords: visitRecords,
     tasks: tasks,
     carry: carry,
+    search: search,
+    archive: archive,
     links: links,
     meta: meta,
     urn: urn,

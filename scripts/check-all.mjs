@@ -212,6 +212,12 @@ const CHECKS = [
     deps: ['fake-indexeddb', 'acorn', 'acorn-walk'],
   },
   {
+    file: 'check-journal-search-archive.mjs',
+    title: 'Поиск и архив Журнала',
+    why: 'поиск только в памяти без индекса открытого текста (граница J8), запрос не уходит в URL/хранилище; архив — status/archivedAt через жизненный цикл, без каскада',
+    deps: ['fake-indexeddb', 'acorn'],
+  },
+  {
     file: 'check-shell-bump.mjs',
     title: 'Бамп при правке файлов оболочки',
     why: 'изменённый файл в прекэше без подъёма версии не доезжает до пользователя и даёт смесь поколений',
