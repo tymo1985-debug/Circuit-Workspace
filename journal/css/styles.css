@@ -394,3 +394,77 @@
   .j-arch__open { flex: 1 1 calc(100% - 44px); }
   .j-arch .j-row__end { flex: 1 1 100%; justify-content: flex-end; margin-top: calc(-1 * var(--cw-space-2)); }
 }
+
+/* --- J7: проект района (эталоны 06-project-m / 06-project-d) ---------------
+   Та же геометрия, что у посещения: шапка с чипами справа, карточка
+   редактора (полоса инструментов над телом), секции .j-sec. Описание —
+   блоки из обычного текста; задачи — .j-check; собрания — чипы; фрагменты —
+   строки .j-row со ссылкой-меткой справа; история — лента .j-hist. */
+.j-typechip { cursor: default; }
+.j-typechip svg { width: 16px; height: 16px; flex: 0 0 auto; }
+#projectBody { border-radius: var(--md-radius-sm); }
+#projectBody > .j-block:last-child { margin-bottom: 0; }
+.j-pbody--editable { cursor: text; }
+@media (hover: hover) { .j-pbody--editable:hover { background: var(--md-surface-container); } }
+.j-pbody--editable:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 4px; }
+.j-pbody__input { min-height: 132px; }
+.j-ptask { margin: 0 0 var(--cw-space-3); align-items: center; }
+.j-ptask:last-child { margin-bottom: 0; }
+.j-ptask .j-check__box { margin-top: 0; position: relative; }
+/* Выполненная задача проекта — галочка в квадрате (эталон 06). */
+.j-ptask .j-check__box[aria-checked="true"]::after {
+  content: ""; position: absolute; left: 4px; top: 0; width: 5px; height: 10px;
+  border: solid var(--md-on-primary); border-width: 0 2px 2px 0; transform: rotate(45deg); opacity: 0.8;
+}
+.j-ptask__text { cursor: default; overflow-wrap: anywhere; }
+.j-ptask__text[role="button"] { cursor: pointer; }
+.j-ptask__text[role="button"]:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; border-radius: 4px; }
+.j-ptask__due { white-space: nowrap; flex: 0 0 auto; }
+.j-project__foot { margin: var(--cw-space-2) 0 0 -12px; }
+.j-pnodes { margin-top: 0; }
+.j-pnodes .md-chip { min-height: 40px; padding: 0 14px; color: var(--md-on-surface); font-size: 15px; }
+.j-pnodes .md-chip svg { width: 18px; height: 18px; }
+.j-pnode--archived { opacity: 0.6; }
+.j-sec__head--rule {
+  margin-bottom: 0; padding-bottom: var(--cw-space-3);
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+#projectItems > .j-row:first-child { padding-top: var(--cw-space-3); }
+#projectItems .j-row { align-items: flex-start; }
+.j-pitems__empty { padding-top: var(--cw-space-3); }
+.j-pitem__open { cursor: pointer; }
+.j-pitem__open:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; border-radius: var(--md-radius-sm); }
+.j-pitem .j-row__title { font-size: 15px; line-height: 22px; }
+.j-pitem .j-row__end { padding-top: 2px; }
+.j-pitem__unlink { cursor: pointer; padding: 3px 10px; }
+.j-pitem__unlink:hover, .j-pitem__unlink:focus-visible { filter: brightness(1.15); }
+.j-row__chev { display: inline-flex; cursor: pointer; }
+.j-phist { padding-top: var(--cw-space-1); }
+.j-phist .j-hist__t { font-size: 14px; line-height: 20px; }
+.j-phist .j-hist__m { font-size: 12px; }
+.j-project__actions { display: flex; flex-wrap: wrap; gap: var(--cw-space-3); margin: var(--cw-space-2) 0 var(--cw-space-3); }
+.j-project__actions .md-btn > svg, .j-project__doc > svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.j-project__doc { margin: 0 0 var(--cw-space-6) -12px; }
+.j-project__doc:disabled { cursor: default; opacity: 0.7; }
+.j-prow .j-row__end .j-tag svg { opacity: 1; width: 12px; height: 12px; }
+.j-block .j-tag--link svg, .j-check .j-tag--link svg { width: 12px; height: 12px; }
+
+/* Выбор для связи: строки-переключатели, список прокручивается внутри. */
+.j-pick { width: min(560px, calc(100vw - 32px)); }
+.j-pick__search { margin-top: var(--cw-space-3); }
+.j-pick__list { max-height: min(52vh, 480px); overflow-y: auto; margin-top: var(--cw-space-2); }
+.j-pick__sec { margin: var(--cw-space-4) 0 var(--cw-space-1); }
+.j-pick__sec:first-child { margin-top: var(--cw-space-2); }
+.j-pick__row {
+  display: flex; align-items: flex-start; gap: var(--cw-space-3); width: 100%;
+  padding: var(--cw-space-2) var(--cw-space-1); border: 0; border-radius: var(--md-radius-sm);
+  background: transparent; color: var(--md-on-surface); text-align: left; cursor: pointer; font: inherit;
+}
+.j-pick__row:hover:not(:disabled) { background: var(--md-surface-container-high); }
+.j-pick__row:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 1px; }
+.j-pick__row:disabled { cursor: default; opacity: 0.6; }
+.j-pick__box { display: inline-grid; place-items: center; margin-top: 2px; color: var(--md-on-primary); }
+.j-pick__row.is-on .j-pick__box { background: var(--md-primary); border-color: var(--md-primary); }
+.j-pick__txt { display: flex; flex-direction: column; min-width: 0; }
+.j-pick__label { font: 400 14px/20px var(--md-font-family); letter-spacing: 0.1px; overflow-wrap: anywhere; }
+.j-pick__meta { font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }

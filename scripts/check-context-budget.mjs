@@ -61,6 +61,9 @@ const KNOWN_LARGE = new Set([
   'congress-project/i18n/dict.js',
   'shared/backup.js',
   'shared/db.js',
+  // Журнал: экраны модуля — один IIFE с общими помощниками (J7 перешёл
+  // 150K). Разрезание — отдельная задача в TODO.md, не побочный шаг фазы.
+  'journal/js/app.js',
 ]);
 
 /** Каталоги, где большие файлы — норма по назначению. */

@@ -1,5 +1,5 @@
 /**
- * Журнал — разбор хэш-маршрута (J4a).
+ * Журнал — разбор хэш-маршрута (J4a; проект — J7).
  *
  * Чистая функция без DOM: вынесена из app.js, чтобы маршрут проверялся
  * тестом (scripts/check-journal-visits.mjs) — роутер по-прежнему один,
@@ -10,10 +10,13 @@
  *   #districts/<c>/congregation/<n>                         → собрание, «Обзор»
  *   #districts/<c>/congregation/<n>/visits                  → собрание, «Посещения»
  *   #districts/<c>/congregation/<n>/visit/<v>               → посещение
+ *   #districts/<c>/project/<p>                              → проект района (J7)
  *
  * Неполный хвост (`…/visit` без id, неизвестный сегмент) сводится к
  * ближайшему валидному контексту — собранию на вкладке «Посещения» — а не
  * к пустому экрану. Существование самих id проверяет app.js по данным.
+ * Проект: `…/project` без id или с лишним хвостом → район (normalized).
+ * В хэше только id — ни названия, ни текста проекта.
  */
 (function (global) {
   'use strict';
@@ -29,11 +32,17 @@
     var raw = String(hash || '').replace(/^#/, '');
     var parts = raw.split('/');
     var route = ROUTES.indexOf(parts[0]) >= 0 ? parts[0] : DEFAULT_ROUTE;
-    var state = { route: route, circuitId: null, congregationId: null, congTab: 'overview', visitId: null, normalized: false };
+    var state = { route: route, circuitId: null, congregationId: null, congTab: 'overview', visitId: null, projectId: null, normalized: false };
     if (route !== 'districts') return state;
 
     state.circuitId = parts[1] ? dec(parts[1]) : null;
     if (!state.circuitId) return state;
+    if (parts[2] === 'project') {
+      var p = parts[3] ? dec(parts[3]) : null;
+      if (p && parts.length === 4) state.projectId = p;
+      else state.normalized = true;
+      return state;
+    }
     if (parts[2] !== 'congregation' || !parts[3]) return state;
     state.congregationId = dec(parts[3]);
     if (!state.congregationId) return state;
@@ -57,6 +66,7 @@
     congregation: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n); },
     visits: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visits'; },
     visit: function (c, n, v) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visit/' + enc(v); },
+    project: function (c, p) { return '#districts/' + enc(c) + '/project/' + enc(p); },
   };
 
   global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES };

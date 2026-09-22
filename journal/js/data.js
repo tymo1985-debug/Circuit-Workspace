@@ -28,6 +28,10 @@
  * J6: CWJournal.search (только чтение, в памяти, без индекса) и
  * CWJournal.archive (выборка по status, восстановление через циклы узла/
  * посещения).
+ * J7: CWJournal.links — доменный фасад связей (проверка URN, концов,
+ * самосвязи, дубликатов, правила «только чтение») и CWJournal.projects —
+ * проект района как строка journalEntries (type 'project') со своим циклом;
+ * отношения проекта — только строки journalLinks, без копий в fields.
  */
 (function (global) {
   'use strict';
@@ -236,6 +240,10 @@
      создаёт, не правит и не удаляет; молчаливого перенаправления нет. */
   var TASK_USE_FACADE = 'journal-task-use-facade';
   var CARRY_USE_FACADE = 'journal-carry-use-facade';
+  /* J7: проект (type 'project') — только через CWJournal.projects: цикл
+     active ↔ completed → archived, неизменяемые type/nodeId/circuitId,
+     удаление без связей. Общий фасад его не создаёт, не правит, не удаляет. */
+  var PROJECT_USE_FACADE = 'journal-project-use-facade';
   function hasCarryFields(obj) { return !!(obj && ('carryKey' in obj || 'touches' in obj)); }
   var entries = {
     get: entriesBase.get,
@@ -245,6 +253,7 @@
       if (hasVisitRef(record)) return Promise.reject(new Error(VISIT_RECORD_USE_FACADE));
       if (record && record.type === 'todo') return Promise.reject(new Error(TASK_USE_FACADE));
       if (hasCarryFields(record)) return Promise.reject(new Error(CARRY_USE_FACADE));
+      if (record && record.type === 'project') return Promise.reject(new Error(PROJECT_USE_FACADE));
       return entriesBase.add(record);
     },
     update: async function (id, patch) {
@@ -255,6 +264,7 @@
       if (hasVisitRef(current) || hasVisitRef(patch)) throw new Error(VISIT_RECORD_USE_FACADE);
       if ((current && current.type === 'todo') || (patch && patch.type === 'todo')) throw new Error(TASK_USE_FACADE);
       if (hasCarryFields(current) || hasCarryFields(patch)) throw new Error(CARRY_USE_FACADE);
+      if ((current && current.type === 'project') || (patch && patch.type === 'project')) throw new Error(PROJECT_USE_FACADE);
       return entriesBase.update(id, patch);
     },
     remove: async function (id) {
@@ -263,6 +273,7 @@
       if (hasVisitRef(current)) throw new Error(VISIT_RECORD_USE_FACADE);
       if (current && current.type === 'todo') throw new Error(TASK_USE_FACADE);
       if (hasCarryFields(current)) throw new Error(CARRY_USE_FACADE);
+      if (current && current.type === 'project') throw new Error(PROJECT_USE_FACADE);
       return entriesBase.remove(id);
     },
     byNode: function (nodeId) { return entriesBase.by('nodeId', nodeId); },
@@ -985,10 +996,12 @@
   }
 
   /** Вид результата по строке: node | visit | record (запись посещения) |
-   *  entry (самостоятельная запись/проект) | task (любая задача). */
+   *  project (проект района, J7) | entry (самостоятельная запись) |
+   *  task (любая задача). */
   function entryKind(e) {
     if (e.type === 'visit') return 'visit';
     if (e.type === 'todo') return 'task';
+    if (e.type === 'project') return 'project';
     return hasVisitRef(e) ? 'record' : 'entry';
   }
 
@@ -1090,14 +1103,14 @@
   };
 
   /* ═══ Архив (J6) ═════════════════════════════════════════════════════════
-   * Не хранилище, а выборка по status 'archived' — узлы и посещения, у
-   * которых ЕСТЬ жизненный цикл архива. Выполненные задачи, закрытый
+   * Не хранилище, а выборка по status 'archived' — узлы, посещения и
+   * (J7) проекты, у которых ЕСТЬ жизненный цикл архива. Выполненные задачи, закрытый
    * перенос и обычные записи посещения сюда не входят — это другие понятия.
    * Показываются только НАПРЯМУЮ архивные объекты (потомки архивного узла
    * не размножаются); у объекта с архивным предком — флаг parentArchived.
    * Порядок: archivedAt ‖ updatedAt ‖ createdAt по убыванию (легаси-узел
    * без archivedAt не теряется), затем id. Восстановление — только
-   * nodes.unarchive / visits.unarchive, без каскада. */
+   * nodes.unarchive / visits.unarchive / projects.unarchive, без каскада. */
   var archive = {
     list: async function () {
       var snap = await snapshot();
@@ -1109,6 +1122,11 @@
           sortAt: n.archivedAt || n.updatedAt || n.createdAt || '', parentArchived: parentArchived });
       });
       snap.entries.forEach(function (e) {
+        if (e.type === 'project' && e.status === 'archived') {
+          items.push({ kind: 'project', id: e.id, row: e, archivedAt: e.archivedAt || null,
+            sortAt: e.archivedAt || e.updatedAt || e.createdAt || '', parentArchived: snap.nodeArchived(e.nodeId) });
+          return;
+        }
         if (e.type !== 'visit' || e.status !== 'archived') return;
         items.push({ kind: 'visit', id: e.id, row: e, archivedAt: e.archivedAt || null,
           sortAt: e.archivedAt || e.updatedAt || e.createdAt || '', parentArchived: snap.nodeArchived(e.nodeId) });
@@ -1121,23 +1139,386 @@
     },
     restore: function (item) {
       if (!item) return Promise.reject(new Error('journal-node-not-found'));
+      if (item.kind === 'project') return projects.unarchive(item.id);
       return item.kind === 'visit' ? visits.unarchive(item.id) : nodes.unarchive(item.id);
     },
   };
 
-  /* Связи неизменяемы: поменять связь = удалить и завести новую. updatedAt им
-     не нужен, поэтому свой add без stamped(). */
+  /* ═══ Связи (J7) ═════════════════════════════════════════════════════════
+   * journalLinks — граф отношений. Строка несёт ТОЛЬКО { id, from, to, rel,
+   * createdAt }: ни подписей, ни названий, ни текста, ни данных справочника
+   * (граница J8 — связь не может стать копией открытого текста).
+   *  - концы — канонические URN: journal:node/<id> | journal:entry/<id> |
+   *    cw:<module>/<kind>/<id> (module ≠ journal: локальный объект имеет
+   *    одну форму). Id — без '/', '|' и пробелов;
+   *  - хотя бы один конец локальный; локальный конец обязан существовать
+   *    (висячих локальных ссылок нет); внешний проверяется только по
+   *    синтаксису — чужой модуль не загружается и не меняется;
+   *  - самосвязь (from === to) — отказ;
+   *  - rel — из RELS; значение — данные, не подпись;
+   *  - дубликат (тот же from/to/rel) НЕ создаётся: add() идемпотентен и
+   *    возвращает id уже существующей строки. Id детерминирован от тройки
+   *    (jl_<rel>|<from>|<to>), поэтому и две одновременные вставки (двойной
+   *    клик, две вкладки) дают одну строку — второй store.add упирается в
+   *    ключ;
+   *  - связи неизменяемы: поменять = удалить + добавить;
+   *  - «только чтение»: связь с посещением или записью посещения меняется
+   *    только пока посещение открыто (journal-visit-readonly), с архивным
+   *    проектом — никогда (journal-project-readonly); новая связь с
+   *    архивным узлом — отказ. Правило держит слой данных, не кнопка;
+   *  - связи ПРОЕКТА — только через CWJournal.projects (канон направления:
+   *    проект → цель); общий add/remove их отклоняет (journal-project-use-facade).
+   * Обратных индексов/кэшей нет: чтение — индексы from/to/rel этого же
+   * хранилища. */
+  var LINK_RELS = ['relates', 'covers', 'source', 'mentions', 'external'];
+  var URN_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
+  function parseUrn(ref) {
+    if (typeof ref !== 'string') return null;
+    var m = /^journal:(node|entry)\/(.+)$/.exec(ref);
+    if (m) return URN_ID.test(m[2]) ? { scope: 'journal', kind: m[1], id: m[2], ref: ref } : null;
+    m = /^cw:([a-z][a-z0-9-]{0,39})\/([A-Za-z][A-Za-z0-9-]{0,39})\/(.+)$/.exec(ref);
+    if (m && m[1] !== 'journal' && URN_ID.test(m[3])) return { scope: 'cw', module: m[1], kind: m[2], id: m[3], ref: ref };
+    return null;
+  }
+  function linkKey(from, to, rel) { return 'jl_' + rel + '|' + from + '|' + to; }
+  function sortLinks(list) {
+    return list.slice().sort(function (a, b) {
+      if ((a.createdAt || '') !== (b.createdAt || '')) return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+  /** Локальный конец → строка (или отказ); внешний → null. */
+  async function endpointRow(p) {
+    if (p.scope !== 'journal') return null;
+    var row = p.kind === 'node' ? await db().journalNodes.get(p.id) : await entriesBase.get(p.id);
+    if (!row) throw new Error('journal-link-missing-endpoint');
+    return row;
+  }
+  function isProjectRow(p, row) { return !!(row && p.kind === 'entry' && row.type === 'project'); }
+  /** Можно ли сейчас менять связи этого конца. adding — новая связь. */
+  async function assertAssociationMutable(p, row, adding) {
+    if (!row) return;
+    if (p.kind === 'node') {
+      if (adding && row.status === 'archived') throw new Error('journal-link-archived-endpoint');
+      return;
+    }
+    if (row.type === 'project') {
+      if (row.status === 'archived') throw new Error('journal-project-readonly');
+      return;
+    }
+    if (row.type === 'visit') {
+      if (row.status !== 'open') throw new Error('journal-visit-readonly');
+      return;
+    }
+    if (hasVisitRef(row)) await editableVisit(row.fields.visitId);
+  }
+  /** Вставка после проверок. Идемпотентна: существующая тройка → её id. */
+  async function insertLink(from, to, rel) {
+    var existing = (await db().journalLinks.byIndex('from', from)).filter(function (l) { return l.to === to && l.rel === rel; });
+    if (existing.length) return sortLinks(existing)[0].id;
+    var id = linkKey(from, to, rel);
+    try {
+      return await db().journalLinks.add({ id: id, from: from, to: to, rel: rel, createdAt: now() });
+    } catch (err) {
+      // Параллельная вставка той же тройки: ключ уже занят — это та же связь.
+      if (await db().journalLinks.get(id)) return id;
+      throw err;
+    }
+  }
+  async function linkEnds(from, to) {
+    var pf = parseUrn(from), pt = parseUrn(to);
+    if (!pf || !pt) throw new Error('journal-link-invalid-urn');
+    if (pf.scope !== 'journal' && pt.scope !== 'journal') throw new Error('journal-link-invalid-urn');
+    if (from === to) throw new Error('journal-link-self');
+    return { pf: pf, pt: pt, rf: await endpointRow(pf), rt: await endpointRow(pt) };
+  }
+
   var links = {
+    RELS: LINK_RELS,
+    parse: parseUrn,
+    isValid: function (ref) { return !!parseUrn(ref); },
     get: function (id) { return db().journalLinks.get(id); },
-    add: function (record) {
-      var r = Object.assign({}, record || {});
-      if (!r.createdAt) r.createdAt = now();
-      return db().journalLinks.add(r);
+    /** add({ from, to, rel }) → id (существующей строки при дубликате).
+     *  Остальные поля вызывающего не принимаются. */
+    add: async function (record) {
+      record = record || {};
+      if (LINK_RELS.indexOf(record.rel) === -1) throw new Error('journal-link-invalid-rel');
+      var e = await linkEnds(record.from, record.to);
+      if (isProjectRow(e.pf, e.rf) || isProjectRow(e.pt, e.rt)) throw new Error(PROJECT_USE_FACADE);
+      await assertAssociationMutable(e.pf, e.rf, true);
+      await assertAssociationMutable(e.pt, e.rt, true);
+      return insertLink(record.from, record.to, record.rel);
     },
-    remove: function (id) { return db().journalLinks.remove(id); },
+    /** Удаление строки связи. Отсутствующая — не ошибка (уже удалена). */
+    remove: async function (id) {
+      var l = await db().journalLinks.get(id);
+      if (!l) return;
+      await assertLinkRemovable(l, false);
+      return db().journalLinks.remove(id);
+    },
+    outgoing: async function (ref) { return sortLinks(await db().journalLinks.byIndex('from', ref)); },
+    incoming: async function (ref) { return sortLinks(await db().journalLinks.byIndex('to', ref)); },
+    /** Обе стороны: связи, где ref — from ИЛИ to (без повторов). */
+    forRef: async function (ref) {
+      var out = {}, all = (await db().journalLinks.byIndex('from', ref)).concat(await db().journalLinks.byIndex('to', ref));
+      all.forEach(function (l) { out[l.id] = l; });
+      return sortLinks(Object.keys(out).map(function (k) { return out[k]; }));
+    },
+    /** Связи строго from → to (любого rel). */
+    between: async function (from, to) {
+      return sortLinks((await db().journalLinks.byIndex('from', from)).filter(function (l) { return l.to === to; }));
+    },
+    /* Прежние имена (J2) — те же индексные выборки. */
     from: function (ref) { return db().journalLinks.byIndex('from', ref); },
     to: function (ref) { return db().journalLinks.byIndex('to', ref); },
     byRel: function (rel) { return db().journalLinks.byIndex('rel', rel); },
+  };
+
+  /** Правила удаления строки связи; viaProject — вызов из фасада проекта. */
+  async function assertLinkRemovable(l, viaProject) {
+    var pf = parseUrn(l.from), pt = parseUrn(l.to);
+    var rf = null, rt = null;
+    if (pf && pf.scope === 'journal') rf = pf.kind === 'node' ? await db().journalNodes.get(pf.id) : await entriesBase.get(pf.id);
+    if (pt && pt.scope === 'journal') rt = pt.kind === 'node' ? await db().journalNodes.get(pt.id) : await entriesBase.get(pt.id);
+    if (!viaProject && ((pf && isProjectRow(pf, rf)) || (pt && isProjectRow(pt, rt)))) throw new Error(PROJECT_USE_FACADE);
+    if (pf) await assertAssociationMutable(pf, rf, false);
+    if (pt) await assertAssociationMutable(pt, rt, false);
+  }
+
+  /* ═══ Проекты района (J7) ════════════════════════════════════════════════
+   * Проект — строка journalEntries с type:'project'. Своего хранилища нет.
+   *  - владелец — район: nodeId = circuitId = id района; type/nodeId/
+   *    circuitId неизменяемы;
+   *  - текст пользователя — только title (обязателен) и body
+   *    (необязателен; пустой — поля нет физически). fields во время жизни
+   *    проекта нет вовсе; в архиве — только { statusBeforeArchive } (enum);
+   *  - status: 'active' ↔ 'completed' (complete/reopen); любой из двух →
+   *    'archived' (archivedAt); unarchive — прежний статус, archivedAt и
+   *    statusBeforeArchive удаляются физически. «Завершён» ≠ архив.
+   *    update() статус не меняет (journal-project-use-lifecycle);
+   *  - архивный проект — только чтение (текст и связи);
+   *  - отношения — ТОЛЬКО строки journalLinks, всегда от проекта:
+   *    journal:entry/<проект> → цель. Узел (собрание/группа/предгруппа) —
+   *    rel 'covers'; посещение, запись, задача — 'relates'; внешняя ссылка
+   *    cw: — 'external'. Цель — только из того же района. Никаких
+   *    projectIds/linkedItems в fields ни у проекта, ни у цели;
+   *  - прогресс, счётчики, «история» — вычисление при чтении, не запись;
+   *  - remove() — только без связей (в обе стороны); каскада нет — ни
+   *    задачи, ни записи, ни узлы с проектом не удаляются. Безопасная
+   *    альтернатива — archive(). */
+  var PROJECT_STATUSES = ['active', 'completed', 'archived'];
+  var PROJECT_NODE_TARGETS = ['congregation', 'group', 'pregroup'];
+  var PROJECT_ENTRY_TARGETS = ['visit', 'note', 'observation', 'question', 'todo'];
+  var PROJECT_STATUS_RANK = { active: 0, completed: 1, archived: 2 };
+
+  async function projectOrThrow(id) {
+    var p = id ? await entriesBase.get(id) : null;
+    if (!p || p.type !== 'project') throw new Error('journal-project-not-found');
+    return p;
+  }
+  function cleanTitle(v) {
+    if (typeof v !== 'string' || !v.trim()) throw new Error('journal-project-empty-title');
+    return v.replace(/\s+/g, ' ').trim();
+  }
+  function cleanProjectBody(v) {
+    if (v === undefined || v === null) return '';
+    if (typeof v !== 'string') throw new Error('journal-project-invalid-body');
+    return v.replace(/\r\n?/g, '\n').replace(/\s+$/, '').replace(/^(?:[ \t]*\n)+/, '');
+  }
+  function sortProjects(list) {
+    return list.slice().sort(function (a, b) {
+      var ra = PROJECT_STATUS_RANK[a.status] === undefined ? 9 : PROJECT_STATUS_RANK[a.status];
+      var rb = PROJECT_STATUS_RANK[b.status] === undefined ? 9 : PROJECT_STATUS_RANK[b.status];
+      if (ra !== rb) return ra - rb;
+      if ((a.createdAt || '') !== (b.createdAt || '')) return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+  async function setProjectStatus(id, from, to) {
+    var p = await projectOrThrow(id);
+    if (from.indexOf(p.status) === -1) throw new Error('journal-project-invalid-transition');
+    return entriesBase.update(id, { status: to });
+  }
+  /** Цель связи проекта → rel; все отказы — до записи. */
+  async function projectTarget(p, ref) {
+    var t = parseUrn(ref);
+    if (!t) throw new Error('journal-link-invalid-urn');
+    if (t.scope === 'cw') return { parsed: t, row: null, rel: 'external' };
+    var row = await endpointRow(t);
+    if (t.kind === 'node') {
+      if (PROJECT_NODE_TARGETS.indexOf(row.kind) === -1) throw new Error('journal-project-invalid-target');
+    } else {
+      if (row.id === p.id) throw new Error('journal-link-self');
+      if (PROJECT_ENTRY_TARGETS.indexOf(row.type) === -1) throw new Error('journal-project-invalid-target');
+    }
+    if (row.circuitId !== p.circuitId) throw new Error('journal-link-cross-circuit');
+    return { parsed: t, row: row, rel: t.kind === 'node' ? 'covers' : 'relates' };
+  }
+
+  var projects = {
+    STATUSES: PROJECT_STATUSES,
+    NODE_TARGETS: PROJECT_NODE_TARGETS,
+    ENTRY_TARGETS: PROJECT_ENTRY_TARGETS,
+    sort: sortProjects,
+    get: async function (id) {
+      var p = id ? await entriesBase.get(id) : null;
+      return p && p.type === 'project' ? p : null;
+    },
+    /** Все проекты Журнала: active → completed → archived, новые сверху, id. */
+    list: async function () { return sortProjects(await entriesBase.by('type', 'project')); },
+    byCircuit: async function (circuitId) {
+      return sortProjects((await entriesBase.by('circuitId', circuitId)).filter(function (e) { return e.type === 'project'; }));
+    },
+    /** add({ circuitId, title, body? }). Остальные поля не принимаются. */
+    add: async function (record) {
+      record = record || {};
+      var c = record.circuitId ? await db().journalNodes.get(record.circuitId) : null;
+      if (!c || c.kind !== 'circuit' || c.status === 'archived') throw new Error('journal-project-invalid-circuit');
+      var title = cleanTitle(record.title);
+      var body = cleanProjectBody(record.body);
+      var row = { type: 'project', nodeId: c.id, circuitId: c.id, status: 'active', title: title };
+      if (body) row.body = body;
+      return entriesBase.add(row);
+    },
+    /** update(id, { title?, body? }). body '' / null — описание снимается
+     *  (поле удаляется физически). type/nodeId/circuitId — неизменяемы;
+     *  status/archivedAt/fields — только через цикл. */
+    update: async function (id, patch) {
+      patch = patch || {};
+      var p = await projectOrThrow(id);
+      Object.keys(patch).forEach(function (k) {
+        if (k === 'title' || k === 'body') return;
+        if (k === 'status' || k === 'archivedAt' || k === 'fields') throw new Error('journal-project-use-lifecycle');
+        if ((k === 'type' || k === 'nodeId' || k === 'circuitId') && patch[k] === p[k]) return;
+        throw new Error('journal-project-immutable');
+      });
+      if (p.status === 'archived') throw new Error('journal-project-readonly');
+      var title = 'title' in patch ? cleanTitle(patch.title) : undefined;
+      var body = 'body' in patch ? cleanProjectBody(patch.body) : undefined;
+      return replaceEntry(id, function (next) {
+        if (title !== undefined) next.title = title;
+        if (body !== undefined) { if (body) next.body = body; else delete next.body; }
+        return next;
+      });
+    },
+    complete: function (id) { return setProjectStatus(id, ['active'], 'completed'); },
+    reopen: function (id) { return setProjectStatus(id, ['completed'], 'active'); },
+    archive: async function (id) {
+      var p = await projectOrThrow(id);
+      if (p.status !== 'active' && p.status !== 'completed') throw new Error('journal-project-invalid-transition');
+      return replaceEntry(id, function (next) {
+        next.fields = Object.assign({}, next.fields || {}, { statusBeforeArchive: p.status });
+        next.status = 'archived';
+        next.archivedAt = now();
+        return next;
+      });
+    },
+    unarchive: async function (id) {
+      var p = await projectOrThrow(id);
+      if (p.status !== 'archived') throw new Error('journal-project-invalid-transition');
+      return replaceEntry(id, function (next) {
+        var back = next.fields && next.fields.statusBeforeArchive;
+        next.status = back === 'completed' ? 'completed' : 'active';
+        delete next.archivedAt;
+        if (next.fields) {
+          delete next.fields.statusBeforeArchive;
+          if (!Object.keys(next.fields).length) delete next.fields;
+        }
+        return next;
+      });
+    },
+    /** Удаление только проекта без связей (from/to). Каскада нет. */
+    remove: async function (id) {
+      await projectOrThrow(id);
+      if ((await links.forRef(urn.entry(id))).length) throw new Error('journal-project-has-links');
+      return entriesBase.remove(id);
+    },
+
+    /** Связать проект с целью (URN). Направление всегда проект → цель,
+     *  rel выводится из вида цели. Повтор — тот же id, без новой строки. */
+    link: async function (projectId, ref) {
+      var p = await projectOrThrow(projectId);
+      if (p.status === 'archived') throw new Error('journal-project-readonly');
+      var tg = await projectTarget(p, ref);
+      await assertAssociationMutable(tg.parsed, tg.row, true);
+      return insertLink(urn.entry(p.id), ref, tg.rel);
+    },
+    /** Снять связь проект → цель (любого rel). Цель не удаляется. → число снятых. */
+    unlink: async function (projectId, ref) {
+      var p = await projectOrThrow(projectId);
+      var rows = await links.between(urn.entry(p.id), ref);
+      if (!rows.length) return 0;
+      for (var i = 0; i < rows.length; i++) await assertLinkRemovable(rows[i], true);
+      for (var j = 0; j < rows.length; j++) await db().journalLinks.remove(rows[j].id);
+      return rows.length;
+    },
+    /** Исходящие связи проекта (канон: всё, чем проект владеет). */
+    links: function (projectId) { return links.outgoing(urn.entry(projectId)); },
+    /** Проекты, связанные с целью (входящие от проектов), по порядку проектов. */
+    forTarget: async function (ref) {
+      var rows = await links.incoming(ref);
+      var out = [], seen = {};
+      for (var i = 0; i < rows.length; i++) {
+        var pr = parseUrn(rows[i].from);
+        if (!pr || pr.kind !== 'entry' || seen[pr.id]) continue;
+        var p = await entriesBase.get(pr.id);
+        if (p && p.type === 'project') { seen[p.id] = true; out.push(p); }
+      }
+      return sortProjects(out);
+    },
+    /**
+     * Связанное с проектом — разрешённое в памяти, ничего не пишется:
+     *   { project, nodes[{link,node}], tasks[{link,row}], items[{link,row,
+     *     visit}], external[{link,parsed}], missing, progress{done,total} }
+     * tasks — все связанные todo (самостоятельные и из посещений) в порядке
+     * связывания; items — прочие записи/посещения, новые связи сверху.
+     */
+    related: async function (projectId) {
+      var p = await projectOrThrow(projectId);
+      var rows = await links.outgoing(urn.entry(p.id));
+      var out = { project: p, nodes: [], tasks: [], items: [], external: [], missing: 0, progress: { done: 0, total: 0 } };
+      var taskLink = {};
+      for (var i = 0; i < rows.length; i++) {
+        var l = rows[i], t = parseUrn(l.to);
+        if (!t) { out.missing++; continue; }
+        if (t.scope === 'cw') { out.external.push({ link: l, parsed: t }); continue; }
+        if (t.kind === 'node') {
+          var n = await db().journalNodes.get(t.id);
+          if (n) out.nodes.push({ link: l, node: n }); else out.missing++;
+          continue;
+        }
+        var e = await entriesBase.get(t.id);
+        if (!e) { out.missing++; continue; }
+        if (e.type === 'todo') { taskLink[e.id] = l; out.tasks.push(e); continue; }
+        out.items.push({ link: l, row: e, visit: e.type === 'visit' ? e : (hasVisitRef(e) ? await entriesBase.get(e.fields.visitId) : null) });
+      }
+      // Порядок чек-листа проекта — порядок связывания (связи уже по
+      // createdAt): отметка «выполнено» не переставляет строку.
+      out.tasks = out.tasks.map(function (r) { return { link: taskLink[r.id], row: r }; });
+      out.progress.total = out.tasks.length;
+      out.progress.done = out.tasks.filter(function (x) { return x.row.status === 'done'; }).length;
+      out.items.reverse();
+      return out;
+    },
+    /** Прогресс: выполненные / все связанные задачи. Не хранится. */
+    progress: async function (projectId) { return (await projects.related(projectId)).progress; },
+    /** Новая задача проекта: задача района через CWJournal.tasks + связь
+     *  проект → задача. Если связь не записалась — только что созданная
+     *  (ещё ни с чем не связанная) задача удаляется: полусостояния
+     *  «задача без проекта» после ошибки не остаётся. */
+    addTask: async function (projectId, record) {
+      var p = await projectOrThrow(projectId);
+      if (p.status === 'archived') throw new Error('journal-project-readonly');
+      record = record || {};
+      var taskId = await tasks.add({ nodeId: p.nodeId, body: record.body, dueDate: record.dueDate });
+      try {
+        await projects.link(p.id, urn.entry(taskId));
+      } catch (err) {
+        try { await entriesBase.remove(taskId); } catch (_) { err.orphanTaskId = taskId; }
+        throw err;
+      }
+      return taskId;
+    },
   };
 
   var meta = {
@@ -1168,6 +1549,7 @@
     search: search,
     archive: archive,
     links: links,
+    projects: projects,
     meta: meta,
     urn: urn,
     carryKeyFor: carryKeyFor,

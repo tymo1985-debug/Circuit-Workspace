@@ -169,34 +169,15 @@
           </div>
         </div>
 
-        <div class="j-sec">
+        <!-- «Проекты района» — реальные данные (J7): активные проекты всех
+             районов через CWJournal.projects. Остальные блоки Обзора — по-прежнему
+             визуальная фикстура J1 (journal/AGENTS.md). -->
+        <div class="j-sec" id="overviewProjectsSec">
           <div class="j-sec__head">
             <span class="j-sec__title" data-i18n="j.section.projects">Проекты района</span>
-            <span class="j-sec__count">2</span>
-            <button type="button" class="j-sec__more" data-i18n="j.link.all">Все</button>
+            <span class="j-sec__count" id="overviewProjectsCount"></span>
           </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title"><b>Подготовка специального собрания</b></p>
-              <p class="j-row__meta">Активен<span class="j-dot">·</span>4 из 7 задач<span class="j-dot">·</span>3 собрания</p>
-            </div>
-            <div class="j-row__end">
-              <span class="j-tag j-tag--link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>3</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title"><b>Обзор потребностей района на служебный год</b></p>
-              <p class="j-row__meta">Активен<span class="j-dot">·</span>2 из 9 задач<span class="j-dot">·</span>6 собраний</p>
-            </div>
-            <div class="j-row__end">
-              <span class="j-tag j-tag--link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>6</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-          </div>
+          <div id="overviewProjects"></div>
         </div>
 
         <div class="j-sec">
@@ -297,6 +278,16 @@
             </div>
             <p class="j-sec__hint" data-i18n="j.card.district_entries_hint">Район — самостоятельный рабочий объект: у него свои проекты, заметки и задачи, не привязанные ни к одному собранию.</p>
             <div class="j-chip-row" id="districtEntryChips"></div>
+          </div>
+
+          <!-- Проекты района (J7): строки journalEntries type:'project' этого района. -->
+          <div class="j-sec" id="districtProjectsSec">
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.section.projects">Проекты района</span>
+              <span class="j-sec__count" id="districtProjectsCount"></span>
+              <button type="button" class="j-sec__more" id="districtNewProject" data-i18n="j.project.new">Новый проект</button>
+            </div>
+            <div id="districtProjectsList"></div>
           </div>
 
           <div class="j-sec">
@@ -408,6 +399,16 @@
             <div id="congChildrenTree"></div>
           </div>
 
+          <!-- Связанные проекты района (J7): входящие связи проект → это собрание,
+               читаются по индексу journalLinks.to; строка — ссылка, не копия. -->
+          <div class="j-sec" id="congProjectsSec" hidden>
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.project.cong_section">Связанные проекты района</span>
+              <span class="j-sec__count" id="congProjectsCount"></span>
+            </div>
+            <div id="congProjectsList"></div>
+          </div>
+
           <!-- Будущие разделы (визиты/проекты района) — намеренно нейтральны:
                в J3b фиктивных данных нет (см. j-placeholder ниже и J3b spec). -->
           <div class="j-sec j-placeholder">
@@ -430,7 +431,7 @@
 
         <!-- Посещение (J4a): #districts/<c>/congregation/<n>/visit/<v>.
              Эталон — 04-visit-m.jpg / 04-visit-d.jpg. Баннер переноса (J5),
-             содержимое редактора (J4b) и связь с проектом (J7) здесь не
+             содержимое редактора (J4b) и связь с проектом (J7) не
              заполняются фиктивными данными: баннер скрыт, пока переносов нет,
              редактор показывает нейтральное пустое состояние. -->
         <div id="visitDetailView" hidden>
@@ -482,9 +483,9 @@
               <button type="button" class="j-tool" data-format="quote" data-i18n="j.editor.quote">Цитата</button>
               <span class="j-editor__spacer"></span>
               <button type="button" class="j-tool" data-cmd="to-todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg><span data-i18n="j.editor.to_task">В задачу</span></button>
-              <!-- «На след. визит» — J5 (перенос выбранной записи); «Связать» — J7: видим, неактивен. -->
+              <!-- «На след. визит» — J5 (перенос выбранной записи); «Связать» — J7: проекты района для выбранной сохранённой записи. -->
               <button type="button" class="j-tool" data-cmd="carry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg><span data-i18n="j.editor.next_visit">На след. визит</span></button>
-              <button type="button" class="j-tool" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
+              <button type="button" class="j-tool" data-cmd="link" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
             </div>
             <div class="j-editor__body">
               <!-- Записи посещения (J4b): блоки из CWJournal.visitRecords.
@@ -520,7 +521,135 @@
             </div>
           </div>
         </div>
+
+        <!-- Проект района (J7): #districts/<c>/project/<p>. Эталон —
+             06-project-m.jpg / 06-project-d.jpg. Всё на экране читается через
+             CWJournal.projects/links; счётчики, прогресс и история — вычисление
+             при отрисовке, в базе не хранятся. -->
+        <div id="projectDetailView" hidden>
+          <p class="j-crumb">
+            <a href="#" id="projectCrumbCircuit"></a>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            <a href="#" id="projectCrumbEntries" data-i18n="j.project.crumb_entries">Записи района</a>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            <b data-i18n="j.search.type.project">Проект</b>
+          </p>
+          <div class="md-page__header">
+            <div>
+              <h1 class="md-page__title" id="projectTitle"></h1>
+              <p class="md-page__lede" id="projectLede"></p>
+            </div>
+            <div class="j-visit__chips">
+              <span id="projectStatusBadge"></span>
+              <span class="md-chip selected j-typechip"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg><span data-i18n="j.search.type.project">Проект</span></span>
+            </div>
+          </div>
+
+          <div class="j-editor" id="projectEditor">
+            <div class="j-editor__bar" role="toolbar" data-i18n-aria-label="j.project.toolbar" aria-label="Описание проекта">
+              <button type="button" class="j-tool active" data-pformat="paragraph" data-i18n="j.editor.paragraph">Абзац</button>
+              <button type="button" class="j-tool" data-pformat="heading2">H2</button>
+              <button type="button" class="j-tool" data-pformat="list" data-i18n="j.editor.list">Список</button>
+              <button type="button" class="j-tool" data-pcmd="task" data-i18n="j.editor.checks">Галочки</button>
+              <span class="j-editor__spacer"></span>
+              <button type="button" class="j-tool" data-pcmd="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
+            </div>
+            <div class="j-editor__body">
+              <p class="j-editor__readonly" id="projectReadonly" hidden></p>
+              <div id="projectBody"></div>
+            </div>
+          </div>
+
+          <div class="j-sec">
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.project.tasks_title">Задачи проекта</span>
+              <span class="j-sec__count" id="projectTasksCount"></span>
+            </div>
+            <div id="projectTasks"></div>
+            <div class="j-editor__foot j-project__foot">
+              <button type="button" class="md-btn md-btn-text" id="projectAddTask">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span data-i18n="j.project.add_task">Добавить задачу</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="j-sec">
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.project.nodes_title">Связанные собрания</span>
+              <span class="j-sec__count" id="projectNodesCount"></span>
+            </div>
+            <div class="j-chip-row j-pnodes" id="projectNodes"></div>
+            <p class="j-note" data-i18n="j.project.nodes_hint">Связь, а не копия: на экране каждого из этих собраний появится строка «Связанные проекты района».</p>
+          </div>
+
+          <div class="j-sec">
+            <div class="j-sec__head j-sec__head--rule">
+              <span class="j-sec__title" data-i18n="j.project.items_title">Связанные фрагменты из визитов</span>
+              <span class="j-sec__count" id="projectItemsCount"></span>
+            </div>
+            <div id="projectItems"></div>
+            <p class="j-note" data-i18n="j.project.items_hint">Текст живёт в записи визита. Проект показывает его по ссылке с указанием источника — правка в одном месте видна в обоих.</p>
+          </div>
+
+          <div class="j-sec">
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.project.history_title">История проекта</span>
+            </div>
+            <ul class="j-hist j-phist" id="projectHistory"></ul>
+          </div>
+
+          <div class="j-project__actions">
+            <button type="button" class="md-btn md-btn-filled j-project__primary" id="projectStatusBtn"></button>
+            <button type="button" class="md-btn md-btn-outlined" id="projectArchiveBtn"></button>
+          </div>
+          <!-- Письмо в «Документах» — межмодульная интеграция, не J7: видна, неактивна. -->
+          <button type="button" class="md-btn md-btn-text j-project__doc" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg>
+            <span data-i18n="j.project.make_letter">Создать письмо в «Документах»</span>
+          </button>
+        </div>
       </section>
+
+      <!-- Диалог проекта (J7): создание (название + описание) и переименование. -->
+      <dialog id="projectDialog" class="md-dialog" aria-labelledby="projectDialogTitle">
+        <form method="dialog" id="projectDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="projectDialogTitle"></h3></div>
+          <div class="md-dialog-body">
+            <div class="md-field">
+              <input type="text" id="projectDialogName" placeholder=" " autocomplete="off" maxlength="200">
+              <label for="projectDialogName" data-i18n="j.project.field_title">Название проекта</label>
+            </div>
+            <div class="md-field" id="projectDialogBodyField">
+              <textarea id="projectDialogBody" rows="4" placeholder=" "></textarea>
+              <label for="projectDialogBody" data-i18n="j.project.field_body">Описание (необязательно)</label>
+            </div>
+            <p class="j-dialog-error" id="projectDialogError" role="alert" hidden></p>
+          </div>
+          <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" id="projectDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+            <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Выбор для связи (J7): список живёт только в памяти открытого диалога —
+           ни истории, ни «недавних», ни подписей в хранилище. -->
+      <dialog id="pickDialog" class="md-dialog j-pick" aria-labelledby="pickDialogTitle">
+        <div class="md-dialog-head"><h3 class="md-title-medium" id="pickDialogTitle"></h3></div>
+        <div class="md-dialog-body">
+          <p class="j-sec__hint" id="pickDialogHint"></p>
+          <div class="md-field j-pick__search">
+            <input type="search" id="pickDialogSearch" placeholder=" " autocomplete="off" spellcheck="false">
+            <label for="pickDialogSearch" data-i18n="j.project.pick_filter">Фильтр</label>
+          </div>
+          <div id="pickDialogList" class="j-pick__list"></div>
+          <p class="j-dialog-error" id="pickDialogError" role="alert" hidden></p>
+        </div>
+        <div class="md-dialog-actions">
+          <button type="button" class="md-btn md-btn-filled" id="pickDialogDone" data-i18n="j.action.done">Готово</button>
+        </div>
+      </dialog>
 
       <!-- Диалог посещения: создание и правка дат (J4a). -->
       <dialog id="visitDialog" class="md-dialog" aria-labelledby="visitDialogTitle">
@@ -593,6 +722,7 @@
           </div>
           <div class="md-dialog-actions">
             <button type="button" class="md-btn md-btn-text" id="taskDialogDelete" data-i18n="j.action.delete" hidden>Удалить</button>
+            <button type="button" class="md-btn md-btn-text" id="taskDialogUnlink" data-i18n="j.project.unlink_task" hidden>Убрать из проекта</button>
             <span class="j-editor__spacer"></span>
             <button type="button" class="md-btn md-btn-text" id="taskDialogCancel" data-i18n="j.action.cancel">Отмена</button>
             <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
@@ -733,13 +863,13 @@
         <div id="searchResults"></div>
       </section>
       <section class="md-page md-page--narrow" data-route="archive" id="route-archive" hidden>
-        <!-- Архив (J6): напрямую архивные узлы и посещения (status/archivedAt,
+        <!-- Архив (J6; проекты — J7): напрямую архивные узлы, посещения и проекты (status/archivedAt,
              не отдельное хранилище). Восстановление — только выбранный объект,
              без каскада. Удаления здесь нет. -->
         <div class="md-page__header">
           <div>
             <h1 class="md-page__title" data-i18n="j.nav.archive">Архив</h1>
-            <p class="md-page__lede" id="archiveLede" data-i18n="j.archive.lede">Районы, собрания, группы и посещения, убранные в архив. Ничего не удаляется — любой объект можно вернуть.</p>
+            <p class="md-page__lede" id="archiveLede" data-i18n="j.archive.lede">Районы, собрания, группы, посещения и проекты, убранные в архив. Ничего не удаляется — любой объект можно вернуть.</p>
           </div>
         </div>
         <div class="md-toolbar">
@@ -747,6 +877,7 @@
             <button type="button" class="active" data-archive-tab="all" data-i18n="j.archive.tab_all">Всё</button>
             <button type="button" data-archive-tab="nodes" data-i18n="j.archive.tab_nodes">Районы и собрания</button>
             <button type="button" data-archive-tab="visits" data-i18n="j.archive.tab_visits">Посещения</button>
+            <button type="button" data-archive-tab="projects" data-i18n="j.archive.tab_projects">Проекты</button>
           </div>
         </div>
         <div id="archiveList"></div>
