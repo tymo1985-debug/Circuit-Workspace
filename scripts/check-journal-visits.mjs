@@ -22,6 +22,15 @@ import 'fake-indexeddb/auto';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
+/* Разрезка 0.9.1: код экранов Журнала — js/app.js + js/app/*.js. Проверки
+   UI идут по всему слою экранов; строки-переходники позднего связывания
+   (function X() { return A.X.apply(...) }) — не реализация, отбрасываются. */
+const JOURNAL_UI_FILES = ['journal/js/app/core.js', 'journal/js/app/districts.js', 'journal/js/app/visits.js',
+  'journal/js/app/tasks.js', 'journal/js/app/projects.js', 'journal/js/app/search-archive.js', 'journal/js/app.js'];
+const readJournalUi = () => JOURNAL_UI_FILES.map((f) => read(f)).join('\n')
+  .replace(/^  function [\w$]+\(\) \{ return A\.[\w$]+\.apply\(this, arguments\); \}\n/gm, '');
+
+
 globalThis.self = globalThis;
 const mem = new Map();
 globalThis.localStorage = {
@@ -148,7 +157,7 @@ console.log('\n8. Граница UI ↔ данные');
 {
   const acorn = await import('acorn');
   const walk = await import('acorn-walk');
-  const src = read('journal/js/app.js');
+  const src = readJournalUi();
   const ast = acorn.parse(src, { ecmaVersion: 2022 });
   let rawDb = 0, visitViaEntries = 0;
   walk.full(ast, (n) => {
@@ -162,7 +171,7 @@ console.log('\n8. Граница UI ↔ данные');
     ['visits.add(', 'visits.update(', 'visits.complete(', 'visits.archive(', 'visits.remove(', 'visits.byNode('].every((m) => src.includes(m)));
   ok('разбор маршрута — через CWJournalRoute', /CWJournalRoute\.parse\(location\.hash\)/.test(src));
   ok('app.js/route.js/data.js без localStorage',
-    ['journal/js/app.js', 'journal/js/route.js', 'journal/js/data.js'].every((f) => !/localStorage/.test(read(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''))));
+    [...JOURNAL_UI_FILES, 'journal/js/route.js', 'journal/js/data.js'].every((f) => !/localStorage/.test(read(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''))));
   ok('route.js подключён и в прекэше', read('journal/index.html').includes('js/route.js') && read('journal/sw.js').includes("'./js/route.js'"));
 }
 ok('в localStorage за прогон ничего не записано', mem.size === 0, [...mem.keys()].join());

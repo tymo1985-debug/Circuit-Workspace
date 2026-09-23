@@ -18,6 +18,15 @@ import * as acorn from 'acorn';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
+/* Разрезка 0.9.1: код экранов Журнала — js/app.js + js/app/*.js. Проверки
+   UI идут по всему слою экранов; строки-переходники позднего связывания
+   (function X() { return A.X.apply(...) }) — не реализация, отбрасываются. */
+const JOURNAL_UI_FILES = ['journal/js/app/core.js', 'journal/js/app/districts.js', 'journal/js/app/visits.js',
+  'journal/js/app/tasks.js', 'journal/js/app/projects.js', 'journal/js/app/search-archive.js', 'journal/js/app.js'];
+const readJournalUi = () => JOURNAL_UI_FILES.map((f) => read(f)).join('\n')
+  .replace(/^  function [\w$]+\(\) \{ return A\.[\w$]+\.apply\(this, arguments\); \}\n/gm, '');
+
+
 globalThis.self = globalThis;
 const mem = new Map();
 let lsWrites = 0;
@@ -221,7 +230,7 @@ ok('restore посещения через канонический unarchive (п
 
 /* ═══ 10. Структура экрана ═══════════════════════════════════════════ */
 console.log('\n10. Структура app.js / route.js / index.html');
-const app = read('journal/js/app.js');
+const app = readJournalUi();
 const names = new Set();
 for (const tok of acorn.tokenizer(app, { ecmaVersion: 'latest' })) if (tok.type.label === 'name') names.add(tok.value);
 ok('app.js не обращается к CWDB', !names.has('CWDB'));
@@ -229,7 +238,7 @@ ok('app.js не использует localStorage/sessionStorage', !names.has('l
 const route = read('journal/js/route.js');
 ok('маршрут поиска — голый #search без хвоста запроса', /'search'/.test(route) && !/search\//.test(route));
 ok('запрос не пишется в hash/history', !/location\.hash\s*=\s*[^;]*searchUi\.query/.test(app) && !/history\.(push|replace)State/.test(app));
-const j6 = app.slice(app.indexOf('═══ Поиск (J6)'), app.indexOf('═══ Создание района/собрания'));
+const j6 = read('journal/js/app/search-archive.js'); // блок J6 — свой файл с разрезки 0.9.1
 ok('блок J6 найден', j6.length > 1000);
 ok('J6: innerHTML только для статичных иконок svg(...)',
   (j6.match(/innerHTML\s*=[^;]*;/g) || []).every((m) => /innerHTML\s*=\s*svg\(/.test(m)), (j6.match(/innerHTML\s*=[^;]*;/g) || []).join(' | '));

@@ -22,6 +22,15 @@ import 'fake-indexeddb/auto';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
+
+/* Разрезка 0.9.1: код экранов Журнала — js/app.js + js/app/*.js. Проверки
+   UI идут по всему слою экранов; строки-переходники позднего связывания
+   (function X() { return A.X.apply(...) }) — не реализация, отбрасываются. */
+const JOURNAL_UI_FILES = ['journal/js/app/core.js', 'journal/js/app/districts.js', 'journal/js/app/visits.js',
+  'journal/js/app/tasks.js', 'journal/js/app/projects.js', 'journal/js/app/search-archive.js', 'journal/js/app.js'];
+const readJournalUi = () => JOURNAL_UI_FILES.map((f) => read(f)).join('\n')
+  .replace(/^  function [\w$]+\(\) \{ return A\.[\w$]+\.apply\(this, arguments\); \}\n/gm, '');
+
 const DB = 'circuit-workspace-db';
 
 globalThis.self = globalThis;
@@ -475,7 +484,7 @@ console.log('\n18. Переименование собрания: один ди�
 {
   const acorn = await import('acorn');
   const walk = await import('acorn-walk');
-  const src = read('journal/js/app.js');
+  const src = readJournalUi();
   const ast = acorn.parse(src, { ecmaVersion: 2022 });
   const fns = {};
   walk.full(ast, (n) => {
