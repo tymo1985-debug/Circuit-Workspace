@@ -469,6 +469,22 @@
 .j-pick__label { font: 400 14px/20px var(--md-font-family); letter-spacing: 0.1px; overflow-wrap: anywhere; }
 .j-pick__meta { font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }
 
+/* --- Клиндарий (J9a) -----------------------------------------------------
+   Чип связи посещения с записью Клиндария. Текст — живые данные Клиндария,
+   длинный заголовок обрезается многоточием, а не ломает шапку. */
+.j-planner { display: inline-flex; align-items: center; gap: var(--cw-space-1); min-width: 0; max-width: 100%; }
+.j-planner:empty { display: none; }
+.j-planner__chip { max-width: 100%; min-width: 0; text-decoration: none; }
+.j-planner__chip svg { width: 16px; height: 16px; flex: 0 0 auto; }
+a.j-planner__chip { color: var(--cw-module); border-color: var(--cw-module); }
+.j-planner__chip--broken { color: var(--md-error); border-color: var(--md-error); }
+span.j-planner__chip--broken { cursor: default; }
+.j-planner__txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.j-planner__edit { width: 32px; height: 32px; }
+.j-planner__current { margin: var(--cw-space-2) 0 0; font: 500 13px/18px var(--md-font-family); color: var(--md-on-surface); }
+.j-planner__all { display: flex; align-items: center; gap: var(--cw-space-2); margin-top: var(--cw-space-3); font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface-variant); cursor: pointer; }
+.j-planner__radio { border-radius: 50%; }
+
 /* --- Защита (J8, эталон 08-protection-m) ---------------------------------
    Лист — тот же .j-sheet (снизу на телефоне, по центру на широком экране);
    замок — цвет модуля; способ разблокировки один — парольная фраза. */

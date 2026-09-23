@@ -1287,6 +1287,7 @@
       if (LINK_RELS.indexOf(record.rel) === -1) throw new Error('journal-link-invalid-rel');
       var e = await linkEnds(record.from, record.to);
       if (isProjectRow(e.pf, e.rf) || isProjectRow(e.pt, e.rt)) throw new Error(PROJECT_USE_FACADE);
+      if (isPlannerVisitPair(record.from, e.rf, record.to, e.rt)) throw new Error(PLANNER_USE_FACADE);
       await assertAssociationMutable(e.pf, e.rf, true);
       await assertAssociationMutable(e.pt, e.rt, true);
       return insertLink(record.from, record.to, record.rel);
@@ -1295,6 +1296,7 @@
     remove: async function (id) {
       var l = await db().journalLinks.get(id);
       if (!l) return;
+      if (await isPlannerVisitLink(l)) throw new Error(PLANNER_USE_FACADE);
       await assertLinkRemovable(l, false);
       return db().journalLinks.remove(id);
     },
@@ -1326,6 +1328,130 @@
     if (pf) await assertAssociationMutable(pf, rf, false);
     if (pt) await assertAssociationMutable(pt, rt, false);
   }
+
+  /* ═══ Посещение ↔ запись Клиндария (J9a) ══════════════════════════════
+   * Связь — обычная строка journalLinks, rel 'external':
+   *   journal:entry/<visitId> → cw:circuit-planner/entry/<plannerEntryId>
+   * Ни заголовка, ни дат, ни названия собрания Журнал не хранит: всё это
+   * разрешается на лету через shared/planner.js (CWPlanner). Поля вроде
+   * plannerId в строке посещения нет и не будет — граф единственный
+   * источник правды об отношении.
+   *  - у посещения не больше ОДНОЙ прямой связи с записью Клиндария, и это
+   *    держит КЛЮЧ, а не проверка: связь живёт в одном «слоте» с постоянным
+   *    id на посещение (plannerSlotId: 'jl_planner|journal:entry/<v>').
+   *    set() делает put в тот же ключ, меняя только `to`, — два set() из
+   *    разных вкладок упираются в один ключ IndexedDB и не могут оставить
+   *    две строки. Поэтому id этой строки НАМЕРЕННО не тройной id обычной
+   *    связи J7 (jl_<rel>|<from>|<to>): связь-слот меняет цель, не меняя id.
+   *    Строки Клиндария с другим id (кривое/старое состояние) set()/clear()
+   *    удаляют тем же пакетом — состояние сходится к одному слоту;
+   *  - менять связь можно только у открытого посещения (journal-visit-
+   *    readonly) — правило J7 для посещения то же;
+   *  - запись Клиндария исчезла — связь НЕ удаляется: экран показывает
+   *    «не найдена», человек сам чинит или снимает. Восстановление копии
+   *    одного модуля законно даёт такую внешнюю «висячую» ссылку;
+   *  - общий links.add/remove такие связи не создаёт и не снимает
+   *    (journal-planner-use-facade), чтобы правило «одна» держал слой данных;
+   *  - на другие внешние связи (J7) правило не распространяется. */
+  var PLANNER_MODULE = 'circuit-planner';
+  var PLANNER_KIND = 'entry';
+  var PLANNER_REL = 'external';
+  var PLANNER_USE_FACADE = 'journal-planner-use-facade';
+  function plannerSlotId(visitId) { return 'jl_planner|journal:entry/' + visitId; }
+  function isPlannerEntryRef(ref) {
+    var p = parseUrn(ref);
+    return !!(p && p.scope === 'cw' && p.module === PLANNER_MODULE && p.kind === PLANNER_KIND);
+  }
+  function isPlannerVisitPair(from, rowFrom, to, rowTo) {
+    return !!((isPlannerEntryRef(to) && rowFrom && rowFrom.type === 'visit')
+      || (isPlannerEntryRef(from) && rowTo && rowTo.type === 'visit'));
+  }
+  /** Строка связи «посещение ↔ запись Клиндария» (в любом направлении). */
+  async function isPlannerVisitLink(l) {
+    var local = isPlannerEntryRef(l.to) ? parseUrn(l.from) : isPlannerEntryRef(l.from) ? parseUrn(l.to) : null;
+    if (!local || local.scope !== 'journal' || local.kind !== 'entry') return false;
+    var row = await entriesBase.get(local.id);
+    return !!(row && row.type === 'visit');
+  }
+  function plannerUrn(entryId) {
+    var ref = 'cw:' + PLANNER_MODULE + '/' + PLANNER_KIND + '/' + String(entryId == null ? '' : entryId);
+    if (typeof entryId !== 'string' || !isPlannerEntryRef(ref)) throw new Error('journal-planner-invalid-id');
+    return ref;
+  }
+  async function plannerVisit(visitId) {
+    var v = typeof visitId === 'string' ? await entriesBase.get(visitId) : null;
+    if (!v || v.type !== 'visit') throw new Error('journal-visit-not-found');
+    return v;
+  }
+  async function plannerLinksOf(visitId) {
+    return sortLinks((await db().journalLinks.byIndex('from', 'journal:entry/' + visitId)).filter(function (l) {
+      return l.rel === PLANNER_REL && isPlannerEntryRef(l.to);
+    }));
+  }
+  async function plannerBatch(ops) {
+    try { await db().batch(ops); }
+    catch (err) {
+      if (err && err.message === 'cwdb-batch-precondition') throw new Error('journal-planner-changed');
+      throw err;
+    }
+  }
+  function expectOpenVisit(visitId) {
+    return { store: 'journalEntries', type: 'expect', key: visitId, match: { type: 'visit', status: 'open' } };
+  }
+  /* Удаление идемпотентно: строку могла уже снять соседняя вкладка. */
+  function dropLinkOps(list) {
+    return list.map(function (l) { return { store: 'journalLinks', type: 'delete', key: l.id }; });
+  }
+
+  var planner = {
+    MODULE: PLANNER_MODULE,
+    KIND: PLANNER_KIND,
+    REL: PLANNER_REL,
+    urn: plannerUrn,
+    isRef: isPlannerEntryRef,
+    /** URN → id записи Клиндария (или null). */
+    entryId: function (ref) { return isPlannerEntryRef(ref) ? parseUrn(ref).id : null; },
+    /** Текущая связь посещения: { linkId, entryId } или null. Слот —
+     *  первым; строка вне слота видна только до ближайшего set()/clear(). */
+    get: async function (visitId) {
+      await plannerVisit(visitId);
+      var list = await plannerLinksOf(visitId);
+      var slot = plannerSlotId(visitId);
+      var l = list.filter(function (x) { return x.id === slot; })[0] || list[0];
+      return l ? { linkId: l.id, entryId: parseUrn(l.to).id } : null;
+    },
+    slotId: plannerSlotId,
+    /** Все прямые связи посещения с Клиндарием (штатно — не больше одной). */
+    list: async function (visitId) { await plannerVisit(visitId); return plannerLinksOf(visitId); },
+    /** Связать/перевязать: put в слот посещения. Та же запись — без записи. */
+    set: async function (visitId, entryId) {
+      var to = plannerUrn(entryId);
+      var v = await plannerVisit(visitId);
+      if (v.status !== 'open') throw new Error('journal-visit-readonly');
+      var from = 'journal:entry/' + visitId;
+      var slot = plannerSlotId(visitId);
+      var current = await plannerLinksOf(visitId);
+      var strays = current.filter(function (l) { return l.id !== slot; });
+      var inSlot = current.filter(function (l) { return l.id === slot; })[0];
+      if (inSlot && inSlot.to === to && !strays.length) return slot;
+      var ops = [expectOpenVisit(visitId)].concat(dropLinkOps(strays));
+      ops.push({ store: 'journalLinks', type: 'put', value: { id: slot, from: from, to: to, rel: PLANNER_REL, createdAt: now() } });
+      await plannerBatch(ops);
+      return slot;
+    },
+    /** Снять связь посещения с Клиндарием. Возвращает число снятых строк. */
+    clear: async function (visitId) {
+      var v = await plannerVisit(visitId);
+      var current = await plannerLinksOf(visitId);
+      if (!current.length) return 0;
+      if (v.status !== 'open') throw new Error('journal-visit-readonly');
+      var slot = plannerSlotId(visitId);
+      var ops = [expectOpenVisit(visitId)].concat(dropLinkOps(current));
+      if (!current.some(function (l) { return l.id === slot; })) ops.push({ store: 'journalLinks', type: 'delete', key: slot });
+      await plannerBatch(ops);
+      return current.length;
+    },
+  };
 
   /* ═══ Проекты района (J7) ════════════════════════════════════════════════
    * Проект — строка journalEntries с type:'project'. Своего хранилища нет.
@@ -1896,6 +2022,7 @@
     search: search,
     archive: archive,
     links: links,
+    planner: planner,
     projects: projects,
     meta: meta,
     protection: protection,

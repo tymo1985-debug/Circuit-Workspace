@@ -1265,6 +1265,43 @@
     },
 
     actions: {
+      /* ГЛУБОКАЯ ССЫЛКА НА ЗАПИСЬ (J9a): `#calendar?entry=<id>`.
+         Публичный контракт для соседних модулей (Журнал строит её через
+         shared/planner.js). Экран по-прежнему берётся из части ДО `?` — как
+         и ярлыки PWA; здесь разбирается только хвост. Id проверяется
+         белым списком символов и ищется простым сравнением в данных:
+         ни в селектор, ни в разметку он не попадает. Неизвестная, удалённая
+         или кривая запись — модуль открывается как обычно, ничего не
+         выдумывается. Сохранённые данные (в т.ч. settings.calendarView) не
+         меняются — только состояние экрана этой вкладки. */
+      entryIdFromHash(hash) {
+        const raw = String(hash || '').replace(/^#/, '');
+        const q = raw.indexOf('?');
+        if (q < 0 || raw.slice(0, q) !== 'calendar') return null;
+        let value = null;
+        raw.slice(q + 1).split('&').forEach((pair) => {
+          const i = pair.indexOf('=');
+          if (value !== null || i < 0 || pair.slice(0, i) !== 'entry') return;
+          try { value = decodeURIComponent(pair.slice(i + 1)); } catch (_) { value = ''; }
+        });
+        return value && /^[A-Za-z0-9._~@+-]{1,200}$/.test(value) ? value : null;
+      },
+      focusEntryFromHash(hash) {
+        const id = this.entryIdFromHash(hash);
+        if (!id) return false;
+        const entry = (App.state.app.entries || []).find((item) => item && item.id === id);
+        const start = entry ? App.utils.parseLocalDate(entry.start) : null;
+        if (!start) return false;
+        App.state.selectedScreen = 'calendar';
+        App.state.calendarView = 'month';
+        App.state.calendarEventFilter = 'all';
+        App.state.calendarYear = start.getFullYear();
+        App.state.calendarMonth = start.getMonth();
+        /* Выбранный день перекрыл бы карточку записи деталями дня. */
+        App.state.calendarSelectedDateIso = null;
+        App.state.calendarDetailId = `entry:${entry.id}`;
+        return true;
+      },
       /* Единая точка открытия редактора собрания по id — используется и
          списком/карточками (data-edit-event), и маркером карты, чтобы клик
          по маркеру вёл в тот же самый редактор, а не в его копию. */
@@ -4896,6 +4933,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       if (validScreens.includes(hashScreen)) this.state.selectedScreen = hashScreen;
       this.state.teamPanelHidden = false;
       this.state.calendarView = this.state.app.settings.calendarView || 'month';
+      const deepLinkedEntry = this.actions.focusEntryFromHash(window.location.hash);
       this.state.app.settings.showTeamPanel = true;
       if (!this.state.app.settings.fontSize) this.state.app.settings.fontSize = '100';
 
@@ -4919,6 +4957,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       this.bind();
       this.ui.closeMobileMenu();
       this.ui.showPinGateIfNeeded();
+      if (deepLinkedEntry && typeof this.ui.scrollToDetailPanel === 'function') this.ui.scrollToDetailPanel();
       this.ui.showRemindersModalIfNeeded();
       this.ui.checkSixtyDayNotifications();
       // checkAutoBackupReminder(): отключено — теперь есть общий backup всех

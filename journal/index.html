@@ -451,6 +451,9 @@
             </div>
             <div class="j-visit__chips">
               <span class="md-chip" id="visitStatusChip"></span>
+              <!-- Клиндарий (J9a): связь — строка journalLinks, подпись и даты
+                   разрешаются на лету через shared/planner.js, не хранятся. -->
+              <span class="j-planner" id="visitPlannerSlot"></span>
               <span class="md-chip" id="visitProtectionChip">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                 <span data-i18n="j.visit.protection_normal">Обычная</span>
@@ -673,6 +676,24 @@
             <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
           </div>
         </form>
+      </dialog>
+
+      <!-- Выбор записи Клиндария для посещения (J9a). Связь сохраняется
+           только кнопкой «Связать» — автоматического сопоставления нет. -->
+      <dialog id="plannerDialog" class="md-dialog j-pick" aria-labelledby="plannerDialogTitle">
+        <div class="md-dialog-head"><h3 class="md-title-medium" id="plannerDialogTitle" data-i18n="j.planner.dialog_title">Запись Клиндария</h3></div>
+        <div class="md-dialog-body">
+          <p class="j-sec__hint" data-i18n="j.planner.dialog_hint">Выберите запись календаря. Связь сохраняется только кнопкой «Связать с записью».</p>
+          <p class="j-planner__current" id="plannerDialogCurrent" hidden></p>
+          <label class="j-planner__all"><input type="checkbox" id="plannerDialogAll"> <span data-i18n="j.planner.show_all">Показать все записи</span></label>
+          <div id="plannerDialogList" class="j-pick__list" role="radiogroup" aria-labelledby="plannerDialogTitle"></div>
+          <p class="j-dialog-error" id="plannerDialogError" role="alert" hidden></p>
+        </div>
+        <div class="md-dialog-actions">
+          <button type="button" class="md-btn md-btn-text" id="plannerDialogUnlink" data-i18n="j.planner.unlink" hidden>Снять связь</button>
+          <button type="button" class="md-btn md-btn-text" id="plannerDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+          <button type="button" class="md-btn md-btn-filled" id="plannerDialogLink" data-i18n="j.planner.confirm" disabled>Связать с записью</button>
+        </div>
       </dialog>
 
       <!-- Лист разбора перенесённого пункта (J5, эталон 05-carryover-m.jpg).
@@ -968,6 +989,7 @@
      в J2 по-прежнему статичен — чтений из хранилищ здесь ещё нет. -->
 <script src="../shared/db.js"></script>
 <script src="../shared/directory.js"></script>
+<script src="../shared/planner.js"></script>
 <script src="js/crypto.js"></script>
 <script src="js/data.js"></script>
 <script src="js/route.js"></script>

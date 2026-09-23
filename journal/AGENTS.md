@@ -109,6 +109,20 @@
   связей в обе стороны, без каскада.
 - Маршрут проекта — `#districts/<c>/project/<p>`, в хэше только id.
 
+- Клиндарий (J9a) — только через `CWJournal.planner` (`set/clear/get`):
+  `journal:entry/<visitId> → cw:circuit-planner/entry/<entryId>`, rel
+  `external`. Особая связь-СЛОТ: одна строка с постоянным id
+  `jl_planner|journal:entry/<visitId>`, перепривязка — `put` в тот же ключ
+  (меняется только `to`), поэтому две вкладки не оставят двух строк; id
+  намеренно не тройной id J7 (у обычных связей он прежний). Строки
+  Клиндария вне слота `set/clear` удаляют. Общий `links.add/remove` →
+  `journal-planner-use-facade`. Дат/заголовка/
+  `plannerId` в Журнале нет — живое чтение через `shared/planner.js`
+  (`CWPlanner`, только чтение канона `state/circuit-planner`, маячок
+  `cw-state-rev:circuit-planner`). Блоб Клиндария и прежний ключ Журнал не
+  читает. Нет записи → «не найдена», связь не удаляется. Выбор — только
+  явный. Глубокая ссылка — `#calendar?entry=<id>`.
+
 ## Защита (J8)
 
 - Шифрование при хранении ЯВНО защищённого текста: проект — `title`+`body`,

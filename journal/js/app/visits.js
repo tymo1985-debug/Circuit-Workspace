@@ -103,8 +103,208 @@
     if (editor.visitId !== visit.id) editor = { visitId: visit.id, draft: null, busy: false };
     editor.visit = visit;
     await renderVisitRecords();
+    renderPlannerChip(visit, node);
 
     wireVisitMenu(visit, node);
+  }
+
+  /* ═══ Клиндарий (J9a) ═══════════════════════════════════════════════════
+   * Связь посещения с записью Клиндария — только через CWJournal.planner
+   * (строка journalLinks). Подпись, даты и название берутся ЖИВЫМИ из
+   * shared/planner.js (CWPlanner) при каждой отрисовке и нигде не
+   * сохраняются. Блоб Клиндария экран не видит. Выбор записи — только явный:
+   * кандидаты показываются, связь пишется кнопкой «Связать». */
+  var PLANNER_ICON = '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>';
+  var PLANNER_EDIT_ICON = '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
+  var plannerUi = { visit: null, node: null, seq: 0, bound: false, dialog: null };
+
+  function plannerApi() { return self.CWPlanner || null; }
+  function plannerEntryText(e) {
+    return formatRange(e.start, e.end, true) + (e.title ? ' · ' + e.title : '');
+  }
+  function plannerChip(tag, cls, text) {
+    var c = el(tag, 'md-chip j-planner__chip' + (cls ? ' ' + cls : ''));
+    c.innerHTML = svg(PLANNER_ICON, 'width="16" height="16"');
+    c.appendChild(el('span', 'j-planner__txt', text));
+    return c;
+  }
+
+  async function renderPlannerChip(visit, node) {
+    plannerUi.visit = visit;
+    plannerUi.node = node;
+    var my = ++plannerUi.seq;
+    var api = plannerApi();
+    var link = null;
+    try { link = await CWJournal.planner.get(visit.id); } catch (_) { link = null; }
+    if (api) await api.init();
+    if (my !== plannerUi.seq) return;
+    var editable = visit.status === 'open';
+    var name = t('module.circuit-planner.title');
+    var frag = document.createDocumentFragment();
+    if (!link) {
+      if (editable && api) {
+        var add = plannerChip('button', '', t('j.planner.link'));
+        add.type = 'button';
+        add.id = 'visitPlannerLink';
+        add.addEventListener('click', openPlannerDialog);
+        frag.appendChild(add);
+      }
+    } else {
+      var entry = api ? api.getEntry(link.entryId) : null;
+      if (entry) {
+        var ref = plannerChip('a', '', name + ' · ' + plannerEntryText(entry));
+        ref.id = 'visitPlannerRef';
+        ref.href = api.urlForEntry(entry.id);
+        ref.title = t('j.planner.open');
+        frag.appendChild(ref);
+      } else {
+        var st = api ? api.status() : 'unavailable';
+        var msg = (st === 'ok' || st === 'empty') ? t('j.planner.missing') : t('j.planner.unavailable');
+        var broken = plannerChip(editable ? 'button' : 'span', 'j-planner__chip--broken', msg);
+        broken.id = 'visitPlannerBroken';
+        if (editable) { broken.type = 'button'; broken.addEventListener('click', openPlannerDialog); }
+        frag.appendChild(broken);
+      }
+      if (editable && entry) {
+        var edit = el('button', 'md-icon-btn j-planner__edit');
+        edit.type = 'button';
+        edit.id = 'visitPlannerEdit';
+        edit.setAttribute('aria-label', t('j.planner.change'));
+        edit.title = t('j.planner.change');
+        edit.innerHTML = svg(PLANNER_EDIT_ICON, 'width="18" height="18"');
+        edit.addEventListener('click', openPlannerDialog);
+        frag.appendChild(edit);
+      }
+    }
+    var slot = $('#visitPlannerSlot');
+    if (slot) slot.replaceChildren(frag);
+  }
+
+  /** Живое изменение канона Клиндария (соседняя вкладка, bfcache). */
+  function onPlannerChanged() {
+    var view = $('#visitDetailView');
+    if (!view || view.hidden || !plannerUi.visit) return;
+    renderPlannerChip(plannerUi.visit, plannerUi.node);
+    if (plannerUi.dialog) plannerUi.dialog.reload();
+  }
+
+  function openPlannerDialog() {
+    var visit = plannerUi.visit, node = plannerUi.node, api = plannerApi();
+    if (!visit || !api || visit.status !== 'open') return;
+    var dlg = $('#plannerDialog');
+    var list = $('#plannerDialogList');
+    var all = $('#plannerDialogAll');
+    var errEl = $('#plannerDialogError');
+    var cur = $('#plannerDialogCurrent');
+    var linkBtn = $('#plannerDialogLink');
+    var unlinkBtn = $('#plannerDialogUnlink');
+    var ui = { selected: null, current: null, busy: false };
+    all.checked = false;
+    errEl.hidden = true;
+
+    function showError(err) { errEl.textContent = errorMessage(err); errEl.hidden = false; }
+    function sync() {
+      linkBtn.disabled = ui.busy || !ui.selected || ui.selected === ui.current;
+      unlinkBtn.hidden = !ui.current;
+      unlinkBtn.disabled = ui.busy;
+    }
+    function draw() {
+      var st = api.status();
+      if (ui.current) {
+        var ce = api.getEntry(ui.current);
+        cur.textContent = t('j.planner.current') + ': ' + (ce ? plannerEntryText(ce) : t('j.planner.missing'));
+        cur.hidden = false;
+      } else cur.hidden = true;
+      var cands = api.candidates({
+        communityId: node && node.communityId ? node.communityId : '',
+        dateFrom: visit.dateFrom, dateTo: visit.dateTo,
+        visitType: node ? node.kind : '', all: all.checked,
+      });
+      var frag = document.createDocumentFragment();
+      if (!cands.length) {
+        var none = st === 'ok' ? (api.listEntries().length ? 'j.planner.none' : 'j.planner.empty')
+          : st === 'empty' ? 'j.planner.empty' : 'j.planner.unavailable';
+        frag.appendChild(el('p', 'j-sec__hint', t(none)));
+      }
+      cands.forEach(function (c) {
+        var e = c.entry;
+        var on = ui.selected === e.id;
+        var row = el('button', 'j-pick__row' + (on ? ' is-on' : ''));
+        row.type = 'button';
+        row.setAttribute('role', 'radio');
+        row.setAttribute('aria-checked', String(on));
+        row.setAttribute('data-entry', e.id);
+        var box = el('span', 'j-check__box j-pick__box j-planner__radio');
+        box.setAttribute('aria-hidden', 'true');
+        var txt = el('span', 'j-pick__txt');
+        txt.appendChild(el('span', 'j-pick__label', e.title || e.name || e.id));
+        var meta = [formatRange(e.start, e.end, true)];
+        if (e.visitType) meta.push(t('j.planner.type.' + e.visitType));
+        if (c.identity) meta.push(t('j.planner.match_identity'));
+        if (c.overlap) meta.push(t('j.planner.match_overlap'));
+        else if (c.near) meta.push(t('j.planner.match_near'));
+        if (ui.current === e.id) meta.push(t('j.planner.current'));
+        txt.appendChild(el('span', 'j-pick__meta', meta.join(' · ')));
+        row.appendChild(box);
+        row.appendChild(txt);
+        row.addEventListener('click', function () {
+          if (ui.busy) return;
+          ui.selected = e.id;
+          draw();
+        });
+        frag.appendChild(row);
+      });
+      list.replaceChildren(frag);
+      sync();
+    }
+    async function reload() {
+      try {
+        var l = await CWJournal.planner.get(visit.id);
+        ui.current = l ? l.entryId : null;
+      } catch (err) { showError(err); }
+      if (ui.selected === null) ui.selected = ui.current;
+      draw();
+    }
+    async function run(fn) {
+      if (ui.busy) return;
+      ui.busy = true;
+      errEl.hidden = true;
+      sync();
+      try {
+        await fn();
+        ui.busy = false;
+        dlg.close();
+      } catch (err) {
+        ui.busy = false;
+        showError(err);
+        await reload();
+      }
+    }
+    function onLink() { if (ui.selected) run(function () { return CWJournal.planner.set(visit.id, ui.selected); }); }
+    function onUnlink() { run(function () { return CWJournal.planner.clear(visit.id); }); }
+    function onCancel() { dlg.close(); }
+    function onAll() { draw(); }
+    var unbindClose;
+    function cleanup() {
+      linkBtn.removeEventListener('click', onLink);
+      unlinkBtn.removeEventListener('click', onUnlink);
+      $('#plannerDialogCancel').removeEventListener('click', onCancel);
+      all.removeEventListener('change', onAll);
+      list.replaceChildren();
+      plannerUi.dialog = null;
+      if (unbindClose) unbindClose();
+      if (plannerUi.visit) renderPlannerChip(plannerUi.visit, plannerUi.node);
+    }
+    linkBtn.addEventListener('click', onLink);
+    unlinkBtn.addEventListener('click', onUnlink);
+    $('#plannerDialogCancel').addEventListener('click', onCancel);
+    all.addEventListener('change', onAll);
+    unbindClose = bindDialogCleanup(dlg, cleanup);
+    plannerUi.dialog = { reload: reload };
+    list.replaceChildren(el('p', 'j-sec__hint', '…'));
+    sync();
+    dlg.showModal();
+    api.init().then(reload);
   }
 
   /* ═══ Редактор записей посещения (J4b) ═════════════════════════════════
@@ -545,6 +745,11 @@
   }
 
   function wireVisitEditorChrome() {
+    if (self.CWPlanner && !plannerUi.bound) {
+      plannerUi.bound = true;
+      self.CWPlanner.subscribe(onPlannerChanged);
+      self.CWPlanner.init();
+    }
     $('#visitAddRecord').addEventListener('click', function () {
       if (!visitEditable() || editor.busy) return;
       editor.draft = { id: null, type: 'note', format: 'paragraph', body: '', error: '' };
