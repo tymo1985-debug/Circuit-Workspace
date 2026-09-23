@@ -2087,6 +2087,26 @@ dialog {
   .sheet-body > #programActions > button {
     justify-content: flex-start
   }
+  /* Меню «⋮» текущего конгресса в листе. Выпадашка абсолютная, открывается
+     вниз и прижата правым краем к триггеру; в листе триггер стоит слева, а
+     .sheet-body прокручивается — панель уезжала за левый и нижний край и
+     обрезалась, «Удалить» становилось недоступным. В листе второго уровня
+     не нужно: триггер прячем, панель показываем в потоке. Кнопка та же
+     #deleteCongressBtn с тем же обработчиком — логика не дублируется. */
+  .sheet-body #congressMoreBtn {
+    display: none
+  }
+  .sheet-body #congressMoreMenu,
+  .sheet-body #congressMoreMenu[hidden] {
+    display: grid;
+    position: static;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none
+  }
 
   /* Задание без исполнителя должно отличаться от заполненного не только
      статусом: на широком экране прочерк в узкой колонке читается, на
