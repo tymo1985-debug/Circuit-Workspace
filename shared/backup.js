@@ -255,6 +255,13 @@
       idb: [],
       sharedLocal: [],
       sharedStores: { 'circuit-workspace-db': ['journalNodes', 'journalEntries', 'journalLinks', 'journalMeta', 'communities'] },
+      /* J8 (23.09.2026): четыре хранилища Журнала — ОДИН набор, который при
+         восстановлении копии модуля ЗАМЕНЯЕТСЯ целиком (clear + запись в той
+         же транзакции), а не сливается. Слияние строк двух разных сейфов
+         (DEK-A из копии, DEK-B на устройстве) дало бы шифротексты, которые не
+         открывает ни один ключ. `communities` — справочник хаба, в набор не
+         входит и по-прежнему сливается. См. restoreReplaceSets(). */
+      restoreReplace: { 'circuit-workspace-db': ['journalNodes', 'journalEntries', 'journalLinks', 'journalMeta'] },
     },
   };
 
@@ -638,23 +645,42 @@
    * восстановлению шанс отказаться, не оставив систему в состоянии, которого
    * у пользователя никогда не было (см. restore()).
    */
-  function writeDb(db, dump, merge) {
+  function writeDb(db, dump, merge, replace) {
     var names = Object.keys(dump.stores).filter(function (s) { return db.objectStoreNames.contains(s); });
     if (!names.length) { db.close(); return Promise.resolve(); }
     var tx = db.transaction(names, 'readwrite');
-    return Promise.all(names.map(function (storeName) {
+    /* Итог транзакции слушается СРАЗУ, а любой отказ записи прерывает её
+       явно (J8, 23.09.2026). Прежде синхронный отказ put() (строка без
+       ключа — DataError бросается сразу, а не событием) лишь отклонял
+       промис, а транзакция благополучно фиксировала уже сделанный clear():
+       хранилище оставалось пустым. Для набора замены Журнала это была бы
+       потеря данных без единой ошибки на диске. */
+    var settled = new Promise(function (resolve, reject) {
+      tx.oncomplete = function () { resolve(); };
+      tx.onerror = function () { reject(tx.error); };
+      tx.onabort = function () { reject(tx.error || new Error('backup-restore-aborted')); };
+    });
+    settled.catch(function () { /* причина уходит наружу через work */ });
+    var work = Promise.all(names.map(function (storeName) {
       var store = tx.objectStore(storeName);
       var rows = dump.stores[storeName].rows || [];
       var write = function () {
-        return Promise.all(rows.map(function (row) { return req(store.put(row)); }));
+        return Promise.all(rows.map(function (row) {
+          try { return req(store.put(row)); } catch (e) { return Promise.reject(e); }
+        }));
       };
-      return merge ? write() : req(store.clear()).then(write);
-    })).then(function () {
-      return new Promise(function (resolve, reject) {
-        tx.oncomplete = function () { db.close(); resolve(); };
-        tx.onerror = function () { db.close(); reject(tx.error); };
-      });
+      /* `replace` — хранилища набора замены (J8): заменяются даже при
+         слиянии секции. Та же транзакция, что и у остальных хранилищ дампа:
+         набор целиком или ничего. */
+      var clearFirst = !merge || (replace && replace.indexOf(storeName) >= 0);
+      return clearFirst ? req(store.clear()).then(write) : write();
+    })).catch(function (e) {
+      try { tx.abort(); } catch (_) { /* уже прервана */ }
+      throw e;
     });
+    return work.then(function () { return settled; }).then(
+      function () { db.close(); },
+      function (e) { db.close(); throw e; });
   }
 
   /** Открыть и сразу записать. Оставлено для точечных вызовов и читаемости. */
@@ -662,7 +688,7 @@
     if (!dump || !dump.stores) return Promise.resolve();
     return openForRestore(name, dump).then(function (db) {
       if (!db) return;
-      return writeDb(db, dump, merge);
+      return writeDb(db, dump, merge, replaceStoresFor(name, dump) || []);
     });
   }
 
@@ -875,6 +901,89 @@
     });
   }
 
+  /* ─── Наборы замены (J8) ──────────────────────────────────────────────
+   * Декларация — поле `restoreReplace` записи реестра. Набор из файла либо
+   * отсутствует целиком, либо присутствует целиком: частичный набор (одни
+   * хранилища Журнала без других) — отказ ДО любых изменений, в любой копии
+   * (модульной и полной), потому что половина набора и есть смешение. */
+  function restoreReplaceSets(dbName) {
+    var out = [];
+    Object.keys(MODULES).forEach(function (id) {
+      var decl = MODULES[id].restoreReplace && MODULES[id].restoreReplace[dbName];
+      if (decl && decl.length) out.push(decl);
+    });
+    return out;
+  }
+  /** Хранилища, которые надо заменить в этом дампе; null — набор неполон. */
+  function replaceStoresFor(dbName, dump) {
+    var present = Object.keys((dump && dump.stores) || {});
+    var out = [];
+    var broken = false;
+    restoreReplaceSets(dbName).forEach(function (set) {
+      var have = set.filter(function (st) { return present.indexOf(st) >= 0; });
+      if (!have.length) return;
+      if (have.length !== set.length) { broken = true; return; }
+      set.forEach(function (st) { if (out.indexOf(st) < 0) out.push(st); });
+    });
+    return broken ? null : out;
+  }
+
+  /* ─── Структурная проверка защищённых данных Журнала (J8) ────────────
+   * Без фразы и без расшифровки: только форма. Та же форма, что держит
+   * journal/js/crypto.js (validateSec/validateVault) — совпадение двух
+   * реализаций стережёт scripts/check-journal-protection.mjs. Здесь своя
+   * копия, потому что хаб, где идёт восстановление, модуль не загружает. */
+  function b64uBytes(str) {
+    if (typeof str !== 'string' || !/^[A-Za-z0-9_-]+$/.test(str) || str.length % 4 === 1) return -1;
+    var b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var bin;
+    try { bin = atob(b64); } catch (e) { return -1; }
+    if (btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') !== str) return -1;
+    return bin.length;
+  }
+  function plainObject(o) { return !!o && typeof o === 'object' && !Array.isArray(o); }
+  function onlyKeys(o, allowed) { return Object.keys(o).every(function (k) { return allowed.indexOf(k) >= 0; }); }
+  function journalSecOk(sec) {
+    return plainObject(sec) && sec.v === 1 && sec.alg === 'AES-GCM' && onlyKeys(sec, ['v', 'alg', 'iv', 'ct'])
+      && b64uBytes(sec.iv) === 12 && b64uBytes(sec.ct) >= 16;
+  }
+  function journalVaultOk(m) {
+    if (!plainObject(m) || m.id !== 'crypto:v1' || m.v !== 1) return false;
+    if (!onlyKeys(m, ['id', 'v', 'kdf', 'wrap', 'createdAt', 'changedAt'])) return false;
+    var k = m.kdf, w = m.wrap;
+    if (!plainObject(k) || !onlyKeys(k, ['alg', 'hash', 'iterations', 'salt'])) return false;
+    if (k.alg !== 'PBKDF2' || k.hash !== 'SHA-256') return false;
+    if (!Number.isInteger(k.iterations) || k.iterations < 100000 || k.iterations > 10000000) return false;
+    var salt = b64uBytes(k.salt);
+    if (salt < 16 || salt > 64) return false;
+    if (!plainObject(w) || !onlyKeys(w, ['alg', 'iv', 'ct']) || w.alg !== 'AES-GCM') return false;
+    if (b64uBytes(w.iv) !== 12 || b64uBytes(w.ct) !== 48) return false;
+    if (m.createdAt !== undefined && typeof m.createdAt !== 'string') return false;
+    if (m.changedAt !== undefined && typeof m.changedAt !== 'string') return false;
+    return true;
+  }
+  /** Код отказа или null. Легаси-копии J1–J7 (без `sec` и без сейфа)
+   *  проходят как есть. */
+  function journalDumpError(stores) {
+    var entries = (stores.journalEntries && stores.journalEntries.rows) || [];
+    var metaRows = (stores.journalMeta && stores.journalMeta.rows) || [];
+    var protectedRows = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var row = entries[i];
+      if (!row || typeof row !== 'object' || !('sec' in row)) continue;
+      protectedRows++;
+      if (!journalSecOk(row.sec)) return 'journal-backup-invalid-sec';
+      if ('title' in row || 'body' in row) return 'journal-backup-plaintext';
+    }
+    var vaults = metaRows.filter(function (m) { return m && typeof m.id === 'string' && m.id.indexOf('crypto:') === 0; });
+    for (var j = 0; j < vaults.length; j++) {
+      if (!journalVaultOk(vaults[j])) return 'journal-backup-invalid-vault';
+    }
+    if (protectedRows && !vaults.length) return 'journal-backup-vault-missing';
+    return null;
+  }
+
   /**
    * Проверка файла до того, как что-либо изменено на устройстве.
    * @returns {{ok: boolean, error?: string, snapshot?: Object}}
@@ -921,6 +1030,17 @@
       });
       if (found !== null) return { ok: false, error: 'schema-too-new', found: found };
     }
+
+    /* J8: наборы замены и защищённые данные Журнала — до первой записи. */
+    var bad = null;
+    Object.keys(data.sections).forEach(function (id) {
+      if (bad) return;
+      var dump = ((data.sections[id] || {}).idb || {})[SHARED_DB];
+      if (!dump || !dump.stores || typeof dump.stores !== 'object') return;
+      if (replaceStoresFor(SHARED_DB, dump) === null) { bad = 'backup-incomplete-set'; return; }
+      bad = journalDumpError(dump.stores);
+    });
+    if (bad) return { ok: false, error: bad };
 
     return { ok: true, snapshot: data };
   }
@@ -972,7 +1092,7 @@
       }
       localPlan.push({ map: sec.local || {}, known: known });
       Object.keys(sec.idb || {}).forEach(function (name) {
-        dbPlan.push({ name: name, dump: sec.idb[name], merge: partial });
+        dbPlan.push({ name: name, dump: sec.idb[name], merge: partial, replace: replaceStoresFor(name, sec.idb[name]) || [] });
       });
     });
 
@@ -1002,7 +1122,7 @@
           if (!item.db) return;
           var db = item.db;
           item.db = null;            // writeDb закрывает соединение сам
-          return writeDb(db, item.job.dump, item.job.merge);
+          return writeDb(db, item.job.dump, item.job.merge, item.job.replace);
         });
       }, Promise.resolve()).catch(function (e) {
         closeAll();

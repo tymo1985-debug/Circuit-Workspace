@@ -16,6 +16,12 @@
   function seasonLabel() { return A.seasonLabel.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
+  function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
+  function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
+  function lockMark() { return A.lockMark.apply(this, arguments); }
+  function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
+  function textOr() { return A.textOr.apply(this, arguments); }
+  function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function todayIso() { return A.todayIso.apply(this, arguments); }
 
 
@@ -24,6 +30,7 @@
    * tasks.list(). Задача завершённого/архивного посещения — только чтение
    * (tasks.isMutable; само правило держит слой данных). */
   var taskTab = 'open';
+  var tasksRenderSeq = 0;
   function setTaskTab(v) { taskTab = v; }
 
   async function nodePath(nodesById, node) {
@@ -37,6 +44,10 @@
   }
 
   async function renderTasks() {
+    // J8: два запроса перерисовки подряд (операция + смена блокировки) не
+    // должны дублировать строки — список собирается целиком и ставится
+    // только последним вызовом.
+    var mine = ++tasksRenderSeq;
     var all = await CWJournal.tasks.list();
     var nodes = await CWJournal.nodes.getAll();
     var byId = {};
@@ -47,6 +58,7 @@
     $all('#route-tasks [data-task-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-task-tab') === taskTab); });
     var list = taskTab === 'done' ? done : open;
     var box = $('#tasksList');
+    if (mine !== tasksRenderSeq) return;
     box.innerHTML = '';
     if (!list.length) {
       box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
@@ -56,6 +68,7 @@
       return;
     }
     var today = todayIso();
+    var frag = document.createDocumentFragment();
     for (var i = 0; i < list.length; i++) {
       var r = list[i];
       var mutable = await CWJournal.tasks.isMutable(r.id);
@@ -71,7 +84,7 @@
       row.innerHTML =
         '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (mutable ? '' : ' disabled') + '></button>' +
         '<div class="j-task__main" role="button" tabindex="' + (mutable ? '0' : '-1') + '" aria-disabled="' + !mutable + '">' +
-        '<p class="j-row__title">' + esc(r.body) + '</p>' +
+        '<p class="j-row__title' + (isLockedRow(r) ? ' u-muted' : '') + '">' + esc(textOr(r, 'body')) + lockMark(r) + '</p>' +
         '<p class="j-row__meta">' + due + esc(ctx) + (mutable ? '' : '<span class="j-dot">·</span>' + esc(t('j.task.readonly'))) + '</p></div>';
       (function (r, isDone, mutable) {
         row.querySelector('.j-check__box').addEventListener('click', function () {
@@ -79,12 +92,17 @@
           runTaskOp(function () { return isDone ? CWJournal.tasks.reopen(r.id) : CWJournal.tasks.complete(r.id); });
         });
         var main = row.querySelector('.j-task__main');
-        var edit = function () { if (mutable) openTaskDialog(r); };
+        var edit = function () {
+          if (!mutable) return;
+          if (isLockedRow(r)) { requestUnlock(); return; } // перерисовка — по разблокировке
+          openTaskDialog(r);
+        };
         main.addEventListener('click', edit);
         main.addEventListener('keydown', function (e) { if (e.key === 'Enter') edit(); });
       })(r, isDone, mutable);
-      box.appendChild(row);
+      frag.appendChild(row);
     }
+    if (mine === tasksRenderSeq) box.replaceChildren(frag);
   }
 
   async function runTaskOp(fn) {
@@ -107,6 +125,7 @@
     var due = $('#taskDialogDue');
     var errEl = $('#taskDialogError');
     var del = $('#taskDialogDelete');
+    var protBtn = $('#taskDialogProtect');
     var busy = false;
     $('#taskDialogTitle').textContent = t(row ? 'j.task.edit' : 'j.task.new');
     $('#taskScopeField').hidden = !!row || !!projectId;
@@ -125,6 +144,8 @@
     due.value = row && row.dueDate ? row.dueDate : '';
     del.hidden = !row || !!projectId;
     unlinkBtn.hidden = !(row && projectId);
+    protBtn.hidden = !row;
+    if (row) protBtn.textContent = t(isProtectedRow(row) ? 'j.prot.unprotect' : 'j.prot.protect');
     errEl.hidden = true;
     dlg.showModal();
     body.focus();
@@ -166,17 +187,35 @@
       busy = false;
       cleanup(); dlg.close(); done();
     }
+    /* J8: несохранённая правка — сначала сохранить, затем лист защиты. */
+    async function onProtect() {
+      if (!row || busy) return;
+      if (!body.value.trim()) { showError(t('j.error.visit_record_empty')); return; }
+      busy = true;
+      try {
+        var patch = {};
+        if (body.value !== row.body) patch.body = body.value;
+        if ((due.value || '') !== (row.dueDate || '')) patch.dueDate = due.value || null;
+        if (Object.keys(patch).length) await CWJournal.tasks.update(row.id, patch);
+      } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      busy = false;
+      cleanup(); dlg.close();
+      await toggleProtection(row);
+      done();
+    }
     function onCancel() { cleanup(); dlg.close(); }
     var unbindClose;
     function cleanup() {
       form.removeEventListener('submit', onSubmit);
       del.removeEventListener('click', onDelete);
+      protBtn.removeEventListener('click', onProtect);
       unlinkBtn.removeEventListener('click', onUnlink);
       $('#taskDialogCancel').removeEventListener('click', onCancel);
       if (unbindClose) unbindClose();
     }
     form.addEventListener('submit', onSubmit);
     del.addEventListener('click', onDelete);
+    protBtn.addEventListener('click', onProtect);
     unlinkBtn.addEventListener('click', onUnlink);
     $('#taskDialogCancel').addEventListener('click', onCancel);
     unbindClose = bindDialogCleanup(dlg, cleanup);

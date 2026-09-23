@@ -262,7 +262,10 @@ await CWDB.communities.put({ id: 'com_foreign', name: 'Чужое собрани
 await CWDB.state.put({ id: 'neighbour-module', payload: '{"новее копии":1}' });
 await CWBackup.restore(snap);
 ok('восстановление вернуло свою строку', (await J.nodes.get(cong))?.label === 'Северное-2');
-ok('слияние: строка Журнала, созданная после копии, уцелела', !!(await J.nodes.get(lateNode)));
+/* J8 (23.09.2026): четыре хранилища Журнала — набор ЗАМЕНЫ, а не слияния:
+   слияние строк двух сейфов дало бы нечитаемую смесь шифротекстов (подробно —
+   scripts/check-journal-protection.mjs). communities по-прежнему сливается. */
+ok('замена набора: строка Журнала, созданная после копии, убрана', (await J.nodes.get(lateNode)) === null);
 ok('чужая строка communities уцелела', !!(await CWDB.communities.get('com_foreign')));
 ok('state соседа не тронут', (await CWDB.state.get('neighbour-module'))?.payload === '{"новее копии":1}');
 ok('прежние хранилища со стражами уцелели',
@@ -270,19 +273,21 @@ ok('прежние хранилища со стражами уцелели',
 
 /* ═══ 6. Копия новее потолка схемы ══════════════════════════════════════ */
 console.log('\nПотолок схемы');
+const lateNode2 = await J.nodes.add({ kind: 'pregroup', parentId: cong, circuitId: circuit, status: 'active', label: 'после восстановления' });
 let refusal = null;
 try {
   await CWBackup.restore({
     ...snap,
     sections: { shared: { partial: true, local: {}, idb: { [DB]: {
       version: CWDB.DB_VERSION,
-      stores: { journalNodes: dump.journalNodes, journalFutureStore: { keyPath: 'id', autoIncrement: false, indexes: [], rows: [{ id: 'x' }] } },
+      stores: { journalNodes: dump.journalNodes, journalEntries: dump.journalEntries, journalLinks: dump.journalLinks, journalMeta: dump.journalMeta,
+        journalFutureStore: { keyPath: 'id', autoIncrement: false, indexes: [], rows: [{ id: 'x' }] } },
     } } } },
   });
 } catch (e) { refusal = e && e.message; }
 ok('копия с хранилищем из будущей схемы отклонена', refusal === 'backup-newer-schema', String(refusal));
 ok('версия базы не превысила CWDB.DB_VERSION', (await describe(DB)).version === CWDB.DB_VERSION);
-ok('отклонённое восстановление не тронуло Журнал', !!(await J.nodes.get(lateNode)));
+ok('отклонённое восстановление не тронуло Журнал', !!(await J.nodes.get(lateNode2)));
 
 /* ═══ 7. J3a — реальное дерево: иерархия, CRUD, порядок, safe delete ══════ */
 console.log('\nДерево района (J3a)');

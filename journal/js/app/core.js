@@ -97,6 +97,8 @@
     dots: '<circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/>',
     visit: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
     archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.8-1.2"/>',
   };
   function svg(paths, attrs) {
     return '<svg viewBox="0 0 24 24" ' + (attrs || 'width="17" height="17"')
@@ -105,6 +107,26 @@
 
   function errorMessage(err) {
     var known = {
+      'journal-vault-locked': 'j.prot.err.locked',
+      'journal-vault-unlock-failed': 'j.prot.err.wrong',
+      'journal-vault-weak-passphrase': 'j.prot.err.weak',
+      'journal-vault-changed': 'j.prot.err.changed',
+      'journal-vault-exists': 'j.prot.err.changed',
+      'journal-vault-missing': 'j.prot.err.broken',
+      'journal-vault-invalid': 'j.prot.err.broken',
+      'journal-vault-unsupported': 'j.prot.err.broken',
+      'journal-vault-off': 'j.prot.err.state',
+      'journal-protected-conflict': 'j.prot.err.conflict',
+      'journal-protected-plaintext': 'j.prot.err.state',
+      'journal-protect-unsupported': 'j.prot.err.state',
+      'journal-protect-already': 'j.prot.err.state',
+      'journal-protect-not-protected': 'j.prot.err.state',
+      'journal-meta-reserved': 'j.prot.err.state',
+      'journal-sec-auth-failed': 'j.prot.err.unreadable',
+      'journal-sec-malformed': 'j.prot.err.unreadable',
+      'journal-sec-unsupported-version': 'j.prot.err.unreadable',
+      'journal-sec-unsupported-alg': 'j.prot.err.unreadable',
+      'journal-crypto-unavailable': 'j.prot.err.unavailable',
       'journal-node-has-children': 'j.error.has_children',
       'journal-node-has-entries': 'j.error.has_entries',
       'journal-node-has-links': 'j.error.has_links',
@@ -274,6 +296,19 @@
     return CWJournalRoute.build.circuit(circuitId);
   }
 
+  /* J8: защищённая строка без текста в этой копии (заблокировано или не
+     читается) показывается подписью, а не пустотой. Текст — только из
+     копии, которую отдал CWJournal; сами экраны ничего не расшифровывают. */
+  function isLockedRow(r) { return !!(r && CWJournal.protection.isLocked(r)); }
+  function isProtectedRow(r) { return !!(r && CWJournal.protection.isProtected(r)); }
+  function lockedLabel(r) { return t(CWJournal.protection.isUnreadable(r) ? 'j.prot.unreadable' : 'j.locked.title'); }
+  function textOr(r, field) { return isLockedRow(r) ? lockedLabel(r) : String((r && r[field]) || ''); }
+  function lockMark(r) {
+    if (!isProtectedRow(r)) return '';
+    return '<span class="j-lockmark" role="img" aria-label="' + esc(t('j.locked.title')) + '" title="' + esc(t('j.locked.title')) + '">'
+      + svg(ICON.lock, 'width="12" height="12"') + '</span>';
+  }
+
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -295,6 +330,11 @@
   A.esc = esc;
   A.formatRange = formatRange;
   A.isDirectoryReady = isDirectoryReady;
+  A.isLockedRow = isLockedRow;
+  A.isProtectedRow = isProtectedRow;
+  A.lockMark = lockMark;
+  A.lockedLabel = lockedLabel;
+  A.textOr = textOr;
   A.labelVisit = labelVisit;
   A.nodeName = nodeName;
   A.parseHash = parseHash;

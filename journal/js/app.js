@@ -50,6 +50,7 @@
   function wireProjectChrome() { return A.wireProjectChrome.apply(this, arguments); }
   function wireSearchChrome() { return A.wireSearchChrome.apply(this, arguments); }
   function wireVisitEditorChrome() { return A.wireVisitEditorChrome.apply(this, arguments); }
+  function wireProtectionChrome() { return A.wireProtectionChrome.apply(this, arguments); }
 
 
 
@@ -149,6 +150,7 @@
     initVersion();
     wireVisitEditorChrome();
     wireProjectChrome();
+    wireProtectionChrome();
     applyRoute();
 
     wireSearchChrome();

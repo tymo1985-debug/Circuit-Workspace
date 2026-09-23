@@ -468,3 +468,64 @@
 .j-pick__txt { display: flex; flex-direction: column; min-width: 0; }
 .j-pick__label { font: 400 14px/20px var(--md-font-family); letter-spacing: 0.1px; overflow-wrap: anywhere; }
 .j-pick__meta { font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }
+
+/* --- Защита (J8, эталон 08-protection-m) ---------------------------------
+   Лист — тот же .j-sheet (снизу на телефоне, по центру на широком экране);
+   замок — цвет модуля; способ разблокировки один — парольная фраза. */
+.j-protect { text-align: center; }
+.j-protect__ico { display: flex; justify-content: center; color: var(--cw-module); margin-bottom: var(--cw-space-3); }
+.j-protect__title { margin: 0 0 6px; font: 600 20px/28px var(--md-font-family); color: var(--md-on-surface); }
+.j-protect__lede { margin: 0 auto var(--cw-space-4); max-width: 44ch; font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-protect__fields { display: flex; flex-direction: column; gap: var(--cw-space-3); text-align: left; }
+.j-protect__warn {
+  margin: var(--cw-space-3) 0 0; padding: var(--cw-space-3); text-align: left;
+  border-radius: var(--md-radius-md); background: var(--status-important-bg); color: var(--status-important);
+  font: 500 13px/18px var(--md-font-family);
+}
+.j-protect .j-dialog-error { text-align: left; }
+.j-protect__primary { border-radius: var(--md-radius-full); min-height: 48px; }
+.j-protect__kicker { text-align: left; margin: var(--cw-space-5) 0 var(--cw-space-2); }
+.j-protect__method {
+  display: flex; align-items: center; gap: var(--cw-space-3); text-align: left;
+  padding: var(--cw-space-3) 0; border-top: 1px solid var(--md-outline-variant); border-bottom: 1px solid var(--md-outline-variant);
+}
+.j-protect__mico {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--cw-module-container); color: var(--cw-module-on-container);
+}
+.j-protect__mtext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.j-protect__mname { font: 500 15px/20px var(--md-font-family); color: var(--md-on-surface); }
+.j-protect__mhint { font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-protect__on {
+  flex: 0 0 auto; padding: 2px 12px; border-radius: var(--md-radius-full);
+  background: var(--status-success-bg); color: var(--status-success); font: 600 12px/18px var(--md-font-family);
+}
+.j-protect__foot { margin: var(--cw-space-4) 0 0; text-align: left; font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-protect[data-mode="status"] .j-protect__ico { color: var(--status-success); }
+
+/* Замок в шапке: закрыт — цвет модуля, открыт — «успех». */
+.j-lockbtn { color: var(--cw-module); }
+.j-lockbtn.is-open { color: var(--status-success); }
+
+/* Защищённая строка: отметка-замок рядом с текстом; без ключа — подпись. */
+.j-lockmark { display: inline-flex; vertical-align: -1px; margin-left: 6px; color: var(--cw-module); }
+.j-locked { display: inline-flex; align-items: center; gap: 6px; color: var(--md-on-surface-variant); font-style: italic; }
+.j-block--locked { color: var(--md-on-surface-variant); }
+.j-lockedpanel {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--cw-space-3);
+  border: 1px dashed var(--md-outline-variant); border-radius: var(--md-radius-lg);
+  padding: var(--cw-space-3) var(--cw-space-4); color: var(--md-on-surface-variant);
+}
+.j-lockedpanel > svg { color: var(--cw-module); flex: 0 0 auto; }
+.j-lockedpanel > span { flex: 1 1 auto; }
+
+/* Диалог задачи (J8): с «Защитить» ряд действий шире узкого экрана —
+   на телефоне ряд переносится, ни одна кнопка не обрезается. Только этот
+   ряд; общий .md-dialog-actions не меняется. Порядок тот же: служебные
+   действия, затем Отмена/Сохранить справа. */
+@media (max-width: 600px) {
+  .j-task-actions { flex-wrap: wrap; row-gap: var(--cw-space-2); justify-content: flex-start; }
+  .j-task-actions .j-editor__spacer { flex: 1 0 100%; height: 0; }
+  .j-task-actions .md-btn { flex: 0 1 auto; min-width: 0; }
+  .j-task-actions .j-editor__spacer + .md-btn { margin-left: auto; }
+}

@@ -43,6 +43,8 @@
     <div class="md-topbar-v2__actions">
       <label class="sr-only" for="uiLanguage" data-i18n="hub.language_label">Язык интерфейса</label>
       <select id="uiLanguage" class="lang-select"></select>
+      <!-- J8: замок защиты — виден, только когда защита включена. -->
+      <button type="button" class="md-icon-btn j-lockbtn" id="lockBtn" hidden data-i18n-aria-label="j.prot.lock_btn" aria-label="Защита записей"></button>
       <button type="button" class="md-icon-btn" id="searchBtn" data-i18n-title="j.nav.search" title="Поиск">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
       </button>
@@ -701,6 +703,48 @@
         <p class="j-note" data-i18n="j.carry.footnote">Запись одна и та же — она принадлежит собранию, а не посещению. Решение дописывает событие в историю, ничего не копируется и не теряется.</p>
       </dialog>
 
+      <!-- Лист защиты (J8, эталон 08-protection-m): разблокировка, первая
+           настройка, смена фразы, блокировка. Только парольная фраза. -->
+      <dialog id="protectSheet" class="md-dialog j-sheet j-protect" aria-labelledby="protectSheetTitle">
+        <div class="j-sheet__grip" aria-hidden="true"></div>
+        <form id="protectSheetForm" method="dialog" novalidate>
+          <div class="j-protect__ico" id="protectIco" aria-hidden="true"></div>
+          <h2 class="j-protect__title" id="protectSheetTitle" data-i18n="j.locked.title">Защищённая запись</h2>
+          <p class="j-protect__lede" id="protectSheetLede" data-i18n="j.prot.lede">Содержимое зашифровано на этом устройстве. Ключ не хранится в открытом виде.</p>
+          <div class="j-protect__fields">
+            <div class="md-field" id="protectOldField" hidden>
+              <input type="password" id="protectOld" autocomplete="current-password" autocapitalize="off" spellcheck="false" placeholder=" ">
+              <label for="protectOld" data-i18n="j.prot.pass_old">Текущая фраза</label>
+            </div>
+            <div class="md-field" id="protectPassField">
+              <input type="password" id="protectPass" autocomplete="current-password" autocapitalize="off" spellcheck="false" placeholder=" ">
+              <label for="protectPass" id="protectPassLabel" data-i18n="j.prot.pass">Парольная фраза</label>
+            </div>
+            <div class="md-field" id="protectConfirmField" hidden>
+              <input type="password" id="protectConfirm" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder=" ">
+              <label for="protectConfirm" data-i18n="j.prot.pass_confirm">Повторите фразу</label>
+            </div>
+          </div>
+          <p class="j-protect__warn" id="protectWarn" data-i18n="j.prot.warn_forgot" hidden>Фразу нельзя восстановить: без неё защищённые записи не откроются — ни на этом устройстве, ни из резервной копии.</p>
+          <p class="j-dialog-error" id="protectError" role="alert" hidden></p>
+          <div class="j-sheet__actions">
+            <button type="submit" class="md-btn md-btn-filled md-btn-full j-protect__primary" id="protectSubmit" data-i18n="j.prot.unlock">Разблокировать</button>
+            <button type="button" class="md-btn md-btn-text md-btn-full" id="protectChange" data-i18n="j.prot.change" hidden>Сменить парольную фразу</button>
+            <button type="button" class="md-btn md-btn-text md-btn-full" id="protectCancel" data-i18n="j.action.cancel">Отмена</button>
+          </div>
+          <p class="j-kicker j-protect__kicker" data-i18n="j.prot.methods">Способы разблокировки</p>
+          <div class="j-protect__method">
+            <span class="j-protect__mico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></svg></span>
+            <span class="j-protect__mtext">
+              <span class="j-protect__mname" data-i18n="j.prot.method_pass">Парольная фраза</span>
+              <span class="j-protect__mhint" data-i18n="j.prot.method_pass_hint">Обязательна · единственный способ открыть копию на другом устройстве</span>
+            </span>
+            <span class="j-protect__on" data-i18n="j.prot.on">вкл</span>
+          </div>
+          <p class="j-protect__foot" data-i18n="j.prot.foot">Блокировка — вручную, при перезагрузке и уходе со страницы. В резервной копии эти записи остаются шифротекстом.</p>
+        </form>
+      </dialog>
+
       <!-- Диалог задачи (J5): создание самостоятельной задачи и правка. -->
       <dialog id="taskDialog" class="md-dialog" aria-labelledby="taskDialogTitle">
         <form method="dialog" id="taskDialogForm">
@@ -720,9 +764,10 @@
             </div>
             <p class="j-dialog-error" id="taskDialogError" role="alert" hidden></p>
           </div>
-          <div class="md-dialog-actions">
+          <div class="md-dialog-actions j-task-actions">
             <button type="button" class="md-btn md-btn-text" id="taskDialogDelete" data-i18n="j.action.delete" hidden>Удалить</button>
             <button type="button" class="md-btn md-btn-text" id="taskDialogUnlink" data-i18n="j.project.unlink_task" hidden>Убрать из проекта</button>
+            <button type="button" class="md-btn md-btn-text" id="taskDialogProtect" data-i18n="j.prot.protect" hidden>Защитить</button>
             <span class="j-editor__spacer"></span>
             <button type="button" class="md-btn md-btn-text" id="taskDialogCancel" data-i18n="j.action.cancel">Отмена</button>
             <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
@@ -923,6 +968,7 @@
      в J2 по-прежнему статичен — чтений из хранилищ здесь ещё нет. -->
 <script src="../shared/db.js"></script>
 <script src="../shared/directory.js"></script>
+<script src="js/crypto.js"></script>
 <script src="js/data.js"></script>
 <script src="js/route.js"></script>
 <!-- Экраны Журнала — классические сценарии строго по порядку: ядро, экраны,
@@ -933,6 +979,7 @@
 <script src="js/app/tasks.js"></script>
 <script src="js/app/projects.js"></script>
 <script src="js/app/search-archive.js"></script>
+<script src="js/app/protection.js"></script>
 <script src="js/app.js"></script>
 <script src="../shared/backup.js"></script>
 <script src="../shared/nav.js" defer></script>

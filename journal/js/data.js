@@ -12,7 +12,9 @@
  *  - «открыт на следующее посещение» — строка carryKey = '<nodeId>:open',
  *    а не булево поле: булево значение не является ключом IndexedDB;
  *  - архив — это status/archivedAt, а не отдельное хранилище;
- *  - title/body/sec — граница будущей защиты (J8); этот файл их не трогает.
+ *  - title/body/sec — граница защиты (J8): строка с `sec` не хранит ни
+ *    title, ни body; проверка — на КАЖДОЙ записи journalEntries этого файла
+ *    (assertEntryPersistable), а не в экранах. См. раздел «Защита (J8)».
  *
  * J3a добавляет дереву узлов то, чего требует безопасное CRUD-дерево:
  *  - parentId корневого узла (район) — строка ROOT_PARENT ('root'), не
@@ -219,7 +221,33 @@
     return nodesBase.remove(id);
   }
 
-  var entriesBase = rowsApi('journalEntries');
+  /* J8: единственная дорога записи в journalEntries — через этот набор и
+     replaceEntry()/пакеты защиты; каждая итоговая строка проходит
+     assertEntryPersistable(). update() — слияние ВНУТРИ транзакции (mutate),
+     иначе итоговая строка была бы не видна до записи. */
+  var entriesBase = (function () {
+    var base = rowsApi('journalEntries');
+    return {
+      get: base.get,
+      getAll: base.getAll,
+      remove: base.remove,
+      by: base.by,
+      add: function (record) {
+        var row = stamped(record || {});
+        try { assertEntryPersistable(row); } catch (e) { return Promise.reject(e); }
+        return db().journalEntries.add(row);
+      },
+      update: function (id, patch) {
+        var p = touchPatch(patch || {});
+        return db().journalEntries.mutate(id, function (current) {
+          if (!current) throw new Error('CWDB.journalEntries.update: запись ' + id + ' не найдена');
+          var merged = Object.assign({}, current, p, { id: id });
+          assertEntryPersistable(merged);
+          return merged;
+        });
+      },
+    };
+  })();
   /* Общий фасад записей НЕ мутирует посещения. Инварианты посещения
      (родитель, даты, неизменяемые поля, статус только через жизненный
      цикл, удаление только без записей/связей) держит CWJournal.visits;
@@ -516,6 +544,11 @@
         if (nextType === 'todo' || TEXT_FORMATS.indexOf(patch.format) === -1) throw new Error('journal-visit-record-invalid-format');
         out.fields = Object.assign({}, r.fields, { format: patch.format });
       }
+      if (isProtected(r) && 'body' in out) {
+        var nextBody = out.body;
+        delete out.body;
+        return writeProtectedText(r, { body: nextBody }, function (next) { Object.assign(next, out); });
+      }
       return entriesBase.update(id, out);
     },
     /** Явное превращение текстовой записи в задачу (кнопки «Сделать
@@ -561,6 +594,7 @@
       next.id = current.id;
       next.createdAt = current.createdAt;
       next.updatedAt = now();
+      assertEntryPersistable(next);
       return next;
     });
   }
@@ -662,10 +696,16 @@
       var body = 'body' in patch ? cleanBody(patch.body) : undefined;
       var clearDue = 'dueDate' in patch && (patch.dueDate === null || patch.dueDate === '');
       if ('dueDate' in patch && !clearDue && !isIsoDate(patch.dueDate)) throw new Error('journal-task-invalid-due');
-      return replaceEntry(id, function (next) {
-        if (body !== undefined) next.body = body;
+      var applyDue = function (next) {
         if (clearDue) delete next.dueDate;
         else if ('dueDate' in patch) next.dueDate = patch.dueDate;
+      };
+      // J8: текст защищённой задачи — только через шифрование; срок —
+      // метаданные, sec при этом переносится байт в байт.
+      if (isProtected(r) && body !== undefined) return writeProtectedText(r, { body: body }, applyDue);
+      return replaceEntry(id, function (next) {
+        if (body !== undefined) next.body = body;
+        applyDue(next);
         return next;
       });
     },
@@ -918,9 +958,11 @@
 
   /** Снимок данных на один run(): узлы/записи читаются ОДИН раз, дальше —
    *  словари в памяти (без квадратичных повторных выборок). */
-  async function snapshot() {
+  async function snapshot(reveal) {
     var nodesAll = await nodesBase.getAll();
     var entriesAll = await entriesBase.getAll();
+    // J8: при разблокированном сейфе — расшифрованные копии, только в памяти.
+    if (reveal) entriesAll = await revealList(entriesAll);
     var nodeById = {}, entryById = {};
     nodesAll.forEach(function (n) { nodeById[n.id] = n; });
     entriesAll.forEach(function (e) { entryById[e.id] = e; });
@@ -1039,7 +1081,7 @@
         if (v.dateTo && v.dateTo !== v.dateFrom) t.push(v.dateTo);
         return t;
       }
-      var snap = await snapshot();
+      var snap = await snapshot(true);
       var ctxMemo = {};
       function ctxFolded(nodeId) {
         if (!(nodeId in ctxMemo)) ctxMemo[nodeId] = contextTexts(snap, nodeId, resolve).map(fold).join(' \u0000 ');
@@ -1072,7 +1114,7 @@
       snap.entries.forEach(function (e) {
         var kind = entryKind(e);
         var archived = snap.entryArchived(e);
-        if (isProtected(e)) {
+        if (isProtected(e) && !REVEALED.has(e)) {
           if (archived && !opts.includeArchive) return;
           out.protectedCount++;
           return;
@@ -1113,7 +1155,7 @@
    * nodes.unarchive / visits.unarchive / projects.unarchive, без каскада. */
   var archive = {
     list: async function () {
-      var snap = await snapshot();
+      var snap = await snapshot(true);
       var items = [];
       snap.nodes.forEach(function (n) {
         if (n.status !== 'archived') return;
@@ -1395,6 +1437,12 @@
       if (p.status === 'archived') throw new Error('journal-project-readonly');
       var title = 'title' in patch ? cleanTitle(patch.title) : undefined;
       var body = 'body' in patch ? cleanProjectBody(patch.body) : undefined;
+      if (isProtected(p) && (title !== undefined || body !== undefined)) {
+        var textPatch = {};
+        if (title !== undefined) textPatch.title = title;
+        if (body !== undefined) textPatch.body = body || undefined; // пусто — поля нет
+        return writeProtectedText(p, textPatch);
+      }
       return replaceEntry(id, function (next) {
         if (title !== undefined) next.title = title;
         if (body !== undefined) { if (body) next.body = body; else delete next.body; }
@@ -1521,10 +1569,19 @@
     },
   };
 
+  /* J8: `crypto:*` — только через CWJournal.protection. Общий meta.put мог
+     бы заменить обёртку ключа и оставить шифротексты без ключа. */
+  function assertMetaId(id) {
+    if (typeof id === 'string' && id.indexOf('crypto:') === 0) throw new Error('journal-meta-reserved');
+  }
   var meta = {
     get: function (id) { return db().journalMeta.get(id); },
-    put: function (record) { return db().journalMeta.put(record); },
+    put: function (record) {
+      try { assertMetaId(record && record.id); } catch (e) { return Promise.reject(e); }
+      return db().journalMeta.put(record);
+    },
     update: function (id, patch) {
+      try { assertMetaId(id); } catch (e) { return Promise.reject(e); }
       var p = Object.assign({}, patch || {});
       delete p.id;
       return db().journalMeta.update(id, p);
@@ -1539,6 +1596,296 @@
     external: function (module, kind, id) { return 'cw:' + module + '/' + kind + '/' + id; },
   };
 
+
+  /* ═══ Защита (J8) ═══════════════════════════════════════════════════════
+   * Шифрование при хранении для явно защищённого текста записей. Примитивы
+   * и сессия — journal/js/crypto.js (CWJournalCrypto); здесь — политика
+   * хранения и доменные правила.
+   *
+   *  - Защищаются только title/body (проект — оба, задача/запись посещения/
+   *    перенос — body). Всё остальное (id, type, status, nodeId, circuitId,
+   *    даты, dueDate, carryKey, touches, fields, archivedAt, метки времени,
+   *    связи) остаётся открытым — это метаданные.
+   *  - Строка с `sec` НЕ хранит title/body ни в каком виде
+   *    (assertEntryPersistable — на каждой записи).
+   *  - Чтение при открытой сессии отдаёт ВРЕМЕННЫЕ копии: title/body на них —
+   *    неперечислимые свойства, поэтому структурное клонирование IndexedDB,
+   *    JSON и Object.assign/спред их не переносят; прямая запись такой
+   *    копии отклоняется стражем (sec + title/body).
+   *  - Смена текста: расшифровать → применить → зашифровать с новым iv →
+   *    записать только шифротекст. Метаданные — без расшифровки, sec байт в
+   *    байт. Удаление — без расшифровки.
+   *  - Запись идёт пакетом CWDB.batch с предусловиями: строка не менялась с
+   *    чтения, сейф тот же, от которого получен ключ (восстановление копии в
+   *    другой вкладке не смешает шифротексты двух ключей).
+   *  - Сейф (`crypto:v1`) заводится только при первой защите, тем же
+   *    пакетом, что и первая зашифрованная строка. Автоматического
+   *    «восстановления» нет: потерянная фраза = потерянный текст.
+   */
+  var PROTECTED_FIELDS = ['title', 'body'];
+  var VAULT_ID = 'crypto:v1';
+  var REVEALED = new WeakSet();
+  var UNREADABLE = new WeakSet();
+
+  function cryptoApi() { return global.CWJournalCrypto || null; }
+  function requireCrypto() {
+    var C = cryptoApi();
+    if (!C) throw new Error('journal-crypto-unavailable');
+    return C;
+  }
+  function unlockedKey() {
+    var C = cryptoApi();
+    return C && C.session.isUnlocked() ? C.session.key() : null;
+  }
+
+  function assertEntryPersistable(row) {
+    if (!row || !('sec' in row)) return;
+    var bad = requireCrypto().validateSec(row.sec);
+    if (bad) throw new Error(bad);
+    for (var i = 0; i < PROTECTED_FIELDS.length; i++) {
+      if (PROTECTED_FIELDS[i] in row) throw new Error('journal-protected-plaintext');
+    }
+  }
+
+  function textOf(row) {
+    var out = {};
+    PROTECTED_FIELDS.forEach(function (k) { if (typeof row[k] === 'string') out[k] = row[k]; });
+    return out;
+  }
+  function makeView(row, plain) {
+    var v = Object.assign({}, row);
+    PROTECTED_FIELDS.forEach(function (k) {
+      if (typeof plain[k] === 'string') {
+        Object.defineProperty(v, k, { value: plain[k], enumerable: false, writable: false, configurable: false });
+      }
+    });
+    REVEALED.add(v);
+    return v;
+  }
+  function vaultRow() { return db().journalMeta.get(VAULT_ID); }
+  function vaultExpect(vault) {
+    return { type: 'expect', store: 'journalMeta', key: VAULT_ID, match: { wrap: vault.wrap } };
+  }
+  /** Сейф, от которого получен ключ сессии, на месте? Иначе — блокировка. */
+  async function sessionVault() {
+    var C = requireCrypto();
+    if (!C.session.isUnlocked()) throw new Error('journal-vault-locked');
+    var vault = await vaultRow();
+    if (!vault || C.validateVault(vault) || vault.wrap.ct !== C.session.mark()) {
+      C.session.lock('vault-changed');
+      throw new Error('journal-vault-changed');
+    }
+    return vault;
+  }
+  async function revealRow(row) {
+    if (!isProtected(row) || REVEALED.has(row) || UNREADABLE.has(row)) return row;
+    var key = unlockedKey();
+    if (!key) return row;
+    try {
+      return makeView(row, await cryptoApi().decryptEntry(key, row.id, row.sec));
+    } catch (e) {
+      var copy = Object.assign({}, row);
+      UNREADABLE.add(copy);
+      return copy;
+    }
+  }
+  async function revealList(list) {
+    if (!Array.isArray(list) || !unlockedKey()) return list;
+    if (!list.some(function (r) { return isProtected(r) && !REVEALED.has(r); })) return list;
+    try { await sessionVault(); } catch (e) { return list; }
+    return Promise.all(list.map(revealRow));
+  }
+  async function revealOne(row) { return row && isProtected(row) ? (await revealList([row]))[0] : row; }
+  function revealing(fn) {
+    return async function () {
+      var res = await fn.apply(this, arguments);
+      return Array.isArray(res) ? revealList(res) : revealOne(res);
+    };
+  }
+
+  async function commitBatch(ops) {
+    try {
+      return await db().batch(ops);
+    } catch (e) {
+      if (e && e.message === 'cwdb-batch-precondition') {
+        var op = ops[e.opIndex] || {};
+        if (op.store === 'journalMeta') {
+          var C = cryptoApi();
+          if (C) C.session.lock('vault-changed');
+          throw new Error('journal-vault-changed');
+        }
+        throw new Error('journal-protected-conflict');
+      }
+      if (e && e.name === 'ConstraintError') throw new Error('journal-vault-exists');
+      throw e;
+    }
+  }
+
+  /** Защищённый текст: новое значение шифруется новым iv; открытый текст
+   *  не пишется; `applyMeta` добавляет метаданные той же записью. */
+  async function writeProtectedText(cur, textPatch, applyMeta) {
+    var C = requireCrypto();
+    var vault = await sessionVault();
+    var key = C.session.key();
+    var plain = await C.decryptEntry(key, cur.id, cur.sec);
+    Object.keys(textPatch).forEach(function (k) {
+      if (textPatch[k] === undefined) delete plain[k]; else plain[k] = textPatch[k];
+    });
+    var sec = await C.encryptEntry(key, cur.id, plain);
+    var next = Object.assign({}, cur);
+    delete next.title;
+    delete next.body;
+    if (applyMeta) applyMeta(next);
+    next.sec = sec;
+    next.id = cur.id;
+    next.updatedAt = now();
+    assertEntryPersistable(next);
+    await commitBatch([vaultExpect(vault),
+      { type: 'put', store: 'journalEntries', value: next, match: { sec: cur.sec, updatedAt: cur.updatedAt } }]);
+    return next;
+  }
+
+  async function assertProtectable(r) {
+    if (!r) throw new Error('journal-entry-not-found');
+    if (r.type === 'visit') throw new Error('journal-protect-unsupported');
+    if (hasVisitRef(r)) await editableVisit(r.fields.visitId);
+    if (r.type === 'project' && r.status === 'archived') throw new Error('journal-project-readonly');
+  }
+  function protectOp(cur, sec) {
+    var next = Object.assign({}, cur);
+    delete next.title;
+    delete next.body;
+    next.sec = sec;
+    next.updatedAt = now();
+    assertEntryPersistable(next);
+    return { type: 'put', store: 'journalEntries', value: next,
+      match: { sec: undefined, title: cur.title, body: cur.body, updatedAt: cur.updatedAt } };
+  }
+  async function countProtected() { return (await entriesBase.getAll()).filter(isProtected).length; }
+
+  var protection = {
+    VAULT_ID: VAULT_ID,
+    FIELDS: PROTECTED_FIELDS.slice(),
+    isProtected: isProtected,
+    /** Защищена и текста в этой копии нет (заблокировано или не читается). */
+    isLocked: function (row) { return isProtected(row) && !REVEALED.has(row); },
+    isUnreadable: function (row) { return !!row && UNREADABLE.has(row); },
+    isUnlocked: function () { return !!unlockedKey(); },
+    minPassphrase: function () { var C = cryptoApi(); return C ? C.MIN_PASSPHRASE : 8; },
+    canProtect: function (row) { return !!row && row.type !== 'visit'; },
+    onChange: function (fn) { var C = cryptoApi(); return C ? C.session.onChange(fn) : function () {}; },
+    lock: function (reason) { var C = cryptoApi(); if (C) C.session.lock(reason || 'manual'); },
+
+    /** { state: off|locked|unlocked|broken|unavailable, protectedCount, error? }
+     *  Сломанное состояние не чинится автоматически: ни новый сейф поверх
+     *  шифротекстов, ни перезапись испорченного `crypto:v1`. */
+    status: async function () {
+      var C = cryptoApi();
+      var vault = await vaultRow();
+      var count = await countProtected();
+      if (!C) return { state: 'unavailable', protectedCount: count };
+      if (vault) {
+        var bad = C.validateVault(vault);
+        if (bad) { C.session.lock('vault-invalid'); return { state: 'broken', error: bad, protectedCount: count }; }
+        if (C.session.isUnlocked() && C.session.mark() !== vault.wrap.ct) C.session.lock('vault-changed');
+        return { state: C.session.isUnlocked() ? 'unlocked' : 'locked', protectedCount: count };
+      }
+      if (C.session.isUnlocked()) C.session.lock('vault-changed');
+      return count ? { state: 'broken', error: 'journal-vault-missing', protectedCount: count } : { state: 'off', protectedCount: 0 };
+    },
+
+    /** Неверная фраза или подменённая обёртка — отказ; в базу ничего. */
+    unlock: async function (passphrase) {
+      var C = requireCrypto();
+      var vault = await vaultRow();
+      if (!vault) throw new Error((await countProtected()) ? 'journal-vault-missing' : 'journal-vault-off');
+      var key = await C.openVault(vault, passphrase);
+      C.session.open(key, vault.wrap.ct);
+      return true;
+    },
+
+    /** Первая защита: сейф и (если задана) первая строка — ОДНИМ пакетом.
+     *  Отмена/ошибка до пакета — ноль изменений; сбой пакета — откат обоих. */
+    setup: async function (passphrase, entryId) {
+      var C = requireCrypto();
+      if (await vaultRow()) throw new Error('journal-vault-exists');
+      if (await countProtected()) throw new Error('journal-vault-missing');
+      var cur = null;
+      if (entryId !== undefined && entryId !== null) {
+        cur = await entriesBase.get(entryId);
+        await assertProtectable(cur);
+        if (isProtected(cur)) throw new Error('journal-protect-already');
+      }
+      var v = await C.createVault(passphrase);
+      var ops = [{ type: 'add', store: 'journalMeta', value: v.meta }];
+      if (cur) ops.push(protectOp(cur, await C.encryptEntry(v.key, cur.id, textOf(cur))));
+      await commitBatch(ops);
+      C.session.open(v.key, v.meta.wrap.ct);
+      return true;
+    },
+
+    protect: async function (entryId) {
+      var C = requireCrypto();
+      var vault = await sessionVault();
+      var cur = await entriesBase.get(entryId);
+      await assertProtectable(cur);
+      if (isProtected(cur)) throw new Error('journal-protect-already');
+      var sec = await C.encryptEntry(C.session.key(), cur.id, textOf(cur));
+      await commitBatch([vaultExpect(vault), protectOp(cur, sec)]);
+      return true;
+    },
+
+    /** Явное возвращение записи в открытое хранение. */
+    unprotect: async function (entryId) {
+      var C = requireCrypto();
+      var vault = await sessionVault();
+      var cur = await entriesBase.get(entryId);
+      await assertProtectable(cur);
+      if (!isProtected(cur)) throw new Error('journal-protect-not-protected');
+      var plain = await C.decryptEntry(C.session.key(), cur.id, cur.sec);
+      var next = Object.assign({}, cur);
+      delete next.sec;
+      PROTECTED_FIELDS.forEach(function (k) { if (typeof plain[k] === 'string') next[k] = plain[k]; });
+      next.updatedAt = now();
+      await commitBatch([vaultExpect(vault),
+        { type: 'put', store: 'journalEntries', value: next, match: { sec: cur.sec, updatedAt: cur.updatedAt } }]);
+      return true;
+    },
+
+    /** Тот же DEK под новой фразой; записи не перешифровываются. */
+    changePassphrase: async function (oldPassphrase, newPassphrase) {
+      var C = requireCrypto();
+      var vault = await vaultRow();
+      if (!vault) throw new Error('journal-vault-off');
+      var next = await C.rewrapVault(vault, oldPassphrase, newPassphrase);
+      await commitBatch([{ type: 'put', store: 'journalMeta', value: next, match: { wrap: vault.wrap } }]);
+      if (C.session.isUnlocked() && C.session.mark() === vault.wrap.ct) C.session.remark(next.wrap.ct);
+      return true;
+    },
+  };
+
+  /* Публичные чтения отдают временные копии при открытой сессии. Внутренние
+     пути (entriesBase, *OrThrow) по-прежнему видят сырые строки. */
+  ['get', 'getAll', 'byNode', 'byCircuit', 'byType', 'byStatus', 'openCarry'].forEach(function (k) { entries[k] = revealing(entries[k]); });
+  visits.children = revealing(visits.children);
+  visitRecords.get = revealing(visitRecords.get);
+  visitRecords.byVisit = revealing(visitRecords.byVisit);
+  tasks.get = revealing(tasks.get);
+  tasks.list = revealing(tasks.list);
+  ['openForNode', 'incoming', 'markedIn'].forEach(function (k) { carry[k] = revealing(carry[k]); });
+  ['get', 'list', 'byCircuit', 'forTarget'].forEach(function (k) { projects[k] = revealing(projects[k]); });
+  var relatedRaw = projects.related;
+  projects.related = async function (projectId) {
+    var out = await relatedRaw(projectId);
+    if (!unlockedKey()) return out;
+    out.project = await revealOne(out.project);
+    var tRows = await revealList(out.tasks.map(function (x) { return x.row; }));
+    out.tasks.forEach(function (x, i) { x.row = tRows[i]; });
+    var iRows = await revealList(out.items.map(function (x) { return x.row; }));
+    out.items.forEach(function (x, i) { x.row = iRows[i]; });
+    return out;
+  };
+
   global.CWJournal = {
     nodes: nodes,
     entries: entries,
@@ -1551,6 +1898,7 @@
     links: links,
     projects: projects,
     meta: meta,
+    protection: protection,
     urn: urn,
     carryKeyFor: carryKeyFor,
     sortNodes: sortNodes,

@@ -1347,7 +1347,10 @@
           // Оба отказа наступают до подтверждения и до первой записи, поэтому
           // обещание «данные не изменены» в тексте правдиво.
           var early = check.error === 'too-new' || check.error === 'schema-too-new';
-          say(early ? 'backup.too_new' : 'backup.not_a_backup');
+          // J8: копия узнана, но защищённые данные Журнала или набор его
+          // хранилищ не проходят проверку формы — «повреждена», а не «не копия».
+          var damaged = /^journal-backup-/.test(check.error) || check.error === 'backup-incomplete-set';
+          say(early ? 'backup.too_new' : damaged ? 'backup.damaged' : 'backup.not_a_backup');
           return;
         }
         var snap = check.snapshot;

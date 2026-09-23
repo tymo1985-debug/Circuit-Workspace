@@ -24,6 +24,7 @@
   function setTaskTab() { return A.setTaskTab.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
+  function textOr() { return A.textOr.apply(this, arguments); }
   function uiLang() { return A.uiLang.apply(this, arguments); }
 
 
@@ -327,7 +328,7 @@
       body.setAttribute('tabindex', '0');
       var titleText = it.kind === 'visit'
         ? capitalize(seasonLabel(it.row.dateFrom)) + ' · ' + formatRange(it.row.dateFrom, it.row.dateTo, true)
-        : it.kind === 'project' ? it.row.title : nodeName(it.row);
+        : it.kind === 'project' ? textOr(it.row, 'title') : nodeName(it.row);
       body.appendChild(el('p', 'j-row__title', titleText));
       var parts = chain.map(nodeName);
       if (it.kind === 'node') parts.push(t('j.search.kind.' + it.row.kind));
@@ -364,7 +365,16 @@
   }
 
   /* Публикация для других файлов Журнала. */
+  /** J8: блокировка — расшифрованные результаты уходят с экрана сразу,
+   *  запрос в полёте отменяется; перерисовка затем ищет уже без ключа. */
+  function forgetSearchResults() {
+    searchUi.seq++;
+    $('#searchResults').replaceChildren();
+    $('#searchStatus').textContent = '';
+  }
+
   A.consumeSearchFocus = consumeSearchFocus;
+  A.forgetSearchResults = forgetSearchResults;
   A.focusSearch = focusSearch;
   A.renderArchive = renderArchive;
   A.renderSearch = renderSearch;

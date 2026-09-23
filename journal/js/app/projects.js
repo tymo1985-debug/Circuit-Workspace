@@ -20,14 +20,21 @@
   function errorMessage() { return A.errorMessage.apply(this, arguments); }
   function esc() { return A.esc.apply(this, arguments); }
   function formatRange() { return A.formatRange.apply(this, arguments); }
+  function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
+  function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
+  function lockMark() { return A.lockMark.apply(this, arguments); }
+  function lockedLabel() { return A.lockedLabel.apply(this, arguments); }
   function nodeName() { return A.nodeName.apply(this, arguments); }
   function openTaskDialog() { return A.openTaskDialog.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
   function renderVisitRecords() { return A.renderVisitRecords.apply(this, arguments); }
+  function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
   function seasonLabel() { return A.seasonLabel.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
+  function textOr() { return A.textOr.apply(this, arguments); }
+  function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function todayIso() { return A.todayIso.apply(this, arguments); }
   function uiLang() { return A.uiLang.apply(this, arguments); }
   function wireMenuToggle() { return A.wireMenuToggle.apply(this, arguments); }
@@ -48,6 +55,7 @@
     note: '<path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/>',
   };
   var projectUi = { id: null, editing: false, draft: '', busy: false, error: '', fmt: 'paragraph' };
+  var projectRenderSeq = 0;
 
   function pad2(n) { return String(n).padStart(2, '0'); }
   function localDay(iso) {
@@ -92,7 +100,8 @@
     ico.innerHTML = svg(PICON.project);
     var body = el('div', 'j-row__body');
     var title = el('p', 'j-row__title');
-    title.appendChild(el('b', '', p.title));
+    title.appendChild(el('b', isLockedRow(p) ? 'u-muted' : '', textOr(p, 'title')));
+    if (isProtectedRow(p)) title.insertAdjacentHTML('beforeend', lockMark(p));
     body.appendChild(title);
     var meta = el('p', 'j-row__meta');
     var parts = [];
@@ -217,6 +226,22 @@
   function renderProjectBody(p, editable) {
     var box = $('#projectBody');
     box.replaceChildren();
+    if (isLockedRow(p)) {
+      // J8: текст зашифрован и ключа нет — только подпись и разблокировка.
+      box.classList.remove('j-pbody--editable');
+      box.removeAttribute('tabindex'); box.removeAttribute('role'); box.removeAttribute('aria-label');
+      var panel = el('div', 'j-lockedpanel');
+      panel.innerHTML = svg(ICON.lock, 'width="20" height="20"');
+      panel.appendChild(el('span', '', lockedLabel(p)));
+      if (!CWJournal.protection.isUnreadable(p)) {
+        var ub = el('button', 'md-btn md-btn-tonal', t('j.prot.unlock'));
+        ub.type = 'button';
+        ub.addEventListener('click', function () { requestUnlock(); });
+        panel.appendChild(ub);
+      }
+      box.appendChild(panel);
+      return;
+    }
     if (projectUi.editing && editable) {
       var wrap = el('div', 'j-block j-block--edit');
       var ta = el('textarea', 'j-block__input j-pbody__input');
@@ -269,7 +294,9 @@
   }
   function startProjectEdit(p, fmt) {
     if (projectUi.editing || projectUi.busy || p.status === 'archived') return;
+    if (isLockedRow(p)) { requestUnlock(); return; }
     projectUi.editing = true;
+    projectUi.prot = isProtectedRow(p);
     projectUi.draft = p.body || '';
     projectUi.error = '';
     projectUi.fmt = 'paragraph';
@@ -289,23 +316,36 @@
   }
 
   async function renderProjectDetail(circuitId, projectId) {
+    // J8: перерисовку могут запросить двое сразу (операция + смена
+    // блокировки). Каждый вызов — свой номер; после каждого ожидания
+    // устаревший вызов выходит, DOM пишет только последний. Все ожидания —
+    // до первой записи в DOM, дальше отрисовка синхронна.
+    var mine = ++projectRenderSeq;
     var p = await CWJournal.projects.get(projectId);
+    if (mine !== projectRenderSeq) return;
     if (!p || p.circuitId !== circuitId) { location.replace(CWJournalRoute.build.circuit(circuitId)); return; }
     var circuit = await CWJournal.nodes.get(circuitId);
+    if (mine !== projectRenderSeq) return;
     if (!circuit || circuit.kind !== 'circuit') { location.replace('#districts'); return; }
     if (projectUi.id !== p.id) projectUi = { id: p.id, editing: false, draft: '', busy: false, error: '', fmt: 'paragraph' };
     var rel = await CWJournal.projects.related(p.id);
     var nodesAll = await CWJournal.nodes.byCircuit(circuitId);
+    var mutables = await Promise.all(rel.tasks.map(function (x) { return CWJournal.tasks.isMutable(x.row.id); }));
+    if (mine !== projectRenderSeq) return;
     var byId = {};
     nodesAll.forEach(function (n) { byId[n.id] = n; });
     var st = parseHash();
     if (st.projectId !== p.id) return; // пользователь уже ушёл с экрана
 
     var editable = p.status !== 'archived';
+    // J8: без ключа текст защищённого не правится; статус/архив/связи —
+    // метаданные и остаются доступны.
+    var textEditable = editable && !isLockedRow(p);
     $('#projectCrumbCircuit').textContent = circuit.label;
     $('#projectCrumbCircuit').setAttribute('href', CWJournalRoute.build.circuit(circuitId));
     $('#projectCrumbEntries').setAttribute('href', CWJournalRoute.build.circuit(circuitId));
-    $('#projectTitle').textContent = p.title;
+    $('#projectTitle').textContent = textOr(p, 'title');
+    if (isProtectedRow(p)) $('#projectTitle').insertAdjacentHTML('beforeend', lockMark(p));
     $('#projectLede').textContent = t('j.project.kind') + ' · ' + t('j.project.created').replace('%s', dmy(p.createdAt))
       + ' · ' + t('j.project.changed').replace('%s', dayOrToday(p.updatedAt || p.createdAt));
     $('#projectStatusBadge').innerHTML = projectStatusHtml(p);
@@ -313,9 +353,9 @@
     var ro = $('#projectReadonly');
     ro.hidden = editable;
     ro.textContent = editable ? '' : t('j.project.readonly');
-    if (!editable) projectUi.editing = false;
-    syncProjectToolbar(editable);
-    renderProjectBody(p, editable);
+    if (!textEditable) projectUi.editing = false;
+    syncProjectToolbar(textEditable);
+    renderProjectBody(p, textEditable);
 
     /* Задачи проекта: связанные todo, прогресс — выполненные / все. */
     $('#projectTasksCount').textContent = t('j.project.progress').replace('%d', String(rel.progress.done)).replace('%d', String(rel.progress.total));
@@ -336,11 +376,15 @@
           if (!mutable || projectUi.busy) return;
           runProjectOp(function () { return isDone ? CWJournal.tasks.reopen(r.id) : CWJournal.tasks.complete(r.id); });
         });
-        var text = el('span', 'j-check__text j-ptask__text', r.body);
+        var text = el('span', 'j-check__text j-ptask__text', textOr(r, 'body'));
+        if (isProtectedRow(r)) text.insertAdjacentHTML('beforeend', lockMark(r));
         if (mutable) {
           text.setAttribute('role', 'button');
           text.tabIndex = 0;
-          var edit = function () { openTaskDialog(r, { projectId: p.id, onDone: refreshCurrentView }); };
+          var edit = function () {
+            if (isLockedRow(r)) { requestUnlock(); return; }
+            openTaskDialog(r, { projectId: p.id, onDone: refreshCurrentView });
+          };
           text.addEventListener('click', edit);
           text.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); edit(); } });
         }
@@ -351,7 +395,7 @@
         }
         if (!mutable) line.appendChild(el('span', 'j-tag j-ptask__ro', t('j.task.readonly')));
         tbox.appendChild(line);
-      })(rel.tasks[i].row, await CWJournal.tasks.isMutable(rel.tasks[i].row.id));
+      })(rel.tasks[i].row, mutables[i]);
     }
     $('#projectAddTask').hidden = !editable;
 
@@ -449,7 +493,7 @@
     body.tabIndex = 0;
     var title = el('p', 'j-row__title j-row__title--clamp');
     if (r.type === 'visit') title.textContent = capitalize(t('j.project.visit_title').replace('%s', seasonLabel(r.dateFrom)));
-    else title.textContent = '«' + firstLine(r.body, 160) + '»';
+    else title.textContent = isLockedRow(r) ? lockedLabel(r) : '«' + firstLine(r.body, 160) + '»';
     body.appendChild(title);
     var meta = el('p', 'j-row__meta');
     var parts = [];
@@ -491,8 +535,9 @@
       ev.push({ at: x.link.createdAt, text: t(x.row.type === 'visit' ? 'j.project.hist.visit' : 'j.project.hist.item').replace('%s', name) });
     });
     rel.tasks.forEach(function (x) {
-      ev.push({ at: x.link.createdAt, text: t('j.project.hist.task_added').replace('%s', firstLine(x.row.body, 60)) });
-      if (x.row.status === 'done' && x.row.updatedAt) ev.push({ at: x.row.updatedAt, text: t('j.project.hist.task_done').replace('%s', firstLine(x.row.body, 60)) });
+      var name = isLockedRow(x.row) ? lockedLabel(x.row) : firstLine(x.row.body, 60);
+      ev.push({ at: x.link.createdAt, text: t('j.project.hist.task_added').replace('%s', name) });
+      if (x.row.status === 'done' && x.row.updatedAt) ev.push({ at: x.row.updatedAt, text: t('j.project.hist.task_done').replace('%s', name) });
     });
     ev = ev.filter(function (e) { return !!e.at; }).sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
     var shown = ev.slice(0, 6);
@@ -519,10 +564,18 @@
     var btn = $('#moreBtn');
     var panel = $('#moreMenuPanel');
     var items = '';
-    if (p.status !== 'archived') {
+    var hidden = isLockedRow(p);
+    if (p.status !== 'archived' && !hidden) {
       items += '<button type="button" class="md-menu__item" role="menuitem" data-action="rename">' + esc(t('j.action.rename')) + '</button>'
         + '<button type="button" class="md-menu__item" role="menuitem" data-action="edit-body">' + esc(t('j.project.edit_body')) + '</button>'
         + '<button type="button" class="md-menu__item" role="menuitem" data-action="link">' + esc(t('j.editor.link')) + '</button>';
+    }
+    // J8: защита — не в архиве (архивный проект только для чтения).
+    if (hidden && !CWJournal.protection.isUnreadable(p)) {
+      items += '<button type="button" class="md-menu__item" role="menuitem" data-action="unlock">' + esc(t('j.prot.unlock')) + '</button>';
+    } else if (p.status !== 'archived' && !hidden) {
+      items += '<button type="button" class="md-menu__item" role="menuitem" data-action="protect">'
+        + esc(t(isProtectedRow(p) ? 'j.prot.unprotect' : 'j.prot.protect')) + '</button>';
     }
     items += '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
     panel.innerHTML = items;
@@ -538,8 +591,10 @@
         if (a === 'rename') openProjectDialog({ project: p });
         else if (a === 'edit-body') startProjectEdit(p);
         else if (a === 'link') openProjectPicker(p, 'all');
+        else if (a === 'unlock') requestUnlock();
+        else if (a === 'protect') toggleProtection(p).then(function () { refreshCurrentView(); });
         else if (a === 'delete') {
-          if (!confirm(t('j.confirm.delete').replace('%s', p.title))) return;
+          if (!confirm(t('j.confirm.delete').replace('%s', textOr(p, 'title')))) return;
           CWJournal.projects.remove(p.id).then(function () {
             location.hash = CWJournalRoute.build.circuit(p.circuitId);
           }, function (err) { alert(errorMessage(err)); });
@@ -734,7 +789,7 @@
         var secRecords = { title: t('j.project.pick_sec_records'), items: [] };
         var secTasks = { title: t('j.project.pick_sec_tasks'), items: [] };
         entries.forEach(function (e) {
-          if (CWJournal.projects.ENTRY_TARGETS.indexOf(e.type) === -1 || CWJournal.search.isProtected(e)) return;
+          if (CWJournal.projects.ENTRY_TARGETS.indexOf(e.type) === -1) return;
           var ref = CWJournal.urn.entry(e.id);
           var n = byId[e.nodeId];
           var where = n ? nodeName(n) : '';
@@ -749,7 +804,8 @@
           var ro = !!(v && v.status !== 'open');
           if (v && v.status === 'archived' && !linked[ref]) return;
           var meta = where + (v ? ' · ' + seasonLabel(v.dateFrom) : '') + ' · ' + recordKindLabel(e) + (ro ? ' · ' + t('j.project.pick_readonly') : '');
-          var item = { ref: ref, sort: e.updatedAt || '', label: firstLine(e.body, 90), meta: meta, checked: !!linked[ref], disabled: ro };
+          // J8: заблокированная защищённая — подписью (связь текста не несёт).
+          var item = { ref: ref, sort: e.updatedAt || '', label: isLockedRow(e) ? lockedLabel(e) : firstLine(e.body, 90), meta: meta, checked: !!linked[ref], disabled: ro };
           (e.type === 'todo' ? secTasks : secRecords).items.push(item);
         });
         [secVisits, secRecords, secTasks].forEach(function (s) { s.items.sort(function (a, b) { return a.sort < b.sort ? 1 : a.sort > b.sort ? -1 : 0; }); });
@@ -776,7 +832,7 @@
         var items = [];
         (await CWJournal.projects.byCircuit(visit.circuitId)).forEach(function (p) {
           if (p.status !== 'active' && !linked[p.id]) return;
-          items.push({ id: p.id, label: p.title, meta: projectStatusLabel(p), checked: !!linked[p.id], disabled: p.status === 'archived' });
+          items.push({ id: p.id, label: textOr(p, 'title'), meta: projectStatusLabel(p), checked: !!linked[p.id], disabled: p.status === 'archived' });
         });
         return [{ title: t('j.section.projects'), items: items }];
       },
@@ -785,7 +841,16 @@
     });
   }
 
+  /** J8: при блокировке черновик описания защищённого проекта уходит. */
+  function forgetProjectProtectedDraft() {
+    if (!projectUi.prot) return;
+    projectUi.editing = false;
+    projectUi.draft = '';
+    projectUi.prot = false;
+  }
+
   /* Публикация для других файлов Журнала. */
+  A.forgetProjectProtectedDraft = forgetProjectProtectedDraft;
   A.openRecordProjectPicker = openRecordProjectPicker;
   A.renderCongregationProjects = renderCongregationProjects;
   A.renderDistrictProjects = renderDistrictProjects;

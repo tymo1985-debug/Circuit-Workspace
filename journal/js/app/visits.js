@@ -17,13 +17,20 @@
   function errorMessage() { return A.errorMessage.apply(this, arguments); }
   function esc() { return A.esc.apply(this, arguments); }
   function formatRange() { return A.formatRange.apply(this, arguments); }
+  function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
+  function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
+  function lockMark() { return A.lockMark.apply(this, arguments); }
+  function lockedLabel() { return A.lockedLabel.apply(this, arguments); }
   function openRecordProjectPicker() { return A.openRecordProjectPicker.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
   function renderTasks() { return A.renderTasks.apply(this, arguments); }
+  function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
   function seasonLabel() { return A.seasonLabel.apply(this, arguments); }
   function setTaskTab() { return A.setTaskTab.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
+  function textOr() { return A.textOr.apply(this, arguments); }
+  function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function visitStatusView() { return A.visitStatusView.apply(this, arguments); }
   function wireMenuToggle() { return A.wireMenuToggle.apply(this, arguments); }
 
@@ -106,17 +113,20 @@
    * рендерится только через esc(); HTML не хранится и не собирается из
    * пользовательского ввода. */
   var editor = { visitId: null, visit: null, draft: null, busy: false, projCounts: {} };
+  var recordsRenderSeq = 0;
   function currentEditorVisit() { return editor.visit; }
   var FORMAT_KEYS = { paragraph: 'j.editor.paragraph', list: 'j.editor.list', quote: 'j.editor.quote' };
 
   function visitEditable() { return !!(editor.visit && editor.visit.status === 'open'); }
 
   async function renderVisitRecords() {
+    // J8: перерисовку теперь могут запросить двое сразу (операция и смена
+    // блокировки) — дорисовывает только последний вызов, без дублей строк.
+    var mine = ++recordsRenderSeq;
     var visit = editor.visit;
     var records = await CWJournal.visitRecords.byVisit(visit.id);
     var editable = visitEditable();
     var box = $('#visitRecords');
-    box.innerHTML = '';
 
     var ro = $('#visitReadonly');
     ro.hidden = editable;
@@ -134,6 +144,8 @@
     await Promise.all(records.map(async function (r) {
       editor.projCounts[r.id] = (await CWJournal.projects.forTarget(CWJournal.urn.entry(r.id))).length;
     }));
+    if (mine !== recordsRenderSeq) return;
+    box.innerHTML = '';
     if (!records.length && !(editor.draft && !editor.draft.id)) {
       var empty = document.createElement('p');
       empty.className = 'j-editor__empty';
@@ -201,22 +213,28 @@
     var fmt = (r.fields && r.fields.format) || 'paragraph';
     el.className = 'j-block j-block--' + (r.type === 'todo' ? 'checklist' : fmt) + (editable ? ' j-block--editable' : '');
     el.dataset.recordId = r.id;
+    // J8: защищённая без текста в копии — подпись вместо текста; отметка
+    // выполнения/перенос — метаданные и доступны без ключа.
+    var hidden = isLockedRow(r);
+    if (hidden) el.classList.add('j-block--locked');
     if (r.type === 'todo') {
       var isDone = r.status === 'done';
       el.innerHTML = '<div class="j-check' + (isDone ? ' j-check--done' : '') + '">' +
         '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (editable ? '' : ' disabled') + '></button>' +
-        '<span class="j-check__text">' + esc(r.body) + '</span>' + carryTag(r) + projTag(r) + '</div>';
+        '<span class="j-check__text">' + esc(textOr(r, 'body')) + '</span>' + lockMark(r) + carryTag(r) + projTag(r) + '</div>';
       el.querySelector('.j-check__box').addEventListener('click', function (e) {
         e.stopPropagation();
         if (!editable || editor.busy) return;
         runRecordOp(function () { return isDone ? CWJournal.visitRecords.reopen(r.id) : CWJournal.visitRecords.complete(r.id); });
       });
+    } else if (hidden) {
+      el.innerHTML = '<span class="j-locked">' + svg(ICON.lock, 'width="14" height="14"') + esc(lockedLabel(r)) + '</span>' + typeTag(r) + carryTag(r) + projTag(r);
     } else if (fmt === 'list') {
       el.innerHTML = '<ul>' + r.body.split('\n').filter(function (l) { return l.trim(); }).map(function (l) {
         return '<li>' + esc(l.replace(/^\s*[-•*]\s*/, '')) + '</li>';
-      }).join('') + '</ul>' + typeTag(r) + carryTag(r) + projTag(r);
+      }).join('') + '</ul>' + lockMark(r) + typeTag(r) + carryTag(r) + projTag(r);
     } else {
-      el.innerHTML = esc(r.body) + typeTag(r) + carryTag(r) + projTag(r);
+      el.innerHTML = esc(r.body) + lockMark(r) + typeTag(r) + carryTag(r) + projTag(r);
     }
     if (editable) {
       el.tabIndex = 0;
@@ -224,7 +242,9 @@
       el.setAttribute('aria-label', t('j.record.edit'));
       var start = function () {
         if (editor.busy) return;
-        editor.draft = { id: r.id, type: r.type, format: fmt === 'checklist' ? 'checklist' : fmt, body: r.body, error: '', carry: CWJournal.carry.isOpen(r) };
+        if (hidden) { requestUnlock(); return; } // после разблокировки экран перерисуется сам
+        editor.draft = { id: r.id, type: r.type, format: fmt === 'checklist' ? 'checklist' : fmt, body: r.body, error: '', carry: CWJournal.carry.isOpen(r),
+          prot: isProtectedRow(r) };
         renderVisitRecords();
       };
       el.addEventListener('click', start);
@@ -256,6 +276,8 @@
         svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>', 'width="18" height="18"') + esc(t(d.carry ? 'j.carry.unmark' : 'j.editor.next_visit_long')) + '</button>' +
       (isTodo ? '' : '<button type="button" class="md-btn md-btn-outlined" data-act="to-todo">' + svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="18" height="18"') + esc(t('j.editor.make_todo')) + '</button>') +
       (isTodo ? '' : '<select class="j-block__type" data-act="type" aria-label="' + esc(t('j.record.type_label')) + '">' + typeOptions + '</select>') +
+      (r ? '<button type="button" class="md-btn md-btn-outlined" data-act="protect">' + svg(isProtectedRow(r) ? ICON.unlock : ICON.lock, 'width="18" height="18"') +
+        esc(t(isProtectedRow(r) ? 'j.prot.unprotect' : 'j.prot.protect')) + '</button>' : '') +
       (r ? '<button type="button" class="md-btn md-btn-text" data-act="delete">' + esc(t('j.action.delete')) + '</button>' : '');
     actions.addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]');
@@ -265,6 +287,7 @@
       else if (act === 'cancel') { editor.draft = null; renderVisitRecords(); }
       else if (act === 'to-todo') draftToTodo();
       else if (act === 'carry') draftToggleCarry();
+      else if (act === 'protect') draftToggleProtect();
       else if (act === 'delete') deleteRecord(r);
     });
     var sel = actions.querySelector('select');
@@ -356,6 +379,28 @@
     }, function (err) { d.error = errorMessage(err); });
   }
 
+  /** J8: «Защитить / Снять защиту» для сохранённой записи. Несохранённый
+   *  текст сохраняется первым (как у переноса), затем — лист защиты. */
+  function draftToggleProtect() {
+    var d = editor.draft;
+    if (!d || !d.id) return;
+    if (!d.body || !d.body.trim()) { d.error = t('j.error.visit_record_empty'); renderVisitRecords(); return; }
+    runRecordOp(async function () {
+      var cur = await CWJournal.visitRecords.get(d.id);
+      var patch = {};
+      if (cur.body !== d.body) patch.body = d.body;
+      if (cur.type !== 'todo' && cur.type !== d.type) patch.type = d.type;
+      if (cur.type !== 'todo' && cur.fields.format !== d.format) patch.format = d.format;
+      if (Object.keys(patch).length) await CWJournal.visitRecords.update(d.id, patch);
+      if (await toggleProtection(cur)) editor.draft = null;
+    }, function (err) { d.error = errorMessage(err); });
+  }
+
+  /** J8: при блокировке черновик защищённой записи уходит из памяти экрана. */
+  function forgetVisitProtectedDraft() {
+    if (editor.draft && editor.draft.prot) editor.draft = null;
+  }
+
   function deleteRecord(r) {
     if (!confirm(t('j.confirm.delete_record'))) return;
     runRecordOp(async function () {
@@ -407,7 +452,7 @@
       row.className = 'j-row j-row--link';
       row.innerHTML =
         '<div class="j-row__ico j-row__ico--accent">' + svg('<path d="M4 21V4h11l-1.5 4L15 12H4"/>') + '</div>' +
-        '<div class="j-row__body"><p class="j-row__title j-row__title--clamp">' + esc(it.row.body) + '</p>' +
+        '<div class="j-row__body"><p class="j-row__title j-row__title--clamp">' + esc(textOr(it.row, 'body')) + lockMark(it.row) + '</p>' +
         '<p class="j-row__meta">' + esc(it.origin ? seasonLabel(it.origin.dateFrom) : '') + '<span class="j-dot">·</span>' +
         esc(t('j.carry.state.' + it.state)) + '</p></div>' +
         '<div class="j-row__end">' + (it.openVisits ? '<span class="j-carrybadge">' +
@@ -437,7 +482,7 @@
     var r = it.row;
     $('#carrySheetKicker').textContent = t(r.type === 'question' ? 'j.carry.kicker_question' : 'j.carry.kicker')
       .replace('%d', String(idx + 1)).replace('%d', String(carryView.items.length));
-    $('#carrySheetTitle').textContent = r.body;
+    $('#carrySheetTitle').textContent = textOr(r, 'body');
     var node = await CWJournal.nodes.get(r.nodeId);
     var meta = (node ? canonicalName(node) : '') + ' · ' + t('j.carry.open_visits').replace('%d', String(it.openVisits));
     if (r.type === 'todo') meta += ' · ' + t('j.record.type.todo') + ': ' + t(r.status === 'done' ? 'j.task.status_done' : 'j.task.status_open');
@@ -660,6 +705,7 @@
 
   /* Публикация для других файлов Журнала. */
   A.currentEditorVisit = currentEditorVisit;
+  A.forgetVisitProtectedDraft = forgetVisitProtectedDraft;
   A.openVisitDialog = openVisitDialog;
   A.renderCongregationVisits = renderCongregationVisits;
   A.renderVisitDetail = renderVisitDetail;

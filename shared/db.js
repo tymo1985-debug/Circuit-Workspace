@@ -334,6 +334,97 @@
     };
   }
 
+  /**
+   * Атомарный пакет ЗАРАНЕЕ ВЫЧИСЛЕННЫХ операций над несколькими хранилищами
+   * в ОДНОЙ readwrite-транзакции (Журнал J8, 23.09.2026).
+   *
+   * ЗАЧЕМ. Защита записи Журнала пишет две строки в два хранилища (метаданные
+   * сейфа + зашифрованная строка), и состояние «одна записана, другая нет»
+   * необратимо: шифротекст без ключа — потеря, ключ без строки — пустой
+   * сейф. `mutate()` держит одно хранилище, здесь — несколько.
+   *
+   * ЧЕГО ЗДЕСЬ НАМЕРЕННО НЕТ: функций обратного вызова. Всё вычисляется ДО
+   * вызова (включая шифрование — асинхронное, а значит закрыло бы
+   * транзакцию); внутри только детерминированные put/add/delete и
+   * декларативные предусловия. Операции выполняются строго по порядку.
+   *
+   * @param {Array<{type: 'put'|'add'|'delete'|'expect', store: string,
+   *   value?: Object, key?: IDBValidKey, match?: Object|null}>} ops
+   *   put    — store.put(value), ключ — value.id (обязателен);
+   *   add    — store.add(value): ключ занят → ConstraintError → откат пакета;
+   *   delete — store.delete(key);
+   *   expect — ничего не пишет, только предусловие по `match`.
+   *   match  — предусловие к ТЕКУЩЕЙ строке с тем же ключом: `null` — строки
+   *            быть не должно; объект — строка есть, и каждое перечисленное
+   *            поле совпадает по JSON-представлению (`undefined` = поля нет).
+   *            Несовпадение → Error('cwdb-batch-precondition') с `opIndex`,
+   *            весь пакет откатывается.
+   * @returns {Promise<number>} число операций — только после oncomplete.
+   */
+  const BATCH_TYPES = ['put', 'add', 'delete', 'expect'];
+  function batchMatches(current, match) {
+    if (match === null) return current === undefined;
+    if (current === undefined) return false;
+    return Object.keys(match).every((k) => JSON.stringify(current[k]) === JSON.stringify(match[k]));
+  }
+  async function runBatch(ops) {
+    if (!Array.isArray(ops) || !ops.length) throw new TypeError('CWDB.batch: нужен непустой массив операций');
+    const stores = [];
+    ops.forEach((op, i) => {
+      if (!op || !STORES[op.store]) throw new TypeError(`CWDB.batch: операция ${i}: неизвестное хранилище`);
+      if (BATCH_TYPES.indexOf(op.type) === -1) throw new TypeError(`CWDB.batch: операция ${i}: неизвестный тип`);
+      if ((op.type === 'put' || op.type === 'add') && (!op.value || typeof op.value !== 'object' || op.value.id === undefined)) {
+        throw new TypeError(`CWDB.batch: операция ${i}: нужна запись с явным id`);
+      }
+      if ((op.type === 'delete' || op.type === 'expect') && op.key === undefined) throw new TypeError(`CWDB.batch: операция ${i}: нужен key`);
+      if (op.type === 'expect' && op.match === undefined) throw new TypeError(`CWDB.batch: операция ${i}: expect без match`);
+      if (stores.indexOf(op.store) < 0) stores.push(op.store);
+    });
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(stores, 'readwrite');
+      let failure = null;
+      const fail = (error) => {
+        if (!failure) failure = error;
+        try { transaction.abort(); } catch (_) { /* уже прерывается */ }
+      };
+      const step = (i) => {
+        if (failure || i >= ops.length) return;
+        const op = ops[i];
+        const store = transaction.objectStore(op.store);
+        const key = op.type === 'put' || op.type === 'add' ? op.value.id : op.key;
+        const write = () => {
+          let r;
+          try {
+            if (op.type === 'put') r = store.put(op.value);
+            else if (op.type === 'add') r = store.add(op.value);
+            else r = store.delete(key);
+          } catch (error) { fail(error); return; }
+          r.onsuccess = () => step(i + 1);
+          r.onerror = () => { failure = failure || r.error; };
+        };
+        if (op.match === undefined) { write(); return; }
+        const g = store.get(key);
+        g.onsuccess = () => {
+          if (!batchMatches(g.result, op.match)) {
+            const error = new Error('cwdb-batch-precondition');
+            error.opIndex = i;
+            error.store = op.store;
+            fail(error);
+            return;
+          }
+          if (op.type === 'expect') step(i + 1); else write();
+        };
+        g.onerror = () => { failure = failure || g.error; };
+      };
+      // Только oncomplete — «зафиксировано», а не «запрос принят» (как у mutate).
+      transaction.oncomplete = () => resolve(ops.length);
+      transaction.onerror = () => reject(failure || transaction.error);
+      transaction.onabort = () => reject(failure || transaction.error || new Error('CWDB.batch: транзакция прервана'));
+      step(0);
+    });
+  }
+
   const CWDB = {
     /**
      * Версия схемы общей базы — ПУБЛИЧНО (28.08.2026).
@@ -378,6 +469,9 @@
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,
+
+    /** Атомарный пакет заранее вычисленных операций (J8). См. runBatch() выше. */
+    batch: runBatch,
 
     /**
      * Импорт из старой структуры events[] (Клиндарий) в communities.

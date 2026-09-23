@@ -26,6 +26,8 @@ const ASSETS = [
   './js/app/tasks.js',
   './js/app/projects.js',
   './js/app/search-archive.js',
+  './js/app/protection.js',
+  './js/crypto.js',
   './js/data.js',
   './js/route.js',
   './i18n/dict.js',
