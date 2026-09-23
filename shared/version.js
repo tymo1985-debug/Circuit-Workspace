@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.41.49';
+self.CW_VERSION = '0.41.50';
 
 /**
  * Реестр модулей хаба.
@@ -35,13 +35,13 @@ self.CW_VERSION = '0.41.49';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы',       version: '4.46.71' },
+  'congress-project': { title: 'Конгрессы',       version: '4.46.72' },
   'circuit-planner':  { title: 'Клиндарий',       version: '9.94.16' },
-  'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.47' },
-  'appointments':     { title: 'Назначения',      version: '5.5.86'  },
-  'documents':        { title: 'Документы и данные', version: '1.10.37'  },
+  'pioneer-school':   { title: 'Школа пионеров',  version: '1.14.48' },
+  'appointments':     { title: 'Назначения',      version: '5.5.87'  },
+  'documents':        { title: 'Документы и данные', version: '1.10.38'  },
   /* Журнал — J3b: экран собрания подключён к общему справочнику CWDirectory
      (идентичность/связывание/разрыв связи), расписание встреч остаётся
      собственным полем Журнала. Правила — journal/AGENTS.md. */
-  'journal':          { title: 'Журнал',          version: '0.9.2'   },
+  'journal':          { title: 'Журнал',          version: '0.9.3'   },
 };
