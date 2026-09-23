@@ -361,3 +361,17 @@ origin, не удерживает старые модули в памяти до
 уже использованных, и в консоли —
 `navigator.serviceWorker.getRegistrations()` / `caches.keys()` — прежде чем
 предполагать дефект в коде.
+
+## jsdom: сценарии — только в VM-контексте самого jsdom (23.09.2026)
+
+`check-doclang.mjs` месяцами падал в окружении (jsdom 30 / Node 22) с
+`TypeError: 'addEventListener' called on an object that is not a valid
+instance of EventTarget` ещё до первой проверки, и выпуски J1–J7 принимали
+его по совпадению с базой. Причина — в харнессе, не в продукте:
+`vm.createContext(dom.window)` контекстифицирует окно повторно, и глобальный
+объект сценария становится обёрткой, не проходящей проверку бренда
+EventTarget (`global.addEventListener` в `shared/doclang.js`). Правило:
+`new JSDOM(html, { runScripts: 'outside-only' })` и
+`vm.runInContext(код, dom.getInternalVMContext())`; окно не
+контекстифицируется заново. Проверка §10 `check-doclang.mjs` стережёт это
+структурно. Исключения «doclang красный, как на базе» больше нет.

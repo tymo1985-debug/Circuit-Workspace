@@ -30,12 +30,27 @@ const ok = (name, cond, extra = '') => {
   else { fail++; console.log('  ✗ ' + name + (extra ? ' → ' + extra : '')); }
 };
 
+// Среда исполнения — СОБСТВЕННЫЙ VM-контекст jsdom (runScripts:'outside-only'
+// + getInternalVMContext()), а не vm.createContext(dom.window). Повторная
+// контекстификация окна давала сценариям глобальный объект-обёртку, который
+// не является настоящим EventTarget jsdom: вызов global.addEventListener(...)
+// из shared/doclang.js падал на проверке бренда (jsdom 30 / Node 22) ещё до
+// первой проверки. Глобальные переменные сценариев по-прежнему видны как
+// свойства окна — возвращаемый ctx и есть это окно.
+function jsdomEnv(html, opts, consoleImpl) {
+  const dom = new JSDOM(html, Object.assign({ runScripts: 'outside-only' }, opts || {}));
+  const w = dom.window;
+  const vmCtx = dom.getInternalVMContext();
+  w.console = consoleImpl;
+  const run = (file) => vm.runInContext(readFileSync(file, 'utf8'), vmCtx, { filename: file });
+  return { dom, w, ctx: w, run };
+}
+
 function makeEnv({ uiLang = null, docLang = null, search = '' } = {}) {
-  const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://example.test/pioneer-school/index.html' + search });
+  const { w, ctx, run } = jsdomEnv('<!doctype html><html><body></body></html>', { url: 'https://example.test/pioneer-school/index.html' + search }, console);
   const store = {};
   if (uiLang) store['cw-lang'] = uiLang;
   if (docLang) store['cw-doclang:pioneer-school'] = docLang;
-  const w = dom.window;
   Object.defineProperty(w, 'localStorage', {
     configurable: true,
     value: {
@@ -44,9 +59,6 @@ function makeEnv({ uiLang = null, docLang = null, search = '' } = {}) {
       removeItem: (k) => { delete store[k]; },
     },
   });
-  const ctx = vm.createContext(w);
-  ctx.self = w; ctx.console = console;
-  const run = (file) => vm.runInContext(readFileSync(file, 'utf8'), ctx, { filename: file });
   run(ROOT + '/shared/i18n.js');
   run(ROOT + '/shared/doclang.js');
   run(PS + '/i18n/doc.js');
@@ -229,11 +241,7 @@ console.log('\n5. Разметка register.html');
 console.log('\n6. Живой прогон публичной страницы');
 {
   const html = readFileSync(PS + '/register.html', 'utf8');
-  const dom = new JSDOM(html, { url: 'https://example.test/pioneer-school/register.html?lang=pl' });
-  const w = dom.window;
-  const ctx = vm.createContext(w);
-  ctx.self = w; ctx.console = { log() {}, warn() {}, error() {} };
-  const run = (f) => vm.runInContext(readFileSync(f, 'utf8'), ctx, { filename: f });
+  const { w, ctx, run } = jsdomEnv(html, { url: 'https://example.test/pioneer-school/register.html?lang=pl' }, { log() {}, warn() {}, error() {} });
   run(ROOT + '/shared/i18n.js');
   run(ROOT + '/shared/doclang.js');
   run(PS + '/i18n/doc.js');
@@ -295,11 +303,9 @@ console.log('\n6. Живой прогон публичной страницы');
 
 console.log('\n7. Прежний баг публичной страницы: T is not defined');
 {
-  const w = new JSDOM('<!doctype html>').window;
-  const ctx = vm.createContext(w);
-  ctx.self = w; ctx.console = console;
+  const { ctx, run } = jsdomEnv('<!doctype html>', {}, console);
   let threw = null;
-  try { vm.runInContext(readFileSync(PS + '/js/modules/registration.js', 'utf8'), ctx, { filename: 'registration.js' }); }
+  try { run(PS + '/js/modules/registration.js'); }
   catch (e) { threw = e; }
   ok('registration.js грузится без T()', threw === null, threw && threw.message);
   ok('Registration определён', typeof ctx.Registration === 'object');
@@ -377,6 +383,15 @@ console.log('\n9. Сквозная проверка PDF: текст доезжа
   const lost = all.map((t, i) => [t, runs2[i]]).filter(([t, n]) => n !== t.length);
   ok('весь словарь документов проходит в PDF без потерь', lost.length === 0,
     lost.slice(0, 3).map(([t, n]) => `${n}/${t.length} «${t.slice(0, 30)}»`).join(' | '));
+}
+
+console.log('\n10. Среда проверки');
+{
+  // Регресс харнесса: окно jsdom не контекстифицируется повторно — сценарии
+  // исполняются только в собственном VM-контексте jsdom (см. jsdomEnv).
+  const self = readFileSync(new URL(import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  ok('харнесс не контекстифицирует окно jsdom повторно', !/vm\.createContext\(/.test(self));
+  ok('сценарии идут через getInternalVMContext()', /getInternalVMContext\(\)/.test(self));
 }
 
 console.log(`\nИтого: ${pass} пройдено, ${fail} провалено\n`);
