@@ -2045,6 +2045,24 @@
     }
   }
 
+  /* J8-H1: предусловие «строка та же, что до шифрования». Пути J8, которые
+     после асинхронной криптографии пишут строку ЦЕЛИКОМ из ранее прочитанной
+     сырой копии (защита/первая настройка, снятие защиты, правка
+     защищённого текста), требуют, чтобы строка в базе совпала со снимком
+     полностью: те же поля и значения, ни одного добавленного (dueDate,
+     carryKey, touches, fields, archivedAt, …; общий фасад записей допускает
+     и произвольные поля — поэтому целиком, а не по списку). updatedAt в ту
+     же миллисекунду больше ничего не решает. Не совпало — пакет отказывает
+     (journal-protected-conflict), чужая строка не тронута. Снимок — только
+     сырые перечислимые поля (раскрытые копии J8 сюда не попадают). */
+  function snapshotGuard(cur) {
+    return { match: JSON.parse(JSON.stringify(cur)), exact: true };
+  }
+  function guardedPut(cur, next) {
+    var g = snapshotGuard(cur);
+    return { type: 'put', store: 'journalEntries', value: next, match: g.match, exact: g.exact };
+  }
+
   /** Защищённый текст: новое значение шифруется новым iv; открытый текст
    *  не пишется; `applyMeta` добавляет метаданные той же записью. */
   async function writeProtectedText(cur, textPatch, applyMeta) {
@@ -2064,8 +2082,7 @@
     next.id = cur.id;
     next.updatedAt = now();
     assertEntryPersistable(next);
-    await commitBatch([vaultExpect(vault),
-      { type: 'put', store: 'journalEntries', value: next, match: { sec: cur.sec, updatedAt: cur.updatedAt } }]);
+    await commitBatch([vaultExpect(vault), guardedPut(cur, next)]);
     return next;
   }
 
@@ -2082,8 +2099,7 @@
     next.sec = sec;
     next.updatedAt = now();
     assertEntryPersistable(next);
-    return { type: 'put', store: 'journalEntries', value: next,
-      match: { sec: undefined, title: cur.title, body: cur.body, updatedAt: cur.updatedAt } };
+    return guardedPut(cur, next);
   }
   /* J9b: предусловие «у проекта нет снимков в архиве» — внутри пакета
      защиты (expectNone по индексу entityKey хранилища documents). Сорвалось
@@ -2187,8 +2203,7 @@
       delete next.sec;
       PROTECTED_FIELDS.forEach(function (k) { if (typeof plain[k] === 'string') next[k] = plain[k]; });
       next.updatedAt = now();
-      await commitBatch([vaultExpect(vault),
-        { type: 'put', store: 'journalEntries', value: next, match: { sec: cur.sec, updatedAt: cur.updatedAt } }]);
+      await commitBatch([vaultExpect(vault), guardedPut(cur, next)]);
       return true;
     },
 

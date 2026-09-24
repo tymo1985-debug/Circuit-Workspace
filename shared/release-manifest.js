@@ -26,12 +26,12 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.54',
+  version: '0.41.55',
   changes: [
-    { module: 'journal', version: '0.13.0', note: 'Задачи Журнала доступны общему To Do (только чтение); ссылка на задачу #tasks/<id>' },
-    { module: 'congress-project', version: '4.46.76', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
-    { module: 'pioneer-school', version: '1.14.52', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
-    { module: 'appointments', version: '5.5.91', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
-    { module: 'documents', version: '1.11.1', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
+    { module: 'journal', version: '0.13.1', note: 'Защита записей: параллельная правка в той же миллисекунде больше не может быть затёрта' },
+    { module: 'congress-project', version: '4.46.77', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
+    { module: 'pioneer-school', version: '1.14.53', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
+    { module: 'appointments', version: '5.5.92', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
+    { module: 'documents', version: '1.11.2', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
   ],
 };

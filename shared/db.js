@@ -367,10 +367,27 @@
      IndexedDB: например, «защитить проект» и «сохранить письмо проекта» не
      могут обе закоммититься. Схема не меняется — индекс должен существовать. */
   const BATCH_TYPES = ['put', 'add', 'delete', 'expect', 'expectNone'];
-  function batchMatches(current, match) {
+  function batchMatches(current, match, exact) {
     if (match === null) return current === undefined;
     if (current === undefined) return false;
+    if (exact) return canonicalRecord(current) === canonicalRecord(match);
     return Object.keys(match).every((k) => JSON.stringify(current[k]) === JSON.stringify(match[k]));
+  }
+  /* exact: true (J8-H1, 24.09.2026) — предусловие «запись ЦЕЛИКОМ та же, что
+     в снимке»: те же поля с теми же значениями и ни одного нового. Нужна там,
+     где запись пишется целиком из копии, прочитанной ДО долгой асинхронной
+     работы (шифрование): совпадение отдельных полей, включая updatedAt в ту
+     же миллисекунду, не доказывает, что соседняя вкладка не добавила или не
+     сменила другое поле. Порядок ключей не важен, undefined = поля нет.
+     Без exact семантика match прежняя (по перечисленным полям). */
+  function canonicalRecord(v) {
+    if (Array.isArray(v)) return '[' + v.map(canonicalRecord).join(',') + ']';
+    if (v && typeof v === 'object') {
+      return '{' + Object.keys(v).filter((k) => v[k] !== undefined).sort()
+        .map((k) => JSON.stringify(k) + ':' + canonicalRecord(v[k])).join(',') + '}';
+    }
+    const out = JSON.stringify(v);
+    return out === undefined ? 'null' : out;
   }
   async function runBatch(ops) {
     if (!Array.isArray(ops) || !ops.length) throw new TypeError('CWDB.batch: нужен непустой массив операций');
@@ -383,6 +400,7 @@
       }
       if ((op.type === 'delete' || op.type === 'expect') && op.key === undefined) throw new TypeError(`CWDB.batch: операция ${i}: нужен key`);
       if (op.type === 'expect' && op.match === undefined) throw new TypeError(`CWDB.batch: операция ${i}: expect без match`);
+      if (op.exact && (!op.match || typeof op.match !== 'object')) throw new TypeError(`CWDB.batch: операция ${i}: exact без снимка в match`);
       if (op.type === 'expectNone' && (typeof op.index !== 'string' || op.value === undefined)) throw new TypeError(`CWDB.batch: операция ${i}: expectNone без index/value`);
       if (stores.indexOf(op.store) < 0) stores.push(op.store);
     });
@@ -428,7 +446,7 @@
         if (op.match === undefined) { write(); return; }
         const g = store.get(key);
         g.onsuccess = () => {
-          if (!batchMatches(g.result, op.match)) {
+          if (!batchMatches(g.result, op.match, op.exact === true)) {
             const error = new Error('cwdb-batch-precondition');
             error.opIndex = i;
             error.store = op.store;
