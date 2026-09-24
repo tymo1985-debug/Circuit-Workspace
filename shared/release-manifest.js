@@ -26,12 +26,12 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.55',
+  version: '0.41.56',
   changes: [
-    { module: 'journal', version: '0.13.1', note: 'Защита записей: параллельная правка в той же миллисекунде больше не может быть затёрта' },
-    { module: 'congress-project', version: '4.46.77', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
-    { module: 'pioneer-school', version: '1.14.53', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
-    { module: 'appointments', version: '5.5.92', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
-    { module: 'documents', version: '1.11.2', note: 'Патч-бамп: правка общего слоя (shared/db.js)' },
+    { module: 'congress-project', version: '4.46.78', note: 'Явный выбор шаблона задания с безопасным fallback после удаления' },
+    { module: 'documents', version: '1.11.3', note: 'Удаление пользовательских шаблонов и форматирование text-шаблонов' },
+    { module: 'journal', version: '0.13.2', note: 'Version-only cache-first invalidation' },
+    { module: 'pioneer-school', version: '1.14.54', note: 'Version-only cache-first invalidation' },
+    { module: 'appointments', version: '5.5.93', note: 'Version-only cache-first invalidation' },
   ],
 };

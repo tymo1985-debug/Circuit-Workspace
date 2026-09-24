@@ -501,7 +501,9 @@
     $('#screenEditor').hidden = false;
     $('#edTitle').textContent = nameOf(tpl);
     $('#edBadge').textContent = t(tpl.custom ? 'doc.badge_custom' : 'doc.badge_system');
-    $('#resetBtn').hidden = !tpl.custom;
+    var hasBuiltin = !!builtinTpl(id);
+    $('#resetBtn').hidden = !tpl.custom || !hasBuiltin;
+    $('#deleteTemplateBtn').hidden = !tpl.custom || hasBuiltin;
     /* Вкладка «Страницы» — не просто зеркало isHtml(): три мигрируемых
        email-body шаблона теперь принудительно isHtml()===true (lazy RTE
        migration), но у них никогда не было структуры pages (в отличие от
@@ -565,6 +567,7 @@
     var body = columnBody(tpl, state.lang);
     var html = isHtml(tpl);
     $('#rteToolbar').hidden = !html;
+    $('#textToolbar').hidden = html;
     $('#edArea').hidden = html;
     $('#edRte').hidden = !html;
     if (html) $('#edRte').innerHTML = body; else $('#edArea').value = body;
@@ -1184,7 +1187,9 @@
       editorStatus('doc.status_saved', null);
       var fresh = currentTpl();
       $('#edBadge').textContent = t('doc.badge_custom');
-      $('#resetBtn').hidden = !fresh.custom;
+      var hasBuiltin = !!builtinTpl(fresh.id);
+      $('#resetBtn').hidden = !fresh.custom || !hasBuiltin;
+      $('#deleteTemplateBtn').hidden = !fresh.custom || hasBuiltin;
       renderLangs();
     }).catch(function (error) {
       console.error('Документы: не удалось сохранить', error);
@@ -1250,6 +1255,48 @@
       console.error('Документы: не удалось восстановить оригинал', error);
       editorStatus('doc.status_save_failed', 'error');
     });
+  }
+
+  /** Полностью пользовательская запись не имеет builtin-основы, поэтому её
+      можно удалить целиком. Для builtin+override остаётся только Restore. */
+  function deleteTemplate() {
+    var tpl = currentTpl();
+    if (!tpl || !tpl.custom || builtinTpl(tpl.id)) return;
+    if (!window.confirm(t('doc.confirm_delete_template'))) return;
+    self.CWTemplates.reset(tpl.id).then(function () {
+      state.dirty = false;
+      showLibrary();
+      status('doc.status_template_deleted');
+    }).catch(function (error) {
+      console.error('Документы: не удалось удалить шаблон', error);
+      editorStatus('doc.status_save_failed', 'error');
+    });
+  }
+
+  /** Оборачивает выделение markdown-подобной разметкой Congress text.
+      Пустое выделение получает пару маркеров и caret между ними. Повторное
+      применение к уже обёрнутому выделению снимает внешний слой; вложенные
+      разные стили не затрагиваются. */
+  function wrapTextSelection(mark) {
+    var area = $('#edArea');
+    var start = area.selectionStart == null ? area.value.length : area.selectionStart;
+    var end = area.selectionEnd == null ? start : area.selectionEnd;
+    var selected = area.value.slice(start, end);
+    var before = area.value.slice(0, start);
+    var after = area.value.slice(end);
+    var wrapped = mark + selected + mark;
+    if (selected && before.slice(-mark.length) === mark && after.slice(0, mark.length) === mark) {
+      area.value = before.slice(0, -mark.length) + selected + after.slice(mark.length);
+      area.selectionStart = start - mark.length;
+      area.selectionEnd = end - mark.length;
+    } else {
+      area.value = before + wrapped + after;
+      area.selectionStart = start + mark.length;
+      area.selectionEnd = selected ? end + mark.length : start + mark.length;
+    }
+    area.focus();
+    markDirty();
+    if (isWide() && state.view === 'edit') renderPreview();
   }
 
   /* ─────────────────────────  События  ───────────────────────── */
@@ -1346,6 +1393,21 @@
       $('#edRte').focus();
       document.execCommand(btn.dataset.cmd, false, null);
       markDirty();
+    });
+    $('#textToolbar').addEventListener('mousedown', function (e) {
+      /* Не отдаём фокус кнопке: Safari/iOS иначе теряет selection textarea
+         до click. Форматирование выполняем сразу на pointer-down. */
+      var btn = e.target.closest('[data-mark]');
+      if (!btn) return;
+      e.preventDefault();
+      wrapTextSelection(btn.dataset.mark);
+    });
+    $('#edArea').addEventListener('keydown', function (e) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      var mark = ({ b: '**', i: '*', u: '__' })[String(e.key || '').toLowerCase()];
+      if (!mark) return;
+      e.preventDefault();
+      wrapTextSelection(mark);
     });
 
     $('#varsList').addEventListener('click', function (e) {
@@ -1461,6 +1523,7 @@
     $('#newTypeTplBtn').addEventListener('click', createTypeTemplate);
     $('#saveBtn').addEventListener('click', save);
     $('#resetBtn').addEventListener('click', resetToOriginal);
+    $('#deleteTemplateBtn').addEventListener('click', deleteTemplate);
 
     window.addEventListener('beforeunload', function (e) {
       if (!state.dirty) return;
@@ -1526,7 +1589,12 @@
      Части проверяются белым списком и сравниваются с данными как строки: в
      селектор и разметку они не попадают. Кривая или неизвестная ссылка —
      обычное открытие модуля, без ошибки. */
-  var DEEP_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
+  /* Пользовательские congress-шаблоны исторически получают id из названия
+     типа задания, поэтому в уже сохранённых id законно встречаются пробелы и
+     Unicode. Ссылка передаёт такой id через encodeURIComponent(); после
+     decodeURIComponent() разрешаем его как непрозрачную строку, но по-прежнему
+     отсекаем разделители маршрута, управляющие символы и HTML-метасимволы. */
+  var DEEP_ID = /^[^\/<>\\?#\u0000-\u001F\u007F]{1,200}$/u;
   var DEEP_NAME = /^[a-z][a-z0-9-]{0,39}$/;
   function parseDeepLink(hash) {
     var raw = String(hash || '').replace(/^#/, '');

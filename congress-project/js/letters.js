@@ -51,7 +51,23 @@ function fill(tpl,data){return self.CWTemplates?self.CWTemplates.render(tpl,data
  * решение по этому — открытый вопрос, см. TODO.md.
  */
 export function values(t,congress){let c=congress||A(),sd=sender(),p=(t.participants||[])[0]||{};return{sender:sd,congress:{name:congressTheme(c),theme:(c&&c.theme)||"",place:c.place||"",date:fmt(c.date),rehearsalDate:fmt(c.rehearsalDate),rehearsalTime:c.rehearsalTime||"",recordingDeadline:fmt(c.recordingDeadline),responseDeadline:fmt(c.responseDeadline)},assignment:{number:t.number,title:t.title,time:dt(t.time),type:t.kind||t.type||"",participant:p.name||"",congregation:p.congregation||"",recordingMedia:t.recordingMedia||"",recordingKind:t.recordingKind||"",notes:t.notes||""}}}
-export function markup(s){return s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/__([^_]+)__/g,"<u>$1</u>").replace(/\*([^*]+)\*/g,"<em>$1</em>")}
+export function markup(s){
+  /* Небольшой стек вместо трёх независимых regex: последовательность,
+     созданная вложенным форматированием (**жирный *курсив***), должна
+     закрывать теги в обратном порядке, а не давать пересекающийся HTML. */
+  let out="",stack=[],re=/(\*{1,3}|__)/g,last=0,m;
+  let tag=x=>x==="**"?["strong","strong"]:x==="*"?["em","em"]:["u","u"];
+  let toggle=x=>{let p=tag(x);if(stack[stack.length-1]===x){stack.pop();out+=`</${p[1]}>`}else{stack.push(x);out+=`<${p[0]}>`}};
+  while((m=re.exec(s))){out+=s.slice(last,m.index);let token=m[0];
+    if(token==="***"){
+      if(stack[stack.length-1]==="*"&&stack[stack.length-2]==="**"){toggle("*");toggle("**")}
+      else{toggle("**");toggle("*")}
+    }else toggle(token);
+    last=re.lastIndex}
+  out+=s.slice(last);
+  /* Несбалансированная авторская разметка не должна ломать весь документ. */
+  while(stack.length){let p=tag(stack.pop());out+=`</${p[1]}>`}
+  return out}
 export function renderPlain(text){let clean=esc(text).replace(/\r\n/g,"\n").replace(/\r/g,"\n");return clean.split(/\n\s*\n/g).map((b,i)=>{b=b.trim();if(!b)return"";return`<p${i===0?" class='letter-header'":""}>${markup(b.replace(/\n/g,"<br>"))}</p>`}).join("")}
 /**
  * Какой текст письма использовать для задания.
@@ -77,8 +93,13 @@ export function pickTemplate(t){return pickTemplateInfo(t).body}
  */
 export function pickTemplateInfo(t){
   let s=S(),lang=docLang(),ctxType=CONGRESS_CONTEXT+":"+t.type,
-      byType=null,main=null;
+      explicit=null,byType=null,main=null;
   if(self.CWTemplates&&self.CWTemplates.stored){
+    /* Явная ссылка хранится в задании, а не копия body. Если шаблон удалён,
+       get()/text() вернут null и цепочка спокойно продолжится с type/common.
+       Сам id намеренно не стираем: это сохраняет выбор при восстановлении
+       шаблона из backup и не маскирует произошедшее silent migration. */
+    if(t.letterTemplateId)explicit=self.CWTemplates.text(t.letterTemplateId,lang);
     if(t.type)byType=self.CWTemplates.text(ctxType,lang);
     main=self.CWTemplates.text(CONGRESS_CONTEXT,lang);
   }
@@ -89,6 +110,7 @@ export function pickTemplateInfo(t){
      которого непустое всегда. Проверка «if(body)» пропускала системный текст
      вперёд настроек модуля и делала откат ниже недостижимым — см.
      docs/documents/02-templates-migration-audit.md. */
+  if(explicit&&explicit.body&&explicit.format==="text")return info(explicit,self.CWTemplates.get(t.letterTemplateId)?.context||t.letterTemplateId);
   if(byType&&byType.body&&byType.custom)return info(byType,ctxType);
   if(main&&main.body&&main.custom)return info(main,CONGRESS_CONTEXT);
   /* 2. Прежнее место хранения — путь отката фазы 2б. Работает, пока перенос

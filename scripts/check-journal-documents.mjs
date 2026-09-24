@@ -350,9 +350,10 @@ ok('имя шаблона в библиотеке', /'sys\.journal\.project\.let
 const pf = dapp.indexOf('  var DEEP_ID'), pt = dapp.indexOf('  function applyArchiveLink');
 const parseDeepLink = new Function(dapp.slice(pf, pt) + '; return parseDeepLink;')();
 ok('#template/<id>', JSON.stringify(parseDeepLink('#template/sys.journal.project.letter')) === JSON.stringify({ screen: 'library', templateId: 'sys.journal.project.letter' }));
+ok('#template/<legacy user id>', JSON.stringify(parseDeepLink('#template/usr.congress.assignment.invitation.Live%20Template%20Type')) === JSON.stringify({ screen: 'library', templateId: 'usr.congress.assignment.invitation.Live Template Type' }));
 ok('#archive', parseDeepLink('#archive').screen === 'archive' && !parseDeepLink('#archive').entityKey);
 ok('#archive/journal/project/<id>', parseDeepLink('#archive/journal/project/' + encodeURIComponent(pid)).entityKey === 'journal:project:' + pid);
-for (const bad of ['', '#', '#template/', '#template/a b', '#template/<img>', '#template/a/b', '#archive/Journal/project/x', '#archive/journal/project/', '#archive/journal/project/%E0%A4%A', '#archive/journal/project/a/b', '#editor/x', '#template/%3Cimg%3E']) {
+for (const bad of ['', '#', '#template/', '#template/<img>', '#template/a/b', '#archive/Journal/project/x', '#archive/journal/project/', '#archive/journal/project/%E0%A4%A', '#archive/journal/project/a/b', '#editor/x', '#template/%3Cimg%3E']) {
   ok('кривая ссылка → обычное открытие: ' + JSON.stringify(bad), parseDeepLink(bad) === null);
 }
 ok('шаблон открывается только существующий', /templates\(\)\.some\(function \(tpl\) \{ return tpl\.id === link\.templateId; \}\)/.test(dapp));

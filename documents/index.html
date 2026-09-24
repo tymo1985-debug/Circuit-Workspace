@@ -158,6 +158,7 @@
       </div>
       <span class="ed__spacer"></span>
       <button type="button" class="md-btn md-btn-outlined md-state-layer" id="resetBtn" data-i18n="doc.restore_original">Восстановить оригинал</button>
+      <button type="button" class="md-btn md-btn-outlined md-state-layer danger" id="deleteTemplateBtn" data-i18n="doc.delete_template" hidden>Удалить шаблон</button>
       <!-- Save-статус переехал сюда, рядом с самой кнопкой (решение
            02.09.2026, финальный UX-аудит, пункт B1): раньше единственный
            #saveStatus стоял в шапке хаба, далеко от места действия. Тот же
@@ -193,6 +194,11 @@
              Кнопка нужна в обоих режимах (текст/html), поэтому стоит ВНЕ
              .rte-toolbar, которая скрыта для текстовых шаблонов Конгрессов. -->
         <div class="ed__toolbar">
+          <div class="rte-toolbar" id="textToolbar" hidden>
+            <button type="button" class="md-btn md-btn-text md-state-layer" data-mark="**" title="Ctrl+B"><b>Ж</b></button>
+            <button type="button" class="md-btn md-btn-text md-state-layer" data-mark="*" title="Ctrl+I"><i>К</i></button>
+            <button type="button" class="md-btn md-btn-text md-state-layer" data-mark="__" title="Ctrl+U"><u>Ч</u></button>
+          </div>
           <div class="rte-toolbar" id="rteToolbar" hidden>
             <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="bold" title="Ctrl+B"><b>Ж</b></button>
             <button type="button" class="md-btn md-btn-text md-state-layer" data-cmd="italic" title="Ctrl+I"><i>К</i></button>

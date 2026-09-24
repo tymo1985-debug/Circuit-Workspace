@@ -162,10 +162,10 @@ body {
    МЕСТО на экране всегда определяет grid-area, а не позиция в разметке. */
 .ed__head {
   display: grid;
-  grid-template-columns: auto auto 1fr auto auto auto;
+  grid-template-columns: auto auto 1fr auto auto auto auto;
   grid-template-areas:
-    "back title badgeslot spacer reset save"
-    "lang lang  lang      lang   lang  lang";
+    "back title badgeslot spacer reset delete save"
+    "lang lang  lang      lang   lang  lang   lang";
   column-gap: 12px;
   row-gap: 4px;
   align-items: center;
@@ -183,6 +183,7 @@ body {
    в гриде не возникает вовсе: обе области физически в одной строке
    шаблона. */
 #resetBtn { grid-area: reset; align-self: center; }
+#deleteTemplateBtn { grid-area: delete; align-self: center; }
 /* Save-статус под кнопкой (решение 02.09.2026, финальный UX-аудит B1):
    column-обёртка вместо простого соседства в строке — иначе строка
    .ed__head визуально расползалась бы шире на длину текста статуса.
@@ -205,6 +206,7 @@ body {
       "title  title"
       "badgeslot lang"
       "reset  reset"
+      "delete delete"
       "save   save";
     row-gap: 8px;
   }
@@ -213,6 +215,7 @@ body {
   .ed__head #edLangMenu { justify-self: end; margin-top: 0; }
   .ed__head .ed__spacer { display: none; }
   .ed__head #resetBtn { align-self: stretch; width: 100%; }
+  .ed__head #deleteTemplateBtn { align-self: stretch; width: 100%; }
   .ed__head .ed__save-group {
     align-self: stretch;
     align-items: stretch;
@@ -296,7 +299,7 @@ body {
    нечего — своя защита пропала вместе с удалением `#insertVarBtn[hidden]`
    при cleanup дублирующей кнопки: то правило страховало только тот один
    id, не весь класс. Подтверждено реальным WebKit-рендерером. */
-#resetBtn[hidden] { display: none; }
+#resetBtn[hidden], #deleteTemplateBtn[hidden] { display: none; }
 
 .rte-toolbar { display: flex; gap: 4px; }
 /* Защита ЛОКАЛЬНО для Documents (решение 02.09.2026, тот же паттерн, что уже

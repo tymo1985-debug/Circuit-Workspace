@@ -32,6 +32,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 const CHECKS = [
   {
+    file: 'check-template-integration.mjs',
+    title: 'Интеграция шаблонов Congress ↔ Documents',
+    why: 'явный выбор, fallback после удаления и вложенная text-разметка не должны регрессировать',
+    deps: [],
+  },
+  {
     file: 'check-versions.mjs',
     title: 'Согласованность версий',
     why: 'версия внутри модуля, CW_MODULES и CW_VERSION должны совпадать',
