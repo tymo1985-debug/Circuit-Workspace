@@ -46,8 +46,9 @@
   }
 
   /* ═══ Сигнал изменений записей (J9c) ═══════════════════════════════════
-   * Без опроса: после каждой ЗАФИКСИРОВАННОЙ записи в journalEntries (прямой
-   * CRUD или пакет CWDB.batch с этим хранилищем) — уведомление подписчиков
+   * Без опроса: после каждой ЗАФИКСИРОВАННОЙ записи в journalEntries или (с O2)
+   * journalNodes (прямой CRUD или пакет CWDB.batch с этим хранилищем) —
+   * уведомление подписчиков
    * этой вкладки и сообщение в BroadcastChannel `cw-journal` для соседних.
    * Сообщение ничего не хранит и ничего не несёт, кроме непрозрачной метки:
    * ни id, ни текста, ни счётчиков. Постоянного следа нет вовсе — ни в
@@ -55,6 +56,11 @@
    * служебных данных Журнала там нет). Обёртка прозрачна: читает текущий
    * CWDB при каждом вызове, поэтому подмены методов в проверках видны. */
   var CHANNEL_NAME = 'cw-journal';
+  /* O2: узлы (районы/собрания/группы) тоже сигналят — тем же каналом, тем
+     же подписчикам: Обзор считает районы. Сообщение по-прежнему только
+     непрозрачная метка вида: 'entries' | 'nodes'. */
+  var CHANGE_KINDS = ['entries', 'nodes'];
+  var changeKinds = {};
   var changeListeners = [];
   var changeQueued = false;
   var channel = null;
@@ -62,7 +68,7 @@
     if (channel || typeof global.BroadcastChannel !== 'function') return channel;
     try {
       channel = new global.BroadcastChannel(CHANNEL_NAME);
-      channel.onmessage = function (e) { if (e && e.data && e.data.kind === 'entries') notifyChange(); };
+      channel.onmessage = function (e) { if (e && e.data && CHANGE_KINDS.indexOf(e.data.kind) !== -1) notifyChange(); };
     } catch (e) { channel = null; }
     return channel;
   }
@@ -79,31 +85,42 @@
   function notifyChange() {
     changeListeners.slice().forEach(function (fn) { try { fn(); } catch (err) { console.error('CWJournal: подписчик изменений упал', err); } });
   }
-  function signalChange() {
+  function signalChange(kind) {
+    changeKinds[kind === 'nodes' ? 'nodes' : 'entries'] = true;
     if (changeQueued) return;
     changeQueued = true;
     Promise.resolve().then(function () {
       changeQueued = false;
+      var kinds = CHANGE_KINDS.filter(function (k) { return changeKinds[k]; });
+      changeKinds = {};
       var ch = journalChannel();
-      if (ch) { try { ch.postMessage({ kind: 'entries', rev: Date.now().toString(36) }); } catch (e) { /* закрыт */ } }
+      var rev = Date.now().toString(36);
+      if (ch) kinds.forEach(function (k) { try { ch.postMessage({ kind: k, rev: rev }); } catch (e) { /* закрыт */ } });
       notifyChange();
     });
   }
   var ENTRY_WRITES = ['add', 'update', 'put', 'mutate', 'remove', 'clear'];
   var wrapped = { src: null, db: null };
-  function signalingDb(C) {
-    if (wrapped.src === C) return wrapped.db;
-    var entriesW = Object.create(C.journalEntries);
+  function signalingStore(C, name, kind) {
+    var w = Object.create(C[name]);
     ENTRY_WRITES.forEach(function (m) {
-      entriesW[m] = function () {
-        return C.journalEntries[m].apply(C.journalEntries, arguments).then(function (r) { signalChange(); return r; });
+      w[m] = function () {
+        return C[name][m].apply(C[name], arguments).then(function (r) { signalChange(kind); return r; });
       };
     });
+    return w;
+  }
+  function signalingDb(C) {
+    if (wrapped.src === C) return wrapped.db;
+    var entriesW = signalingStore(C, 'journalEntries', 'entries');
+    var nodesW = signalingStore(C, 'journalNodes', 'nodes');
     var out = Object.create(C);
     Object.defineProperty(out, 'journalEntries', { get: function () { return entriesW; } });
+    Object.defineProperty(out, 'journalNodes', { get: function () { return nodesW; } });
     out.batch = function (ops) {
       return C.batch(ops).then(function (r) {
-        if (Array.isArray(ops) && ops.some(function (o) { return o && o.store === 'journalEntries'; })) signalChange();
+        if (Array.isArray(ops) && ops.some(function (o) { return o && o.store === 'journalEntries'; })) signalChange('entries');
+        if (Array.isArray(ops) && ops.some(function (o) { return o && o.store === 'journalNodes'; })) signalChange('nodes');
         return r;
       });
     };
@@ -2257,7 +2274,7 @@
    *               контекста; порядок — посещение-источник (visitBefore),
    *               затем fields.seq, id — как у carry.incoming;
    *  - projects — active-проекты существующих неархивных районов (семантика
-   *               renderOverviewProjects), порядок projects.sort;
+   *               блока «Проекты района» Обзора), порядок projects.sort;
    *  - visits   — посещения вне архивного контекста (open и completed),
    *               новые сверху (порядок visits.byNode). Элемент —
    *               { visit, nodeId, nodeKind, circuitId, congregationId }:
@@ -2355,7 +2372,7 @@
       return r && r.type === 'todo' ? (await taskViews([r]))[0] : null;
     },
     isTaskId: function (id) { return typeof id === 'string' && TASK_ID.test(id); },
-    /** Изменения записей: в этой вкладке и в соседних (BroadcastChannel). */
+    /** Изменения записей и узлов: в этой вкладке и в соседних (BroadcastChannel). */
     onChange: function (fn) {
       if (typeof fn !== 'function') return function () {};
       journalChannel();

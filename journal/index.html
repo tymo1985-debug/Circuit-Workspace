@@ -90,90 +90,35 @@
     </nav>
 
     <div>
-      <!-- ═══ ОБЗОР — статическая фикстура (J1) ═══════════════════════════ -->
+      <!-- ═══ ОБЗОР — живая сводка (O2) ═══════════════════════════════════ -->
       <section class="md-page md-page--narrow" data-route="overview" id="route-overview">
+        <!-- Обзор (O2) — живая сводка: всё содержимое строит
+             js/app/overview.js из CWJournal.overview.read() и
+             CWPlanner.listCommunities(). В разметке — только контейнеры. -->
         <div class="md-page__header">
           <div>
             <h1 class="md-page__title" data-i18n="j.nav.overview">Обзор</h1>
-            <p class="md-page__lede">Район EU-K-03 · 14 собраний · 3 группы · 1 предгруппа</p>
+            <div class="j-ovstats" id="overviewStats"></div>
           </div>
         </div>
 
-        <div class="j-sec">
+        <div class="j-sec" id="overviewCarrySec">
           <div class="j-sec__head">
             <span class="j-sec__title" data-i18n="j.section.upcoming">К следующим посещениям</span>
-            <span class="j-sec__count">3</span>
-            <button type="button" class="j-sec__more" data-i18n="j.link.all">Все</button>
+            <span class="j-sec__count" id="overviewCarryCount"></span>
           </div>
-          <div class="j-row">
-            <div class="j-row__ico j-row__ico--accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Уточнить, как идёт изучение с семьёй, о которой говорили весной</p>
-              <p class="j-row__meta">Северное<span class="j-dot">·</span>поднято весна 2027</p>
-            </div>
-            <div class="j-row__end">
-              <span class="j-carrybadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>2</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico j-row__ico--accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Вернуться к вопросу о расписании группы Озёрная</p>
-              <p class="j-row__meta">Приозёрное<span class="j-dot">·</span>поднято осень 2027</p>
-            </div>
-            <div class="j-row__end">
-              <span class="j-carrybadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>1</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico j-row__ico--accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Проверить, назначен ли новый координатор группы</p>
-              <p class="j-row__meta">Западное<span class="j-dot">·</span>поднято весна 2028</p>
-            </div>
-            <div class="j-row__end">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-          </div>
+          <div id="overviewCarry"></div>
         </div>
 
-        <div class="j-sec">
+        <div class="j-sec" id="overviewTasksSec">
           <div class="j-sec__head">
             <span class="j-sec__title" data-i18n="j.section.tasks_open">Открытые задачи</span>
-            <span class="j-sec__count">5</span>
-            <button type="button" class="j-sec__more" data-i18n="j.link.all">Все</button>
+            <span class="j-sec__count" id="overviewTasksCount"></span>
+            <a class="j-sec__more" href="#tasks" data-i18n="j.link.all">Все</a>
           </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Написать письмо о переносе встречи</p>
-              <p class="j-row__meta"><span class="md-status md-status-important">до 28.03</span><span class="j-dot">·</span>Проект: Специальное собрание</p>
-            </div>
-            <div class="j-row__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Подготовить материалы для встречи со старейшинами</p>
-              <p class="j-row__meta"><span class="md-status md-status-normal">до 05.04</span><span class="j-dot">·</span>Северное</p>
-            </div>
-            <div class="j-row__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Уточнить адрес зала у секретаря</p>
-              <p class="j-row__meta"><span class="md-status md-status-normal">без срока</span><span class="j-dot">·</span>Приозёрное</p>
-            </div>
-            <div class="j-row__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
-          </div>
+          <div id="overviewTasks"></div>
         </div>
 
-        <!-- «Проекты района» — реальные данные (J7): активные проекты всех
-             районов через CWJournal.projects. Остальные блоки Обзора — по-прежнему
-             визуальная фикстура J1 (journal/AGENTS.md). -->
         <div class="j-sec" id="overviewProjectsSec">
           <div class="j-sec__head">
             <span class="j-sec__title" data-i18n="j.section.projects">Проекты района</span>
@@ -182,49 +127,12 @@
           <div id="overviewProjects"></div>
         </div>
 
-        <div class="j-sec">
+        <div class="j-sec" id="overviewVisitsSec">
           <div class="j-sec__head">
             <span class="j-sec__title" data-i18n="j.section.recent_visits">Последние посещения</span>
-            <button type="button" class="j-sec__more" data-i18n="j.link.history">История</button>
+            <span class="j-sec__count" id="overviewVisitsCount"></span>
           </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Западное — весна 2028</p>
-              <p class="j-row__meta">12–17 марта<span class="j-dot">·</span>6 записей<span class="j-dot">·</span>2 задачи</p>
-            </div>
-            <div class="j-row__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Северное — осень 2027</p>
-              <p class="j-row__meta">8–13 ноября<span class="j-dot">·</span>11 записей<span class="j-dot">·</span>завершено</p>
-            </div>
-            <div class="j-row__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
-          </div>
-        </div>
-
-        <div class="j-sec">
-          <div class="j-sec__head">
-            <span class="j-sec__title" data-i18n="j.section.recent_edits">Недавно изменённые</span>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title">Заметка: мысли по организации собрания служителей</p>
-              <p class="j-row__meta">сегодня, 09:14</p>
-            </div>
-            <div class="j-row__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div>
-          </div>
-          <div class="j-row">
-            <div class="j-row__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
-            <div class="j-row__body">
-              <p class="j-row__title"><span class="u-muted" data-i18n="j.locked.title">Защищённая запись</span></p>
-              <p class="j-row__meta">вчера, 21:40<span class="j-dot">·</span><span data-i18n="j.locked.hint">содержимое скрыто</span></p>
-            </div>
-            <div class="j-row__end"><span class="j-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span></div>
-          </div>
+          <div id="overviewVisits"></div>
         </div>
       </section>
 
@@ -1023,12 +931,12 @@
   </nav>
 </div>
 
-<!-- FAB — один элемент, подпись и видимость меняются по текущему маршруту
-     (js/app.js): «Новая запись» на Обзоре, «Собрание» на Районах, скрыт на
-     остальных трёх (Задачи/Поиск/Архив в J1 — только заглушки). -->
-<button type="button" class="md-fab md-fab-extended" id="fab">
+<!-- FAB — один элемент, подпись, действие и видимость задаёт текущий
+     маршрут (js/app.js, fabSpecFor). На Обзоре скрыт: создание требует
+     контекста района/собрания/посещения. -->
+<button type="button" class="md-fab md-fab-extended" id="fab" hidden>
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-  <span id="fabLabel" data-i18n="j.fab.new_entry">Новая запись</span>
+  <span id="fabLabel"></span>
 </button>
 
 <script src="../shared/update.js"></script>
@@ -1060,6 +968,7 @@
 <script src="js/app/documents.js"></script>
 <script src="js/app/search-archive.js"></script>
 <script src="js/app/protection.js"></script>
+<script src="js/app/overview.js"></script>
 <script src="js/app.js"></script>
 <script src="../shared/backup.js"></script>
 <script src="../shared/nav.js" defer></script>

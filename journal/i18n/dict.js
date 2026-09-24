@@ -10,10 +10,9 @@
  * Назначениях: готовый документ остаётся на своём языке, оболочка вокруг
  * него — на языке интерфейса.
  *
- * В J1 это разделение видно на статических фикстурах: «EU-K-03», «Северное»,
- * «Уточнить, как идёт изучение…» — данные фикстуры, их не переводим;
- * «К следующим посещениям», «Открытые задачи», «Обзор» — оболочка,
- * переводится на все пять языков.
+ * Например: название района или собрания, текст заметки или вопроса —
+ * данные, их не переводим; «К следующим посещениям», «Открытые задачи»,
+ * «Обзор» — оболочка, переводится на все пять языков.
  *
  * Название и описание модуля — в shared/i18n/common.js
  * (module.journal.title/desc), как у всех модулей.
@@ -39,13 +38,16 @@
       'j.section.tasks_open': 'Открытые задачи',
       'j.section.projects': 'Проекты района',
       'j.section.recent_visits': 'Последние посещения',
-      'j.section.recent_edits': 'Недавно изменённые',
 
       'j.link.all': 'Все',
-      'j.link.history': 'История',
       'j.link.open': 'Открыть',
-
-      'j.fab.new_entry': 'Новая запись',
+      'j.overview.stat.congregations': 'Собрания',
+      'j.overview.stat.groups': 'Группы',
+      'j.overview.stat.pregroups': 'Предгруппы',
+      'j.overview.empty_carry': 'Открытых пунктов на следующие посещения нет.',
+      'j.overview.empty_tasks': 'Открытых задач нет.',
+      'j.overview.empty_visits': 'Посещений пока нет.',
+      'j.overview.unavailable': 'Данные Журнала не прочитаны. Обновите страницу.',
       'j.fab.new_congregation': 'Собрание',
 
       'j.locked.title': 'Защищённая запись',
@@ -497,13 +499,16 @@
       'j.section.tasks_open': 'Відкриті завдання',
       'j.section.projects': 'Проєкти округу',
       'j.section.recent_visits': 'Останні відвідування',
-      'j.section.recent_edits': 'Нещодавно змінені',
 
       'j.link.all': 'Усі',
-      'j.link.history': 'Історія',
       'j.link.open': 'Відкрити',
-
-      'j.fab.new_entry': 'Новий запис',
+      'j.overview.stat.congregations': 'Збори',
+      'j.overview.stat.groups': 'Групи',
+      'j.overview.stat.pregroups': 'Передгрупи',
+      'j.overview.empty_carry': 'Відкритих пунктів на наступні відвідування немає.',
+      'j.overview.empty_tasks': 'Відкритих завдань немає.',
+      'j.overview.empty_visits': 'Відвідувань поки немає.',
+      'j.overview.unavailable': 'Дані Журналу не прочитано. Оновіть сторінку.',
       'j.fab.new_congregation': 'Збір',
 
       'j.locked.title': 'Захищений запис',
@@ -955,13 +960,16 @@
       'j.section.tasks_open': 'Open tasks',
       'j.section.projects': 'Circuit projects',
       'j.section.recent_visits': 'Recent visits',
-      'j.section.recent_edits': 'Recently edited',
 
       'j.link.all': 'All',
-      'j.link.history': 'History',
       'j.link.open': 'Open',
-
-      'j.fab.new_entry': 'New entry',
+      'j.overview.stat.congregations': 'Congregations',
+      'j.overview.stat.groups': 'Groups',
+      'j.overview.stat.pregroups': 'Pregroups',
+      'j.overview.empty_carry': 'No open items for the next visits.',
+      'j.overview.empty_tasks': 'No open tasks.',
+      'j.overview.empty_visits': 'No visits yet.',
+      'j.overview.unavailable': 'Journal data could not be read. Reload the page.',
       'j.fab.new_congregation': 'Congregation',
 
       'j.locked.title': 'Protected entry',
@@ -1413,13 +1421,16 @@
       'j.section.tasks_open': 'Otwarte zadania',
       'j.section.projects': 'Projekty obwodu',
       'j.section.recent_visits': 'Ostatnie odwiedziny',
-      'j.section.recent_edits': 'Ostatnio zmienione',
 
       'j.link.all': 'Wszystkie',
-      'j.link.history': 'Historia',
       'j.link.open': 'Otwórz',
-
-      'j.fab.new_entry': 'Nowy wpis',
+      'j.overview.stat.congregations': 'Zbory',
+      'j.overview.stat.groups': 'Grupy',
+      'j.overview.stat.pregroups': 'Pregrupy',
+      'j.overview.empty_carry': 'Brak otwartych punktów na kolejne odwiedziny.',
+      'j.overview.empty_tasks': 'Brak otwartych zadań.',
+      'j.overview.empty_visits': 'Brak odwiedzin.',
+      'j.overview.unavailable': 'Nie udało się odczytać danych Dziennika. Odśwież stronę.',
       'j.fab.new_congregation': 'Zbór',
 
       'j.locked.title': 'Wpis chroniony',
@@ -1871,13 +1882,16 @@
       'j.section.tasks_open': 'Offene Aufgaben',
       'j.section.projects': 'Kreisprojekte',
       'j.section.recent_visits': 'Letzte Besuche',
-      'j.section.recent_edits': 'Zuletzt geändert',
 
       'j.link.all': 'Alle',
-      'j.link.history': 'Verlauf',
       'j.link.open': 'Öffnen',
-
-      'j.fab.new_entry': 'Neuer Eintrag',
+      'j.overview.stat.congregations': 'Versammlungen',
+      'j.overview.stat.groups': 'Gruppen',
+      'j.overview.stat.pregroups': 'Vorgruppen',
+      'j.overview.empty_carry': 'Keine offenen Punkte für die nächsten Besuche.',
+      'j.overview.empty_tasks': 'Keine offenen Aufgaben.',
+      'j.overview.empty_visits': 'Noch keine Besuche.',
+      'j.overview.unavailable': 'Journaldaten konnten nicht gelesen werden. Seite neu laden.',
       'j.fab.new_congregation': 'Versammlung',
 
       'j.locked.title': 'Geschützter Eintrag',

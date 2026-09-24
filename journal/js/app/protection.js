@@ -22,7 +22,7 @@
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
   function renderArchive() { return A.renderArchive.apply(this, arguments); }
-  function renderOverviewProjects() { return A.renderOverviewProjects.apply(this, arguments); }
+  function renderOverview() { return A.renderOverview.apply(this, arguments); }
   function renderSearch() { return A.renderSearch.apply(this, arguments); }
   function renderTasks() { return A.renderTasks.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
@@ -203,7 +203,7 @@
     else if (st.route === 'tasks') renderTasks();
     else if (st.route === 'search') renderSearch();
     else if (st.route === 'archive') renderArchive();
-    else if (st.route === 'overview') renderOverviewProjects();
+    else if (st.route === 'overview') renderOverview();
   }
 
   /* Блокировка (кнопка, pagehide, смена сейфа): расшифрованное уходит с

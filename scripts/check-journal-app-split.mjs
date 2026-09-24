@@ -34,7 +34,7 @@ const ok = (label, cond, extra) => {
 };
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-const SCREENS = ['core', 'districts', 'visits', 'tasks', 'projects', 'documents', 'search-archive', 'protection'];
+const SCREENS = ['core', 'districts', 'visits', 'tasks', 'projects', 'documents', 'search-archive', 'protection', 'overview'];
 const FILES = SCREENS.map((n) => 'journal/js/app/' + n + '.js').concat(['journal/js/app.js']);
 const LIMIT = 150 * 1024; // порог JS_WARN check-context-budget.mjs (символы)
 const STUB = /^function ([\w$]+)\(\) \{ return A\.([\w$]+)\.apply\(this, arguments\); \}$/;
@@ -103,11 +103,12 @@ ok('импорт по значению — только констант, заг
 ok('состояние экрана — в файле экрана', ['editor', 'carryView'].every((n) => mutable[n] === 'journal/js/app/visits.js')
   && mutable.taskTab === 'journal/js/app/tasks.js' && mutable.projectUi === 'journal/js/app/projects.js'
   && mutable.searchUi === 'journal/js/app/search-archive.js' && mutable.archiveTab === 'journal/js/app/search-archive.js'
-  && mutable.directoryReady === 'journal/js/app/core.js');
+  && mutable.directoryReady === 'journal/js/app/core.js'
+  && mutable.overviewUi === 'journal/js/app/overview.js' && mutable.overviewRenderSeq === 'journal/js/app/overview.js');
 ok('экраны на своих местах', declared.renderDistrictDetail?.[0] === 'journal/js/app/districts.js' && declared.renderVisitDetail?.[0] === 'journal/js/app/visits.js'
   && declared.renderTasks?.[0] === 'journal/js/app/tasks.js' && declared.renderProjectDetail?.[0] === 'journal/js/app/projects.js'
   && declared.renderSearch?.[0] === 'journal/js/app/search-archive.js' && declared.renderArchive?.[0] === 'journal/js/app/search-archive.js'
-  && declared.applyRoute?.[0] === 'journal/js/app.js');
+  && declared.renderOverview?.[0] === 'journal/js/app/overview.js' && declared.applyRoute?.[0] === 'journal/js/app.js');
 const appOwn = Object.keys(declared).filter((n) => declared[n][0] === 'journal/js/app.js');
 ok('в app.js только оркестровка', appOwn.every((n) => ['fabSpecFor', 'applyRoute', 'initVersion', 'initLanguage'].includes(n)), appOwn.join(' '));
 ok('CWJournalApp создаётся один раз — в core.js', FILES.filter((f) => /self\.CWJournalApp\s*=/.test(strip(read(f)))).join() === 'journal/js/app/core.js');

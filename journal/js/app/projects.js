@@ -92,8 +92,8 @@
   }
   function projectLinkCount(rel) { return rel.nodes.length + rel.tasks.length + rel.items.length + rel.external.length; }
 
-  /** Строка проекта для списков (район/Обзор/собрание) — та же геометрия,
-   *  что у фикстуры J1 «Проекты района». */
+  /** Строка проекта для списков (район/Обзор/собрание) — общая геометрия
+   *  для всех трёх мест показа. */
   function projectRow(p, rel, extraMeta) {
     var row = el('div', 'j-row j-row--link j-prow');
     row.setAttribute('role', 'link');
@@ -133,13 +133,18 @@
     row.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
     return row;
   }
-  async function renderProjectRows(box, list, metaFor) {
+  /** Строки проектов во фрагмент — без вставки в DOM (O2: Обзор вставляет
+   *  сам, после проверки актуальности своей отрисовки). */
+  async function buildProjectRows(list, metaFor) {
     var frag = document.createDocumentFragment();
     for (var i = 0; i < list.length; i++) {
       var rel = await CWJournal.projects.related(list[i].id);
       frag.appendChild(projectRow(list[i], rel, metaFor ? metaFor(list[i]) : null));
     }
-    box.replaceChildren(frag);
+    return frag;
+  }
+  async function renderProjectRows(box, list, metaFor) {
+    box.replaceChildren(await buildProjectRows(list, metaFor));
   }
 
   /* Экран района: секция «Проекты района». */
@@ -156,19 +161,19 @@
     await renderProjectRows(box, list);
   }
 
-  /* Обзор: реальный блок «Проекты района» — активные проекты всех районов
-   * вне архивного контекста. Остальные блоки Обзора остаются фикстурой J1. */
-  async function renderOverviewProjects() {
-    var all = await CWJournal.projects.list();
+  /* Обзор (O2): блок «Проекты района» из снимка CWJournal.overview.read() —
+   * active-проекты неархивных районов (отбор и порядок держит data.js).
+   * Возвращает { count, content } и в DOM ничего не пишет: вставляет
+   * renderOverview после проверки поколения. Подпись района — только если
+   * активных районов больше одного. */
+  async function buildOverviewProjects(data) {
+    var list = data.projects;
+    if (!list.length) return { count: 0, content: el('p', 'j-sec__hint', t('j.project.empty_overview')) };
     var circuits = {};
-    (await CWJournal.nodes.byKind('circuit')).forEach(function (c) { circuits[c.id] = c; });
-    var list = all.filter(function (p) { return p.status === 'active' && circuits[p.circuitId] && circuits[p.circuitId].status !== 'archived'; });
-    if (parseHash().route !== 'overview') return;
-    $('#overviewProjectsCount').textContent = String(list.length);
-    var box = $('#overviewProjects');
-    if (!list.length) { box.replaceChildren(el('p', 'j-sec__hint', t('j.project.empty_overview'))); return; }
-    var many = Object.keys(circuits).length > 1;
-    await renderProjectRows(box, list, many ? function (p) { return circuits[p.circuitId].label; } : null);
+    data.circuits.forEach(function (c) { circuits[c.id] = c; });
+    var many = data.circuits.length > 1;
+    var frag = await buildProjectRows(list, many ? function (p) { return circuits[p.circuitId] ? circuits[p.circuitId].label : ''; } : null);
+    return { count: list.length, content: frag };
   }
 
   /* Собрание: «Связанные проекты района» — входящие связи проект → узел. */
@@ -858,7 +863,7 @@
   A.openRecordProjectPicker = openRecordProjectPicker;
   A.renderCongregationProjects = renderCongregationProjects;
   A.renderDistrictProjects = renderDistrictProjects;
-  A.renderOverviewProjects = renderOverviewProjects;
+  A.buildOverviewProjects = buildOverviewProjects;
   A.renderProjectDetail = renderProjectDetail;
   A.wireProjectChrome = wireProjectChrome;
 })();

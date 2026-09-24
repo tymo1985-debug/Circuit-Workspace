@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.59',
+  version: '0.41.60',
   changes: [
-    { module: 'hub', version: '0.41.59', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
-    { module: 'congress-project', version: '4.46.81', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
-    { module: 'pioneer-school', version: '1.14.57', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
-    { module: 'appointments', version: '5.5.96', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
-    { module: 'documents', version: '1.11.6', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
-    { module: 'journal', version: '0.14.0', note: 'Данные для живого Обзора: объекты Клиндария и сводка Журнала (только чтение)' },
+    { module: 'hub', version: '0.41.60', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
+    { module: 'congress-project', version: '4.46.82', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
+    { module: 'pioneer-school', version: '1.14.58', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
+    { module: 'appointments', version: '5.5.97', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
+    { module: 'documents', version: '1.11.7', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
+    { module: 'journal', version: '0.15.0', note: 'Живой Обзор: реальная сводка, задачи, перенос, проекты и посещения вместо макета' },
   ],
 };

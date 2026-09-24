@@ -5,8 +5,7 @@
  *
  * Журнал — оболочка модуля + дерево района (J3a).
  *
- * Обзор остаётся статической фикстурой J1 (см. index.html) — реальных
- * данных там ещё нет. «Районы» теперь реальный экран: список районов и
+ * Обзор (O2) — живая сводка, js/app/overview.js (renderOverview). «Районы» — реальный экран: список районов и
  * детальный экран одного района читаются и пишутся через CWJournal
  * (journal/js/data.js), без единой прямой транзакции IndexedDB отсюда.
  *
@@ -36,7 +35,7 @@
   function renderCircuitsList() { return A.renderCircuitsList.apply(this, arguments); }
   function renderCongregationDetail() { return A.renderCongregationDetail.apply(this, arguments); }
   function renderDistrictDetail() { return A.renderDistrictDetail.apply(this, arguments); }
-  function renderOverviewProjects() { return A.renderOverviewProjects.apply(this, arguments); }
+  function renderOverview() { return A.renderOverview.apply(this, arguments); }
   function renderProjectDetail() { return A.renderProjectDetail.apply(this, arguments); }
   function renderSearch() { return A.renderSearch.apply(this, arguments); }
   function renderTasks() { return A.renderTasks.apply(this, arguments); }
@@ -51,12 +50,13 @@
   function wireSearchChrome() { return A.wireSearchChrome.apply(this, arguments); }
   function wireVisitEditorChrome() { return A.wireVisitEditorChrome.apply(this, arguments); }
   function wireProtectionChrome() { return A.wireProtectionChrome.apply(this, arguments); }
+  function wireOverviewChrome() { return A.wireOverviewChrome.apply(this, arguments); }
 
 
 
   /* ═══ FAB: один элемент, подпись/действие меняются по месту ═══════════ */
   function fabSpecFor(state) {
-    if (state.route === 'overview') return { labelKey: 'j.fab.new_entry', action: null };
+    if (state.route === 'overview') return null; // O2: создание требует контекста — глобального нет
     if (state.route === 'tasks') return { labelKey: 'j.fab.new_task', action: 'new-task' };
     if (state.route === 'districts' && state.visitId) return null; // экран посещения — без FAB (эталон 04)
     if (state.route === 'districts' && state.projectId) return null; // экран проекта — без FAB (эталон 06)
@@ -107,7 +107,7 @@
     } else {
       resetMoreMenu();
       $('#topbarContext').textContent = '';
-      if (state.route === 'overview') renderOverviewProjects();
+      if (state.route === 'overview') renderOverview();
       else if (state.route === 'tasks') {
         // J9c: #tasks/<id> — фокус на задаче; кривой хвост — просто «Задачи».
         if (state.normalized) { location.replace(CWJournalRoute.build.task(null)); return; }
@@ -155,6 +155,7 @@
     wireVisitEditorChrome();
     wireProjectChrome();
     wireProtectionChrome();
+    wireOverviewChrome();
     applyRoute();
 
     wireSearchChrome();
@@ -190,7 +191,7 @@
         var state = parseHash();
         if (state.route === 'search') renderSearch();
         else if (state.route === 'archive') renderArchive();
-        else if (state.route === 'overview') renderOverviewProjects();
+        else if (state.route === 'overview') renderOverview();
         else if (state.route === 'districts' && state.projectId) renderProjectDetail(state.circuitId, state.projectId);
         else if (state.route === 'districts' && state.congregationId) {
           renderCongregationDetail(state.circuitId, state.congregationId);
@@ -208,7 +209,7 @@
         var state = parseHash();
         if (state.route === 'search') { renderSearch(); return; }
         if (state.route === 'archive') { renderArchive(); return; }
-        if (state.route === 'overview') { renderOverviewProjects(); return; }
+        if (state.route === 'overview') { renderOverview(); return; }
         if (state.route !== 'districts') return;
         if (state.projectId) { renderProjectDetail(state.circuitId, state.projectId); return; }
         if (state.congregationId) renderCongregationDetail(state.circuitId, state.congregationId);

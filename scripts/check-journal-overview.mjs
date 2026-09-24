@@ -2,6 +2,13 @@
 /**
  * Circuit Workspace — scripts/check-journal-overview.mjs
  *
+ * O2 (разделы 5–7): живой экран Обзора в jsdom — сводка из Журнала и
+ * CWPlanner.listCommunities() (idle/invalid/unavailable ≠ 0), превью ≤ 3 с
+ * полными счётчиками и существующими маршрутами, фикстура J1 удалена, FAB
+ * Обзора скрыт, свежесть без опроса (записи, узлы, Клиндарий, блокировка),
+ * гонки поколений (уход с маршрута, блокировка поверх раскрытой отрисовки),
+ * сигнал изменений узлов тем же каналом cw-journal.
+ *
  * Фаза O1 (данные живого Обзора), только чтение:
  *  - CWPlanner.listCommunities() — полный уникальный список объектов
  *    Клиндария из events[] канона: визиты без назначенных записей есть,
@@ -305,6 +312,270 @@ const jsFiles = [];
 const rawPlanner = jsFiles.filter((f) => /CWDB\.state|\.state\.get\(|service-year-planner|['"]circuit-planner['"]\s*\)/.test(strip(read(f))));
 ok('[31] код Журнала не читает блоб Клиндария', rawPlanner.length === 0, rawPlanner.join());
 
+/* ═══ 5. O2: живой Обзор (jsdom, отдельное окно и отдельная база) ═══════ */
+console.log('\n5. O2: экран Обзора');
+{
+  const { JSDOM } = await import('jsdom');
+  const { IDBFactory, IDBKeyRange } = await import('fake-indexeddb');
+  const html = read('journal/index.html');
+  const dom = new JSDOM(html.replace(/<script[\s\S]*?<\/script>/g, ''), { url: 'http://localhost/journal/index.html#overview', pretendToBeVisual: true, runScripts: 'outside-only' });
+  const W = dom.window;
+  W.indexedDB = new IDBFactory();
+  W.IDBKeyRange = IDBKeyRange;
+  Object.defineProperty(W, 'crypto', { value: globalThis.crypto, configurable: true });
+  W.structuredClone = globalThis.structuredClone;
+  W.BroadcastChannel = undefined;
+  let wIntervals = 0;
+  const realWSetInterval = W.setInterval;
+  W.setInterval = (...a) => { wIntervals++; return realWSetInterval(...a); };
+  W.alert = () => {}; W.confirm = () => true;
+  if (!W.HTMLDialogElement.prototype.showModal) { W.HTMLDialogElement.prototype.showModal = function () { this.open = true; }; W.HTMLDialogElement.prototype.close = function () { this.open = false; }; }
+  const errors = [];
+  W.console.error = (...a) => { errors.push(a.map(String).join(' ')); };
+  const srcs = [...html.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<script src="([^"]+)"/g)].map((m) => m[1])
+    .filter((src) => !/theme\.js|update\.js|nav\.js/.test(src));
+  const evalSrc = (src) => W.eval(read(src.startsWith('../') ? src.slice(3) : 'journal/' + src) + '\n//# sourceURL=' + src);
+  // Слой данных — сразу; экраны — после сида и после собственного
+  // DOMContentLoaded jsdom, чтобы запуск приложения был ровно один (ниже).
+  const split = srcs.indexOf('js/app/core.js');
+  srcs.slice(0, split).forEach(evalSrc);
+  const doc = W.document;
+  const $ = (sel) => doc.querySelector(sel);
+  const wait = (ms = 60) => new Promise((r) => setTimeout(r, ms));
+  const settle = async () => { for (let i = 0; i < 6; i++) await wait(30); };
+  const WJ = W.CWJournal, R = W.CWJournalRoute;
+  await W.CWDB.init();
+
+  // Сид: два района (один архивный), собрание, группа, посещения, задачи, перенос, проекты.
+  const TXT = 'ЗАЩИЩЁННЫЙ-ТЕКСТ-O2';
+  const cA = await WJ.nodes.add({ kind: 'circuit', parentId: WJ.ROOT_PARENT, label: 'Район Живой' });
+  const cB = await WJ.nodes.add({ kind: 'circuit', parentId: WJ.ROOT_PARENT, label: 'Район Второй' });
+  const cX = await WJ.nodes.add({ kind: 'circuit', parentId: WJ.ROOT_PARENT, label: 'Район Архивный' });
+  const cg = await WJ.nodes.add({ kind: 'congregation', parentId: cA, label: 'Собрание Липовое' });
+  const gp = await WJ.nodes.add({ kind: 'group', parentId: cg, label: 'Группа Ручей' });
+  const v1 = await WJ.visits.add({ nodeId: cg, dateFrom: '2027-10-04', dateTo: '2027-10-09' });
+  const v2 = await WJ.visits.add({ nodeId: cg, dateFrom: '2028-03-13', dateTo: '2028-03-18' });
+  const v3 = await WJ.visits.add({ nodeId: gp, dateFrom: '2028-04-10', dateTo: '2028-04-11' });
+  const v4 = await WJ.visits.add({ nodeId: cg, dateFrom: '2026-05-01', dateTo: '2026-05-02' });
+  const taskIds = [];
+  for (let i = 1; i <= 5; i++) taskIds.push(await WJ.tasks.add({ nodeId: cg, body: 'Задача номер ' + i, dueDate: '2028-0' + i + '-10' }));
+  const carryIds = [];
+  for (let i = 1; i <= 4; i++) { const id = await WJ.visitRecords.add(v1, { type: 'question', body: 'Вопрос номер ' + i }); await WJ.carry.mark(id); carryIds.push(id); }
+  const pr = await WJ.projects.add({ circuitId: cA, title: 'Проект Живой' });
+  await WJ.nodes.archive(cX);
+  const tProt = await WJ.tasks.add({ nodeId: cg, body: TXT, dueDate: '2028-01-01' });
+  await WJ.protection.setup('correct horse battery', tProt);
+  const cProt = carryIds[0];
+  await WJ.protection.protect(cProt);
+  WJ.protection.lock();
+
+  const PBLOB = (events) => JSON.stringify({ settings: {}, serviceYears: {}, events, entries: [
+    { id: 'pe1', eventId: 'ev_c1', start: '2028-03-13', end: '2028-03-18' },
+    { id: 'pe2', eventId: 'ev_c1', start: '2027-10-01', end: '2027-10-05' },
+    { id: 'pe3', eventId: 'ev_plain', start: '2028-03-14', end: '2028-03-14' },
+  ] });
+  const PEVENTS = [
+    { id: 'ev_c1', name: 'С1', visitType: 'congregation' }, { id: 'ev_c2', name: 'С2', visitType: 'congregation' },
+    { id: 'ev_g1', name: 'Г1', visitType: 'group' }, { id: 'ev_p1', name: 'П1', visitType: 'pregroup' },
+    { id: 'ev_plain', name: 'Обычное', visitType: '' },
+  ];
+  await W.CWDB.state.put({ id: 'circuit-planner', payload: PBLOB(PEVENTS), savedAt: Date.now(), rev: 1 });
+
+  const stats = () => [...doc.querySelectorAll('#overviewStats .j-ovstat')].map((x) => x.querySelector('.j-ovstat__value').textContent);
+  const rows = (id) => [...doc.querySelectorAll('#' + id + ' .j-row')];
+  const ov = () => $('#route-overview').outerHTML;
+
+  // Состояния Клиндария ДО первого чтения: idle не равен нулю.
+  await wait(20);
+  srcs.slice(split).forEach(evalSrc);
+  const A = W.CWJournalApp;
+  ok('[7] до чтения Клиндарий idle', W.CWPlanner.status() === 'idle');
+  A.renderOverview();
+  ok('[7] idle → «…», не 0', [...doc.querySelectorAll('#overviewStats .j-ovstat__value')].slice(1).every((x) => x.textContent === '…'));
+  doc.dispatchEvent(new W.Event('DOMContentLoaded'));
+  await settle();
+  ok('маршрут по умолчанию — Обзор', !$('#route-overview').hidden);
+  const st = stats();
+  ok('[1] районы — из Журнала (архивный не считается)', st[0] === '2', st.join());
+  ok('[2–4] собрания/группы/предгруппы — из listCommunities()', st[1] === '2' && st[2] === '1' && st[3] === '1', st.join());
+  ok('[5] обычная запись календаря не считается, посещения не дублируют', st[1] === '2');
+  ok('районы → #districts; объекты → Клиндарий', $('#overviewStats a.j-ovstat').getAttribute('href') === '#districts'
+    && [...doc.querySelectorAll('#overviewStats a.j-ovstat')].slice(1).every((a) => a.getAttribute('href') === '../circuit-planner/index.html#calendar'));
+  ok('статистики — с доступным именем', [...doc.querySelectorAll('#overviewStats .j-ovstat')].every((a) => /: /.test(a.getAttribute('aria-label') || '')));
+
+  // Задачи
+  const tr = rows('overviewTasks');
+  const LOCKED = A.t('j.locked.title');
+  ok('[16] задачи реальные', tr.length && tr.every((r) => (/Задача номер/.test(r.textContent) || r.textContent.includes(LOCKED))));
+  ok('[17] превью ≤ 3', tr.length === 3);
+  ok('[18] счётчик — полный', $('#overviewTasksCount').textContent === '6');
+  ok('[19] «Все» → #tasks', $('#overviewTasksSec a.j-sec__more').getAttribute('href') === '#tasks');
+  ok('[20] строка → #tasks/<id>', tr.every((r) => /^#tasks\/[^/]+$/.test(r.getAttribute('href'))) && tr[0].getAttribute('href') === R.build.task(tProt));
+  ok('[21/47] заблокировано: текста нет в DOM, есть подпись', !ov().includes(TXT) && tr[0].textContent.includes(LOCKED));
+  // Перенос
+  const cr = rows('overviewCarry');
+  ok('[22] перенос реальный', cr.length && cr.slice(1).every((r) => /Вопрос номер/.test(r.textContent)));
+  ok('[23] превью ≤ 3, счётчик полный', cr.length === 3 && $('#overviewCarryCount').textContent === '4');
+  ok('[24] строка → существующий маршрут посещения', cr.every((r) => r.getAttribute('href') === R.build.visit(cA, cg, v1)));
+  ok('[25] у переноса нет «Все»', !$('#overviewCarrySec .j-sec__more'));
+  ok('[26] защищённый перенос не раскрыт', !ov().includes('Вопрос номер 1') && cr[0].textContent.includes(LOCKED));
+  // Проекты
+  const pRows = rows('overviewProjects');
+  ok('[27] проекты реальные', pRows.length === 1 && pRows[0].textContent.includes('Проект Живой') && $('#overviewProjectsCount').textContent === '1');
+  pRows[0].click();
+  ok('[28] ссылка проекта прежняя', W.location.hash === R.build.project(cA, pr));
+  W.location.hash = '#overview'; await settle();
+  ok('[29] общий рендер проектов доступен экранам района', typeof A.buildOverviewProjects === 'function' && /renderProjectRows\(box, list\)/.test(read('journal/js/app/projects.js')));
+  // Посещения
+  const vr = rows('overviewVisits');
+  ok('[30] посещения реальные', vr.length && /Собрание Липовое|Группа Ручей/.test(vr[0].textContent));
+  ok('[31] превью ≤ 3, новые сверху', vr.length === 3 && vr[0].textContent.includes('Группа Ручей') && $('#overviewVisitsCount').textContent === '4');
+  ok('[32] маршруты посещений — существующие', vr[0].getAttribute('href') === R.build.visits(cA, cg) && vr[1].getAttribute('href') === R.build.visit(cA, cg, v2));
+  ok('[33] выдуманных счётчиков нет', !/запис(ей|и)\b|\d+ задач/.test(vr.map((r) => r.textContent).join(' ')));
+  ok('[34] «История» нет', !ov().includes('j.link.history') && !$('#overviewVisitsSec .j-sec__more'));
+  // FAB
+  ok('[35] FAB Обзора скрыт', $('#fab').hidden === true);
+  W.location.hash = '#tasks'; await settle();
+  ok('[36] FAB задач прежний', $('#fab').hidden === false && $('#fabLabel').getAttribute('data-i18n') === 'j.fab.new_task');
+  W.location.hash = '#districts'; await settle();
+  ok('[36] FAB районов прежний', $('#fab').hidden === false && $('#fabLabel').getAttribute('data-i18n') === 'j.fab.new_circuit');
+  W.location.hash = '#overview'; await settle();
+  ok('[35] снова Обзор — FAB скрыт', $('#fab').hidden === true);
+
+  // Свежесть
+  await WJ.tasks.add({ nodeId: cg, body: 'Новая живая задача' });
+  await settle();
+  ok('[41] запись Журнала → Обзор обновился', $('#overviewTasksCount').textContent === '7');
+  await WJ.nodes.add({ kind: 'circuit', parentId: WJ.ROOT_PARENT, label: 'Район Третий' });
+  await settle();
+  ok('[42] узел Журнала → Обзор обновился (районы)', stats()[0] === '3', stats().join());
+  await W.CWDB.state.put({ id: 'circuit-planner', payload: PBLOB(PEVENTS.concat([{ id: 'ev_c3', name: 'С3', visitType: 'congregation' }])), savedAt: Date.now(), rev: 2 });
+  W.dispatchEvent(Object.assign(new W.Event('storage'), { key: W.CWPlanner.REV_KEY }));
+  await settle();
+  ok('[40] Клиндарий → Обзор обновился', stats()[1] === '3', stats().join());
+  await WJ.protection.unlock('correct horse battery');
+  await settle();
+  ok('[43] разблокировка → текст виден', ov().includes(TXT) && ov().includes('Вопрос номер 1'));
+  WJ.protection.lock();
+  ok('[46] блокировка: текст убран сразу, до чтения', !ov().includes(TXT) && !ov().includes('Вопрос номер 1'));
+  await settle();
+  ok('[43] блокировка → перерисовано без текста', !ov().includes(TXT) && rows('overviewTasks').length === 3);
+
+  // Гонки: A — уход с маршрута; B — разблокированная отрисовка, обогнанная блокировкой.
+  const realRead = WJ.overview.read;
+  let gate = null, release = null;
+  WJ.overview.read = async function () { const d = await realRead.apply(this, arguments); if (gate) await gate; return d; };
+  gate = new Promise((r) => { release = r; });
+  const before = $('#overviewTasks').innerHTML + '|' + $('#overviewTasksCount').textContent;
+  const pending = A.renderOverview();
+  await WJ.tasks.add({ nodeId: cg, body: 'Задача после ухода' });
+  W.location.hash = '#tasks'; await wait(40);
+  gate = null; release(); await pending; await settle();
+  ok('[45] уход с маршрута до конца чтения → старый результат не вставлен', $('#overviewTasks').innerHTML + '|' + $('#overviewTasksCount').textContent === before);
+  W.location.hash = '#overview'; await settle();
+  await WJ.protection.unlock('correct horse battery');
+  await settle();
+  gate = new Promise((r) => { release = r; });
+  const stale = A.renderOverview();           // раскрытое чтение ждёт
+  await wait(40);
+  gate = null;
+  WJ.protection.lock();                       // новая отрисовка без текста
+  await settle();
+  release(); await stale; await settle();
+  ok('[46] старая разблокированная отрисовка не вернула текст', !ov().includes(TXT) && !ov().includes('Вопрос номер 1'));
+  WJ.overview.read = realRead;
+
+  // Состояния Клиндария и сбой Журнала
+  const P = W.CWPlanner;
+  await W.CWDB.state.remove('circuit-planner');
+  await P.refresh(); await settle();
+  ok('[6] Клиндарий пуст (empty) → настоящие нули', P.status() === 'empty' && stats().slice(1).join() === '0,0,0', stats().join());
+  await W.CWDB.state.put({ id: 'circuit-planner', payload: '{испорчено', savedAt: Date.now(), rev: 3 });
+  await P.refresh(); await settle();
+  ok('[8] invalid → не 0', P.status() === 'invalid' && stats().slice(1).every((x) => x === '—'), stats().join());
+  const realGet = W.CWDB.state.get;
+  W.CWDB.state.get = () => Promise.reject(new Error('boom'));
+  await P.refresh(); await settle();
+  W.CWDB.state.get = realGet;
+  ok('[9] unavailable → не 0', P.status() === 'unavailable' && stats().slice(1).every((x) => x === '—'));
+  ok('[7] idle показывается как «…»', read('journal/js/app/overview.js').includes("status === 'idle' ? '…' : '—'"));
+  WJ.overview.read = () => Promise.reject(new Error('read failed'));
+  await A.renderOverview();
+  ok('сбой чтения Журнала → «—» и подсказка, не нули', stats()[0] === '—' && $('#overviewTasksCount').textContent === '—'
+    && $('#overviewTasks').textContent.includes(W.CWJournalApp.t('j.overview.unavailable')));
+  WJ.overview.read = realRead;
+  await A.renderOverview();
+  ok('после сбоя — снова реальные данные', stats()[0] === '3');
+
+  // Пусто
+  errors.length = errors.filter((e) => !/не прочитан|read failed|boom|не собран/.test(e)).length;
+  ok('ошибок консоли нет (кроме намеренных сбоев)', errors.length === 0, errors.join(' | '));
+  ok('[44] опроса нет (окно)', wIntervals === 0);
+  ok('[50] Обзор ничего не хранит в localStorage', ![...Array(W.localStorage.length).keys()].map((i) => W.localStorage.key(i)).some((k) => /overview|journal/i.test(k)));
+  dom.window.close();
+}
+
+/* ═══ 6. O2: разметка, маршруты, подписки (статически) ══════════════════ */
+console.log('\n6. O2: статические границы');
+{
+  const html = read('journal/index.html');
+  const sec = html.slice(html.indexOf('id="route-overview"'), html.indexOf('</section>', html.indexOf('id="route-overview"')));
+  ok('[10] EU-K-03 и выдуманные числа удалены', !/EU-K-03|14 собраний|3 группы|1 предгруппа/.test(html));
+  ok('верхнеуровневый Обзор не назван статической фикстурой', !/ОБЗОР[\s\S]{0,10}статическая фикстура/i.test(html));
+  const dict = read('journal/i18n/dict.js');
+  ok('словарь: старые примеры фикстуры Обзора удалены', !/EU-K-03|Уточнить, как идёт изучение/.test(dict));
+  const projSrc = read('journal/js/app/projects.js');
+  ok('projects.js: строка проекта не описана как фикстура J1', !/фикстур[аы] J1/i.test(projSrc));
+  ok('[11] выдуманные вопросы удалены', !/изучение с семьёй|расписании группы Озёрная|новый координатор/.test(html));
+  ok('[12] выдуманные задачи удалены', !/письмо о переносе встречи|встречи со старейшинами|адрес зала у секретаря/.test(html));
+  ok('[13] выдуманные посещения удалены', !/Западное — весна 2028|Северное — осень 2027|6 записей|11 записей/.test(html));
+  ok('[14] «Недавно изменённые» удалены', !/recent_edits|мысли по организации|вчера, 21:40|сегодня, 09:14/.test(html));
+  ok('[15] кнопок без действия в Обзоре нет', !/<button/.test(sec) && (sec.match(/j-sec__more/g) || []).length === 1 && /<a class="j-sec__more" href="#tasks"/.test(sec));
+  ok('в Обзоре нет строк-фикстур и стрелок', !/j-row"|<svg/.test(sec));
+  ok('удалённые ключи нигде не используются', !/j\.link\.history|j\.section\.recent_edits|j\.fab\.new_entry/.test(html + read('journal/js/app.js') + read('journal/js/app/overview.js')));
+  ok('новые ключи на пяти языках', ['j.overview.stat.congregations', 'j.overview.stat.groups', 'j.overview.stat.pregroups', 'j.overview.empty_carry', 'j.overview.empty_tasks', 'j.overview.empty_visits', 'j.overview.unavailable']
+    .every((k) => (dict.match(new RegExp("'" + k.replace(/\./g, '\\.') + "'", 'g')) || []).length === 5));
+  const R2 = CWJournalRoute;
+  ok('[37] пустой хэш → Обзор', R2.parse('').route === 'overview' && R2.parse('#').route === 'overview');
+  ok('[38] неизвестный маршрут → Обзор', R2.parse('#nope').route === 'overview' && R2.parse('#overview').route === 'overview');
+  ok('[39] внутренний обзор собрания не тронут', R2.parse('#districts/c1/congregation/n1').congTab === 'overview' && R2.parse('#districts/c1/congregation/n1/visits').congTab === 'visits');
+  ok('глубокие ссылки прежние', R2.build.task('t1') === '#tasks/t1' && R2.build.project('c', 'p') === '#districts/c/project/p'
+    && R2.build.visit('c', 'n', 'v') === '#districts/c/congregation/n/visit/v' && R2.build.visits('c', 'n') === '#districts/c/congregation/n/visits');
+  const app = strip(read('journal/js/app.js'));
+  ok('[35] fabSpecFor(overview) → null', /state\.route === 'overview'\) return null;/.test(app));
+  ok('справочник → renderOverview, одного пути', !/renderOverviewProjects/.test(app + strip(read('journal/js/app/protection.js'))) && (app.match(/renderOverview\(\)/g) || []).length >= 3);
+  const ovSrc = strip(read('journal/js/app/overview.js'));
+  ok('[40] подписка на Клиндарий', /CWPlanner\.subscribe\(onSourceChange\)/.test(ovSrc));
+  ok('[41/42] подписка на изменения Журнала', /CWJournal\.integration\.onChange\(onSourceChange\)/.test(ovSrc));
+  ok('[43] смена блокировки → renderOverview', /st\.route === 'overview'\) renderOverview\(\)/.test(strip(read('journal/js/app/protection.js'))));
+  ok('[44/50] Обзор: без таймеров, хранилищ, CWDB и сырого Клиндария', !/setInterval|setTimeout|localStorage|sessionStorage|CWDB|indexedDB|state\/circuit-planner|listEntries/.test(ovSrc));
+  ok('[45/46] вставка — только текущим поколением на #overview', /gen === overviewRenderSeq && parseHash\(\)\.route === 'overview'/.test(ovSrc) && (ovSrc.match(/if \(!isCurrent\(gen\)\) return;/g) || []).length === 2);
+  const sw = read('journal/sw.js');
+  const at = (src) => html.indexOf('<script src="' + src + '"');
+  ok('overview.js: после protection.js, до app.js; в прекэше', at('js/app/protection.js') < at('js/app/overview.js') && at('js/app/overview.js') < at('js/app.js') && sw.includes("'./js/app/overview.js'"));
+}
+
+/* ═══ 7. Сигнал узлов (O2) ════════════════════════════════════════════ */
+console.log('\n7. Сигнал изменений узлов');
+{
+  let n = 0;
+  const off = J.integration.onChange(() => { n++; });
+  const id = await J.nodes.add({ kind: 'circuit', parentId: J.ROOT_PARENT, label: 'Сигнал' });
+  await tick();
+  ok('[42] узел: add → уведомление', n >= 1);
+  n = 0; await J.nodes.update(id, { label: 'Сигнал 2' }); await tick();
+  ok('[42] узел: update → уведомление', n >= 1);
+  n = 0; await J.nodes.archive(id); await tick();
+  ok('[42] узел: archive → уведомление', n >= 1);
+  n = 0; await J.nodes.unarchive(id); await tick();
+  ok('[42] узел: unarchive → уведомление', n >= 1);
+  n = 0; await J.nodes.remove(id); await tick();
+  ok('[42] узел: remove → уведомление', n >= 1);
+  off();
+  const dsrc = strip(read('journal/js/data.js'));
+  ok('один канал cw-journal, метка без данных', (dsrc.match(/new global\.BroadcastChannel\(/g) || []).length === 1 && /postMessage\(\{ kind: k, rev: rev \}\)/.test(dsrc) && /CHANGE_KINDS = \['entries', 'nodes'\]/.test(dsrc));
+}
+
 async function dump() {
   const out = {};
   for (const s of ['journalNodes', 'journalEntries', 'journalLinks', 'journalMeta', 'state', 'communities']) {
@@ -314,5 +585,5 @@ async function dump() {
   return JSON.stringify(out);
 }
 
-console.log(failed ? `\n✗ Провалов: ${failed}` : '\n✓ O1: данные Обзора — только чтение, канон, J8 цел');
+console.log(failed ? `\n✗ Провалов: ${failed}` : '\n✓ O1/O2: данные и живой Обзор — только чтение, канон, J8 цел');
 process.exit(failed ? 1 : 0);

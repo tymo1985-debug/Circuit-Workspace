@@ -1,5 +1,5 @@
 /**
- * Журнал — стили модуля (Обзор — фикстура J1; Районы — реальное дерево, J3a).
+ * Журнал — стили модуля (Обзор — живая сводка, O2; Районы — реальное дерево, J3a).
  *
  * Оболочка (.md-shell, .md-topbar-v2, .md-sidenav, .md-bottomnav, .md-page,
  * .md-segmented, .md-chip, .md-fab, .md-status и т.д.) целиком берётся из
@@ -49,6 +49,22 @@
   color: var(--md-on-surface-variant); margin: 0;
 }
 
+/* Ссылка «Все» в шапке секции — тот же вид, что у кнопки. */
+a.j-sec__more { text-decoration: none; }
+a.j-sec__more:hover, a.j-sec__more:focus-visible { text-decoration: underline; }
+/* --- Обзор (O2): сводка и строки-ссылки ------------------------------------ */
+.j-ovstats { display: flex; flex-wrap: wrap; gap: var(--cw-space-2); margin-top: var(--cw-space-2); }
+.j-ovstat {
+  display: inline-flex; align-items: baseline; gap: 6px; min-width: 0;
+  padding: 4px 12px; border-radius: var(--md-radius-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  font: 400 13px/20px var(--md-font-family); letter-spacing: 0.2px; text-decoration: none;
+}
+a.j-ovstat:hover, a.j-ovstat:focus-visible { background: var(--md-surface-container-highest); }
+.j-ovstat__value { font-weight: 500; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+a.j-ovrow { color: inherit; text-decoration: none; }
+a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-decoration: underline; }
+.j-ovrow .j-row__title { overflow-wrap: anywhere; }
 /* --- Строка списка ---------------------------------------------------------- */
 .j-row {
   display: flex; gap: var(--cw-space-3); padding: var(--cw-space-3) 0;
