@@ -2241,6 +2241,76 @@
     return out;
   };
 
+  /* ═══ Данные Обзора (O1) ═════════════════════════════════════════════
+   * ТОЛЬКО ЧТЕНИЕ, по требованию, в памяти: одно чтение узлов и записей
+   * (snapshot) — пять выборок для Обзора. Ничего не пишется, не кэшируется
+   * и не индексируется: ни хранилища Обзора, ни материализованного списка,
+   * ни следа в localStorage/CWState. Каждый read() читает базу заново.
+   *
+   * Архивность «в контексте» — то же вычисление, что у поиска/архива
+   * (snap.nodeArchived/entryArchived), не новое правило:
+   *  - circuits — районы вне архива, порядок sortNodes;
+   *  - tasks    — открытые задачи (status ≠ 'done') вне архивного контекста
+   *               (своего, узла или посещения-источника), порядок
+   *               tasks.sort — тот же, что у экрана «Задачи»;
+   *  - carry    — открытые пункты переноса (carryKey есть) вне архивного
+   *               контекста; порядок — посещение-источник (visitBefore),
+   *               затем fields.seq, id — как у carry.incoming;
+   *  - projects — active-проекты существующих неархивных районов (семантика
+   *               renderOverviewProjects), порядок projects.sort;
+   *  - visits   — посещения вне архивного контекста (open и completed),
+   *               новые сверху (порядок visits.byNode). Элемент —
+   *               { visit, nodeId, nodeKind, circuitId, congregationId }:
+   *               congregationId — сам узел-собрание или собрание-родитель
+   *               группы/предгруппы (для CWJournalRoute.build.visit/visits).
+   *
+   * J8: строки берутся сырыми и раскрываются только ИТОГОВЫЕ — тем же
+   * revealList, что у tasks.list, carry и projects: заблокировано — строка
+   * с sec и без title/body; разблокировано — временная копия с
+   * неперечислимым текстом. Счётчиков записей «для красоты» нет. */
+  function sortCarryItems(list, entryById) {
+    return list.slice().sort(function (a, b) {
+      var oa = entryById[a.fields.visitId], ob = entryById[b.fields.visitId];
+      if (oa && ob && oa.id !== ob.id) return visitBefore(oa, ob) ? -1 : 1;
+      if (!!oa !== !!ob) return oa ? -1 : 1;
+      var sa = a.fields.seq || 0, sb = b.fields.seq || 0;
+      if (sa !== sb) return sa - sb;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+  var overview = {
+    read: async function () {
+      var snap = await snapshot(false);
+      var circuits = sortNodes(snap.nodes.filter(function (n) {
+        return n.kind === 'circuit' && !snap.nodeArchived(n.id);
+      }));
+      var liveCircuit = {};
+      circuits.forEach(function (c) { liveCircuit[c.id] = true; });
+      var taskRows = [], carryRows = [], projectRows = [], visitRows = [];
+      snap.entries.forEach(function (e) {
+        if (!e || snap.entryArchived(e)) return;
+        if (e.type === 'todo' && e.status !== 'done') taskRows.push(e);
+        if (e.type !== 'visit' && 'carryKey' in e && hasVisitRef(e) && VISIT_RECORD_TYPES.indexOf(e.type) !== -1) carryRows.push(e);
+        if (e.type === 'project' && e.status === 'active' && liveCircuit[e.circuitId]) projectRows.push(e);
+        if (e.type === 'visit') visitRows.push(e);
+      });
+      var visitsOut = sortVisits(visitRows).map(function (v) {
+        var node = snap.nodeById[v.nodeId] || null;
+        var cong = node && node.kind === 'congregation' ? node
+          : node && snap.nodeById[node.parentId] && snap.nodeById[node.parentId].kind === 'congregation' ? snap.nodeById[node.parentId] : null;
+        return { visit: v, nodeId: v.nodeId, nodeKind: node ? node.kind : null,
+          circuitId: v.circuitId || (node && node.circuitId) || null, congregationId: cong ? cong.id : null };
+      });
+      return {
+        circuits: circuits,
+        tasks: await revealList(sortTasks(taskRows)),
+        carry: await revealList(sortCarryItems(carryRows, snap.entryById)),
+        projects: await revealList(sortProjects(projectRows)),
+        visits: visitsOut,
+      };
+    },
+  };
+
   /* ═══ Граница интеграции (J9c): задачи Журнала для общего To Do ══════
    * ТОЛЬКО ЧТЕНИЕ. Владелец данных и правил — CWJournal.tasks; здесь нет ни
    * complete/reopen, ни правки, ни удаления. Строки читаются СЫРЫМИ
@@ -2307,6 +2377,7 @@
     planner: planner,
     documents: documents,
     integration: integration,
+    overview: overview,
     projects: projects,
     meta: meta,
     protection: protection,

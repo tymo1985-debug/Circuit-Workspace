@@ -25,6 +25,22 @@
  *
  * Ничего больше: ни настроек, ни текста писем, ни формуляра, ни заметок.
  *
+ * O1 — полный список ОБЪЕКТОВ Клиндария (`listCommunities()`), отдельно от
+ * записей календаря: источник — `events[]` того же блоба, а не `entries[]`.
+ *
+ *   { communityId, name, visitType }
+ *
+ *  - берутся только события с visitType `congregation|group|pregroup`;
+ *    обычное событие (visitType '') и неизвестный тип — не объект;
+ *  - объект есть в списке и без единого назначенного посещения;
+ *  - уникальность — по id события (он же id карточки CWDirectory): у
+ *    объекта с несколькими посещениями одна строка, дубликат id — первый;
+ *  - name — справочник, иначе название события (как у записей);
+ *  - порядок: name, затем communityId — детерминированно.
+ * Пустой список значим только при status() 'ok' или 'empty' (канона нет —
+ * Клиндарий ещё ничего не сохранял). 'idle' — ещё не прочитано, 'invalid' /
+ * 'unavailable' — источник не прочитан: это НЕ «объектов ноль».
+ *
  * ─── ГРАНИЦЫ ────────────────────────────────────────────────────────────────
  *
  *  - Только чтение. Файл НИЧЕГО не пишет: ни в базу, ни в localStorage, ни в
@@ -55,6 +71,7 @@
   var NEAR_DAYS = 14;
 
   var entries = [];          // нормализованные, замороженные
+  var communities = [];      // объекты Клиндария (O1), нормализованные, замороженные
   var byId = Object.create(null);
   var state = 'idle';        // idle | ok | empty | invalid | unavailable
   var signature = '';
@@ -78,6 +95,29 @@
       var r = D.get(id);
       return r && String(r.name || '').trim() ? String(r.name) : '';
     } catch (e) { return ''; }
+  }
+
+  /** Блоб → объекты Клиндария (события-визиты), по одному на id события. */
+  function normalizeCommunities(app) {
+    var seen = Object.create(null);
+    var out = [];
+    app.events.forEach(function (ev) {
+      if (!ev || typeof ev !== 'object') return;
+      var id = str(ev.id);
+      if (!ENTRY_ID.test(id) || seen[id]) return;
+      if (VISIT_TYPES.indexOf(ev.visitType) < 0) return;
+      seen[id] = true;
+      out.push(Object.freeze({
+        communityId: id,
+        name: directoryName(id) || str(ev.name),
+        visitType: ev.visitType,
+      }));
+    });
+    out.sort(function (a, b) {
+      if (a.name !== b.name) return a.name < b.name ? -1 : 1;
+      return a.communityId < b.communityId ? -1 : a.communityId > b.communityId ? 1 : 0;
+    });
+    return out;
   }
 
   /** Блоб → нормализованный список; не тот блоб → null. */
@@ -122,13 +162,16 @@
     });
   }
 
-  function apply(my, nextState, list) {
+  function apply(my, nextState, list, comms) {
     if (my !== seq) return false;              // ответ устаревшего чтения
+    comms = comms || [];
     var map = Object.create(null);
     list.forEach(function (e) { map[e.id] = e; });
-    var sig = nextState + '|' + JSON.stringify(list);
+    // Подпись включает объекты: их смена без смены записей тоже уведомляет.
+    var sig = nextState + '|' + JSON.stringify(list) + '|' + JSON.stringify(comms);
     var changed = sig !== signature;
     entries = list;
+    communities = comms;
     byId = map;
     state = nextState;
     signature = sig;
@@ -146,7 +189,7 @@
       var parsed;
       try { parsed = JSON.parse(record.payload); } catch (e) { return apply(my, 'invalid', []); }
       var list = normalize(parsed);
-      return list ? apply(my, 'ok', list) : apply(my, 'invalid', []);
+      return list ? apply(my, 'ok', list, normalizeCommunities(parsed)) : apply(my, 'invalid', []);
     }, function (error) {
       console.error('CWPlanner: канон Клиндария не прочитан', error);
       return apply(my, 'unavailable', []);
@@ -187,6 +230,14 @@
     isEntryId: function (id) { return typeof id === 'string' && ENTRY_ID.test(id); },
     listEntries: function () { return entries.map(copy); },
     getEntry: function (id) { return typeof id === 'string' && byId[id] ? copy(byId[id]) : null; },
+    /**
+     * O1: полный уникальный список объектов Клиндария (собрание/группа/
+     * предгруппа) — замороженные копии { communityId, name, visitType }.
+     * Не зависит от назначенных посещений. Пустой список — «объектов нет»
+     * ТОЛЬКО при status() 'ok'/'empty'; при 'idle'/'invalid'/'unavailable'
+     * — неизвестно (см. заголовок файла).
+     */
+    listCommunities: function () { return communities.map(copy); },
 
     /**
      * Кандидаты для посещения: { communityId, dateFrom, dateTo, visitType, all }.

@@ -26,14 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.58',
+  version: '0.41.59',
   changes: [
-    { module: 'hub', version: '0.41.58', note: 'Точный статус обновления каждого модуля и конкретный список изменений' },
-    { module: 'congress-project', version: '4.46.80', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
-    { module: 'circuit-planner', version: '9.95.1', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
-    { module: 'pioneer-school', version: '1.14.56', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
-    { module: 'appointments', version: '5.5.95', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
-    { module: 'documents', version: '1.11.5', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
-    { module: 'journal', version: '0.13.4', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
+    { module: 'hub', version: '0.41.59', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
+    { module: 'congress-project', version: '4.46.81', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
+    { module: 'pioneer-school', version: '1.14.57', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
+    { module: 'appointments', version: '5.5.96', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
+    { module: 'documents', version: '1.11.6', note: 'Version-only: доставка правки общего слоя (shared/planner.js)' },
+    { module: 'journal', version: '0.14.0', note: 'Данные для живого Обзора: объекты Клиндария и сводка Журнала (только чтение)' },
   ],
 };
