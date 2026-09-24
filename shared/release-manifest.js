@@ -26,12 +26,12 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.56',
+  version: '0.41.57',
   changes: [
-    { module: 'congress-project', version: '4.46.78', note: 'Явный выбор шаблона задания с безопасным fallback после удаления' },
-    { module: 'documents', version: '1.11.3', note: 'Удаление пользовательских шаблонов и форматирование text-шаблонов' },
-    { module: 'journal', version: '0.13.2', note: 'Version-only cache-first invalidation' },
-    { module: 'pioneer-school', version: '1.14.54', note: 'Version-only cache-first invalidation' },
-    { module: 'appointments', version: '5.5.93', note: 'Version-only cache-first invalidation' },
+    { module: 'congress-project', version: '4.46.79', note: 'Пакетный экспорт каждого письма в отдельный PDF: папка или ZIP' },
+    { module: 'documents', version: '1.11.4', note: 'Version-only cache-first invalidation' },
+    { module: 'journal', version: '0.13.3', note: 'Version-only cache-first invalidation' },
+    { module: 'pioneer-school', version: '1.14.55', note: 'Version-only cache-first invalidation' },
+    { module: 'appointments', version: '5.5.94', note: 'Version-only cache-first invalidation' },
   ],
 };

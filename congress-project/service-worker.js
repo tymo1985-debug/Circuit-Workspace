@@ -24,7 +24,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
 '../shared/fonts/roboto-cyrillic-400-normal.woff2','../shared/fonts/roboto-cyrillic-500-normal.woff2',
 './js/main.js','./js/mobile.js',
 './js/topbar-menu.js','./js/state.js','./js/render.js','./js/degraded.js','./js/tasks.js','./js/congress.js','./js/directories.js',
-'./js/letters.js','./js/plan.js','./js/plan-fit.js','./js/printing.js','./js/backup.js',
+'./js/letters.js','./js/batch-pdf.js','./js/plan.js','./js/plan-fit.js','./js/printing.js','./js/backup.js',
 './js/utils.js','./js/dom.js','./js/icons.js','./js/i18n.js','./js/matching.js',
 // Локализация: словарь модуля и общий слой хаба. Без них офлайн-запуск
 // остался бы без переводов, а js/i18n.js — без CWI18n.
@@ -34,7 +34,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
   '../shared/state.js',
   '../shared/snapshots.js',
   '../shared/templates.js','../shared/templates/namespaces.js','../shared/templates/builtin.js',
-  '../shared/documents.js','../shared/print.js',
+  '../shared/documents.js','../shared/print.js','../shared/pdfstack.js','../shared/vendor/jspdf.umd.min.js','../shared/vendor/html2canvas.min.js',
   '../shared/db.js',
   '../shared/directory.js',
   '../shared/escape.js','../shared/doclang.js','../shared/docsview.js','../shared/i18n/common.js','../shared/version.js',

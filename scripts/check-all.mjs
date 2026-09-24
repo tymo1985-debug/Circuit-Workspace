@@ -32,6 +32,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 const CHECKS = [
   {
+    file: 'check-congress-batch-pdf.mjs',
+    title: 'Congress: отдельные PDF писем',
+    why: 'directory picker, fallback ZIP, имена, количество PDF, шаблоны и snapshots должны оставаться одним согласованным трактом',
+    deps: [],
+  },
+  {
     file: 'check-template-integration.mjs',
     title: 'Интеграция шаблонов Congress ↔ Documents',
     why: 'явный выбор, fallback после удаления и вложенная text-разметка не должны регрессировать',

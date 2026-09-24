@@ -277,8 +277,14 @@ LAZY.forEach((id) => {
      Прежние 8 были рассчитаны на единственный тогда модуль; теперь проверка
      идёт по каждому отдельно, и порог обязан помещаться в самый маленький
      набор (у Школы их четыре, минимальный из двух файлов). Опускать ниже
-     трёх без такой же явной причины нельзя. */
-  ok('в списках догрузки есть файлы', files.length >= 3, 'найдено ' + files.length);
+     трёх без такой же явной причины нельзя.
+
+     Congress — осознанное исключение: его batch PDF — растровая копия уже
+     собранного letterHTML, поэтому ему нужны только jsPDF и html2canvas.
+     Подмешивать autotable/шрифты ради порога значило бы грузить сотни КБ
+     мёртвого кода. */
+  const minFiles = id === 'congress-project' ? 2 : 3;
+  ok('в списках догрузки есть файлы', files.length >= minFiles, 'найдено ' + files.length);
 
   files.forEach((src) => {
     const rel = fromModule(id, src);
@@ -301,6 +307,10 @@ LAZY.forEach((id) => {
      зашитый список пропустил бы первый же новый тракт выдачи — а именно он и
      позвал бы сборщик на неподготовленном стеке. */
   const lazyNames = new Set();
+  /* UMD jsPDF объявляет global.jspdf внутри минифицированного vendor-файла.
+     Vendor намеренно не читается целиком, поэтому фиксируем его публичное имя
+     по локальному имени проверенного файла. */
+  if (files.some((src) => src.endsWith('jspdf.umd.min.js'))) lazyNames.add('jspdf');
   files.filter((src) => !src.startsWith('../')).forEach((src) => {
     const rel = fromModule(id, src);
     if (!existsSync(join(ROOT, rel))) return;
@@ -320,7 +330,7 @@ LAZY.forEach((id) => {
     const src = read(path);
     let ast;
     try {
-      ast = parse(src, { ecmaVersion: 'latest', sourceType: 'script' });
+      ast = parse(src, { ecmaVersion: 'latest', sourceType: /(^|\n)\s*(?:import|export)\s/m.test(src) ? 'module' : 'script' });
     } catch (err) {
       ok(path + ': разбирается acorn', false, err.message);
       return;
