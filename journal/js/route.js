@@ -23,6 +23,7 @@
 
   var ROUTES = ['overview', 'districts', 'tasks', 'search', 'archive'];
   var DEFAULT_ROUTE = 'overview';
+  var TASK_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
 
   function dec(s) {
     try { return decodeURIComponent(s); } catch (_) { return null; }
@@ -32,7 +33,17 @@
     var raw = String(hash || '').replace(/^#/, '');
     var parts = raw.split('/');
     var route = ROUTES.indexOf(parts[0]) >= 0 ? parts[0] : DEFAULT_ROUTE;
-    var state = { route: route, circuitId: null, congregationId: null, congTab: 'overview', visitId: null, projectId: null, normalized: false };
+    var state = { route: route, circuitId: null, congregationId: null, congTab: 'overview', visitId: null, projectId: null, taskId: null, normalized: false };
+    if (route === 'tasks') {
+      /* J9c: #tasks/<taskId> — ссылка на конкретную задачу (общий To Do).
+         В адресе только id; кривой id или лишний хвост — нормализация к
+         #tasks, без ошибки. */
+      if (parts.length === 1) return state;
+      var tid = parts[1] ? dec(parts[1]) : null;
+      if (tid && TASK_ID.test(tid) && parts.length === 2) state.taskId = tid;
+      else state.normalized = true;
+      return state;
+    }
     if (route !== 'districts') return state;
 
     state.circuitId = parts[1] ? dec(parts[1]) : null;
@@ -67,6 +78,7 @@
     visits: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visits'; },
     visit: function (c, n, v) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visit/' + enc(v); },
     project: function (c, p) { return '#districts/' + enc(c) + '/project/' + enc(p); },
+    task: function (id) { return typeof id === 'string' && TASK_ID.test(id) ? '#tasks/' + enc(id) : '#tasks'; },
   };
 
   global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES };

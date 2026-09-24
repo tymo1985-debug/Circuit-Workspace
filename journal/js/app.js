@@ -108,7 +108,11 @@
       resetMoreMenu();
       $('#topbarContext').textContent = '';
       if (state.route === 'overview') renderOverviewProjects();
-      else if (state.route === 'tasks') renderTasks();
+      else if (state.route === 'tasks') {
+        // J9c: #tasks/<id> — фокус на задаче; кривой хвост — просто «Задачи».
+        if (state.normalized) { location.replace(CWJournalRoute.build.task(null)); return; }
+        renderTasks(state.taskId);
+      }
       else if (state.route === 'search') {
         $('#topbarContext').textContent = t('j.search.scope');
         renderSearch();

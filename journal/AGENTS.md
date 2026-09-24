@@ -183,6 +183,14 @@ unlock); проект со снимками не защищается (`journal-
 перечитывает шаблоны (`CWTemplates.reload()`) при каждом открытии. Экран —
 `js/app/documents.js`, обработчики — один раз.
 
+## Общий To Do (J9c)
+
+Только чтение: `CWJournal.integration.tasks()/task(id)` — сырые строки
+`todo` без раскрытия J8 (`text` = null у защищённой), `onChange` — вкладка и
+`BroadcastChannel('cw-journal')` (без данных, без следа в хранилищах).
+Поставщик `js/todo-provider.js` → `shared/todo.js` (`CWTodo`). Менять задачи —
+только `CWJournal.tasks`. Ссылка — `#tasks/<id>` через `CWJournalRoute.build.task`.
+
 ## Фикстуры
 
 - Обзор — статическая визуальная фикстура в разметке, кроме блока

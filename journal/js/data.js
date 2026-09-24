@@ -42,7 +42,73 @@
     if (!global.CWDB || !global.CWDB.journalNodes) {
       throw new Error('CWJournal: shared/db.js не подключён или без хранилищ Журнала');
     }
-    return global.CWDB;
+    return signalingDb(global.CWDB);
+  }
+
+  /* ═══ Сигнал изменений записей (J9c) ═══════════════════════════════════
+   * Без опроса: после каждой ЗАФИКСИРОВАННОЙ записи в journalEntries (прямой
+   * CRUD или пакет CWDB.batch с этим хранилищем) — уведомление подписчиков
+   * этой вкладки и сообщение в BroadcastChannel `cw-journal` для соседних.
+   * Сообщение ничего не хранит и ничего не несёт, кроме непрозрачной метки:
+   * ни id, ни текста, ни счётчиков. Постоянного следа нет вовсе — ни в
+   * базе, ни в копии, ни в хранилищах браузера (правило модуля: доменных и
+   * служебных данных Журнала там нет). Обёртка прозрачна: читает текущий
+   * CWDB при каждом вызове, поэтому подмены методов в проверках видны. */
+  var CHANNEL_NAME = 'cw-journal';
+  var changeListeners = [];
+  var changeQueued = false;
+  var channel = null;
+  function journalChannel() {
+    if (channel || typeof global.BroadcastChannel !== 'function') return channel;
+    try {
+      channel = new global.BroadcastChannel(CHANNEL_NAME);
+      channel.onmessage = function (e) { if (e && e.data && e.data.kind === 'entries') notifyChange(); };
+    } catch (e) { channel = null; }
+    return channel;
+  }
+  /* Открытый канал мешает странице попасть в bfcache — закрываем при уходе
+     и открываем снова при возврате (подписчики сами перечитают данные). */
+  if (typeof global.addEventListener === 'function') {
+    global.addEventListener('pagehide', function () {
+      if (channel) { try { channel.close(); } catch (e) { /* уже закрыт */ } channel = null; }
+    });
+    global.addEventListener('pageshow', function (e) {
+      if (e && e.persisted && changeListeners.length) { journalChannel(); notifyChange(); }
+    });
+  }
+  function notifyChange() {
+    changeListeners.slice().forEach(function (fn) { try { fn(); } catch (err) { console.error('CWJournal: подписчик изменений упал', err); } });
+  }
+  function signalChange() {
+    if (changeQueued) return;
+    changeQueued = true;
+    Promise.resolve().then(function () {
+      changeQueued = false;
+      var ch = journalChannel();
+      if (ch) { try { ch.postMessage({ kind: 'entries', rev: Date.now().toString(36) }); } catch (e) { /* закрыт */ } }
+      notifyChange();
+    });
+  }
+  var ENTRY_WRITES = ['add', 'update', 'put', 'mutate', 'remove', 'clear'];
+  var wrapped = { src: null, db: null };
+  function signalingDb(C) {
+    if (wrapped.src === C) return wrapped.db;
+    var entriesW = Object.create(C.journalEntries);
+    ENTRY_WRITES.forEach(function (m) {
+      entriesW[m] = function () {
+        return C.journalEntries[m].apply(C.journalEntries, arguments).then(function (r) { signalChange(); return r; });
+      };
+    });
+    var out = Object.create(C);
+    Object.defineProperty(out, 'journalEntries', { get: function () { return entriesW; } });
+    out.batch = function (ops) {
+      return C.batch(ops).then(function (r) {
+        if (Array.isArray(ops) && ops.some(function (o) { return o && o.store === 'journalEntries'; })) signalChange();
+        return r;
+      });
+    };
+    wrapped = { src: C, db: out };
+    return out;
   }
 
   function now() { return new Date().toISOString(); }
@@ -2160,6 +2226,59 @@
     return out;
   };
 
+  /* ═══ Граница интеграции (J9c): задачи Журнала для общего To Do ══════
+   * ТОЛЬКО ЧТЕНИЕ. Владелец данных и правил — CWJournal.tasks; здесь нет ни
+   * complete/reopen, ни правки, ни удаления. Строки читаются СЫРЫМИ
+   * (entriesBase, без раскрытия J8): у защищённой задачи text = null даже
+   * при разблокированном Журнале, sec/шифротекст наружу не выходят. Одна
+   * строка type='todo' — одна задача; перенос и связи проектов в новую
+   * структуру не копируются. Результат — свежие объекты, нигде не хранятся. */
+  var TASK_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
+  function taskView(r, visitsById) {
+    var prot = isProtected(r);
+    var visitId = hasVisitRef(r) ? r.fields.visitId : null;
+    var v = visitId ? visitsById[visitId] : null;
+    return {
+      id: r.id,
+      status: r.status === 'done' ? 'done' : 'open',
+      dueDate: isIsoDate(r.dueDate) ? r.dueDate : null,
+      text: prot ? null : (typeof r.body === 'string' ? r.body : ''),
+      protected: prot,
+      mutable: visitId ? !!(v && v.type === 'visit' && v.status === 'open') : true,
+      origin: visitId
+        ? { kind: 'visit', nodeId: r.nodeId || null, circuitId: r.circuitId || null, visitId: visitId }
+        : { kind: 'standalone', nodeId: r.nodeId || null, circuitId: r.circuitId || null },
+      createdAt: r.createdAt || null,
+      updatedAt: r.updatedAt || null,
+    };
+  }
+  async function taskViews(rows) {
+    var ids = {};
+    rows.forEach(function (r) { if (hasVisitRef(r)) ids[r.fields.visitId] = true; });
+    var visitsById = {};
+    await Promise.all(Object.keys(ids).map(async function (id) { visitsById[id] = await entriesBase.get(id); }));
+    return sortTasks(rows).map(function (r) { return taskView(r, visitsById); });
+  }
+  var integration = {
+    CHANNEL: CHANNEL_NAME,
+    /** Все задачи Журнала (open сначала — порядок контракта tasks.list()). */
+    tasks: async function () { return taskViews(await entriesBase.by('type', 'todo')); },
+    /** Одна задача по родному id или null (кривой id — null). */
+    task: async function (id) {
+      if (typeof id !== 'string' || !TASK_ID.test(id)) return null;
+      var r = await entriesBase.get(id);
+      return r && r.type === 'todo' ? (await taskViews([r]))[0] : null;
+    },
+    isTaskId: function (id) { return typeof id === 'string' && TASK_ID.test(id); },
+    /** Изменения записей: в этой вкладке и в соседних (BroadcastChannel). */
+    onChange: function (fn) {
+      if (typeof fn !== 'function') return function () {};
+      journalChannel();
+      changeListeners.push(fn);
+      return function () { changeListeners = changeListeners.filter(function (x) { return x !== fn; }); };
+    },
+  };
+
   global.CWJournal = {
     nodes: nodes,
     entries: entries,
@@ -2172,6 +2291,7 @@
     links: links,
     planner: planner,
     documents: documents,
+    integration: integration,
     projects: projects,
     meta: meta,
     protection: protection,

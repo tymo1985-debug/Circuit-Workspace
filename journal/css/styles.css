@@ -490,6 +490,9 @@
 .j-pick__label { font: 400 14px/20px var(--md-font-family); letter-spacing: 0.1px; overflow-wrap: anywhere; }
 .j-pick__meta { font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }
 
+/* --- Задача из ссылки #tasks/<id> (J9c) ------------------------------------ */
+.j-task--focus { box-shadow: inset 3px 0 0 var(--cw-module); background: var(--md-surface-container); }
+
 /* --- Клиндарий (J9a) -----------------------------------------------------
    Чип связи посещения с записью Клиндария. Текст — живые данные Клиндария,
    длинный заголовок обрезается многоточием, а не ломает шапку. */

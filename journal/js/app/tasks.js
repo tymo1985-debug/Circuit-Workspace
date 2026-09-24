@@ -43,12 +43,24 @@
     return parts.join(' › ');
   }
 
-  async function renderTasks() {
+  /* focusId (J9c) — задача из ссылки #tasks/<id>: нужная вкладка, строка
+     подсвечена и в фокусе; защищённая и закрытая — обычная разблокировка.
+     Нет такой задачи — обычный экран, адрес сводится к #tasks. Id сравнивается
+     с данными как строка и в селекторы/разметку не попадает. */
+  async function renderTasks(focusId) {
     // J8: два запроса перерисовки подряд (операция + смена блокировки) не
     // должны дублировать строки — список собирается целиком и ставится
     // только последним вызовом.
     var mine = ++tasksRenderSeq;
     var all = await CWJournal.tasks.list();
+    var focusTask = focusId ? all.filter(function (r) { return r.id === focusId; })[0] || null : null;
+    if (focusId && !focusTask && mine === tasksRenderSeq) {
+      // Нет такой задачи — обычный экран «Задачи» (перерисовка по hashchange).
+      location.replace(CWJournalRoute.build.task(null));
+      return;
+    }
+    if (focusTask) taskTab = focusTask.status === 'done' ? 'done' : 'open';
+    var focusRow = null;
     var nodes = await CWJournal.nodes.getAll();
     var byId = {};
     nodes.forEach(function (n) { byId[n.id] = n; });
@@ -80,7 +92,8 @@
       var due = r.dueDate ? '<span class="md-status ' + (!isDone && r.dueDate <= today ? 'md-status-important' : 'md-status-normal') + '">' +
         esc(t('j.task.due_short').replace('%s', ddmm(r.dueDate))) + '</span><span class="j-dot">·</span>' : '';
       var row = document.createElement('div');
-      row.className = 'j-row j-task' + (isDone ? ' j-task--done' : '');
+      row.className = 'j-row j-task' + (isDone ? ' j-task--done' : '') + (focusTask && r.id === focusTask.id ? ' j-task--focus' : '');
+      if (focusTask && r.id === focusTask.id) focusRow = row;
       row.innerHTML =
         '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (mutable ? '' : ' disabled') + '></button>' +
         '<div class="j-task__main" role="button" tabindex="' + (mutable ? '0' : '-1') + '" aria-disabled="' + !mutable + '">' +
@@ -102,7 +115,14 @@
       })(r, isDone, mutable);
       frag.appendChild(row);
     }
-    if (mine === tasksRenderSeq) box.replaceChildren(frag);
+    if (mine !== tasksRenderSeq) return;
+    box.replaceChildren(frag);
+    if (focusRow) {
+      try { focusRow.scrollIntoView({ block: 'center' }); } catch (_) { /* старый движок */ }
+      var target = focusRow.querySelector('.j-task__main');
+      if (target) target.focus({ preventScroll: true });
+      if (isLockedRow(focusTask)) requestUnlock();
+    }
   }
 
   async function runTaskOp(fn) {

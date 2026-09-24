@@ -26,12 +26,12 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.53',
+  version: '0.41.54',
   changes: [
-    { module: 'journal', version: '0.12.0', note: 'Письмо по проекту района: композер, печать, архив и история писем проекта через «Документы»' },
-    { module: 'documents', version: '1.11.0', note: 'Журнал в фильтрах библиотеки и архива; глубокие ссылки на шаблон и архив проекта' },
-    { module: 'congress-project', version: '4.46.75', note: 'Патч-бамп: правка общего слоя (шаблоны, резервная копия)' },
-    { module: 'pioneer-school', version: '1.14.51', note: 'Патч-бамп: правка общего слоя (шаблоны, резервная копия)' },
-    { module: 'appointments', version: '5.5.90', note: 'Патч-бамп: правка общего слоя (шаблоны, резервная копия)' },
+    { module: 'journal', version: '0.13.0', note: 'Задачи Журнала доступны общему To Do (только чтение); ссылка на задачу #tasks/<id>' },
+    { module: 'congress-project', version: '4.46.76', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
+    { module: 'pioneer-school', version: '1.14.52', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
+    { module: 'appointments', version: '5.5.91', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
+    { module: 'documents', version: '1.11.1', note: 'Патч-бамп: правка общего слоя (shared/todo.js)' },
   ],
 };

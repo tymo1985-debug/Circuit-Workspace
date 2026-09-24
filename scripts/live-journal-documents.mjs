@@ -227,7 +227,10 @@ let liveInv = true, liveInfo = '';
 for (let i = 0; i < 16; i++) {
   const pc = await pj.evaluate(async ([c, i]) => CWJournal.projects.add({ circuitId: c, title: 'Две вкладки ' + i, body: 'тело' }), [ids.c, i]);
   const saveP = pj.evaluate(async ([p, lag]) => {
-    const d = await CWJournal.documents.compose(p, 'ru');
+    /* Защита соседней вкладки может успеть раньше даже сборки письма — это
+       законный исход «защищён + без снимка», а не сбой прогона. */
+    let d;
+    try { d = await CWJournal.documents.compose(p, 'ru'); } catch (e) { return e.message; }
     await new Promise((r) => setTimeout(r, lag));
     return CWJournal.documents.save(p, Object.assign({}, d, { title: 't' }), 'manual').then(() => 'ok', (e) => e.message);
   }, [pc, (i * 5) % 17]);

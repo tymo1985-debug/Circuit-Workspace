@@ -31,6 +31,7 @@ const ASSETS = [
   './js/crypto.js',
   './js/data.js',
   './js/route.js',
+  './js/todo-provider.js',
   './i18n/dict.js',
   './icons/favicon-32.png',
   './icons/icon-192.png',
@@ -54,6 +55,8 @@ const ASSETS = [
   '../shared/documents.js',
   '../shared/docsview.js',
   '../shared/print.js',
+  // Общий To Do (J9c): граница только для чтения.
+  '../shared/todo.js',
   '../shared/version.js',
   '../shared/update.js',
   '../shared/i18n.js',
