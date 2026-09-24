@@ -1453,6 +1453,137 @@
     },
   };
 
+  /* ═══ Документы проекта (J9b) ═════════════════════════════════════════
+   * Письма по проекту района — через существующие CWTemplates + CWDocs,
+   * второго механизма документов нет. Снимок: ref { module:'journal',
+   * entity:'project', id }, только при печати и явном «Сохранить в архив»;
+   * просмотр/копирование снимков не создают. journalLinks для документов
+   * не заводятся — связь несёт ref самого снимка.
+   *
+   * ГРАНИЦА J8 (правило слоя данных, не кнопок):
+   *  - защищённый проект письма не собирает и в архив не пишет — даже
+   *    разблокированным: открытый текст не должен попасть в CWDB.documents;
+   *    данные берутся из СЫРОЙ строки, не из раскрытой копии;
+   *  - проект, по которому в архиве есть снимки, защитить нельзя
+   *    (journal-protect-has-documents): открытый текст уже лежит в архиве;
+   *    сначала снимки удаляются (в «Документах» или в истории проекта);
+   *  - архив недоступен и проверить нечем — защита проекта отказывает
+   *    (journal-protect-docs-unknown): fail closed;
+   *  - «сохранение ∥ защита» не гонка, а сериализация: снимок пишется
+   *    CWDocs.saveGuarded() одним CWDB.batch с предусловием «строка проекта
+   *    та же и без sec», защита — одним пакетом с expectNone «у проекта нет
+   *    снимков». Обе проверки ВНУТРИ транзакции записи, IndexedDB сама
+   *    упорядочивает вкладки: кто первым закоммитил — тот и прав, второй
+   *    отказывает. «Защищён + снимок» невозможно без уборки задним числом. */
+  var DOC_TEMPLATE_ID = 'sys.journal.project.letter';
+  var DOC_CONTEXT = 'journal.project.letter';
+  var DOC_REASONS = ['print', 'manual'];
+  function docRef(projectId) { return { module: 'journal', entity: 'project', id: String(projectId) }; }
+  function docsApi() {
+    var D = global.CWDocs;
+    return D && typeof D.available === 'function' && D.available() ? D : null;
+  }
+  /* Архивный проект — только чтение и для писем (как для правок J7):
+     история видна, новое письмо не собирается и не сохраняется. */
+  async function docProject(projectId) {
+    var row = typeof projectId === 'string' ? await entriesBase.get(projectId) : null;
+    if (!row || row.type !== 'project') throw new Error('journal-project-not-found');
+    if (isProtected(row)) throw new Error('journal-docs-protected');
+    if (row.status === 'archived') throw new Error('journal-project-readonly');
+    return row;
+  }
+  function docData(row) {
+    return { project: { title: typeof row.title === 'string' ? row.title : '', body: typeof row.body === 'string' ? row.body : '' } };
+  }
+  /** Для J8: у проекта нет снимков в архиве; нечем проверить — отказ. */
+  async function assertNoProjectDocuments(row) {
+    if (!row || row.type !== 'project') return;
+    /* Только строгое чтение: терпимый list() отдаёт [] и при сбое базы —
+       это выглядело бы как «документов нет» и пропустило бы защиту. */
+    var D = docsApi();
+    if (!D || typeof D.listStrict !== 'function') throw new Error('journal-protect-docs-unknown');
+    var rows;
+    try { rows = await D.listStrict(docRef(row.id)); } catch (e) { throw new Error('journal-protect-docs-unknown'); }
+    if (!Array.isArray(rows)) throw new Error('journal-protect-docs-unknown');
+    if (rows.length) throw new Error('journal-protect-has-documents');
+  }
+
+  var documents = {
+    TEMPLATE_ID: DOC_TEMPLATE_ID,
+    CONTEXT: DOC_CONTEXT,
+    ref: docRef,
+    available: function () { return !!docsApi(); },
+    /** История выданных документов проекта, свежие сверху. */
+    list: async function (projectId) {
+      var D = docsApi();
+      return D ? D.list(docRef(projectId)) : [];
+    },
+    /** Собрать письмо (без записи). Защищённый проект → journal-docs-protected. */
+    compose: async function (projectId, lang) {
+      var row = await docProject(projectId);
+      var T = global.CWTemplates;
+      if (!T || typeof T.text !== 'function' || typeof T.render !== 'function') throw new Error('journal-docs-unavailable');
+      var picked = T.text(DOC_CONTEXT, lang);
+      if (!picked) throw new Error('journal-docs-unavailable');
+      var data = docData(row);
+      return {
+        projectId: row.id,
+        templateId: picked.id,
+        context: DOC_CONTEXT,
+        lang: picked.lang,
+        pending: !!picked.pending,
+        custom: !!picked.custom,
+        format: 'text',
+        subject: picked.subject ? T.render(picked.subject, data) : '',
+        body: T.render(picked.body, data),
+        data: data,
+      };
+    },
+    /**
+     * Снимок в архив: reason 'print' | 'manual'. doc — результат compose(),
+     * subject/body могут быть исправлены вручную (одноразово, шаблон не
+     * меняется) — тогда edited: true.
+     */
+    save: async function (projectId, doc, reason, edited) {
+      if (DOC_REASONS.indexOf(reason) < 0) throw new Error('journal-docs-invalid-reason');
+      if (!doc || doc.projectId !== projectId) throw new Error('journal-docs-invalid');
+      var D = docsApi();
+      if (!D || typeof D.saveGuarded !== 'function') throw new Error('journal-docs-unavailable');
+      /* Строка проекта меняется между чтением и записью (правка текста в
+         соседней вкладке) — один повтор с перечитанной строкой. */
+      for (var attempt = 0; attempt < 2; attempt++) {
+        var row = await docProject(projectId);
+        var guard = { type: 'expect', store: 'journalEntries', key: projectId,
+          match: { type: 'project', sec: undefined, status: row.status, updatedAt: row.updatedAt, title: row.title, body: row.body } };
+        try {
+          return await D.saveGuarded({
+            templateId: doc.templateId || DOC_TEMPLATE_ID,
+            context: DOC_CONTEXT,
+            title: typeof doc.title === 'string' ? doc.title : '',
+            lang: doc.lang || '',
+            format: 'text',
+            subject: doc.subject || null,
+            body: String(doc.body || ''),
+            pages: [],
+            edited: !!edited,
+            ref: docRef(projectId),
+            entityTitle: row.title || '',
+            data: docData(row),
+            reason: reason,
+          }, [guard]);
+        } catch (err) {
+          if (!(err && err.message === 'cwdb-batch-precondition' && err.store === 'journalEntries')) {
+            throw new Error('journal-docs-archive-failed');
+          }
+          /* Предусловие сорвалось — снимок НЕ записан. Причину уточняет
+             docProject() на следующем круге (защищён / архив / удалён). */
+        }
+      }
+      await docProject(projectId);
+      throw new Error('journal-docs-changed');
+    },
+  };
+
   /* ═══ Проекты района (J7) ════════════════════════════════════════════════
    * Проект — строка journalEntries с type:'project'. Своего хранилища нет.
    *  - владелец — район: nodeId = circuitId = id района; type/nodeId/
@@ -1835,6 +1966,7 @@
     } catch (e) {
       if (e && e.message === 'cwdb-batch-precondition') {
         var op = ops[e.opIndex] || {};
+        if (op.store === 'documents') throw new Error('journal-protect-has-documents');
         if (op.store === 'journalMeta') {
           var C = cryptoApi();
           if (C) C.session.lock('vault-changed');
@@ -1886,6 +2018,16 @@
     assertEntryPersistable(next);
     return { type: 'put', store: 'journalEntries', value: next,
       match: { sec: undefined, title: cur.title, body: cur.body, updatedAt: cur.updatedAt } };
+  }
+  /* J9b: предусловие «у проекта нет снимков в архиве» — внутри пакета
+     защиты (expectNone по индексу entityKey хранилища documents). Сорвалось
+     → commitBatch() отвечает journal-protect-has-documents, строка остаётся
+     открытой. Для не-проектов — ничего. */
+  function noDocumentsOps(row) {
+    if (!row || row.type !== 'project') return [];
+    var D = docsApi();
+    if (!D || typeof D.refKey !== 'function') throw new Error('journal-protect-docs-unknown');
+    return [{ type: 'expectNone', store: 'documents', index: 'entityKey', value: D.refKey(docRef(row.id)) }];
   }
   async function countProtected() { return (await entriesBase.getAll()).filter(isProtected).length; }
 
@@ -1941,10 +2083,15 @@
         cur = await entriesBase.get(entryId);
         await assertProtectable(cur);
         if (isProtected(cur)) throw new Error('journal-protect-already');
+        await assertNoProjectDocuments(cur);
       }
       var v = await C.createVault(passphrase);
       var ops = [{ type: 'add', store: 'journalMeta', value: v.meta }];
       if (cur) ops.push(protectOp(cur, await C.encryptEntry(v.key, cur.id, textOf(cur))));
+      /* J9b: сейф + первая защищённая строка фиксируются, только если у
+         проекта нет снимков — проверка в той же транзакции. Иначе не пишется
+         ничего; сессия открывается лишь после успешной записи. */
+      if (cur) ops = ops.concat(noDocumentsOps(cur));
       await commitBatch(ops);
       C.session.open(v.key, v.meta.wrap.ct);
       return true;
@@ -1956,8 +2103,9 @@
       var cur = await entriesBase.get(entryId);
       await assertProtectable(cur);
       if (isProtected(cur)) throw new Error('journal-protect-already');
+      await assertNoProjectDocuments(cur);
       var sec = await C.encryptEntry(C.session.key(), cur.id, textOf(cur));
-      await commitBatch([vaultExpect(vault), protectOp(cur, sec)]);
+      await commitBatch([vaultExpect(vault), protectOp(cur, sec)].concat(noDocumentsOps(cur)));
       return true;
     },
 
@@ -2023,6 +2171,7 @@
     archive: archive,
     links: links,
     planner: planner,
+    documents: documents,
     projects: projects,
     meta: meta,
     protection: protection,

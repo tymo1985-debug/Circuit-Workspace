@@ -49,6 +49,7 @@ const ok = (label, cond, extra) => {
 const rejects = async (fn) => { try { await fn(); return null; } catch (e) { return e && e.message; } };
 
 eval(read('shared/db.js'));
+eval(read('shared/documents.js'));   // J9b: защита проекта сверяется с архивом документов
 eval(read('journal/js/crypto.js'));
 eval(read('journal/js/data.js'));
 eval(read('shared/backup.js'));
@@ -419,10 +420,15 @@ P.lock();
 st = await P.status();
 ok('сейф есть, защищённых строк нет — корректно, стартует заблокированным', st.state === 'locked');
 
+/* ═══ 10b. J9b: канарейки нет в архиве документов и в шаблонах ═════════ */
+console.log('\n10b. Архив документов и шаблоны (J9b)');
+ok('канарейки нет в CWDB.documents', !hasCanary(JSON.stringify(await CWDB.documents.getAll())));
+ok('канарейки нет в CWDB.templates', !hasCanary(JSON.stringify(await CWDB.templates.getAll())));
+
 /* ═══ 11. Код экранов: данные только через фасад ═══════════════════════ */
 console.log('\n11. Слой экранов');
 const strip = (x) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-const ui = strip(['core', 'districts', 'visits', 'tasks', 'projects', 'search-archive', 'protection'].map((f) => read('journal/js/app/' + f + '.js')).join('\n') + read('journal/js/app.js'));
+const ui = strip(['core', 'districts', 'visits', 'tasks', 'projects', 'documents', 'search-archive', 'protection'].map((f) => read('journal/js/app/' + f + '.js')).join('\n') + read('journal/js/app.js'));
 ok('экраны не трогают CWJournalCrypto напрямую', !/CWJournalCrypto/.test(ui));
 ok('ни localStorage, ни sessionStorage в экранах', !/localStorage|sessionStorage/.test(ui));
 ok('фраза не логируется', !/console\.[a-z]+\([^)]*(pass|фраз)/i.test(ui + read('journal/js/crypto.js') + read('journal/js/data.js')));

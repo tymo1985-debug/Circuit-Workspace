@@ -361,7 +361,12 @@
    *            весь пакет откатывается.
    * @returns {Promise<number>} число операций — только после oncomplete.
    */
-  const BATCH_TYPES = ['put', 'add', 'delete', 'expect'];
+  /* expectNone (J9b, 24.09.2026): предусловие «по индексу нет ни одной
+     записи» — { type: 'expectNone', store, index, value }. Проверяется ВНУТРИ
+     той же транзакции, что и запись, поэтому две вкладки сериализуются самой
+     IndexedDB: например, «защитить проект» и «сохранить письмо проекта» не
+     могут обе закоммититься. Схема не меняется — индекс должен существовать. */
+  const BATCH_TYPES = ['put', 'add', 'delete', 'expect', 'expectNone'];
   function batchMatches(current, match) {
     if (match === null) return current === undefined;
     if (current === undefined) return false;
@@ -378,6 +383,7 @@
       }
       if ((op.type === 'delete' || op.type === 'expect') && op.key === undefined) throw new TypeError(`CWDB.batch: операция ${i}: нужен key`);
       if (op.type === 'expect' && op.match === undefined) throw new TypeError(`CWDB.batch: операция ${i}: expect без match`);
+      if (op.type === 'expectNone' && (typeof op.index !== 'string' || op.value === undefined)) throw new TypeError(`CWDB.batch: операция ${i}: expectNone без index/value`);
       if (stores.indexOf(op.store) < 0) stores.push(op.store);
     });
     const db = await openDb();
@@ -392,6 +398,22 @@
         if (failure || i >= ops.length) return;
         const op = ops[i];
         const store = transaction.objectStore(op.store);
+        if (op.type === 'expectNone') {
+          let c;
+          try { c = store.index(op.index).count(op.value); } catch (error) { fail(error); return; }
+          c.onsuccess = () => {
+            if (c.result > 0) {
+              const error = new Error('cwdb-batch-precondition');
+              error.opIndex = i;
+              error.store = op.store;
+              fail(error);
+              return;
+            }
+            step(i + 1);
+          };
+          c.onerror = () => { failure = failure || c.error; };
+          return;
+        }
         const key = op.type === 'put' || op.type === 'add' ? op.value.id : op.key;
         const write = () => {
           let r;

@@ -168,6 +168,21 @@
   хранилища браузера до их уплотнения — это вне модели угроз J8 (как и XSS,
   скомпрометированное устройство и текст на экране при открытой сессии).
 
+## Документы проекта (J9b)
+
+Только через `CWJournal.documents` (`compose/list/save`): шаблон
+`sys.journal.project.letter`, данные — `{ project: { title, body } }` из сырой
+строки, ref `{journal, project, id}`, снимок — `print`/`manual`, без
+`journalLinks`. Защищённый проект → `journal-docs-protected` (и после
+unlock); проект со снимками не защищается (`journal-protect-has-documents`),
+архив недоступен или строгое `CWDocs.listStrict()` отказало →
+`journal-protect-docs-unknown`; `save()` → null = отказ архива. Архивный
+проект → `journal-project-readonly` (история видна). Атомарность без уборки: снимок —
+`CWDocs.saveGuarded()` с `expect` на строку проекта, защита/первая настройка —
+пакет с `expectNone` по `documents.entityKey`; «защищён + снимок» невозможно. Композер
+перечитывает шаблоны (`CWTemplates.reload()`) при каждом открытии. Экран —
+`js/app/documents.js`, обработчики — один раз.
+
 ## Фикстуры
 
 - Обзор — статическая визуальная фикстура в разметке, кроме блока

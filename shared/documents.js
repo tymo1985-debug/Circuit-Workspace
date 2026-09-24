@@ -67,6 +67,81 @@
     return String(b.lastAt || b.createdAt || '').localeCompare(String(a.lastAt || a.createdAt || ''));
   }
 
+  /* Общая подготовка снимка для save() и saveGuarded(): одна логика
+     «что записать», два способа записи. */
+  function prepare(input) {
+    var ref = input.ref || {};
+    return {
+      input: input,
+      ref: ref,
+      key: refKey(ref),
+      now: new Date().toISOString(),
+      reason: input.reason || 'manual',
+      draft: {
+        templateId: input.templateId || '',
+        context: input.context || '',
+        templateUpdatedAt: input.templateUpdatedAt || null,
+        title: input.title || '',
+        lang: input.lang || '',
+        format: input.format || 'text',
+        subject: input.subject || null,
+        body: input.body || '',
+        pages: input.pages || [],
+      },
+    };
+  }
+  function planSave(p, rows) {
+    var draft = p.draft, input = p.input, ref = p.ref, reason = p.reason, now = p.now;
+    /* Сравнивать нужно с последним снимком ТОГО ЖЕ документа, а не с
+       последним снимком сущности вообще. Первая версия брала просто самую
+       свежую запись визита — и повторная выдача письма после снимка e-mail
+       создавала дубль письма, потому что «последним» оказывался e-mail.
+       Поймано живым прогоном 13.08.2026. */
+    var same = (rows || []).filter(function (row) {
+      return (row.templateId || '') === draft.templateId;
+    });
+    var last = same.sort(byNewest)[0];
+    if (last && sameContent(last, draft)) {
+      /* Та же бумага, выданная ещё раз. Причину дописываем к списку —
+         «напечатал, потом отправил» это одна и та же бумага, но знать об
+         обоих событиях полезно. */
+      var reasons = (last.reasons || [last.reason]).filter(Boolean);
+      if (reasons.indexOf(reason) < 0) reasons.push(reason);
+      return { update: { id: last.id, last: last, patch: {
+        reasons: reasons,
+        reason: reason,
+        count: (last.count || 1) + 1,
+        lastAt: now,
+        entityTitle: input.entityTitle || last.entityTitle || '',
+      } } };
+    }
+    return { record: {
+      templateId: draft.templateId,
+      context: draft.context,
+      templateUpdatedAt: draft.templateUpdatedAt,
+      title: draft.title,
+      lang: draft.lang,
+      format: draft.format,
+      subject: draft.subject,
+      body: draft.body,
+      pages: draft.pages,
+      ref: { module: ref.module || '', entity: ref.entity || '', id: ref.id || '' },
+      entityKey: p.key,
+      module: ref.module || '',
+      edited: !!input.edited,
+      entityTitle: input.entityTitle || '',
+      data: input.data || null,
+      reason: reason,
+      reasons: [reason],
+      count: 1,
+      createdAt: now,
+      lastAt: now,
+    } };
+  }
+  function newId() {
+    return 'doc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  }
+
   var CWDocs = {
     /** Доступно ли хранилище. Без общей базы архив просто не ведётся. */
     available: function () { return !!db(); },
@@ -99,72 +174,15 @@
     save: function (input) {
       var store = db();
       if (!store || !input) return Promise.resolve(null);
-      var ref = input.ref || {};
-      var key = refKey(ref);
-      var now = new Date().toISOString();
-      var reason = input.reason || 'manual';
-      var draft = {
-        templateId: input.templateId || '',
-        context: input.context || '',
-        templateUpdatedAt: input.templateUpdatedAt || null,
-        title: input.title || '',
-        lang: input.lang || '',
-        format: input.format || 'text',
-        subject: input.subject || null,
-        body: input.body || '',
-        pages: input.pages || [],
-      };
-
-      return store.byIndex('entityKey', key).then(function (rows) {
-        /* Сравнивать нужно с последним снимком ТОГО ЖЕ документа, а не с
-           последним снимком сущности вообще. Первая версия брала просто самую
-           свежую запись визита — и повторная выдача письма после снимка e-mail
-           создавала дубль письма, потому что «последним» оказывался e-mail.
-           Поймано живым прогоном 13.08.2026. */
-        var same = (rows || []).filter(function (row) {
-          return (row.templateId || '') === draft.templateId;
-        });
-        var last = same.sort(byNewest)[0];
-        if (last && sameContent(last, draft)) {
-          /* Та же бумага, выданная ещё раз. Причину дописываем к списку —
-             «напечатал, потом отправил» это одна и та же бумага, но знать об
-             обоих событиях полезно. */
-          var reasons = (last.reasons || [last.reason]).filter(Boolean);
-          if (reasons.indexOf(reason) < 0) reasons.push(reason);
-          var patch = {
-            reasons: reasons,
-            reason: reason,
-            count: (last.count || 1) + 1,
-            lastAt: now,
-            entityTitle: input.entityTitle || last.entityTitle || '',
-          };
-          return global.CWDB.documents.update(last.id, patch);
+      var p = prepare(input);
+      return store.byIndex('entityKey', p.key).then(function (rows) {
+        var plan = planSave(p, rows);
+        if (plan.update) {
+          return global.CWDB.documents.update(plan.update.id, plan.update.patch);
         }
-        var record = {
-          templateId: draft.templateId,
-          context: draft.context,
-          templateUpdatedAt: draft.templateUpdatedAt,
-          title: draft.title,
-          lang: draft.lang,
-          format: draft.format,
-          subject: draft.subject,
-          body: draft.body,
-          pages: draft.pages,
-          ref: { module: ref.module || '', entity: ref.entity || '', id: ref.id || '' },
-          entityKey: key,
-          module: ref.module || '',
-          edited: !!input.edited,
-          entityTitle: input.entityTitle || '',
-          data: input.data || null,
-          reason: reason,
-          reasons: [reason],
-          count: 1,
-          createdAt: now,
-          lastAt: now,
-        };
-        return store.add(record).then(function (id) {
-          record.id = id;
-          return record;
+        return store.add(plan.record).then(function (id) {
+          plan.record.id = id;
+          return plan.record;
         });
       }).catch(function (error) {
         /* Отказ архива не должен мешать выдаче документа: письмо уже собрано и
@@ -172,6 +190,56 @@
         console.error('CWDocs: не удалось записать снимок документа', error);
         return null;
       });
+    },
+
+    /**
+     * Сохранить снимок ПОД ПРЕДУСЛОВИЯМИ (J9b): та же логика, что у save()
+     * (включая «та же бумага ещё раз» — счётчик вместо дубля), но запись
+     * идёт одним CWDB.batch вместе с `guards` — операциями expect/expectNone
+     * над другими хранилищами той же базы. Guard не выполнен — снимок НЕ
+     * записан, промис отклоняется ошибкой 'cwdb-batch-precondition' (поля
+     * opIndex/store — какое предусловие сорвалось). Сбой базы — тоже отказ,
+     * а не null: вызывающему нужно знать, что записи нет.
+     *
+     * Если тот же снимок (для счётчика) успели изменить в соседней вкладке,
+     * запись повторяется один раз с перечитанным архивом.
+     *
+     * @param {object} input — как у save()
+     * @param {object[]} guards — операции CWDB.batch типа 'expect'/'expectNone'
+     * @returns {Promise<object>} записанный снимок
+     */
+    saveGuarded: function (input, guards) {
+      var store = db();
+      if (!store || !input || !global.CWDB || typeof global.CWDB.batch !== 'function') {
+        return Promise.reject(new Error('cwdocs-unavailable'));
+      }
+      var extra = Array.isArray(guards) ? guards : [];
+      if (extra.some(function (g) { return !g || (g.type !== 'expect' && g.type !== 'expectNone'); })) {
+        return Promise.reject(new TypeError('CWDocs.saveGuarded: guards — только expect/expectNone'));
+      }
+      var p = prepare(input);
+      var attempt = function (left) {
+        return Promise.resolve(store.byIndex('entityKey', p.key)).then(function (rows) {
+          if (!Array.isArray(rows)) throw new Error('cwdocs-read-failed');
+          var plan = planSave(p, rows);
+          var ops = extra.slice();
+          var result;
+          if (plan.update) {
+            var last = plan.update.last;
+            result = Object.assign({}, last, plan.update.patch);
+            ops.push({ type: 'expect', store: 'documents', key: last.id, match: { count: last.count, lastAt: last.lastAt } });
+            ops.push({ type: 'put', store: 'documents', value: result });
+          } else {
+            result = Object.assign({ id: newId() }, plan.record);
+            ops.push({ type: 'add', store: 'documents', value: result });
+          }
+          return global.CWDB.batch(ops).then(function () { return result; }, function (error) {
+            if (error && error.message === 'cwdb-batch-precondition' && error.store === 'documents' && left > 0) return attempt(left - 1);
+            throw error;
+          });
+        });
+      };
+      return attempt(1);
     },
 
     /** История одной сущности, свежие сверху. */
@@ -183,6 +251,26 @@
       }).catch(function (error) {
         console.error('CWDocs: не удалось прочитать историю документов', error);
         return [];
+      });
+    },
+
+    /**
+     * То же, что list(), но СТРОГО: без базы или при сбое чтения промис
+     * отклоняется, а не превращается в пустой список. Для решений, где
+     * «не смогли прочитать» ≠ «документов нет» — например, запрет защиты
+     * проекта Журнала, по которому уже выданы письма (J9b, fail closed).
+     * Интерфейсу списков по-прежнему нужен терпимый list().
+     */
+    /** Ключ сущности в индексе entityKey — для предусловий CWDB.batch
+     *  (expectNone), чтобы вызывающие не повторяли формат ключа. */
+    refKey: refKey,
+
+    listStrict: function (ref) {
+      var store = db();
+      if (!store) return Promise.reject(new Error('cwdocs-unavailable'));
+      return Promise.resolve().then(function () { return store.byIndex('entityKey', refKey(ref)); }).then(function (rows) {
+        if (!Array.isArray(rows)) throw new Error('cwdocs-read-failed');
+        return rows.sort(byNewest);
       });
     },
 

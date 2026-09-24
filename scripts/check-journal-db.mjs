@@ -239,10 +239,12 @@ ok('в localStorage за весь прогон ничего не записан�
 console.log('\nРезервная копия');
 const entry = CWBackup.MODULES.journal;
 const declared = entry?.sharedStores?.[DB] || [];
-ok('реестр: четыре хранилища Журнала + communities',
-  JSON.stringify([...declared].sort()) === JSON.stringify([...JOURNAL, 'communities'].sort()), JSON.stringify(declared));
+/* J9b: письма проекта — templates/documents; сливаются, в набор замены J8 не входят. */
+const SHARED_J9B = ['communities', 'templates', 'documents'];
+ok('реестр: четыре хранилища Журнала + communities, templates, documents',
+  JSON.stringify([...declared].sort()) === JSON.stringify([...JOURNAL, ...SHARED_J9B].sort()), JSON.stringify(declared));
 ok('реестр: никакого localStorage', entry.local.length === 0 && entry.sharedLocal.length === 0 && entry.idb.length === 0);
-ok('реестр: templates/documents ещё не объявлены', !declared.includes('templates') && !declared.includes('documents'));
+ok('реестр: templates/documents не в наборе замены J8', !(entry.restoreReplace?.[DB] || []).some((n) => n === 'templates' || n === 'documents'));
 
 /* Соседи в общей базе до копии. */
 await CWDB.communities.put({ id: 'com_x', name: 'Северное' });
@@ -253,7 +255,7 @@ ok('копия помечена partial', snap.sections?.shared?.partial === tru
 ok('в копии все четыре хранилища Журнала', JOURNAL.every((n) => !!dump[n]));
 ok('в копии communities', (dump.communities?.rows || []).some((r) => r.id === 'com_x'));
 ok('в копии НЕТ чужого state', !dump.state);
-ok('в копии нет прочих хранилищ', Object.keys(dump).every((n) => [...JOURNAL, 'communities'].includes(n)), Object.keys(dump).join());
+ok('в копии нет прочих хранилищ', Object.keys(dump).every((n) => [...JOURNAL, ...SHARED_J9B].includes(n)), Object.keys(dump).join());
 
 /* После копии: своё испорчено, соседи и справочник пополнились. */
 await J.nodes.update(cong, { label: 'испорчено' });

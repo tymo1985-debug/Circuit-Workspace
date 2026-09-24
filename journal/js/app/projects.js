@@ -28,6 +28,7 @@
   function openTaskDialog() { return A.openTaskDialog.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
+  function renderProjectDocs() { return A.renderProjectDocs.apply(this, arguments); }
   function renderVisitRecords() { return A.renderVisitRecords.apply(this, arguments); }
   function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
   function seasonLabel() { return A.seasonLabel.apply(this, arguments); }
@@ -36,6 +37,7 @@
   function textOr() { return A.textOr.apply(this, arguments); }
   function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function todayIso() { return A.todayIso.apply(this, arguments); }
+  function wireProjectDocsChrome() { return A.wireProjectDocsChrome.apply(this, arguments); }
   function uiLang() { return A.uiLang.apply(this, arguments); }
   function wireMenuToggle() { return A.wireMenuToggle.apply(this, arguments); }
 
@@ -443,6 +445,7 @@
     });
 
     renderProjectHistory(p, rel, byId);
+    renderProjectDocs(p);
 
     var sbtn = $('#projectStatusBtn');
     sbtn.hidden = !editable;
@@ -604,6 +607,7 @@
   }
 
   function wireProjectChrome() {
+    wireProjectDocsChrome();
     $('#projectBody').addEventListener('click', function (e) {
       if (e.target.closest('button, textarea, select, .j-block__actions')) return;
       var st = parseHash();

@@ -39,6 +39,7 @@
     'sys.visit.congregation.salutation': 'doc.name.visit_salutation_congregation',
     'sys.visit.group.salutation': 'doc.name.visit_salutation_group',
     'sys.visit.pregroup.salutation': 'doc.name.visit_salutation_pregroup',
+    'sys.journal.project.letter': 'doc.name.journal_project_letter',
   };
 
   /* Какие пространства переменных показывать. Чужие не предлагаем: движок их
@@ -48,6 +49,9 @@
     'congress-project': ['sender', 'congress', 'assignment', 'doc'],
     'circuit-planner': ['sender', 'congregation', 'visit', 'doc'],
     'pioneer-school': ['sender', 'student', 'school', 'doc'],
+    /* Журнал (J9b) передаёт только { project }; отправителя он не
+       подключает, поэтому {{sender.*}} там не подставился бы — не предлагаем. */
+    'journal': ['project', 'doc'],
   };
 
   /* Язык ДОКУМЕНТА (не язык интерфейса, не путать с CWDocLang, который
@@ -179,6 +183,7 @@
     { key: 'congress-project', label: 'module.congress-project.title' },
     { key: 'circuit-planner', label: 'module.circuit-planner.title' },
     { key: 'pioneer-school', label: 'module.pioneer-school.title' },
+    { key: 'journal', label: 'module.journal.title' },
     { key: 'custom', label: 'doc.filter_custom' },
   ];
 
@@ -242,24 +247,31 @@
      нужны вместе, а плоский список из сотен писем нечитаем (правило из
      docs/documents/00-proposal.md, раздел 11). */
 
-  var archive = { rows: null, search: '', filter: 'all', loading: false };
+  /* entityKey — узкий отбор «документы одной сущности» по глубокой ссылке
+     (#archive/<module>/<entity>/<id>); снимается любым чипом фильтра. */
+  var archive = { rows: null, search: '', filter: 'all', loading: false, entityKey: null };
 
   var ARCHIVE_FILTERS = [
     { key: 'all', label: 'doc.filter_all' },
     { key: 'congress-project', label: 'module.congress-project.title' },
     { key: 'circuit-planner', label: 'module.circuit-planner.title' },
     { key: 'pioneer-school', label: 'module.pioneer-school.title' },
+    { key: 'journal', label: 'module.journal.title' },
   ];
 
   function renderArchiveFilters() {
     $('#archiveFilters').innerHTML = ARCHIVE_FILTERS.map(function (f) {
-      var on = archive.filter === f.key;
+      var on = archive.filter === f.key && !archive.entityKey;
       return '<button type="button" class="md-chip' + (on ? ' selected' : '') + '"'
         + ' aria-pressed="' + on + '" data-afilter="' + f.key + '">' + escapeHtml(t(f.label)) + '</button>';
-    }).join('');
+    }).join('') + (archive.entityKey
+      ? '<button type="button" class="md-chip selected" aria-pressed="true" data-afilter="' + escapeHtml(archive.filter) + '">'
+        + escapeHtml(t('doc.archive_one_entity')) + ' ✕</button>'
+      : '');
   }
 
   function archiveMatches(doc) {
+    if (archive.entityKey && (doc.entityKey || '') !== archive.entityKey) return false;
     if (archive.filter !== 'all' && (doc.module || '') !== archive.filter) return false;
     if (!archive.search) return true;
     var q = archive.search.toLowerCase();
@@ -1427,6 +1439,7 @@
       var btn = e.target.closest('[data-afilter]');
       if (!btn) return;
       archive.filter = btn.dataset.afilter;
+      archive.entityKey = null;
       renderArchiveFilters();
       renderArchive();
     });
@@ -1506,6 +1519,46 @@
     });
   }
 
+  /* ─────────────────────  Глубокие ссылки (J9b)  ─────────────────────
+     #template/<id>                    — редактор шаблона (только существующий);
+     #archive                          — архив;
+     #archive/<module>/<entity>/<id>   — архив одной сущности.
+     Части проверяются белым списком и сравниваются с данными как строки: в
+     селектор и разметку они не попадают. Кривая или неизвестная ссылка —
+     обычное открытие модуля, без ошибки. */
+  var DEEP_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
+  var DEEP_NAME = /^[a-z][a-z0-9-]{0,39}$/;
+  function parseDeepLink(hash) {
+    var raw = String(hash || '').replace(/^#/, '');
+    if (!raw) return null;
+    var parts;
+    try { parts = raw.split('/').map(decodeURIComponent); } catch (e) { return null; }
+    if (parts[0] === 'template' && parts.length === 2 && DEEP_ID.test(parts[1])) return { screen: 'library', templateId: parts[1] };
+    if (parts[0] === 'archive' && parts.length === 1) return { screen: 'archive' };
+    if (parts[0] === 'archive' && parts.length === 4 && DEEP_NAME.test(parts[1]) && DEEP_NAME.test(parts[2]) && DEEP_ID.test(parts[3])) {
+      return { screen: 'archive', module: parts[1], entityKey: parts[1] + ':' + parts[2] + ':' + parts[3] };
+    }
+    return null;
+  }
+  function applyArchiveLink(link) {
+    if (!link || link.screen !== 'archive') return false;
+    var known = ARCHIVE_FILTERS.some(function (f) { return f.key === link.module; });
+    archive.filter = known ? link.module : 'all';
+    archive.entityKey = link.entityKey || null;
+    renderArchiveFilters();
+    showScreen('archive');
+    renderArchive();
+    return true;
+  }
+  function applyTemplateLink(link) {
+    if (!link || link.screen !== 'library') return false;
+    var exists = templates().some(function (tpl) { return tpl.id === link.templateId; });
+    if (!exists) return false;
+    showScreen('library');
+    openEditor(link.templateId);
+    return true;
+  }
+
   function boot() {
     /* Фаза C1: sender остаётся синхронным (backend не менялся), реального
        ожидания здесь нет — точка нужна заранее для фазы C2. */
@@ -1561,8 +1614,11 @@
        промолчать о том, что правок пользователя не видно, было бы хуже, чем
        честное сообщение. */
     $('#list').innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.loading')) + '</div>';
+    var deepLink = parseDeepLink(location.hash);
+    if (deepLink && deepLink.screen === 'archive') applyArchiveLink(deepLink);
     self.CWTemplates.init().then(function () {
       renderList();
+      if (deepLink && deepLink.screen === 'library') applyTemplateLink(deepLink);
     }).catch(function (error) {
       console.error('Документы: хранилище недоступно', error);
       $('#list').innerHTML = '<div class="md-banner md-banner--error">' + escapeHtml(t('doc.storage_failed')) + '</div>';

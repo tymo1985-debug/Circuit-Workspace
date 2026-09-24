@@ -230,5 +230,24 @@
         uk: { subject: null, body: "Відповідальному брату передгрупи {congregation}" },
       },
     },
+
+    /* Письмо по проекту района — Журнал (J9b). Намеренно минимальный: тема —
+       название проекта, текст — его описание. Свой текст пользователь
+       пишет в «Документах»; одинаковые колонки на пяти языках — не перевод,
+       а одна и та же подстановка. */
+    {
+      id: 'sys.journal.project.letter',
+      context: 'journal.project.letter',
+      module: 'journal',
+      format: 'text',
+      title: 'Письмо по проекту района',
+      translations: {
+        uk: { subject: '{{project.title}}', body: '{{project.body}}' },
+        ru: { subject: '{{project.title}}', body: '{{project.body}}' },
+        en: { subject: '{{project.title}}', body: '{{project.body}}' },
+        pl: { subject: '{{project.title}}', body: '{{project.body}}' },
+        de: { subject: '{{project.title}}', body: '{{project.body}}' },
+      },
+    },
   ];
 })(typeof self !== 'undefined' ? self : this);

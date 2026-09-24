@@ -34,7 +34,7 @@ const ok = (label, cond, extra) => {
 };
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-const SCREENS = ['core', 'districts', 'visits', 'tasks', 'projects', 'search-archive', 'protection'];
+const SCREENS = ['core', 'districts', 'visits', 'tasks', 'projects', 'documents', 'search-archive', 'protection'];
 const FILES = SCREENS.map((n) => 'journal/js/app/' + n + '.js').concat(['journal/js/app.js']);
 const LIMIT = 150 * 1024; // порог JS_WARN check-context-budget.mjs (символы)
 const STUB = /^function ([\w$]+)\(\) \{ return A\.([\w$]+)\.apply\(this, arguments\); \}$/;

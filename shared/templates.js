@@ -339,6 +339,25 @@
       return readyPromise;
     },
 
+    /**
+     * Перечитать пользовательские шаблоны из базы (J9b). init() читает один
+     * раз за жизнь страницы; правка шаблона в «Документах» в соседней вкладке
+     * иначе не видна открытой странице до перезагрузки. Зовётся на границе,
+     * где актуальность важна (открытие композера), — без опроса и без
+     * нового хранимого состояния. Сбой чтения оставляет прежний кэш.
+     * @returns {Promise<void>}
+     */
+    reload: function () {
+      if (!global.CWDB || !global.CWDB.templates) return storage.init();
+      return global.CWDB.templates.getAll().then(function (rows) {
+        var next = {};
+        (rows || []).forEach(function (row) { if (row && row.id) next[row.id] = row; });
+        cache = next;
+        CWTemplates.stored = true;
+        if (!readyPromise) readyPromise = Promise.resolve();
+      });
+    },
+
     /** Промис готовности (или уже разрешённый, если init не звали). */
     ready: function () { return readyPromise || storage.init(); },
 

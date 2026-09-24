@@ -604,17 +604,64 @@
             <ul class="j-hist j-phist" id="projectHistory"></ul>
           </div>
 
+          <!-- Документы проекта (J9b): история выданных писем — CWDocs, карточки —
+               CWDocsView; текст шаблона правится только в «Документах». -->
+          <div class="j-sec" id="projectDocsSec">
+            <div class="j-sec__head j-sec__head--rule">
+              <span class="j-sec__title" data-i18n="j.pdoc.title">Документы проекта</span>
+              <span class="j-sec__count" id="projectDocsCount"></span>
+            </div>
+            <p class="j-note" id="projectDocsNote" hidden></p>
+            <div id="projectDocs" class="j-pdoc__list"></div>
+            <div class="j-pdoc__links">
+              <a class="md-btn md-btn-text" id="projectTemplateLink" href="../documents/index.html#template/sys.journal.project.letter"><span data-i18n="j.pdoc.template">Шаблон письма в «Документах»</span></a>
+              <a class="md-btn md-btn-text" id="projectArchiveLink" href="../documents/index.html#archive"><span data-i18n="j.pdoc.archive">Архив проекта в «Документах»</span></a>
+            </div>
+          </div>
+
           <div class="j-project__actions">
             <button type="button" class="md-btn md-btn-filled j-project__primary" id="projectStatusBtn"></button>
+            <button type="button" class="md-btn md-btn-tonal" id="projectLetterBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg>
+              <span data-i18n="j.pdoc.create">Создать письмо</span>
+            </button>
             <button type="button" class="md-btn md-btn-outlined" id="projectArchiveBtn"></button>
           </div>
-          <!-- Письмо в «Документах» — межмодульная интеграция, не J7: видна, неактивна. -->
-          <button type="button" class="md-btn md-btn-text j-project__doc" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg>
-            <span data-i18n="j.project.make_letter">Создать письмо в «Документах»</span>
-          </button>
         </div>
       </section>
+
+      <!-- Письмо по проекту (J9b): язык — CWDocLang, текст — CWTemplates.
+           Правка темы/текста — только для этого экземпляра; в архив — только
+           печать и «Сохранить в архив». -->
+      <dialog id="letterDialog" class="md-dialog j-letter" aria-labelledby="letterDialogTitle">
+        <div class="md-dialog-head"><h3 class="md-title-medium" id="letterDialogTitle" data-i18n="j.pdoc.composer_title">Письмо по проекту</h3></div>
+        <div class="md-dialog-body">
+          <div class="md-field md-field-select">
+            <label for="letterLang" data-i18n="j.pdoc.lang">Язык письма</label>
+            <select id="letterLang"></select>
+          </div>
+          <p class="j-sec__hint" id="letterInfo" hidden></p>
+          <div class="md-field">
+            <input type="text" id="letterSubject" placeholder=" " autocomplete="off">
+            <label for="letterSubject" data-i18n="j.pdoc.subject">Тема</label>
+          </div>
+          <div class="md-field">
+            <textarea id="letterBody" rows="10" placeholder=" "></textarea>
+            <label for="letterBody" data-i18n="j.pdoc.body">Текст</label>
+          </div>
+          <p class="j-note" data-i18n="j.pdoc.oneoff_hint">Правка здесь — только для этого письма. Шаблон меняется в «Документах».</p>
+          <p class="j-dialog-error" id="letterError" role="alert" hidden></p>
+          <p class="j-letter__status" id="letterStatus" role="status"></p>
+        </div>
+        <div class="md-dialog-actions j-letter__actions">
+          <button type="button" class="md-btn md-btn-text" id="letterCopySubject" data-i18n="j.pdoc.copy_subject">Копировать тему</button>
+          <button type="button" class="md-btn md-btn-text" id="letterCopyBody" data-i18n="j.pdoc.copy_body">Копировать текст</button>
+          <span class="j-editor__spacer"></span>
+          <button type="button" class="md-btn md-btn-outlined" id="letterPrint" data-i18n="j.pdoc.print">Печать</button>
+          <button type="button" class="md-btn md-btn-tonal" id="letterSave" data-i18n="j.pdoc.save">Сохранить в архив</button>
+          <button type="button" class="md-btn md-btn-text" id="letterClose" data-i18n="j.pdoc.close">Закрыть</button>
+        </div>
+      </dialog>
 
       <!-- Диалог проекта (J7): создание (название + описание) и переименование. -->
       <dialog id="projectDialog" class="md-dialog" aria-labelledby="projectDialogTitle">
@@ -990,6 +1037,13 @@
 <script src="../shared/db.js"></script>
 <script src="../shared/directory.js"></script>
 <script src="../shared/planner.js"></script>
+<script src="../shared/templates/namespaces.js"></script>
+<script src="../shared/templates/builtin.js"></script>
+<script src="../shared/templates.js"></script>
+<script src="../shared/doclang.js"></script>
+<script src="../shared/documents.js"></script>
+<script src="../shared/docsview.js"></script>
+<script src="../shared/print.js"></script>
 <script src="js/crypto.js"></script>
 <script src="js/data.js"></script>
 <script src="js/route.js"></script>
@@ -1000,6 +1054,7 @@
 <script src="js/app/visits.js"></script>
 <script src="js/app/tasks.js"></script>
 <script src="js/app/projects.js"></script>
+<script src="js/app/documents.js"></script>
 <script src="js/app/search-archive.js"></script>
 <script src="js/app/protection.js"></script>
 <script src="js/app.js"></script>

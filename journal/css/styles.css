@@ -443,9 +443,30 @@
 .j-phist .j-hist__t { font-size: 14px; line-height: 20px; }
 .j-phist .j-hist__m { font-size: 12px; }
 .j-project__actions { display: flex; flex-wrap: wrap; gap: var(--cw-space-3); margin: var(--cw-space-2) 0 var(--cw-space-3); }
-.j-project__actions .md-btn > svg, .j-project__doc > svg { width: 18px; height: 18px; flex: 0 0 auto; }
-.j-project__doc { margin: 0 0 var(--cw-space-6) -12px; }
-.j-project__doc:disabled { cursor: default; opacity: 0.7; }
+.j-project__actions .md-btn > svg { width: 18px; height: 18px; flex: 0 0 auto; }
+/* --- Документы проекта (J9b) -------------------------------------------------
+   Карточку снимка рисует общий shared/docsview.js классами .cwdoc-*; здесь
+   только оформление в духе модуля. */
+.j-project__actions .md-btn:disabled { cursor: default; }
+.j-pdoc__list { display: flex; flex-direction: column; gap: var(--cw-space-2); }
+.j-pdoc__links { display: flex; flex-wrap: wrap; gap: var(--cw-space-1); margin: var(--cw-space-2) 0 0 -12px; }
+.cwdoc { border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-sm); padding: var(--cw-space-3); background: var(--md-surface-container-low); }
+.cwdoc__head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.cwdoc__kind { font: 500 14px/20px var(--md-font-family); color: var(--md-on-surface); }
+.cwdoc__meta { font: 400 12px/16px var(--md-font-family); color: var(--md-on-surface-variant); }
+.cwdoc__subject { margin: var(--cw-space-2) 0 0; font-weight: 500; overflow-wrap: anywhere; }
+.cwdoc__text { margin-top: var(--cw-space-2); }
+.cwdoc__text summary { cursor: pointer; color: var(--cw-module); }
+.cwdoc__body { margin-top: var(--cw-space-2); }
+.cwdoc-plain { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cwdoc-page { margin-top: var(--cw-space-2); }
+.cwdoc-page__title { font-size: 12px; color: var(--md-on-surface-variant); }
+.cwdoc__actions { display: flex; flex-wrap: wrap; gap: var(--cw-space-1); margin: var(--cw-space-2) 0 0 -12px; }
+.j-letter { width: min(640px, calc(100vw - 32px)); }
+.j-letter .md-field { margin-bottom: var(--cw-space-4); }
+.j-letter textarea { min-height: 200px; }
+.j-letter__actions { flex-wrap: wrap; }
+.j-letter__status { margin: var(--cw-space-2) 0 0; min-height: 20px; font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
 .j-prow .j-row__end .j-tag svg { opacity: 1; width: 12px; height: 12px; }
 .j-block .j-tag--link svg, .j-check .j-tag--link svg { width: 12px; height: 12px; }
 
