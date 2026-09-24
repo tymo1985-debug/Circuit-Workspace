@@ -7,6 +7,24 @@
 Правило: держать в этом файле не больше 10 записей, старые переносить
 в архив текущего месяца.
 
+## 2026-09-24 — Production repair update pipeline
+
+**Версии:** Hub `0.41.57 → 0.41.58`; Конгрессы `4.46.79 → 4.46.80`;
+Клиндарий `9.95.0 → 9.95.1`; Школа `1.14.55 → 1.14.56`;
+Назначения `5.5.94 → 5.5.95`; Документы `1.11.4 → 1.11.5`;
+Журнал `0.13.3 → 0.13.4`.
+
+- Hub регистрирует и проверяет все модули из `CW_MODULES`, а не только
+  те, которые уже были открыты в этом browser profile.
+- Каждый worker отвечает фактической active-версией; success выдаётся
+  только после совпадения с реестром. Partial result называет module/scope.
+- Cache namespace модуля включает и module version, и Hub version: waiting worker
+  больше не перезаписывает active cache до активации.
+- Changelog берётся из waiting Hub-worker. Гонка generic/detailed banner убрана;
+  `CWI18n.apply()` больше не удаляет вложенный список изменений.
+- Chromium live upgrade `0.41.58 → 0.41.59` прошёл с тем же profile/cache state:
+  семь active-версий совпали, hard refresh не использован, возврат в Hub — HTML UI.
+
 ## 2026-09-24 — Congress: отдельные PDF писем
 
 **Версии:** Конгрессы `4.46.78 → 4.46.79`. Version-only cache-first bump:

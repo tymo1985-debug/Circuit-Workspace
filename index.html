@@ -1621,14 +1621,15 @@
     if (!matches) return;
 
     var lines = (pending.changes || []).map(function (c) {
-      var title = (self.CW_MODULES[c.module] && self.CW_MODULES[c.module].title) || c.module;
+      var title = c.module === 'hub' ? 'Circuit Workspace' : ((self.CW_MODULES[c.module] && self.CW_MODULES[c.module].title) || c.module);
       var version = c.version ? ' ' + c.version : '';
       return c.note ? (title + version + ' — ' + c.note) : (title + version);
     });
+    (pending.failed || []).forEach(function (line) { lines.push(line); });
 
     CWUpdate.offerHubBanner({
-      textKey: 'update.installed_multi',
-      textFallback: 'Обновление установлено',
+      textKey: pending.failed && pending.failed.length ? 'update.partial' : 'update.installed_multi',
+      textFallback: pending.failed && pending.failed.length ? 'Обновление установлено не для всех модулей' : 'Обновление установлено',
       listItems: lines,
       applyKey: 'update.dismiss',
       applyFallback: 'Понятно',
@@ -1651,16 +1652,13 @@
   // shared/release-manifest.js), но ТОЛЬКО для тех модулей, что реально
   // оказались в списке ready — совпадение release-манифеста с фактически
   // найденными waiting-воркерами, а не слепое доверие манифесту.
-  function buildChangeLines(readyModuleIds) {
-    var release = self.CW_RELEASE;
-    var byModule = {};
-    if (release && Array.isArray(release.changes)) {
-      release.changes.forEach(function (c) { byModule[c.module] = c; });
-    }
-    return readyModuleIds.map(function (id) {
-      var title = (self.CW_MODULES[id] && self.CW_MODULES[id].title) || id;
-      var change = byModule[id];
-      return change && change.note ? (title + ' — ' + change.note) : title;
+  function buildChangeLines(release) {
+    if (!release || !Array.isArray(release.changes)) return [];
+    return release.changes.map(function (change) {
+      var id = change.module;
+      var title = id === 'hub' ? 'Circuit Workspace' : ((self.CW_MODULES[id] && self.CW_MODULES[id].title) || id);
+      var version = change.version ? ' ' + change.version : '';
+      return change.note ? (title + version + ' — ' + change.note) : (title + version);
     });
   }
 
@@ -1671,6 +1669,7 @@
     var btn = document.getElementById('hubUpdateBtn');
     var label = btn && btn.querySelector('.cw-update-btn__label');
     if (!btn) return;
+    var checking = false;
 
     var MESSAGE = {
       current: ['update.current', 'Установлена последняя версия.'],
@@ -1679,6 +1678,8 @@
     };
 
     function runCheck() {
+      if (checking) return Promise.resolve();
+      checking = true;
       btn.disabled = true;
       var restore = label ? label.textContent : '';
       if (label) label.textContent = CWI18n.t('update.checking');
@@ -1705,10 +1706,13 @@
           return;
         }
 
-        var moduleIds = ready
-          .map(function (r) { return moduleIdForScope(r.scope); })
-          .filter(Boolean);
-        var lines = buildChangeLines(moduleIds);
+        var pendingRelease = result.release || self.CW_RELEASE;
+        var lines = buildChangeLines(pendingRelease);
+        failed.forEach(function (item) {
+          var id = moduleIdForScope(item.scope);
+          var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : item.scope;
+          lines.push(title + ' — не удалось проверить');
+        });
         // Хаб сам мог оказаться среди ready (свой scope) — для него отдельной
         // строки в списке нет (moduleIdForScope возвращает null), баннер в
         // этом случае просто говорит про сам Circuit Workspace без деталей.
@@ -1730,9 +1734,15 @@
             // переживает reload (в отличие от переменных в памяти), поэтому
             // после перезагрузки есть с чем сверять текущий CW_RELEASE.
             try {
+              var failedLines = failed.map(function (item) {
+                var id = moduleIdForScope(item.scope);
+                var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : item.scope;
+                return title + ' — не обновлён';
+              });
               sessionStorage.setItem('cwPendingRelease', JSON.stringify({
-                version: self.CW_RELEASE && self.CW_RELEASE.version,
-                changes: (self.CW_RELEASE && self.CW_RELEASE.changes) || [],
+                version: pendingRelease && pendingRelease.version,
+                changes: (pendingRelease && pendingRelease.changes) || [],
+                failed: failedLines,
               }));
             } catch (e) { /* приватный режим/квота — просто не покажем post-update блок */ }
             CWUpdate.applyAll(ready).then(function (outcome) {
@@ -1743,10 +1753,19 @@
               // а не молчаливый success (иначе хаб солгал бы, что apply
               // завершён полностью, пока какой-то scope ещё pending).
               btn.disabled = false;
-              if (outcome.allActivated) {
+              if (outcome.allActivated && !failed.length) {
                 if (label) label.textContent = CWI18n.t('hub.update_label');
               } else {
-                CWUpdate.notify('update.partial', 'Не удалось проверить некоторые модули. Попробуйте ещё раз.');
+                var bad = outcome.results.filter(function (r) { return r.status !== 'activated'; }).map(function (r) {
+                  var id = moduleIdForScope(r.scope);
+                  var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : 'Circuit Workspace';
+                  return title + ' (' + r.status + ')';
+                });
+                failed.forEach(function (r) {
+                  var id = moduleIdForScope(r.scope);
+                  bad.push((id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : r.scope) + ' (checkFailed)');
+                });
+                CWUpdate.notify('update.partial', 'Не обновились: ' + bad.join(', ') + '. Попробуйте ещё раз.');
                 if (label) label.textContent = CWI18n.t('hub.update_label');
               }
             });
@@ -1756,6 +1775,7 @@
         console.warn('Проверка обновлений не удалась', err);
         CWUpdate.notify(MESSAGE.offline[0], MESSAGE.offline[1]);
       }).then(function () {
+        checking = false;
         btn.disabled = false;
         // Подпись возвращаем через словарь, а не сохранённой строкой: язык
         // мог смениться, пока шла проверка. Не трогаем, если баннер с
@@ -1767,6 +1787,7 @@
     }
 
     btn.addEventListener('click', runCheck);
+    document.addEventListener('cw-update-available', runCheck);
   })();
 </script>
 </body>

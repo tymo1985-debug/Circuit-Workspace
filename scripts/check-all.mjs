@@ -152,6 +152,12 @@ const CHECKS = [
     deps: [],
   },
   {
+    file: 'check-update-contract.mjs',
+    title: 'Контракт версий service worker',
+    why: 'хаб обязан знать worker каждого модуля, проверять активную версию и не давать waiting worker перезаписать кэш active worker',
+    deps: [],
+  },
+  {
     file: 'check-f-legacy-cleanup.mjs',
     title: 'Фаза F: удаление легаси-ключей Клиндария/Конгрессов',
     why: 'canon существования (migrated()) недостаточно для удаления единственной копии — нужна ещё и проверка формы; ошибка здесь стирает данные пользователя безвозвратно',

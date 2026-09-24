@@ -23,8 +23,8 @@ const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['circuit-planner']
   : '0');
 const STATIC_PREFIX = 'syp-static-v';
 const RUNTIME_PREFIX = 'syp-runtime-v';
-const CACHE_STATIC = STATIC_PREFIX + APP_VERSION;
-const CACHE_RUNTIME = RUNTIME_PREFIX + APP_VERSION;
+const CACHE_STATIC = STATIC_PREFIX + APP_VERSION + '-hub-' + self.CW_VERSION;
+const CACHE_RUNTIME = RUNTIME_PREFIX + APP_VERSION + '-hub-' + self.CW_VERSION;
 const APP_SHELL_URLS = [
   './',
   './?source=pwa',
@@ -131,6 +131,7 @@ self.addEventListener('install', (event) => {
 // код был мёртвым.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CW_VERSION' && event.ports && event.ports[0]) event.ports[0].postMessage({ module: 'circuit-planner', version: APP_VERSION, hub: self.CW_VERSION });
 });
 
 self.addEventListener('activate', (event) => {

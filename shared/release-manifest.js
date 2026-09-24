@@ -26,12 +26,14 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.57',
+  version: '0.41.58',
   changes: [
-    { module: 'congress-project', version: '4.46.79', note: 'Пакетный экспорт каждого письма в отдельный PDF: папка или ZIP' },
-    { module: 'documents', version: '1.11.4', note: 'Version-only cache-first invalidation' },
-    { module: 'journal', version: '0.13.3', note: 'Version-only cache-first invalidation' },
-    { module: 'pioneer-school', version: '1.14.55', note: 'Version-only cache-first invalidation' },
-    { module: 'appointments', version: '5.5.94', note: 'Version-only cache-first invalidation' },
+    { module: 'hub', version: '0.41.58', note: 'Точный статус обновления каждого модуля и конкретный список изменений' },
+    { module: 'congress-project', version: '4.46.80', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
+    { module: 'circuit-planner', version: '9.95.1', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
+    { module: 'pioneer-school', version: '1.14.56', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
+    { module: 'appointments', version: '5.5.95', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
+    { module: 'documents', version: '1.11.5', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
+    { module: 'journal', version: '0.13.4', note: 'Безопасное переключение PWA-кэша без смешивания версий' },
   ],
 };

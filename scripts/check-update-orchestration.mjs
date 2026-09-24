@@ -41,8 +41,16 @@ class FakeTarget {
 }
 
 class FakeWorker extends FakeTarget {
-  constructor() { super(); this.state = 'installing'; }
+  constructor(info = null) { super(); this.state = 'installing'; this.info = info; }
   set _state(v) { this.state = v; this.emit('statechange'); }
+  postMessage(msg, ports) { if (msg.type === 'CW_VERSION' && ports && ports[0]) ports[0].postMessage(this.info); }
+}
+
+class FakeMessageChannel {
+  constructor() {
+    this.port1 = { onmessage: null, close() {} };
+    this.port2 = { postMessage: (data) => setTimeout(() => this.port1.onmessage && this.port1.onmessage({ data }), 0) };
+  }
 }
 
 /**
@@ -55,13 +63,15 @@ function makeRegistration(scope, scenario) {
   reg.scope = scope;
   reg.installing = null;
   reg.waiting = null;
-  reg.active = { postMessage() {} };
+  const id = scope === '/' ? 'hub' : scope.split('/').filter(Boolean).pop();
+  const versions = { hub: '0.41.58', 'pioneer-school': '1.14.56', appointments: '5.5.95', documents: '1.11.5' };
+  reg.active = new FakeWorker({ module: id, version: versions[id] });
 
   reg.update = () => {
     if (scenario === 'update-rejects') return Promise.reject(new Error('network'));
     if (scenario === 'no-update') return Promise.resolve();
     if (scenario === 'immediate-waiting') {
-      const w = new FakeWorker(); w.state = 'installed';
+      const w = new FakeWorker({ module: id, version: versions[id] }); w.state = 'installed';
       reg.waiting = w;
       return Promise.resolve();
     }
@@ -71,7 +81,7 @@ function makeRegistration(scope, scenario) {
       // ради которого checkAll подписывается на updatefound/statechange
       // ДО чтения reg.waiting, а не просто опрашивает его один раз.
       setTimeout(() => {
-        const w = new FakeWorker();
+        const w = new FakeWorker({ module: id, version: versions[id] });
         reg.installing = w;
         reg.emit('updatefound');
         setTimeout(() => { w._state = 'installed'; reg.waiting = w; reg.installing = null; }, 5);
@@ -86,10 +96,16 @@ function makeRegistration(scope, scenario) {
 function makeCtx() {
   const ctx = {
     console,
-    setTimeout, clearTimeout, setInterval, clearInterval,
-    document: { readyState: 'complete', addEventListener() {}, getElementById() { return null; }, createElement() { return { style: {}, appendChild() {}, setAttribute() {} }; }, head: { appendChild() {} }, body: { appendChild() {} } },
+    setTimeout, clearTimeout, setInterval, clearInterval, MessageChannel: FakeMessageChannel, URL,
+    document: { baseURI: 'https://example.test/', readyState: 'complete', addEventListener() {}, getElementById() { return null; }, createElement() { return { style: {}, appendChild() {}, setAttribute() {} }; }, head: { appendChild() {} }, body: { appendChild() {} } },
     navigator: { serviceWorker: Object.assign(new FakeTarget(), { controller: null, register: () => Promise.resolve(null), getRegistrations: () => Promise.resolve([]) }) },
-    location: { reload() {} },
+    location: { href: 'https://example.test/', reload() {} },
+    CW_VERSION: '0.41.58',
+    CW_MODULES: {
+      'pioneer-school': { version: '1.14.56' },
+      appointments: { version: '5.5.95' },
+      documents: { version: '1.11.5' },
+    },
   };
   ctx.self = ctx;
   vm.createContext(ctx);
@@ -129,18 +145,20 @@ console.log('\napplyAll(): SKIP_WAITING чужому scope + подтвержд�
   const reg = makeRegistration('/pioneer-school/', 'immediate-waiting');
   await reg.update();   // тот же путь, что и в checkAll — воркер уже waiting
   let skipSent = false;
-  reg.waiting.postMessage = (msg) => {
+  const versionResponder = reg.waiting.postMessage.bind(reg.waiting);
+  reg.waiting.postMessage = (msg, ports) => {
+    if (msg && msg.type === 'CW_VERSION') { versionResponder(msg, ports); return; }
     if (msg && msg.type === 'SKIP_WAITING') {
       skipSent = true;
       // Активация — асинхронная, как и в браузере: waiting исчезает не
       // мгновенно после postMessage, а спустя реальное время.
-      setTimeout(() => { reg.waiting = null; }, 20);
+      setTimeout(() => { reg.active = reg.waiting; reg.waiting = null; }, 20);
     }
   };
   const { results, allActivated } = await ctx.CWUpdate.applyAll([{ scope: reg.scope, reg }]);
   ok('SKIP_WAITING реально отправлен чужому (не-хабовому) scope', skipSent);
   ok('активация подтверждена по исчезновению reg.waiting (не по таймауту)',
-    results[0].status === 'activated', results[0].status);
+    results[0].status === 'activated', results[0]);
   ok('allActivated=true для полностью подтверждённого списка', allActivated === true);
 }
 

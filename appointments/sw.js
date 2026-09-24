@@ -18,7 +18,7 @@ const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['appointments']
   ? self.CW_MODULES['appointments'].version
   : '0');
 const CACHE_PREFIX = 'appointments-cache-v';
-const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
+const CACHE_NAME = CACHE_PREFIX + APP_VERSION + '-hub-' + self.CW_VERSION;
 
 const ASSETS = [
   './',
@@ -65,6 +65,7 @@ self.addEventListener('install', (event) => {
 // намеренно: он подменял ассеты под уже открытой страницей.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CW_VERSION' && event.ports && event.ports[0]) event.ports[0].postMessage({ module: 'appointments', version: APP_VERSION, hub: self.CW_VERSION });
 });
 
 self.addEventListener('activate', (event) => {

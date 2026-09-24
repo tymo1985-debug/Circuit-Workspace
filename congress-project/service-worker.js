@@ -12,7 +12,7 @@
    всё равно должно получиться строкой, иначе SW не установится вовсе. */
 importScripts('../shared/version.js');
 const APP_VERSION=(self.CW_MODULES&&self.CW_MODULES['congress-project']?self.CW_MODULES['congress-project'].version:'0');
-const CACHE='congress-pwa-v'+APP_VERSION;
+const CACHE='congress-pwa-v'+APP_VERSION+'-hub-'+self.CW_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
 // активация этого SW стирала офлайн-кэши хаба и остальных модулей.
 const CACHE_PREFIX='congress-pwa-';
@@ -49,6 +49,7 @@ self.addEventListener('install',e=>e.waitUntil(
 // намеренно: он подменял ассеты под уже открытой страницей.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CW_VERSION' && event.ports && event.ports[0]) event.ports[0].postMessage({module:'congress-project',version:APP_VERSION,hub:self.CW_VERSION});
 });
 
 self.addEventListener('activate',e=>e.waitUntil(

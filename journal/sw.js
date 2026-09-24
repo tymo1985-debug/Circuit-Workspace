@@ -10,7 +10,7 @@ const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['journal']
   ? self.CW_MODULES['journal'].version
   : '0');
 const CACHE_PREFIX = 'journal-cache-v';
-const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
+const CACHE_NAME = CACHE_PREFIX + APP_VERSION + '-hub-' + self.CW_VERSION;
 
 // shared/state.js здесь нет и не будет: Журнал хранит данные строками в
 // собственных хранилищах общей базы через shared/db.js (journal/AGENTS.md).
@@ -81,6 +81,7 @@ self.addEventListener('install', (event) => {
 // намеренно: он подменял ассеты под уже открытой страницей.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CW_VERSION' && event.ports && event.ports[0]) event.ports[0].postMessage({ module: 'journal', version: APP_VERSION, hub: self.CW_VERSION });
 });
 
 self.addEventListener('activate', (event) => {

@@ -157,7 +157,9 @@
 
     var text = doc.createElement('span');
     text.className = 'cw-update__text';
-    text.setAttribute('data-i18n', opts.textKey);
+    /* CWI18n.apply() replaces textContent of data-i18n nodes. If the list is
+       nested here, that replacement silently deletes the changelog. */
+    if (!opts.listItems || !opts.listItems.length) text.setAttribute('data-i18n', opts.textKey);
     text.textContent = t(opts.textKey, opts.textFallback);
     bar.appendChild(text);
 
@@ -239,11 +241,11 @@
 
   function offerOwn() {
     if (uiMode !== 'hub') { offerNeutral(); return; }
-    showBar({
-      textKey: 'update.available',
-      textFallback: 'Доступна новая версия приложения.',
-      onApply: applyOwn,
-    });
+    /* Generic own-scope banner used to race the Hub orchestration banner and
+       hide the changelog. Let Hub run the same full check as its toolbar. */
+    if (doc && typeof global.Event === 'function') {
+      doc.dispatchEvent(new global.Event('cw-update-available'));
+    }
   }
 
   /* Grace period перед показом neutral-banner в silent-режиме: устойчивый
@@ -386,6 +388,56 @@
     });
   }
 
+  /* ServiceWorkerRegistration не сообщает версию active/waiting worker.
+     Без handshake исчезновение reg.waiting ошибочно считалось доказательством
+     успеха, хотя активироваться мог не тот build. */
+  function readWorkerVersion(worker) {
+    return new Promise(function (resolve) {
+      if (!worker || typeof global.MessageChannel !== 'function') { resolve(null); return; }
+      var channel = new global.MessageChannel();
+      var done = false;
+      var timer = global.setTimeout(function () { finish(null); }, 2000);
+      function finish(value) {
+        if (done) return;
+        done = true;
+        global.clearTimeout(timer);
+        try { channel.port1.close(); } catch (e) {}
+        resolve(value);
+      }
+      channel.port1.onmessage = function (event) { finish(event.data || null); };
+      try { worker.postMessage({ type: 'CW_VERSION' }, [channel.port2]); }
+      catch (e) { finish(null); }
+    });
+  }
+
+  function moduleIdForScope(scope) {
+    var ids = Object.keys(global.CW_MODULES || {});
+    for (var i = 0; i < ids.length; i++) {
+      if (scope.indexOf('/' + ids[i] + '/') !== -1) return ids[i];
+    }
+    return 'hub';
+  }
+
+  function expectedVersion(id) {
+    return id === 'hub' ? global.CW_VERSION : ((global.CW_MODULES[id] || {}).version || null);
+  }
+
+  /* «Все модули» означает весь реестр, а не только модули, которые
+     пользователь уже когда-то открывал. Регистрация из хаба разрешена,
+     потому что scope каждого worker лежит внутри каталога его script URL. */
+  function ensureRegistrations() {
+    if (uiMode !== 'hub') return Promise.resolve();
+    var modules = global.CW_MODULES || {};
+    var base = new URL('./', (doc && doc.baseURI) || global.location.href);
+    return Promise.all(Object.keys(modules).map(function (id) {
+      var worker = modules[id] && modules[id].worker;
+      if (!worker) return Promise.resolve();
+      var script = new URL(worker, base).href;
+      var scope = new URL(id + '/', base).href;
+      return nav.serviceWorker.register(script, { scope: scope, updateViaCache: 'none' });
+    }));
+  }
+
   var CWUpdate = {
     /**
      * Регистрирует SW модуля/хаба и включает слежение за обновлениями.
@@ -458,7 +510,7 @@
     checkAll: function () {
       if (unsupported()) return Promise.resolve({ ready: [], failed: [] });
 
-      return nav.serviceWorker.getRegistrations().then(function (regs) {
+      return ensureRegistrations().then(function () { return nav.serviceWorker.getRegistrations(); }).then(function (regs) {
         if (!regs.length) return { ready: [], failed: [] };
 
         return Promise.all(regs.map(function (reg) {
@@ -489,7 +541,15 @@
                этот scope (failed); иначе — noUpdate, не попадает никуда. */
             if (r.updateFailed) failed.push({ scope: r.reg.scope, reg: r.reg });
           });
-          return { ready: ready, failed: failed };
+          return Promise.all(ready.map(function (item) {
+            return readWorkerVersion(item.reg.waiting).then(function (info) {
+              item.info = info;
+              return item;
+            });
+          })).then(function () {
+            var hub = ready.find(function (item) { return moduleIdForScope(item.scope) === 'hub'; });
+            return { ready: ready, failed: failed, release: hub && hub.info && hub.info.release || null };
+          });
         });
       }, function () {
         /* getRegistrations() сам отклонился — это не про сеть отдельного
@@ -530,12 +590,19 @@
       });
       return Promise.all(list.map(function (item) {
         if (!item.reg) return Promise.resolve('activated');
-        return waitForActivation(item.reg);
+        return waitForActivation(item.reg).then(function (status) {
+          if (status !== 'activated') return { status: status, info: null };
+          return readWorkerVersion(item.reg.active).then(function (info) {
+            var id = moduleIdForScope(item.scope);
+            var matches = info && info.module === id && info.version === expectedVersion(id);
+            return { status: matches ? 'activated' : 'versionMismatch', info: info };
+          });
+        });
       })).then(function (statuses) {
         var results = list.map(function (item, i) {
-          return { scope: item.scope, status: statuses[i] };
+          return { scope: item.scope, status: statuses[i].status, info: statuses[i].info };
         });
-        var allActivated = statuses.every(function (s) { return s === 'activated'; });
+        var allActivated = statuses.every(function (s) { return s.status === 'activated'; });
         return { results: results, allActivated: allActivated };
       });
     },

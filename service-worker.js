@@ -7,6 +7,7 @@
 // меняется автоматически при каждом обновлении CW_VERSION — не нужно отдельно
 // вручную поднимать "v1"/"v2"/"v3" здесь при каждой правке хаба.
 importScripts('./shared/version.js');
+importScripts('./shared/release-manifest.js');
 
 // ВАЖНО: Cache Storage — общий на весь origin, а не на область видимости SW.
 // Поэтому очистка «всё, кроме своего кэша» стирала офлайн-кэши модулей
@@ -66,6 +67,9 @@ self.addEventListener('install', (event) => {
 // намеренно: он подменял ассеты под уже открытой страницей.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CW_VERSION' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ module: 'hub', version: self.CW_VERSION, release: self.CW_RELEASE || null });
+  }
 });
 
 self.addEventListener('activate', (event) => {
