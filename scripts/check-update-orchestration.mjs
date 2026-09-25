@@ -194,6 +194,10 @@ ok('все partial failure строки строятся одним safe helper'
   /lines = lines\.concat\(failedUpdateLines\(failed, 'не удалось проверить'\)\)/.test(HUB) &&
   /var failedLines = failedUpdateLines\(failed, 'не обновлён'\)/.test(HUB));
 
+console.log('\nHub UI: post-update баннер скрывает technical release entries');
+ok('после reload pending.changes фильтруется по !technical до map()',
+  /\(pending\.changes \|\| \[\]\)\.filter\(function \(c\) \{\s*return c && !c\.technical;\s*\}\)\.map\(function \(c\)/.test(HUB));
+
 console.log('\napplyAll(): SKIP_WAITING чужому scope + подтверждение активации');
 {
   const ctx = makeCtx();

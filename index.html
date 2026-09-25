@@ -1620,7 +1620,11 @@
 
     if (!matches) return;
 
-    var lines = (pending.changes || []).map(function (c) {
+    // Служебный version/cache cascade нужен release metadata, но не пользователю.
+    // После reload применяем то же правило, что и в pre-update баннере.
+    var lines = (pending.changes || []).filter(function (c) {
+      return c && !c.technical;
+    }).map(function (c) {
       var title = c.module === 'hub' ? 'Circuit Workspace' : ((self.CW_MODULES[c.module] && self.CW_MODULES[c.module].title) || c.module);
       var version = c.version ? ' ' + c.version : '';
       return c.note ? (title + version + ' — ' + c.note) : (title + version);
