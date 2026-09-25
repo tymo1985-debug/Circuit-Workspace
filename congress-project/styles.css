@@ -1998,8 +1998,13 @@ dialog {
     max-width: none
   }
   .mobile-bar__more {
-    display: inline-flex
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px
   }
+
+  .status-sel, .tiny.icon-btn { min-height: 44px }
+  .tiny.icon-btn { min-width: 44px }
 
   /* Плавающая кнопка — единственное частое действие на этом экране.
      Отступ снизу с запасом под полосу обновления (shared/update.js). */

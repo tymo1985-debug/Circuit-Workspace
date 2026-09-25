@@ -676,14 +676,45 @@
   /* «Все модули» означает весь реестр, а не только модули, которые
      пользователь уже когда-то открывал. Регистрация из хаба разрешена,
      потому что scope каждого worker лежит внутри каталога его script URL. */
-  function ensureRegistrations() {
+  function versionedWorkerUrl(url, releaseVersion) {
+    var parsed = new URL(url, (doc && doc.baseURI) || global.location.href);
+    if (releaseVersion) parsed.searchParams.set('cw-release', releaseVersion);
+    return parsed.href;
+  }
+
+  /* Imported scripts are part of the service-worker update graph in the
+     specification, but Chromium can legitimately reuse an unchanged top-level
+     worker while several registrations are checked together. Read the tiny
+     deployment manifest first and put its version in every top-level worker
+     URL. A release then changes the script URL deterministically and every
+     scope gets an independent install cycle. */
+  function deployedReleaseVersion() {
+    if (typeof global.fetch !== 'function') return Promise.resolve(global.CW_VERSION || null);
+    var base = new URL('./', (doc && doc.baseURI) || global.location.href);
+    var manifestUrl = new URL('shared/release-manifest.js', base);
+    /* The active Hub worker is cache-first. A unique probe URL is therefore
+       required in addition to Request.cache=no-store; otherwise the old SW
+       may answer with its cached manifest before the network is consulted. */
+    manifestUrl.searchParams.set('cw-probe', String(Date.now()));
+    return global.fetch(manifestUrl.href, { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('release manifest HTTP ' + response.status);
+        return response.text();
+      })
+      .then(function (source) {
+        var match = source.match(/\bversion\s*:\s*['\"]([^'\"]+)['\"]/);
+        return match && match[1] ? match[1] : (global.CW_VERSION || null);
+      }, function () { return global.CW_VERSION || null; });
+  }
+
+  function ensureRegistrations(releaseVersion) {
     if (uiMode !== 'hub') return Promise.resolve([]);
     var modules = global.CW_MODULES || {};
     var base = new URL('./', (doc && doc.baseURI) || global.location.href);
     return Promise.all(Object.keys(modules).map(function (id) {
       var worker = modules[id] && modules[id].worker;
       if (!worker) return Promise.resolve(null);
-      var script = new URL(worker, base).href;
+      var script = versionedWorkerUrl(new URL(worker, base).href, releaseVersion);
       var scope = new URL(id + '/', base).href;
       return nav.serviceWorker.register(script, { scope: scope, updateViaCache: 'none' }).then(
         function () { return null; },
@@ -720,7 +751,7 @@
       /* Регистрируем после load: до него страница ещё борется за сеть
          с ассетами первой отрисовки. */
       var start = function () {
-        return nav.serviceWorker.register(swUrl, { updateViaCache: 'none' })
+        return nav.serviceWorker.register(versionedWorkerUrl(swUrl, global.CW_VERSION), { updateViaCache: 'none' })
           .then(function (reg) {
             ownReg = reg;
             watch(reg);
@@ -764,8 +795,12 @@
      */
     checkAll: function () {
       if (unsupported()) return Promise.resolve({ ready: [], failed: [] });
+      var checkedReleaseVersion = global.CW_VERSION || null;
 
-      return ensureRegistrations().then(function (registrationFailures) {
+      return deployedReleaseVersion().then(function (releaseVersion) {
+        checkedReleaseVersion = releaseVersion || checkedReleaseVersion;
+        return ensureRegistrations(releaseVersion);
+      }).then(function (registrationFailures) {
         return nav.serviceWorker.getRegistrations().then(function (regs) {
           regs = regs.filter(function (reg) { return !!moduleIdForScope(reg.scope); });
           if (!regs.length) return { ready: [], failed: registrationFailures };
@@ -792,19 +827,34 @@
             });
           })).then(function (results) {
             var ready = [];
+            var activatedDuringCheck = [];
             var failed = registrationFailures.slice();
             results.forEach(function (r) {
               if (r.reg.waiting) { ready.push({ scope: r.reg.scope, reg: r.reg }); return; }
             /* Регистрация без waiting: updateError → реальная ошибка на
                этот scope (failed); иначе — noUpdate, не попадает никуда. */
               if (r.updateError) failed.push(scopeFailure(r.module, r.reg.scope, 'update', r.updateError));
+              else if (r.module && r.module !== 'hub') activatedDuringCheck.push(r);
             });
-            return Promise.all(ready.map(function (item) {
+            /* A module scope with no open client can skip the waiting phase and
+               activate immediately. That is a successful update, not
+               `noUpdate`. Confirm it by handshake and keep it in the same
+               ready/apply transaction so changelog and final verification are
+               complete. */
+            return Promise.all(activatedDuringCheck.map(function (r) {
+              return readWorkerVersion(r.reg.active).then(function (info) {
+                if (info && info.module === r.module && info.hub === checkedReleaseVersion &&
+                    checkedReleaseVersion !== global.CW_VERSION) {
+                  ready.push({ scope: r.reg.scope, reg: r.reg, info: info, alreadyActive: true });
+                }
+              });
+            })).then(function () { return Promise.all(ready.map(function (item) {
+              if (item.info) return item;
               return readWorkerVersion(item.reg.waiting).then(function (info) {
                 item.info = info;
                 return item;
               });
-            })).then(function () {
+            })); }).then(function () {
               var hub = ready.find(function (item) { return moduleIdForScope(item.scope) === 'hub'; });
               return { ready: ready, failed: failed, release: hub && hub.info && hub.info.release || null };
             });

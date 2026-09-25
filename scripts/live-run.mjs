@@ -83,6 +83,7 @@ const PAGES = [
   ['Школа', '/pioneer-school/'],
   ['Назначения', '/appointments/'],
   ['Документы', '/documents/'],
+  ['Журнал', '/journal/'],
 ];
 
 const browser = await chromium.launch({
@@ -101,7 +102,13 @@ for (const [name, url] of PAGES) {
   page.on('requestfailed', (r) => failed.push(r.url() + ' :: ' + (r.failure()?.errorText || '')));
   await page.goto('http://127.0.0.1:' + PORT + url, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(700);
-  const len = await page.evaluate(() => document.body.innerText.trim().length);
+  const metrics = await page.evaluate(() => ({
+    len: document.body.innerText.trim().length,
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    rawI18n: [...document.querySelectorAll('[data-i18n]')].filter((el) => /^[-\w]+(?:\.[-\w]+)+$/.test(el.textContent.trim())).length,
+  }));
+  const len = metrics.len;
   const ver = await page.evaluate(() => {
     const el = document.querySelector('[data-version], .cw-version, #version, .app-version');
     return el ? el.textContent.trim() : '';
@@ -109,7 +116,7 @@ for (const [name, url] of PAGES) {
   if (shots) {
     await page.screenshot({ path: 'shots/' + name + '.png', fullPage: false });
   }
-  const ok = len > 0 && !errors.length && !pageErrors.length && !failed.length;
+  const ok = len > 0 && metrics.scrollWidth <= metrics.clientWidth + 1 && !metrics.rawI18n && !errors.length && !pageErrors.length && !failed.length;
   if (!ok) bad++;
   console.log(
     (ok ? '  ✓ ' : '  ✗ ') + name.padEnd(12) +
@@ -117,6 +124,8 @@ for (const [name, url] of PAGES) {
     '  console.error: ' + errors.length +
     '  pageerror: ' + pageErrors.length +
     '  requestfailed: ' + failed.length +
+    '  overflow: ' + Math.max(0, metrics.scrollWidth - metrics.clientWidth) +
+    '  raw-i18n: ' + metrics.rawI18n +
     (ver ? '  версия: ' + ver : '')
   );
   errors.forEach((e) => console.log('      console: ' + e.slice(0, 200)));
@@ -126,5 +135,5 @@ for (const [name, url] of PAGES) {
 }
 await browser.close();
 server.close();
-console.log(bad ? '\nСТРАНИЦ С НАХОДКАМИ: ' + bad : '\nВсе шесть страниц чисты.');
+console.log(bad ? '\nСТРАНИЦ С НАХОДКАМИ: ' + bad : '\nВсе семь страниц чисты.');
 process.exit(bad ? 1 : 0);

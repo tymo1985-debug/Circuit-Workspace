@@ -1,0 +1,23 @@
+{
+  "name": "circuit-workspace",
+  "version": "0.41.70",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22 <25" },
+  "scripts": {
+    "test": "node scripts/check-all.mjs",
+    "test:smoke": "node scripts/live-run.mjs",
+    "test:update": "node scripts/live-update-pipeline.mjs",
+    "test:device": "node scripts/live-device-matrix.mjs",
+    "test:release": "npm test && npm run test:smoke && npm run test:update && npm run test:device"
+  },
+  "devDependencies": {
+    "acorn": "8.18.0",
+    "acorn-walk": "8.3.5",
+    "fake-indexeddb": "6.2.5",
+    "jsdom": "29.1.1",
+    "jspdf": "4.2.1",
+    "playwright": "1.63.0",
+    "playwright-core": "1.63.0"
+  }
+}

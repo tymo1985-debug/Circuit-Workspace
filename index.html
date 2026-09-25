@@ -47,7 +47,7 @@
     content: "";
     position: absolute;
     top: -60px; left: 8%;
-    width: 420px; height: 420px;
+    width: min(420px, 92vw); height: min(420px, 92vw);
     background: radial-gradient(circle, var(--md-primary) 0%, transparent 70%);
     opacity: 0.14;
     pointer-events: none;
@@ -212,6 +212,8 @@
     .cw-lang__select { max-width: 74px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cw-hub-header__tools { gap: 6px; }
     .cw-version { flex: 0 0 auto; padding: 5px 8px; }
+    .cw-lang__select, .cw-update-btn { min-height: 44px; }
+    .cw-update-btn { min-width: 44px; justify-content: center; }
   }
 
   /* --- Плата модулей: ствол, рёбра, ярусы ---
@@ -655,6 +657,11 @@
     .cw-disclose > summary::before { transition: none; }
   }
   .cw-disclose .cw-backup__table { margin-top: 12px; }
+  @media (max-width: 560px) {
+    .cw-backup__table { table-layout: fixed; }
+    .cw-backup__table th, .cw-backup__table td { overflow-wrap: anywhere; }
+    .cw-backup__table td:last-child, .cw-backup__table th:last-child { white-space: normal; }
+  }
 
   /* --- Форма в системной карточке ---------------------------------------
      Две колонки на широком экране, одна на узком. Поля подписаны словами,

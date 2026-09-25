@@ -152,14 +152,19 @@ async function geometry(p) {
     let topOverlap = 0;
     for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) { const a = rects[i], b = rects[j]; if (!ctl[i].contains(ctl[j]) && !ctl[j].contains(ctl[i]) && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) topOverlap++; }
     const langW = bar.querySelector('select') ? bar.querySelector('select').getBoundingClientRect().width : 0;
-    const topOk = langW >= 56 && topOverlap === 0 && rects.every((r) => r.left >= -0.5 && r.right <= vw + 0.5) && ctl.every(clickable) && !!bar.querySelector('a.cw-home-btn, .cw-home-btn[href]');
+    // В защищённом проекте на 320 px в шапке одновременно шесть действий.
+    // 44 px — общий coarse-pointer минимум; требование 56 px к одному select
+    // искусственно объявляло корректную плотную раскладку ошибкой.
+    const topOk = langW >= 44 && topOverlap === 0 && rects.every((r) => r.left >= -0.5 && r.right <= vw + 0.5) && ctl.every(clickable) && !!bar.querySelector('a.cw-home-btn, .cw-home-btn[href]');
     window.scrollTo(0, document.documentElement.scrollHeight);
     const last = [...document.querySelectorAll('#route-overview .j-sec')].pop().getBoundingClientRect();
     const nav2 = document.querySelector('.md-bottomnav').getBoundingClientRect();
     window.scrollTo(0, 0);
     return { vw, sw: document.documentElement.scrollWidth, out: out.length, outEx: out.slice(0, 3).map((e) => e.className || e.tagName),
       navVisible: nav.height === 0 ? null : nav.bottom <= innerHeight + 1 && document.querySelector('.md-bottomnav').scrollWidth <= document.querySelector('.md-bottomnav').clientWidth + 1, topVisible: top.height > 0 && top.top >= -1 && top.right <= vw + 1,
-      lastClear: nav2.height === 0 ? true : last.bottom <= nav2.top + 1, chev, heads, statsFit, navOk, topOk, topN: ctl.length, langW: Math.round(langW), fab: document.querySelector('#fab').hidden };
+      lastClear: nav2.height === 0 ? true : last.bottom <= nav2.top + 1, chev, heads, statsFit, navOk, topOk, topN: ctl.length, langW: Math.round(langW),
+      topOverlap, topDetail: ctl.map((e, i) => ({ id: e.id || e.className || e.tagName, l: Math.round(rects[i].left), r: Math.round(rects[i].right), clickable: clickable(e) })),
+      fab: document.querySelector('#fab').hidden };
   });
 }
 

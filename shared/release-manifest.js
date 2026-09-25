@@ -26,8 +26,14 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.69',
+  version: '0.41.70',
   changes: [
-    { module: 'journal', version: '0.15.9', note: 'Polishing: перенос длинных слов на mobile, aria-expanded у кнопки «Ещё» и меню строк, проверен fallback неизвестного маршрута' },
+    { module: 'hub', version: '0.41.70', note: 'Надёжное обновление всех service worker scopes, устранён mobile overflow, добавлен воспроизводимый release gate' },
+    { module: 'congress-project', version: '4.46.91', note: 'Увеличены touch targets мобильных действий и статусов' },
+    { module: 'circuit-planner', version: '9.95.2', note: 'Кнопки добавления в календаре получили безопасную touch-зону 44×44' },
+    { module: 'pioneer-school', version: '1.14.67', note: 'Единый минимальный размер touch controls из общего слоя' },
+    { module: 'appointments', version: '5.5.106', note: 'Единый минимальный размер touch controls из общего слоя' },
+    { module: 'documents', version: '1.11.16', note: 'Вкладки больше не расширяют экран 320 px; touch controls унифицированы' },
+    { module: 'journal', version: '0.15.10', note: 'Touch targets Обзора и действий увеличены; модуль включён в общий smoke/device gate' },
   ],
 };

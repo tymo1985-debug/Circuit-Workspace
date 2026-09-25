@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.41.70 — 25.09.2026
+
+- Update/PWA: Hub перед проверкой читает свежий release manifest вне cache-first
+  оболочки и версионирует URL каждого top-level worker. Модули без открытых
+  клиентов, которые активируются сразу и не задерживаются в `waiting`, теперь
+  подтверждаются handshake активного worker и входят в changelog/apply verdict.
+- Mobile: устранён document-level overflow Hub и Documents на 320–430 px;
+  вкладки Documents прокручиваются внутри своего контейнера.
+- Touch: общий coarse-pointer минимум 44×44; отдельно расширены Planner `+`,
+  Congress mobile/status actions и Journal Overview/actions.
+- Release engineering: добавлены `package.json`, lockfile, обязательный GitHub
+  Actions gate, Journal/global-overflow smoke и Chromium device/localization matrix.
+- Версии: Congress 4.46.91, Planner 9.95.2, Pioneer School 1.14.67,
+  Appointments 5.5.106, Documents 1.11.16, Journal 0.15.10.
+
 ## 0.41.69 — 25.09.2026
 
 - Журнал (0.15.9) — polishing-проход уровня C, без изменения архитектуры и логики:

@@ -92,6 +92,11 @@ body {
   .doc-search { flex-basis: auto; max-width: none; }
   #newTypeTplBtn { width: 100%; }
   .doc-filters { margin-bottom: 10px; }
+  .doc-screens {
+    width: 100%; max-width: 100%; min-width: 0;
+    flex-wrap: wrap; overflow: visible;
+  }
+  .doc-screens .md-chip { flex: 0 0 auto; min-height: 44px; }
 }
 
 /* ─── Библиотека ─── */

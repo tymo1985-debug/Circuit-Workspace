@@ -48,8 +48,8 @@ const ok = (label, cond, extra) => {
 };
 
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
-const MODULES = ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal'];
-const WIDTHS = [[320, 800], [360, 800], [430, 900]];
+const MODULES = process.env.TOPBAR_MODULES?.split(',').filter(Boolean) || ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal'];
+const WIDTHS = process.env.TOPBAR_WIDTH ? [[Number(process.env.TOPBAR_WIDTH), 800]] : [[320, 800], [360, 800], [430, 900]];
 const SHOTS = process.env.TOPBAR_SHOTS || '';
 const errors = [];
 
@@ -76,9 +76,19 @@ async function measure(page) {
     const lang = bar.querySelector('select');
     const title = bar.querySelector('.md-topbar-v2__title');
     const mark = bar.querySelector('.md-topbar-v2__mark');
-    return { vw, sw: document.documentElement.scrollWidth, barSw: bar.scrollWidth, barCw: bar.clientWidth, n: info.length, ids: info.map((x) => x.id + ':' + x.l + '-' + x.r),
+    const globalOutside = [...document.querySelectorAll('body *')].filter((e) => {
+      const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
+      return r.width > 0 && r.right > vw + 1;
+    }).slice(0, 8).map((e) => {
+      const r = e.getBoundingClientRect();
+      return (e.id ? '#' + e.id : e.className ? '.' + String(e.className).trim().replace(/\s+/g, '.') : e.tagName) + ':' + Math.round(r.left) + '-' + Math.round(r.right);
+    });
+    const bodyRect = document.body.getBoundingClientRect(); const bodyStyle = getComputedStyle(document.body);
+    return { vw, innerWidth: innerWidth, sw: document.documentElement.scrollWidth, bodySw: document.body.scrollWidth,
+      body: [Math.round(bodyRect.left), Math.round(bodyRect.right), bodyStyle.width, bodyStyle.minWidth, bodyStyle.overflowX],
+      barSw: bar.scrollWidth, barCw: bar.clientWidth, n: info.length, ids: info.map((x) => x.id + ':' + x.l + '-' + x.r),
       overlaps, outside, unclickable, home, lang: lang ? Math.round(lang.getBoundingClientRect().width) : null,
-      title: title ? getComputedStyle(title).display + '/' + Math.round(title.getBoundingClientRect().width) : null,
+      globalOutside, title: title ? getComputedStyle(title).display + '/' + Math.round(title.getBoundingClientRect().width) : null,
       mark: mark ? getComputedStyle(mark).display : null };
   });
 }
@@ -94,9 +104,12 @@ for (const mod of MODULES) {
     await page.goto(BASE + '/' + mod + '/index.html', { waitUntil: 'load' });
     await page.waitForTimeout(1200);
     const m = await measure(page);
-    const pass = !m.none && m.barSw <= m.barCw + 1 && m.overlaps.length === 0 && m.outside.length === 0 && m.unclickable.length === 0 && m.home && (m.lang === null || m.lang >= 56);
+    // На Chromium без overlay-scrollbar innerWidth включает полосу прокрутки,
+    // а documentElement.clientWidth — нет. Равенство scrollWidth/innerWidth
+    // означает отсутствие горизонтальной прокрутки и не должно давать false positive.
+    const pass = !m.none && m.sw <= m.innerWidth + 1 && m.barSw <= m.barCw + 1 && m.overlaps.length === 0 && m.outside.length === 0 && m.unclickable.length === 0 && m.home && (m.lang === null || m.lang >= 56);
     if (!pass) failed++;
-    console.log((pass ? '  ✓ ' : '  ✗ ') + mod + ' ' + w + ': ' + JSON.stringify({ sw: m.sw, bar: m.barSw + '/' + m.barCw, lang: m.lang, title: m.title, mark: m.mark, home: m.home, overlaps: m.overlaps, outside: m.outside, unclickable: m.unclickable }));
+    console.log((pass ? '  ✓ ' : '  ✗ ') + mod + ' ' + w + ': ' + JSON.stringify({ vw: m.vw, innerWidth: m.innerWidth, sw: m.sw, bodySw: m.bodySw, body: m.body, bar: m.barSw + '/' + m.barCw, lang: m.lang, title: m.title, mark: m.mark, home: m.home, overlaps: m.overlaps, outside: m.outside, globalOutside: m.globalOutside, unclickable: m.unclickable }));
     if (process.env.TOPBAR_IDS) console.log('     ' + m.ids.join(' '));
     if (SHOTS) await page.screenshot({ path: SHOTS + '/topbar-' + mod + '-' + w + '.png', clip: { x: 0, y: 0, width: w, height: 90 } });
     await ctx.close();

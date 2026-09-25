@@ -62,6 +62,11 @@ a.j-sec__more:hover, a.j-sec__more:focus-visible { text-decoration: underline; }
 }
 a.j-ovstat:hover, a.j-ovstat:focus-visible { background: var(--md-surface-container-highest); }
 .j-ovstat__value { font-weight: 500; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) {
+  .j-sec__more { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .j-ovstat { min-height: 44px; }
+  #searchBtn, #moreBtn { min-width: 44px; min-height: 44px; }
+}
 a.j-ovrow { color: inherit; text-decoration: none; }
 a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-decoration: underline; }
 /* --- Строка списка ---------------------------------------------------------- */
