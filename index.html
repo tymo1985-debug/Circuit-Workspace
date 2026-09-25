@@ -1637,24 +1637,29 @@
     });
   })();
 
-  // Сопоставление scope service worker'а с id модуля из CW_MODULES — нужно,
-  // чтобы построить человекочитаемый список в баннере. Scope — это URL
-  // ПАПКИ модуля (…/circuit-planner/), поэтому ищем по вхождению "/<id>/".
+  // Сопоставление только с точными scope Circuit Workspace. На GitHub Pages
+  // тот же origin содержит другие приложения, и их URL нельзя показывать в UI.
   function moduleIdForScope(scope) {
-    var ids = Object.keys(self.CW_MODULES || {});
-    for (var i = 0; i < ids.length; i++) {
-      if (scope.indexOf('/' + ids[i] + '/') !== -1) return ids[i];
-    }
-    return null; // scope хаба самого — под него строка в списке не нужна
+    var base = new URL('./', document.baseURI);
+    var exact = {};
+    exact[base.href] = 'hub';
+    Object.keys(self.CW_MODULES || {}).forEach(function (id) {
+      exact[new URL(id + '/', base).href] = id;
+    });
+    try { return exact[new URL(scope, location.href).href] || null; }
+    catch (e) { return null; }
   }
 
   // Строит подписи для баннера из CW_RELEASE.changes (текущий release,
   // shared/release-manifest.js), но ТОЛЬКО для тех модулей, что реально
   // оказались в списке ready — совпадение release-манифеста с фактически
   // найденными waiting-воркерами, а не слепое доверие манифесту.
-  function buildChangeLines(release) {
+  function buildChangeLines(release, ready) {
     if (!release || !Array.isArray(release.changes)) return [];
-    return release.changes.map(function (change) {
+    var readyIds = (ready || []).map(function (item) { return moduleIdForScope(item.scope); });
+    return release.changes.filter(function (change) {
+      return !change.technical && readyIds.indexOf(change.module) !== -1;
+    }).map(function (change) {
       var id = change.module;
       var title = id === 'hub' ? 'Circuit Workspace' : ((self.CW_MODULES[id] && self.CW_MODULES[id].title) || id);
       var version = change.version ? ' ' + change.version : '';
@@ -1707,7 +1712,7 @@
         }
 
         var pendingRelease = result.release || self.CW_RELEASE;
-        var lines = buildChangeLines(pendingRelease);
+        var lines = buildChangeLines(pendingRelease, ready);
         failed.forEach(function (item) {
           var id = moduleIdForScope(item.scope);
           var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : item.scope;

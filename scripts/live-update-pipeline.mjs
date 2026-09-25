@@ -22,11 +22,19 @@ const NEXT = {
 };
 for (const [id, meta] of Object.entries(current.CW_MODULES || {})) NEXT[id] = [meta.version, bumpPatch(meta.version)];
 let phase = 1;
+let foreignFetches = 0;
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
 const server = http.createServer((req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   if (pathname === '/__upgrade') { phase = 2; res.end('ok'); return; }
+  if (pathname === '/foreign-sw.js') {
+    foreignFetches++;
+    res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+    res.end(`const FOREIGN_VERSION=${phase};self.addEventListener('install',()=>{});self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting()});`);
+    return;
+  }
+  if (pathname === '/__foreign_fetches') { res.end(String(foreignFetches)); return; }
   let rel = pathname.replace(/^\/+/, '') || 'index.html';
   if (rel.endsWith('/')) rel += 'index.html';
   const file = path.resolve(ROOT, rel);
@@ -48,20 +56,45 @@ const context = await chromium.launchPersistentContext(profile, { executablePath
 const page = context.pages()[0];
 
 try {
+  await page.setViewportSize({ width: 430, height: 900 });
   await page.goto(base, { waitUntil: 'networkidle' });
+  await page.evaluate(async () => {
+    const reg = await navigator.serviceWorker.register('/foreign-sw.js', { scope: '/Weather-App-Claude/', updateViaCache: 'none' });
+    while (!reg.active) await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+  const foreignPage = await context.newPage();
+  await foreignPage.goto(base + 'Weather-App-Claude/index.html', { waitUntil: 'domcontentloaded' });
+  await foreignPage.reload({ waitUntil: 'domcontentloaded' });
+  await foreignPage.waitForFunction(() => !!navigator.serviceWorker.controller);
   for (const id of Object.keys(NEXT).filter((id) => id !== 'hub')) {
     await page.goto(base + id + '/index.html', { waitUntil: 'domcontentloaded' });
   }
   await page.goto(base, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => navigator.serviceWorker.getRegistrations().then((r) => r.length === 7));
+  await page.waitForFunction(() => navigator.serviceWorker.getRegistrations().then((r) => r.length === 8));
   const before = await page.locator('#hubVersion').textContent();
   if (before !== 'v' + NEXT.hub[0]) throw new Error('unexpected baseline ' + before);
 
   await page.request.get(base + '__upgrade');
+  await page.evaluate(() => {
+    window.__foreignUpdateCalls = 0;
+    const originalUpdate = ServiceWorkerRegistration.prototype.update;
+    ServiceWorkerRegistration.prototype.update = function () {
+      if (this.scope.endsWith('/Weather-App-Claude/')) window.__foreignUpdateCalls++;
+      return originalUpdate.call(this);
+    };
+  });
   await page.waitForTimeout(1000);
   if (!await page.locator('#cwUpdateBar .cw-update__apply').count()) await page.click('#hubUpdateBtn');
   await page.waitForSelector('#cwUpdateBar .cw-update__apply', { timeout: 30000 });
   const offered = await page.locator('#cwUpdateBar').innerText();
+  const bannerBox = await page.locator('#cwUpdateBar').boundingBox();
+  if (!bannerBox || bannerBox.x < 0 || bannerBox.x + bannerBox.width > 430 || bannerBox.y < 0 || bannerBox.y + bannerBox.height > 900) {
+    throw new Error('mobile update banner is outside 430x900 viewport: ' + JSON.stringify(bannerBox));
+  }
+  if (offered.includes('Version-only')) throw new Error('technical cascade leaked into update banner: ' + offered);
+  const foreignUpdateCalls = await page.evaluate(() => window.__foreignUpdateCalls);
+  if (foreignUpdateCalls !== 0) throw new Error('foreign service worker was checked by Hub');
+  if (offered.includes('Weather-App-Claude') || offered.includes('foreign-sw')) throw new Error('foreign scope leaked into update banner: ' + offered);
   if (!offered.includes('Synthetic live upgrade')) {
     const waiting = await page.evaluate(async () => Promise.all((await navigator.serviceWorker.getRegistrations()).map((reg) => new Promise((resolve) => {
       if (!reg.waiting) { resolve({ scope: reg.scope, waiting: false }); return; }
@@ -72,6 +105,22 @@ try {
     }))));
     throw new Error('new changelog is absent before apply: ' + offered + '\n' + JSON.stringify(waiting));
   }
+  const foreignApply = await page.evaluate(async () => {
+    const reg = (await navigator.serviceWorker.getRegistrations()).find((item) => item.scope.endsWith('/Weather-App-Claude/'));
+    await reg.update();
+    await new Promise((resolve, reject) => {
+      if (reg.waiting) { resolve(); return; }
+      const timer = setTimeout(() => reject(new Error('foreign waiting timeout')), 5000);
+      reg.addEventListener('updatefound', () => reg.installing.addEventListener('statechange', () => {
+        if (reg.waiting) { clearTimeout(timer); resolve(); }
+      }));
+    });
+    const result = await CWUpdate.applyAll([{ scope: reg.scope, reg }]);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return { stillWaiting: !!reg.waiting, results: result.results };
+  });
+  if (!foreignApply.stillWaiting || foreignApply.results.length) throw new Error('foreign worker received apply: ' + JSON.stringify(foreignApply));
+
   await page.click('#cwUpdateBar .cw-update__apply');
   await page.waitForFunction((version) => document.querySelector('#hubVersion')?.textContent === 'v' + version, NEXT.hub[1], { timeout: 30000 });
 
@@ -98,7 +147,7 @@ try {
   }
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   if (!await page.locator('#hubVersion').count()) throw new Error('Hub return produced broken/plain-text UI');
-  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, hardRefreshUsed: false, moduleReturnChecks: 6 }, null, 2));
+  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, technicalChangesHidden: true, mobileBannerViewport: '430x900', foreignScopeIgnored: true, foreignSkipWaitingBlocked: true, hardRefreshUsed: false, moduleReturnChecks: 6 }, null, 2));
 } finally {
   await context.close();
   await new Promise((resolve) => server.close(resolve));

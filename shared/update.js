@@ -34,10 +34,11 @@
  *  4. Хаб находит все обновившиеся scopes через ограниченный по времени
  *     orchestration-цикл (`checkAll`, ниже) и применяет их одной кнопкой.
  *
- * ПОЧЕМУ CHECKALL() ОБХОДИТ ВСЕ РЕГИСТРАЦИИ. GitHub Pages — один origin на
- * весь монорепо, поэтому `getRegistrations()` со страницы хаба видит
- * регистрации всех четырёх модулей. Одна кнопка в хабе форсирует проверку
- * всем сразу — не нужно заходить в каждый модуль по очереди.
+ * ПОЧЕМУ CHECKALL() ФИЛЬТРУЕТ РЕГИСТРАЦИИ. GitHub Pages — один origin для
+ * нескольких независимых проектов владельца, поэтому `getRegistrations()`
+ * со страницы хаба видит не только Circuit Workspace. Оркестрация работает
+ * только с точными scope хаба и шести модулей из CW_MODULES; чужой worker не
+ * проверяется и ни при каких обстоятельствах не получает SKIP_WAITING.
  *
  * ПОЧЕМУ update() НЕДОСТАТОЧНО САМ ПО СЕБЕ. Промис `reg.update()` резолвится,
  * когда сеть отработала — это НЕ означает, что новый worker уже дошёл до
@@ -410,12 +411,19 @@
     });
   }
 
+  function scopeMap() {
+    var base = new URL('./', (doc && doc.baseURI) || global.location.href);
+    var map = {};
+    map[base.href] = 'hub';
+    Object.keys(global.CW_MODULES || {}).forEach(function (id) {
+      map[new URL(id + '/', base).href] = id;
+    });
+    return map;
+  }
+
   function moduleIdForScope(scope) {
-    var ids = Object.keys(global.CW_MODULES || {});
-    for (var i = 0; i < ids.length; i++) {
-      if (scope.indexOf('/' + ids[i] + '/') !== -1) return ids[i];
-    }
-    return 'hub';
+    try { return scopeMap()[new URL(scope, global.location.href).href] || null; }
+    catch (e) { return null; }
   }
 
   function expectedVersion(id) {
@@ -488,7 +496,7 @@
 
     /**
      * Bounded orchestration для кнопки «Обновить всё» в хабе. Проходит по
-     * ВСЕМ регистрациям origin (хаб + четыре модуля), для каждой форсирует
+     * точному whitelist регистраций (хаб + шесть модулей), для каждой форсирует
      * update() и ДОЖИДАЕТСЯ появление waiting-воркера (installed/waiting
      * либо явный таймаут) — не просто опрашивает reg.waiting сразу после
      * update(), которое могло бы пропустить регистрацию, всё ещё
@@ -511,6 +519,7 @@
       if (unsupported()) return Promise.resolve({ ready: [], failed: [] });
 
       return ensureRegistrations().then(function () { return nav.serviceWorker.getRegistrations(); }).then(function (regs) {
+        regs = regs.filter(function (reg) { return !!moduleIdForScope(reg.scope); });
         if (!regs.length) return { ready: [], failed: [] };
 
         return Promise.all(regs.map(function (reg) {
@@ -582,7 +591,13 @@
      *   показать partial result, а не «обновлено полностью».
      */
     applyAll: function (readyList) {
-      var list = readyList || [];
+      /* Defense in depth: readyList обычно приходит из checkAll(), но API
+         публичный. Повторная точная проверка не позволяет вызывающему коду
+         случайно применить update чужого проекта на том же origin. */
+      var list = (readyList || []).filter(function (item) {
+        return item && !!moduleIdForScope(item.scope) && item.reg &&
+          moduleIdForScope(item.reg.scope) === moduleIdForScope(item.scope);
+      });
       list.forEach(function (item) {
         if (!item.reg || !item.reg.waiting) return;
         try { item.reg.waiting.postMessage({ type: 'SKIP_WAITING' }); }

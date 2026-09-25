@@ -139,6 +139,22 @@ console.log('\ncheckAll(): update() уже отклонился (реальна�
   ok('и не ready одновременно', !result.ready.some((r) => r.scope === '/appointments/'));
 }
 
+console.log('\ncheckAll(): foreign scope того же origin полностью игнорируется');
+{
+  const ctx = makeCtx();
+  const regHub = makeRegistration('/', 'no-update');
+  const regForeign = makeRegistration('/Weather-App-Claude/', 'update-rejects');
+  let foreignChecks = 0;
+  const foreignUpdate = regForeign.update;
+  regForeign.update = () => { foreignChecks++; return foreignUpdate(); };
+  ctx.navigator.serviceWorker.getRegistrations = () => Promise.resolve([regHub, regForeign]);
+  const result = await ctx.CWUpdate.checkAll();
+  ok('foreign worker не получает update()', foreignChecks === 0, foreignChecks);
+  ok('foreign scope не попадает в ready/failed',
+    !result.ready.some((r) => r.scope === regForeign.scope) &&
+    !result.failed.some((r) => r.scope === regForeign.scope), result);
+}
+
 console.log('\napplyAll(): SKIP_WAITING чужому scope + подтверждение активации');
 {
   const ctx = makeCtx();
@@ -171,6 +187,18 @@ console.log('\napplyAll(): активация не подтвердилась в
   const { results, allActivated } = await ctx.CWUpdate.applyAll([{ scope: reg.scope, reg }]);
   ok('timedOut — честный статус, а не молчаливый "activated"', results[0].status === 'timedOut', results[0].status);
   ok('allActivated=false, когда хоть один scope не подтвердился', allActivated === false);
+}
+
+console.log('\napplyAll(): foreign scope не получает SKIP_WAITING даже во входном списке');
+{
+  const ctx = makeCtx();
+  const reg = makeRegistration('/Language-Teacher/', 'immediate-waiting');
+  await reg.update();
+  let skipSent = false;
+  reg.waiting.postMessage = (msg) => { if (msg && msg.type === 'SKIP_WAITING') skipSent = true; };
+  const { results, allActivated } = await ctx.CWUpdate.applyAll([{ scope: reg.scope, reg }]);
+  ok('foreign worker не получает SKIP_WAITING', skipSent === false);
+  ok('foreign scope отсутствует в apply result', results.length === 0 && allActivated === true, results);
 }
 
 console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\ncheckAll()/applyAll(): гонки install/waiting/activate из собственных комментариев файла — под регрессом.');
