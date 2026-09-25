@@ -106,7 +106,7 @@ function makeCtx() {
   const ctx = {
     console,
     setTimeout, clearTimeout, setInterval, clearInterval, MessageChannel: FakeMessageChannel, URL,
-    document: { baseURI: 'https://example.test/', readyState: 'complete', addEventListener() {}, getElementById() { return null; }, createElement() { return { style: {}, appendChild() {}, setAttribute() {} }; }, head: { appendChild() {} }, body: { appendChild() {} } },
+    document: { baseURI: 'https://example.test/', readyState: 'complete', addEventListener() {}, getElementById() { return null; }, createElement() { return { style: {}, appendChild() {}, setAttribute() {}, addEventListener() {} }; }, head: { appendChild() {} }, body: { appendChild() {} } },
     navigator: { serviceWorker: Object.assign(new FakeTarget(), { controller: null, register: () => Promise.resolve(null), getRegistrations: () => Promise.resolve([]) }) },
     location: { href: 'https://example.test/', reload() {} },
     sessionStorage: {
@@ -320,6 +320,49 @@ console.log('\napplyAll(): foreign scope не получает SKIP_WAITING да
   ok('foreign worker не получает SKIP_WAITING', skipSent === false);
   ok('foreign scope отсутствует в apply result', results.length === 0 && allActivated === true, results);
 }
+
+console.log('\nisBusy()/showBar(): гонка МЕЖДУ post-update верификацией и фоновой автопроверкой хаба');
+{
+  const ctx = makeCtx();
+  ctx.CW_RELEASE = { version: '0.41.58', changes: [] };
+  ok('isBusy()=false, пока верификация не запущена', ctx.CWUpdate.isBusy() === false);
+
+  // Регистрация без совпадающей версии никогда не резолвится в 'activated' —
+  // держит finalVerificationPromise pending достаточно долго, чтобы застать
+  // isBusy()=true и попытку showBar() посреди верификации.
+  const reg = makeRegistration('/', 'no-update');
+  reg.scope = 'https://example.test/';
+  reg.active.info = { module: 'hub', version: 'stale' };
+  ctx.navigator.serviceWorker.getRegistrations = () => Promise.resolve([reg]);
+  ctx.sessionStorage.setItem('cwPendingRelease', JSON.stringify({
+    version: '0.41.58',
+    changes: [],
+    failed: [],
+    expected: [{ scope: 'https://example.test/', target: { module: 'hub', version: '0.41.58', hub: null } }],
+  }));
+  ctx.CWUpdate.notify('update.partial', 'x'); // pending есть → уходит в verifyAndShowCurrentRelease() (fire-and-forget)
+  ok('isBusy()=true, пока идёт финальная верификация', ctx.CWUpdate.isBusy() === true);
+
+  // notify() не возвращает промис верификации наружу (намеренно — вызывающий
+  // код не должен ждать); дожидаемся реального завершения через таймер,
+  // дольше укороченного VERIFY_TIMEOUT_MS этого VM (240 мс).
+  await new Promise((r) => setTimeout(r, 400));
+  ok('isBusy()=false после завершения (даже с versionMismatch — deadline истёк)', ctx.CWUpdate.isBusy() === false);
+}
+
+console.log('\nshowBar(): не рисует ничего после уже запланированного собственного reload');
+ok('showBar() ранний return при reloading — до injectStyle()/hideBar()',
+  /function showBar\(opts\) \{\s*if \(unsupported\(\)\) return;[\s\S]{0,500}if \(reloading\) return;\s*injectStyle\(\);/.test(SRC));
+
+console.log('\nindex.html: фоновая автопроверка (cw-update-available) пропускается во время check/apply/verify');
+ok('applying — отдельный флаг, не совпадающий с checking (закрывает окно между checkAll() и concом apply)',
+  /var applying = false;/.test(HUB));
+ok('applying=true выставляется в onApply ДО applyAll()',
+  /onApply: function \(\) \{\s*CWUpdate\.dismiss\(\);\s*applying = true;/.test(HUB));
+ok('applying сбрасывается только в исходе applyAll().then(outcome), не раньше',
+  /applying = false;\s*btn\.disabled = false;/.test(HUB));
+ok('auto-listener пропускает runCheck(), пока checking || applying || CWUpdate.isBusy()',
+  /document\.addEventListener\('cw-update-available', function \(\) \{\s*if \(checking \|\| applying \|\| \(CWUpdate\.isBusy && CWUpdate\.isBusy\(\)\)\) return;\s*runCheck\(\);\s*\}\);/.test(HUB));
 
 console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\ncheckAll()/applyAll(): гонки install/waiting/activate из собственных комментариев файла — под регрессом.');
 process.exit(failed ? 1 : 0);

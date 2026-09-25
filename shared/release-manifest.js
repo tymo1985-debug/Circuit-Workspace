@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.67',
+  version: '0.41.68',
   changes: [
-    { module: 'hub', version: '0.41.67', note: 'Порядок плиток на главном экране настраивается отдельно в рабочем и системном разделе' },
-    { module: 'congress-project', version: '4.46.89', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'pioneer-school', version: '1.14.65', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'appointments', version: '5.5.104', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'documents', version: '1.11.14', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'journal', version: '0.15.7', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'hub', version: '0.41.68', note: 'Update/PWA: фоновая автопроверка хаба больше не пересекается с post-update отчётом и не показывает противоречивое сообщение после apply/reload' },
+    { module: 'congress-project', version: '4.46.90', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'pioneer-school', version: '1.14.66', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'appointments', version: '5.5.105', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'documents', version: '1.11.15', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'journal', version: '0.15.8', note: 'Version-only: доставка правки общего слоя', technical: true },
   ],
 };

@@ -2029,6 +2029,14 @@
     var label = btn && btn.querySelector('.cw-update-btn__label');
     if (!btn) return;
     var checking = false;
+    /* Отдельно от checking: checking снимается сразу после checkAll() —
+       предложение «Обновить всё» уже показано, но сам apply (клик пользователя
+       → applyAll() → подтверждение активации каждого scope) идёт дольше и раньше
+       ничем не был отмечен. Без этого флага фоновый автопроверка hub'а (событие
+       cw-update-available, см. ниже) могла запустить параллельный runCheck()
+       прямо во время применения и показать свой баннер поверх/раньше настоящего
+       apply-результата — источник «сначала partial, потом сразу installed». */
+    var applying = false;
 
     var MESSAGE = {
       current: ['update.current', 'Установлена последняя версия.'],
@@ -2089,6 +2097,7 @@
           listItems: lines,
           onApply: function () {
             CWUpdate.dismiss();
+            applying = true;
             if (label) label.textContent = CWI18n.t('update.checking');
             btn.disabled = true;
             // Marker пишется ДО applyAll(), не в .then(): controllerchange
@@ -2111,6 +2120,10 @@
               // scope не уложился в bounded timeout — показываем partial,
               // а не молчаливый success (иначе хаб солгал бы, что apply
               // завершён полностью, пока какой-то scope ещё pending).
+              // Если own-scope всё же перезагрузится, этот .then() до конца
+              // не дойдёт — applying корректно останется true до самого
+              // reload, что и требуется (см. объявление applying выше).
+              applying = false;
               btn.disabled = false;
               if (outcome.allActivated && !failed.length) {
                 if (label) label.textContent = CWI18n.t('hub.update_label');
@@ -2143,7 +2156,17 @@
     }
 
     btn.addEventListener('click', runCheck);
-    document.addEventListener('cw-update-available', runCheck);
+    // Хаб-регистрация отслеживается независимо (shared/update.js: watch()) и
+    // это событие может прилететь САМО ПО СЕБЕ — сразу после reload, пока
+    // post-update верификация ещё проверяет активные workers (CWUpdate.isBusy()),
+    // или прямо во время ручного apply (applying, см. объявление выше). Два
+    // независимых showBar() почти одновременно — и есть «сначала partial,
+    // потом сразу installed». Пропускаем, а не откладываем: следующий реальный
+    // повод (новый updatefound, ручная кнопка) прилетит сам, очередь не нужна.
+    document.addEventListener('cw-update-available', function () {
+      if (checking || applying || (CWUpdate.isBusy && CWUpdate.isBusy())) return;
+      runCheck();
+    });
   })();
 </script>
 </body>

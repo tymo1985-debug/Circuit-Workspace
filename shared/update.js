@@ -159,6 +159,12 @@
    */
   function showBar(opts) {
     if (unsupported()) return;
+    /* Реальный reload уже запланирован (controllerchange своей страницы) —
+       рисовать что-либо бессмысленно и опасно: DOM вот-вот заменится, а
+       успевший отрисоваться баннер может на долю секунды показать неверный
+       текст поверх уже устаревшей страницы. location.reload() не обрывает
+       текущий тик синхронно, поэтому код после него может ещё выполниться. */
+    if (reloading) return;
     injectStyle();
     hideBar();
 
@@ -950,6 +956,20 @@
         Публична прежде всего для gate/live regression; UI вызывает её через
         post-update финализатор выше. */
     verifyCurrent: verifyCurrentRelease,
+
+    /**
+     * true, пока идёт финальная post-update верификация (verifyAndShowCurrentRelease).
+     * ЗАЧЕМ. `watch()` слушает СОБСТВЕННУЮ SW-регистрацию хаба независимо от
+     * ручного check/apply-цикла и через событие `cw-update-available` может
+     * запустить ПОЛНЫЙ параллельный runCheck() ровно в момент, когда страница
+     * (после reload или в конце applyAll()) ещё проверяет, что реально
+     * активировалось. Два независимых showBar() почти одновременно — и есть
+     * тот самый «сначала partial, потом сразу installed»: не гонка внутри
+     * самой верификации (она уже последовательна и подтверждена gate-тестами
+     * выше), а гонка МЕЖДУ верификацией и посторонним авто-check. Hub-код
+     * обязан пропускать авто-триггер, пока isBusy() === true.
+     */
+    isBusy: function () { return !!finalVerificationPromise; },
   };
 
   global.CWUpdate = CWUpdate;
