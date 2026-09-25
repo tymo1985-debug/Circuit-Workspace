@@ -724,6 +724,60 @@
     color: var(--md-outline);
     font-size: 12.5px;
   }
+
+  /* --- Порядок плиток (хаб 0.41.67) -------------------------------------
+     Режим включается явно: вне него плитки ведут себя как раньше, и
+     случайное перетаскивание при обычном открытии модуля невозможно.
+     Перетаскивание берётся только за ручку (touch-action: none только на
+     ней), поэтому прокрутка страницы пальцем по плитке не ломается. */
+  .cw-order-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+  .cw-order-bar__hint {
+    flex: 1 1 240px;
+    margin: 0;
+    font: 400 13px/18px var(--md-font-family);
+    color: var(--md-on-surface-variant);
+  }
+  .cw-order-bar__hint[hidden], .cw-order-bar [hidden] { display: none; }
+  .cw-order-item { position: relative; }
+  .cw-order-ctl {
+    position: absolute;
+    top: 8px; right: 8px;
+    z-index: 3;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--cw-radius-sm);
+    background: var(--md-surface-container-high);
+    border: 1px solid var(--md-outline-variant);
+  }
+  .cw-order-ctl button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px; min-height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--cw-radius-sm);
+    background: transparent;
+    color: var(--md-on-surface);
+    cursor: pointer;
+  }
+  .cw-order-ctl button:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 1px; }
+  .cw-order-ctl button:disabled { opacity: 0.35; cursor: default; }
+  .cw-order-ctl svg { width: 20px; height: 20px; }
+  .cw-order-ctl .cw-order-handle { cursor: grab; touch-action: none; }
+  .cw-ordering .cw-order-item > :not(.cw-order-ctl) { pointer-events: none; }
+  .cw-ordering .cw-order-item { outline: 2px dashed var(--md-outline-variant); outline-offset: 2px; border-radius: var(--cw-radius); }
+  .cw-order-item.is-dragging { opacity: 0.6; outline-color: var(--md-primary); }
+  .cw-ordering .is-dragging .cw-order-handle { cursor: grabbing; }
+  .cw-ordering, body.cw-order-dragging { user-select: none; -webkit-user-select: none; }
 </style>
 </head>
 <body class="cw-root">
@@ -779,6 +833,19 @@
 
 <main class="cw-board">
   <div class="cw-container">
+
+    <!-- Порядок плиток. Две независимые зоны — рабочий ярус и системный;
+         принадлежность к ярусу задаёт разметка ниже, пользователь меняет
+         только последовательность внутри своей зоны. -->
+    <div class="cw-order-bar" id="orderBar">
+      <p class="cw-order-bar__hint" id="orderHint" data-i18n="hub.order_hint" hidden>Перетаскивайте плитки за ручку или двигайте стрелками. Порядок меняется только внутри своего раздела.</p>
+      <button type="button" class="cw-btn" id="orderReset" hidden>
+        <span data-i18n="hub.order_reset">Восстановить стандартный порядок</span>
+      </button>
+      <button type="button" class="cw-btn" id="orderToggle" aria-pressed="false">
+        <span id="orderToggleLabel" data-i18n="hub.order_edit">Настроить порядок</span>
+      </button>
+    </div>
 
     <!-- ЯРУС 1: рабочие модули. Признак яруса формальный, а не вкусовой:
          у рабочего модуля есть собственная страница, собственная версия в
@@ -1067,6 +1134,277 @@
     var version = self.CW_MODULES[key].version;
     if (slot && version) slot.textContent = '· v' + version;
   });
+
+
+  /* HUB-ORDER:BEGIN --------------------------------------------------------
+     Пользовательский порядок плиток. Две НЕЗАВИСИМЫЕ зоны:
+       work   — #moduleGrid (рабочие модули, id = data-module);
+       system — .cw-grid--system (системные карточки, id = id элемента).
+     Источник правды о принадлежности к зоне — только разметка index.html
+     (тот же, что проверяет check-hub-tiles.mjs против CW_MODULES). Канон
+     зоны снимается с DOM ДО применения сохранённого порядка. Сохранённое
+     значение — только последовательность id внутри зоны: нормализация
+     выбрасывает чужие/неизвестные/повторные id и дописывает новые в конец
+     в каноническом порядке, поэтому повреждённая запись не может ни
+     перенести элемент в другую зону, ни создать дубль.
+     Хранение — localStorage['cw-hub-order'], как 'cw-theme': UI-настройка
+     устройства, в резервную копию не входит. */
+  (function () {
+    var KEY = 'cw-hub-order';
+    var zones = {
+      work:   { grid: document.getElementById('moduleGrid'), idOf: function (el) { return el.getAttribute('data-module'); } },
+      system: { grid: document.querySelector('.cw-grid--system'), idOf: function (el) { return el.id || null; } }
+    };
+    var ZONE_NAMES = ['work', 'system'];
+
+    function itemsOf(z) {
+      if (!z.grid) return [];
+      return [].slice.call(z.grid.children).filter(function (el) {
+        return el.className.indexOf('cw-rib') === -1 && !!z.idOf(el);
+      });
+    }
+    function byId(z) {
+      var map = {};
+      itemsOf(z).forEach(function (el) { map[z.idOf(el)] = el; });
+      return map;
+    }
+
+    ZONE_NAMES.forEach(function (name) {
+      var z = zones[name];
+      z.canonical = itemsOf(z).map(z.idOf);
+    });
+
+    function normalize(saved, canonical) {
+      var out = [], seen = {};
+      (Array.isArray(saved) ? saved : []).forEach(function (id) {
+        if (typeof id === 'string' && canonical.indexOf(id) !== -1 && !seen[id]) {
+          seen[id] = true; out.push(id);
+        }
+      });
+      canonical.forEach(function (id) { if (!seen[id]) { seen[id] = true; out.push(id); } });
+      return out;
+    }
+
+    function read() {
+      var raw = null;
+      try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { raw = null; }
+      return (raw && typeof raw === 'object') ? raw : {};
+    }
+    function current(name) { return normalize(read()[name], zones[name].canonical); }
+
+    function write(name, order) {
+      var data = {};
+      ZONE_NAMES.forEach(function (n) {
+        // Каждая зона нормализуется по СВОЕМУ канону — в запись не может
+        // попасть id чужой зоны, даже если вызвавший код ошибся.
+        data[n] = normalize(n === name ? order : read()[n], zones[n].canonical);
+      });
+      data.v = 1;
+      try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* приватный режим */ }
+    }
+
+    function apply(name) {
+      var z = zones[name];
+      if (!z.grid) return;
+      var map = byId(z);
+      current(name).forEach(function (id) { if (map[id]) z.grid.appendChild(map[id]); });
+      if (window.CWHubBoard) window.CWHubBoard.refresh();
+    }
+
+    // Перемещение — только внутри зоны: id ищется в каноне ИМЕННО этой зоны,
+    // чужой id отклоняется до записи.
+    function move(name, id, toIndex) {
+      var z = zones[name];
+      if (!z || z.canonical.indexOf(id) === -1) return false;
+      var order = current(name);
+      var from = order.indexOf(id);
+      toIndex = Math.max(0, Math.min(order.length - 1, toIndex));
+      if (from === toIndex) return false;
+      order.splice(from, 1);
+      order.splice(toIndex, 0, id);
+      write(name, order);
+      apply(name);
+      syncControls();
+      return true;
+    }
+
+    function reset() {
+      try { localStorage.removeItem(KEY); } catch (e) { /* no-op */ }
+      ZONE_NAMES.forEach(apply);
+      syncControls();
+    }
+
+    function zoneOfEl(el) {
+      for (var i = 0; i < ZONE_NAMES.length; i++) {
+        var z = zones[ZONE_NAMES[i]];
+        if (z.grid && el.parentNode === z.grid && z.idOf(el)) return ZONE_NAMES[i];
+      }
+      return null;
+    }
+
+    ZONE_NAMES.forEach(apply);
+
+    // --- Режим настройки ------------------------------------------------
+    var board = document.querySelector('.cw-board');
+    var toggle = document.getElementById('orderToggle');
+    var toggleLabel = document.getElementById('orderToggleLabel');
+    var resetBtn = document.getElementById('orderReset');
+    var hint = document.getElementById('orderHint');
+    var editing = false;
+
+    var ICON_HANDLE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+    var ICON_PREV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+    var ICON_NEXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+    function button(cls, icon, key) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls;
+      b.innerHTML = icon;
+      b.setAttribute('data-i18n-aria-label', key);
+      b.setAttribute('data-i18n-title', key);
+      return b;
+    }
+
+    function addControls(name) {
+      itemsOf(zones[name]).forEach(function (el) {
+        el.classList.add('cw-order-item');
+        var ctl = document.createElement('div');
+        ctl.className = 'cw-order-ctl';
+        ctl.appendChild(button('cw-order-prev', ICON_PREV, 'hub.order_prev'));
+        ctl.appendChild(button('cw-order-handle', ICON_HANDLE, 'hub.order_drag'));
+        ctl.appendChild(button('cw-order-next', ICON_NEXT, 'hub.order_next'));
+        el.appendChild(ctl);
+        if (window.CWI18n) CWI18n.apply(ctl);
+        if (el.tagName === 'A') {
+          el.setAttribute('data-order-tabindex', el.getAttribute('tabindex') || '');
+          el.setAttribute('tabindex', '-1');
+        }
+      });
+    }
+    function removeControls(name) {
+      itemsOf(zones[name]).forEach(function (el) {
+        el.classList.remove('cw-order-item', 'is-dragging');
+        var ctl = el.querySelector(':scope > .cw-order-ctl');
+        if (ctl) el.removeChild(ctl);
+        if (el.hasAttribute('data-order-tabindex')) {
+          var t = el.getAttribute('data-order-tabindex');
+          if (t) el.setAttribute('tabindex', t); else el.removeAttribute('tabindex');
+          el.removeAttribute('data-order-tabindex');
+        }
+      });
+    }
+    function syncControls() {
+      if (!editing) return;
+      ZONE_NAMES.forEach(function (name) {
+        var list = itemsOf(zones[name]);
+        list.forEach(function (el, i) {
+          var p = el.querySelector(':scope > .cw-order-ctl .cw-order-prev');
+          var n = el.querySelector(':scope > .cw-order-ctl .cw-order-next');
+          if (p) p.disabled = i === 0;
+          if (n) n.disabled = i === list.length - 1;
+        });
+      });
+    }
+
+    function setEditing(on) {
+      if (on === editing) return;
+      editing = on;
+      board.classList.toggle('cw-ordering', on);
+      toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+      toggleLabel.setAttribute('data-i18n', on ? 'hub.order_done' : 'hub.order_edit');
+      if (window.CWI18n) CWI18n.apply(toggle);
+      resetBtn.hidden = !on;
+      hint.hidden = !on;
+      ZONE_NAMES.forEach(on ? addControls : removeControls);
+      syncControls();
+    }
+
+    if (toggle) toggle.addEventListener('click', function () { setEditing(!editing); });
+    if (resetBtn) resetBtn.addEventListener('click', reset);
+
+    // В режиме настройки ссылка плитки модуль не открывает.
+    board.addEventListener('click', function (e) {
+      if (!editing) return;
+      var link = e.target.closest && e.target.closest('.cw-order-item');
+      if (link && link.tagName === 'A') e.preventDefault();
+    }, true);
+
+    // Стрелки — клавиатурный и простой сенсорный путь.
+    board.addEventListener('click', function (e) {
+      if (!editing || !e.target.closest) return;
+      var b = e.target.closest('.cw-order-prev, .cw-order-next');
+      if (!b) return;
+      var item = b.closest('.cw-order-item');
+      var name = item && zoneOfEl(item);
+      if (!name) return;
+      var id = zones[name].idOf(item);
+      var idx = current(name).indexOf(id);
+      if (move(name, id, idx + (b.classList.contains('cw-order-prev') ? -1 : 1))) {
+        var again = item.querySelector(':scope > .cw-order-ctl ' + (b.classList.contains('cw-order-prev') ? '.cw-order-prev' : '.cw-order-next'));
+        (again && !again.disabled ? again : item.querySelector(':scope > .cw-order-ctl .cw-order-handle')).focus();
+      }
+    });
+
+    // Перетаскивание за ручку (pointer: мышь, палец, перо). Цель ищется
+    // ТОЛЬКО среди элементов зоны перетаскиваемой плитки: над чужой зоной
+    // целей нет, перемещения не происходит, запись не меняется.
+    var drag = null;
+    board.addEventListener('pointerdown', function (e) {
+      if (!editing || !e.target.closest) return;
+      var handle = e.target.closest('.cw-order-handle');
+      if (!handle || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      var item = handle.closest('.cw-order-item');
+      var name = item && zoneOfEl(item);
+      if (!name) return;
+      e.preventDefault();
+      drag = { name: name, id: zones[name].idOf(item), item: item, handle: handle, pointer: e.pointerId };
+      try { handle.setPointerCapture(e.pointerId); } catch (err) { /* no-op */ }
+      item.classList.add('is-dragging');
+      document.body.classList.add('cw-order-dragging');
+    });
+    board.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.pointer) return;
+      var z = zones[drag.name];
+      var target = hitTest(z, e.clientX, e.clientY);
+      if (!target || target === drag.item) return;
+      var order = current(drag.name);
+      move(drag.name, drag.id, order.indexOf(z.idOf(target)));
+    });
+    function endDrag(e) {
+      if (!drag || (e && e.pointerId !== drag.pointer)) return;
+      drag.item.classList.remove('is-dragging');
+      document.body.classList.remove('cw-order-dragging');
+      drag = null;
+    }
+    board.addEventListener('pointerup', endDrag);
+    board.addEventListener('pointercancel', endDrag);
+
+    function hitTest(z, x, y) {
+      var g = z.grid.getBoundingClientRect();
+      if (x < g.left || x > g.right || y < g.top || y > g.bottom) return null;
+      var list = itemsOf(z);
+      for (var i = 0; i < list.length; i++) {
+        var r = list[i].getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return list[i];
+      }
+      return null;
+    }
+
+    window.CWHubOrder = {
+      KEY: KEY,
+      normalize: normalize,
+      canonical: function (name) { return zones[name] ? zones[name].canonical.slice() : []; },
+      current: current,
+      move: move,
+      reset: reset,
+      zoneOf: zoneOfEl,
+      hitTest: function (name, x, y) { return zones[name] ? hitTest(zones[name], x, y) : null; },
+      setEditing: setEditing,
+      isEditing: function () { return editing; }
+    };
+  })();
+  /* HUB-ORDER:END */
 
   // --- Плата: рёбра шины ------------------------------------------------
   // Рёбра не лежат в разметке намеренно: иначе число площадок стало бы вторым
