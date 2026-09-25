@@ -15,6 +15,7 @@
 
   function $() { return A.$.apply(this, arguments); }
   function errorMessage() { return A.errorMessage.apply(this, arguments); }
+  function dropPlain() { return A.dropPlain.apply(this, arguments); }
   function forgetProjectProtectedDraft() { return A.forgetProjectProtectedDraft.apply(this, arguments); }
   function forgetSearchResults() { return A.forgetSearchResults.apply(this, arguments); }
   function forgetVisitProtectedDraft() { return A.forgetVisitProtectedDraft.apply(this, arguments); }
@@ -35,6 +36,13 @@
   /* Диалоги, где может стоять расшифрованный текст: при блокировке — закрыть. */
   var TEXT_DIALOGS = ['taskDialog', 'carrySheet', 'projectDialog', 'pickDialog'];
   var SECRET_FIELDS = ['protectOld', 'protectPass', 'protectConfirm'];
+  var PLAIN_CONTAINERS = [
+    'overviewCarry', 'overviewTasks', 'overviewProjects',
+    'tasksList', 'districtProjectsList', 'congProjectsList',
+    'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry',
+    'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems',
+    'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist',
+  ];
 
   var MODE_TEXT = {
     unlock: ['j.locked.title', 'j.prot.lede', 'j.prot.unlock'],
@@ -46,6 +54,21 @@
 
   function clearSecrets() {
     SECRET_FIELDS.forEach(function (id) { var f = $('#' + id); if (f) f.value = ''; });
+  }
+
+  /* Ключ уже сброшен: ни один ранее посещённый (в том числе hidden) экран
+     и ни одно сохранённое браузером значение формы не должны удерживать
+     расшифрованный текст до следующей отрисовки. */
+  function purgePlainDom() {
+    dropPlain();
+    PLAIN_CONTAINERS.forEach(function (id) {
+      var box = $('#' + id);
+      if (box) box.replaceChildren();
+    });
+    document.querySelectorAll('textarea, input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="url"], input[type="password"]').forEach(function (field) {
+      field.value = '';
+      field.setAttribute('autocomplete', 'off');
+    });
   }
   function showSheetError(msg) {
     var e = $('#protectError');
@@ -215,6 +238,7 @@
       forgetProjectProtectedDraft();
       forgetSearchResults();
       TEXT_DIALOGS.forEach(function (id) { var d = $('#' + id); if (d && d.open) d.close(); });
+      purgePlainDom();
     }
     syncLockButton();
     rerenderRoute();
@@ -227,6 +251,12 @@
     $('#protectSheet').addEventListener('close', function () { if (protectUi.resolve) finish(false); });
     $('#lockBtn').addEventListener('click', onLockButton);
     CWJournal.protection.onChange(onProtectionChange);
+    /* Внешнее восстановление пишет IndexedDB из другой вкладки. Сигнал
+       интеграции несёт только метку; status() перечитывает vault и при его
+       замене немедленно сбрасывает ключ, что запускает общий purge выше. */
+    CWJournal.integration.onChange(function () {
+      if (CWJournal.protection.isUnlocked()) currentState();
+    });
     // Возврат из BFCache: ключ сброшен на pagehide — показать это честно.
     window.addEventListener('pageshow', function (e) { if (e.persisted) { syncLockButton(); rerenderRoute(); } });
     syncLockButton();

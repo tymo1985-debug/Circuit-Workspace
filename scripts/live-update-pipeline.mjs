@@ -4,19 +4,23 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '/Users/alextymoshchuk/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core/index.mjs';
+import vm from 'node:vm';
+import { chromium } from 'playwright-core';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const NEXT = {
-  hub: ['0.41.58', '0.41.59'],
-  'congress-project': ['4.46.80', '4.46.81'],
-  'circuit-planner': ['9.95.1', '9.95.2'],
-  'pioneer-school': ['1.14.56', '1.14.57'],
-  appointments: ['5.5.95', '5.5.96'],
-  documents: ['1.11.5', '1.11.6'],
-  journal: ['0.13.4', '0.13.5'],
+const CHROME = process.env.CHROME_PATH || undefined;
+const current = {};
+vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'shared/version.js'), 'utf8'), { self: current });
+const bumpPatch = (version) => {
+  const parts = String(version).split('.').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n) || n < 0)) throw new Error('invalid current version ' + version);
+  parts[2]++;
+  return parts.join('.');
 };
+const NEXT = {
+  hub: [current.CW_VERSION, bumpPatch(current.CW_VERSION)],
+};
+for (const [id, meta] of Object.entries(current.CW_MODULES || {})) NEXT[id] = [meta.version, bumpPatch(meta.version)];
 let phase = 1;
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
@@ -51,7 +55,7 @@ try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => navigator.serviceWorker.getRegistrations().then((r) => r.length === 7));
   const before = await page.locator('#hubVersion').textContent();
-  if (before !== 'v0.41.58') throw new Error('unexpected baseline ' + before);
+  if (before !== 'v' + NEXT.hub[0]) throw new Error('unexpected baseline ' + before);
 
   await page.request.get(base + '__upgrade');
   await page.waitForTimeout(1000);
@@ -69,7 +73,7 @@ try {
     throw new Error('new changelog is absent before apply: ' + offered + '\n' + JSON.stringify(waiting));
   }
   await page.click('#cwUpdateBar .cw-update__apply');
-  await page.waitForFunction(() => document.querySelector('#hubVersion')?.textContent === 'v0.41.59', null, { timeout: 30000 });
+  await page.waitForFunction((version) => document.querySelector('#hubVersion')?.textContent === 'v' + version, NEXT.hub[1], { timeout: 30000 });
 
   const versions = await page.evaluate(async () => {
     const regs = await navigator.serviceWorker.getRegistrations();
@@ -94,7 +98,7 @@ try {
   }
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   if (!await page.locator('#hubVersion').count()) throw new Error('Hub return produced broken/plain-text UI');
-  console.log(JSON.stringify({ pass: true, baseline: '0.41.58', upgraded: '0.41.59', registrations: versions, changelogShown: true, hardRefreshUsed: false, moduleReturnChecks: 6 }, null, 2));
+  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, hardRefreshUsed: false, moduleReturnChecks: 6 }, null, 2));
 } finally {
   await context.close();
   await new Promise((resolve) => server.close(resolve));

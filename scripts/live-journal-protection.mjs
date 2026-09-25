@@ -245,9 +245,76 @@ await page.click('#lockBtn'); await waitSheet(true); await page.click('#protectS
 await page.waitForTimeout(700);
 ok('блокировка убрала расшифрованные результаты', !(await bodyText()).includes(CANARY));
 
+/* ═══ 5b. Полный DOM/value purge, Directory refresh и смена vault ══════ */
+console.log('\n5b. J-Final: hidden DOM, Directory и внешний vault');
+await page.click('#lockBtn'); await waitSheet(true); await submitPass(PASS_A); await waitSheet(false);
+await gotoJournal('#overview');
+await page.waitForFunction((c) => document.body.innerText.includes(c), CANARY);
+await gotoJournal('#tasks');
+await page.waitForFunction((c) => document.body.innerText.includes(c), CANARY);
+await gotoJournal(ids.visitHash);
+await page.waitForFunction((c) => document.body.innerText.includes(c), CANARY);
+await gotoJournal(ids.projHash);
+await page.waitForFunction((c) => document.body.innerText.includes(c), CANARY);
+await ev((c) => {
+  document.getElementById('taskDialogBody').value = 'Поле задачи ' + c;
+  document.getElementById('projectDialogBody').value = 'Поле проекта ' + c;
+}, CANARY);
+await ev(() => CWJournal.protection.lock('live-hidden-dom'));
+await settle();
+const domPurge = await ev((c) => ({
+  html: !document.documentElement.outerHTML.includes(c),
+  values: Array.from(document.querySelectorAll('input,textarea')).every((f) => !String(f.value).includes(c)),
+  autocomplete: document.getElementById('taskDialogBody').autocomplete === 'off'
+    && document.getElementById('projectDialogBody').autocomplete === 'off',
+}), CANARY);
+ok('Lock: канарейки нет во всём outerHTML и значениях форм', domPurge.html && domPurge.values, JSON.stringify(domPurge));
+ok('поля задачи/проекта запрещают восстановление истории', domPurge.autocomplete);
+
+await page.click('#lockBtn'); await waitSheet(true); await submitPass(PASS_A); await waitSheet(false);
+await gotoJournal(ids.visitHash);
+await ev(() => CWDirectory.upsert({ id: 'dir_refresh_live', name: 'Directory refresh live' }, 'journal'));
+await settle();
+await page.click('#moreBtn');
+const visitActions = await ev(() => Array.from(document.querySelectorAll('#moreMenuPanel [data-action]')).map((x) => x.dataset.action));
+ok('CWDirectory.onChange сохраняет меню посещения', visitActions.includes('edit-dates') && !visitActions.includes('add-group'), visitActions.join(','));
+await page.keyboard.press('Escape');
+
+const restorePage = await ctx.newPage();
+restorePage.on('console', (m) => { if (m.type() === 'error') consoleErrors.push('restore: ' + m.text()); });
+restorePage.on('pageerror', (e) => pageErrors.push('restore: ' + String(e)));
+await restorePage.goto(J_URL + '#overview', { waitUntil: 'load' });
+await restorePage.waitForFunction(() => !!self.CWBackup && !!self.CWJournalCrypto);
+const foreign = await restorePage.evaluate(async (canary) => {
+  const snap = await CWBackup.snapshot(['journal']);
+  const original = structuredClone(snap);
+  const made = await CWJournalCrypto.createVault('чужая фраза 2026');
+  const row = {
+    id: 'je_foreign_live', type: 'todo', status: 'open', nodeId: null,
+    circuitId: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    sec: await CWJournalCrypto.encryptEntry(made.key, 'je_foreign_live', { body: 'Чужой ' + canary }),
+  };
+  const stores = snap.sections.shared.idb['circuit-workspace-db'].stores;
+  stores.journalMeta.rows = [made.meta];
+  stores.journalEntries.rows = [row];
+  stores.journalNodes.rows = [];
+  stores.journalLinks.rows = [];
+  return { original, changed: snap };
+}, CANARY);
+await restorePage.evaluate((snap) => CWBackup.restore(snap), foreign.changed);
+await page.waitForFunction(() => !CWJournal.protection.isUnlocked(), null, { timeout: 15000 });
+await settle();
+const externalVault = await ev((c) => ({
+  locked: !CWJournal.protection.isUnlocked(),
+  html: !document.documentElement.outerHTML.includes(c),
+  values: Array.from(document.querySelectorAll('input,textarea')).every((f) => !String(f.value).includes(c)),
+}), CANARY);
+ok('внешняя смена vault блокирует сессию и очищает plaintext', externalVault.locked && externalVault.html && externalVault.values, JSON.stringify(externalVault));
+await restorePage.evaluate((snap) => CWBackup.restore(snap), foreign.original);
+await restorePage.close();
+
 /* ═══ 6. Перезагрузка и BFCache ════════════════════════════════════════ */
 console.log('\n6. Жизненный цикл');
-await page.click('#lockBtn'); await waitSheet(true); await submitPass(PASS_A); await waitSheet(false);
 await page.reload({ waitUntil: 'load' });
 await page.waitForFunction(() => !!self.CWJournal);
 await settle();

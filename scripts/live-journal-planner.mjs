@@ -134,6 +134,7 @@ await settle(pj, 600);
 ok('Клиндарий: календарь, месяц записи', await pj.evaluate(() => App.state.selectedScreen === 'calendar' && App.state.calendarMonth === 2 && App.state.calendarYear === 2028));
 ok('карточка записи показана', await pj.evaluate(() => /Живое собрание/.test(document.getElementById('calendarSideTitle').innerText)));
 await pj.goto(visitUrl, { waitUntil: 'load' });
+await pj.reload({ waitUntil: 'load' });
 await pj.waitForSelector('#visitPlannerRef');
 const pinPage = await ctx.newPage(); watch(pinPage, 'pin');
 await pa.evaluate(() => localStorage.setItem('syp-pin-hash', App.ui.pinHash('2468')));

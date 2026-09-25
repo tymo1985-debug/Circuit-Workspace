@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.61',
+  version: '0.41.62',
   changes: [
-    { module: 'hub', version: '0.41.61', note: 'Version-only: доставка правки общего слоя (shared/style.css)' },
-    { module: 'congress-project', version: '4.46.83', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
-    { module: 'pioneer-school', version: '1.14.59', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
-    { module: 'appointments', version: '5.5.98', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
-    { module: 'documents', version: '1.11.8', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
-    { module: 'journal', version: '0.15.1', note: 'Обзор: проекты — до трёх строк; нижняя навигация и шапка влезают в 320–430' },
+    { module: 'hub', version: '0.41.62', note: 'Version-only: доставка сигнала смены сейфа после восстановления копии' },
+    { module: 'congress-project', version: '4.46.84', note: 'Version-only: доставка правки общего слоя' },
+    { module: 'pioneer-school', version: '1.14.60', note: 'Version-only: доставка правки общего слоя' },
+    { module: 'appointments', version: '5.5.99', note: 'Version-only: доставка правки общего слоя' },
+    { module: 'documents', version: '1.11.9', note: 'Version-only: доставка правки общего слоя' },
+    { module: 'journal', version: '0.15.2', note: 'J-Final: очистка plaintext при Lock, безопасная смена сейфа и корректное обновление посещения' },
   ],
 };

@@ -545,7 +545,7 @@ console.log('\n6. O2: статические границы');
     && R2.build.visit('c', 'n', 'v') === '#districts/c/congregation/n/visit/v' && R2.build.visits('c', 'n') === '#districts/c/congregation/n/visits');
   const app = strip(read('journal/js/app.js'));
   ok('[35] fabSpecFor(overview) → null', /state\.route === 'overview'\) return null;/.test(app));
-  ok('справочник → renderOverview, одного пути', !/renderOverviewProjects/.test(app + strip(read('journal/js/app/protection.js'))) && (app.match(/renderOverview\(\)/g) || []).length >= 3);
+  ok('справочник → refreshCurrentView, одного пути', !/renderOverviewProjects/.test(app + strip(read('journal/js/app/protection.js'))) && (app.match(/refreshCurrentView\(\)/g) || []).length >= 3);
   const ovSrc = strip(read('journal/js/app/overview.js'));
   ok('[40] подписка на Клиндарий', /CWPlanner\.subscribe\(onSourceChange\)/.test(ovSrc));
   ok('[41/42] подписка на изменения Журнала', /CWJournal\.integration\.onChange\(onSourceChange\)/.test(ovSrc));

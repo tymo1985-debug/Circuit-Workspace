@@ -37,6 +37,7 @@
   function renderDistrictDetail() { return A.renderDistrictDetail.apply(this, arguments); }
   function renderOverview() { return A.renderOverview.apply(this, arguments); }
   function renderProjectDetail() { return A.renderProjectDetail.apply(this, arguments); }
+  function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
   function renderSearch() { return A.renderSearch.apply(this, arguments); }
   function renderTasks() { return A.renderTasks.apply(this, arguments); }
   function renderVisitDetail() { return A.renderVisitDetail.apply(this, arguments); }
@@ -188,16 +189,7 @@
         // (spec п.5). Повторных попыток здесь не заводим — не расширять
         // область этой правки.
         setDirectoryReady(CWDirectory.ready);
-        var state = parseHash();
-        if (state.route === 'search') renderSearch();
-        else if (state.route === 'archive') renderArchive();
-        else if (state.route === 'overview') renderOverview();
-        else if (state.route === 'districts' && state.projectId) renderProjectDetail(state.circuitId, state.projectId);
-        else if (state.route === 'districts' && state.congregationId) {
-          renderCongregationDetail(state.circuitId, state.congregationId);
-        } else if (state.route === 'districts' && state.circuitId) {
-          renderDistrictDetail(state.circuitId);
-        }
+        refreshCurrentView();
       });
       CWDirectory.onChange(function () {
         // Синхронизировать перед перерисовкой: onChange() может сработать
@@ -206,14 +198,7 @@
         // состояние заново, а не полагаемся на значение из предыдущего
         // init() (spec-3, п.2).
         setDirectoryReady(CWDirectory.ready);
-        var state = parseHash();
-        if (state.route === 'search') { renderSearch(); return; }
-        if (state.route === 'archive') { renderArchive(); return; }
-        if (state.route === 'overview') { renderOverview(); return; }
-        if (state.route !== 'districts') return;
-        if (state.projectId) { renderProjectDetail(state.circuitId, state.projectId); return; }
-        if (state.congregationId) renderCongregationDetail(state.circuitId, state.congregationId);
-        else if (state.circuitId) renderDistrictDetail(state.circuitId); // канонические имена в строках-собраниях
+        refreshCurrentView();
       });
     }
   });})();

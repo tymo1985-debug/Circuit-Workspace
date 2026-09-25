@@ -1151,6 +1151,19 @@
     }).then(function () {
       /* Фаза C. */
       localPlan.forEach(function (item) { writeLocal(item.map, item.known); });
+      /* IndexedDB не порождает cross-tab event. После успешной замены набора
+         Журнала будим открытые вкладки без данных: они перечитают vault и,
+         если он другой, немедленно сбросят старый ключ сессии. */
+      var journalRestored = dbPlan.some(function (job) {
+        return job.name === SHARED_DB && job.replace.indexOf('journalMeta') !== -1;
+      });
+      if (journalRestored && typeof global.BroadcastChannel === 'function') {
+        try {
+          var journalChannel = new global.BroadcastChannel('cw-journal');
+          journalChannel.postMessage({ kind: 'entries', rev: Date.now().toString(36) });
+          journalChannel.close();
+        } catch (e) { /* вкладка всё равно перепроверит vault перед записью */ }
+      }
       return snap;
     });
   }

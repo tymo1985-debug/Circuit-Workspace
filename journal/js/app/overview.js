@@ -284,6 +284,7 @@
   }
 
   /* Публикация для других файлов Журнала. */
+  A.dropPlain = dropPlain;
   A.renderOverview = renderOverview;
   A.wireOverviewChrome = wireOverviewChrome;
 })();
