@@ -121,7 +121,7 @@
       + '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
     return (
       '<div class="md-menu">' +
-      '<button type="button" class="j-row__chevronbtn" aria-label="' + esc(t('j.action.row_menu')) + '">' + svg(ICON.chevron, 'width="18" height="18"') + '</button>' +
+      '<button type="button" class="j-row__chevronbtn" aria-label="' + esc(t('j.action.row_menu')) + '" aria-expanded="false">' + svg(ICON.chevron, 'width="18" height="18"') + '</button>' +
       '<div class="md-menu__panel" role="menu" hidden>' + items + '</div>' +
       '</div>'
     );

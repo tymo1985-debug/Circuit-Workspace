@@ -63,10 +63,23 @@
     return function () { dlg.removeEventListener('close', guarded); };
   }
 
-  /* ═══ Общий примитив .md-menu: один открыт одновременно, Esc/клик-мимо ═ */
+  /* ═══ Общий примитив .md-menu: один открыт одновременно, Esc/клик-мимо ═
+   * Полироль (C): `aria-expanded` кнопки-переключателя (#moreBtn и все
+   * .j-row__chevronbtn) синхронизирован с видимостью её панели — раньше
+   * атрибута не было вовсе. Разметка одна и та же во всех местах вызова
+   * (`.md-menu` = кнопка + `.md-menu__panel` соседями), поэтому кнопка
+   * панели находится как previousElementSibling, без нового состояния. */
+  function toggleBtnFor(panel) {
+    var prev = panel.previousElementSibling;
+    return prev && (prev.id === 'moreBtn' || prev.classList.contains('j-row__chevronbtn')) ? prev : null;
+  }
   function closeAllMenus(exceptPanel) {
     $all('.md-menu__panel').forEach(function (p) {
-      if (p !== exceptPanel) p.hidden = true;
+      if (p !== exceptPanel && !p.hidden) {
+        p.hidden = true;
+        var b = toggleBtnFor(p);
+        if (b) b.setAttribute('aria-expanded', 'false');
+      }
     });
   }
   document.addEventListener('click', function (e) {
@@ -77,11 +90,13 @@
     if (e.key === 'Escape') closeAllMenus(null);
   });
   function wireMenuToggle(btn, panel) {
+    if (!btn.hasAttribute('aria-expanded')) btn.setAttribute('aria-expanded', 'false');
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       var willOpen = panel.hidden;
       closeAllMenus(panel);
       panel.hidden = !willOpen;
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
     });
   }
 
@@ -279,6 +294,7 @@
     btn = $('#moreBtn');
     btn.setAttribute('data-i18n-aria-label', 'j.action.more');
     btn.setAttribute('aria-label', t('j.action.more'));
+    btn.setAttribute('aria-expanded', 'false');
   }
 
   function resolveCommunity(id) { return isDirectoryReady() && id ? CWDirectory.get(id) : null; }

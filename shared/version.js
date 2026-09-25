@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.41.68';
+self.CW_VERSION = '0.41.69';
 
 /**
  * Реестр модулей хаба.
@@ -42,5 +42,5 @@ self.CW_MODULES = {
   'documents':        { title: 'Документы и данные', version: '1.11.15', worker: 'documents/sw.js' },
   /* Журнал — J1–J9 завершены; J-Final держит security/session-инварианты,
      интеграции и финальную приёмку. Правила — journal/AGENTS.md. */
-  'journal':          { title: 'Журнал', version: '0.15.8', worker: 'journal/sw.js' },
+  'journal':          { title: 'Журнал', version: '0.15.9', worker: 'journal/sw.js' },
 };

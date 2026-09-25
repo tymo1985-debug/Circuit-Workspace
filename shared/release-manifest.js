@@ -26,13 +26,8 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.68',
+  version: '0.41.69',
   changes: [
-    { module: 'hub', version: '0.41.68', note: 'Update/PWA: фоновая автопроверка хаба больше не пересекается с post-update отчётом и не показывает противоречивое сообщение после apply/reload' },
-    { module: 'congress-project', version: '4.46.90', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'pioneer-school', version: '1.14.66', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'appointments', version: '5.5.105', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'documents', version: '1.11.15', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'journal', version: '0.15.8', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'journal', version: '0.15.9', note: 'Polishing: перенос длинных слов на mobile, aria-expanded у кнопки «Ещё» и меню строк, проверен fallback неизвестного маршрута' },
   ],
 };

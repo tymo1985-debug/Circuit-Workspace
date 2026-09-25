@@ -290,6 +290,12 @@ const CHECKS = [
     deps: ['acorn'],
   },
   {
+    file: 'check-journal-polish.mjs',
+    title: 'Журнал: polishing-проход уровня C',
+    why: 'перенос длинных слов в .j-row__title, aria-expanded у #moreBtn/.j-row__chevronbtn и безопасный fallback неизвестного хэш-маршрута не должны регрессировать',
+    deps: [],
+  },
+  {
     file: 'check-shell-bump.mjs',
     title: 'Бамп при правке файлов оболочки',
     why: 'изменённый файл в прекэше без подъёма версии не доезжает до пользователя и даёт смесь поколений',

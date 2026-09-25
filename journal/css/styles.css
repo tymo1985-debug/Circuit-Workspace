@@ -64,7 +64,6 @@ a.j-ovstat:hover, a.j-ovstat:focus-visible { background: var(--md-surface-contai
 .j-ovstat__value { font-weight: 500; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
 a.j-ovrow { color: inherit; text-decoration: none; }
 a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-decoration: underline; }
-.j-ovrow .j-row__title { overflow-wrap: anywhere; }
 /* --- Строка списка ---------------------------------------------------------- */
 .j-row {
   display: flex; gap: var(--cw-space-3); padding: var(--cw-space-3) 0;
@@ -79,7 +78,11 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-row__ico svg { width: 17px; height: 17px; }
 .j-row__ico--accent { background: var(--cw-module-container); color: var(--cw-module-on-container); }
 .j-row__body { min-width: 0; flex: 1 1 auto; }
-.j-row__title { font: 400 14px/20px var(--md-font-family); margin: 0 0 2px; letter-spacing: 0.1px; }
+/* Полироль (C): длинное слово без пробелов (метка узла, тело задачи/заметки,
+   заголовок проекта) не должно раздвигать строку на mobile — правило было
+   только у .j-ovrow, остальные контексты .j-row__title (districts/tasks/
+   projects/search) его не имели. */
+.j-row__title { font: 400 14px/20px var(--md-font-family); margin: 0 0 2px; letter-spacing: 0.1px; overflow-wrap: anywhere; }
 .j-row__title b { font-weight: 500; }
 .j-row__meta {
   font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
