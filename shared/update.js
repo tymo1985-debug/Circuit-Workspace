@@ -68,6 +68,12 @@
      scope, прежде чем всё равно продолжить — воркер мог активироваться и
      без немедленного события в редких браузерах/условиях. */
   var ACTIVATE_TIMEOUT_MS = 6000;
+  /* Финальный post-update статус проверяется уже по active worker'ам. Это
+     отдельное окно: apply-страница может исчезнуть по controllerchange, а
+     после reload браузеру нужно дать немного времени стабилизировать все
+     регистрации прежде, чем объявлять реальный partial failure. */
+  var VERIFY_TIMEOUT_MS = 10000;
+  var VERIFY_POLL_MS = 250;
 
   /* Своя регистрация: та, что управляет текущей страницей. */
   var ownReg = null;
@@ -86,6 +92,10 @@
   /* Нейтральное уведомление silent-режима показывается один раз за время
      жизни страницы — повторный updatefound не должен спамить тем же текстом. */
   var neutralShown = false;
+  /* Снимок marker на старте Hub сохраняется в памяти раньше, чем inline-код
+     index.html удалит sessionStorage-запись для one-shot показа. Благодаря
+     этому финальная verifier-ветка всё ещё знает точные target versions. */
+  var bootPendingRelease = null;
 
   function unsupported() {
     return !nav || !doc || !('serviceWorker' in nav);
@@ -430,6 +440,222 @@
     return id === 'hub' ? global.CW_VERSION : ((global.CW_MODULES[id] || {}).version || null);
   }
 
+  function expectedTarget(id) {
+    return {
+      module: id,
+      version: expectedVersion(id),
+      hub: id === 'hub' ? null : global.CW_VERSION,
+    };
+  }
+
+  function targetFromReady(item) {
+    var id = moduleIdForScope(item && item.scope);
+    var info = item && item.info;
+    /* Главный race-fix: страница, на которой пользователь нажал «Обновить»,
+       ещё работает на СТАРОМ shared/version.js. Поэтому expectedVersion(id)
+       на ней может быть старее waiting-worker'а. checkAll() уже сделал
+       handshake с waiting worker и положил точную цель в item.info — ей и
+       доверяем. Fallback нужен только для старых/ручных callers API. */
+    if (id && info && info.module === id && info.version) {
+      return { module: id, version: info.version, hub: id === 'hub' ? null : (info.hub || null) };
+    }
+    return id ? expectedTarget(id) : null;
+  }
+
+  function workerMatchesTarget(info, target) {
+    if (!info || !target) return false;
+    if (info.module !== target.module || info.version !== target.version) return false;
+    /* Все module workers сообщают поколение общего Hub-слоя. Это важно для
+       Клиндария: его собственная версия может не меняться при shared/*
+       release, но worker всё равно обязан перейти на новое CW_VERSION. */
+    if (target.module !== 'hub' && target.hub && info.hub !== target.hub) return false;
+    return true;
+  }
+
+  function waitForExpectedActive(reg, target, timeoutMs) {
+    return new Promise(function (resolve) {
+      var deadline = Date.now() + (timeoutMs || VERIFY_TIMEOUT_MS);
+      var lastInfo = null;
+
+      function attempt() {
+        readWorkerVersion(reg && reg.active).then(function (info) {
+          lastInfo = info;
+          if (workerMatchesTarget(info, target)) {
+            resolve({ status: 'activated', info: info });
+            return;
+          }
+          if (Date.now() >= deadline) {
+            resolve({ status: 'versionMismatch', info: lastInfo });
+            return;
+          }
+          global.setTimeout(attempt, VERIFY_POLL_MS);
+        });
+      }
+      attempt();
+    });
+  }
+
+  function currentExpectedList() {
+    var map = scopeMap();
+    return Object.keys(map).map(function (scope) {
+      var id = map[scope];
+      return { scope: scope, target: expectedTarget(id) };
+    });
+  }
+
+  function expectedListForPending(pending, readyList) {
+    var base = new URL('./', (doc && doc.baseURI) || global.location.href);
+    var releaseVersion = pending && pending.version || global.CW_VERSION;
+    var releaseVersions = {};
+    ((pending && pending.changes) || []).forEach(function (change) {
+      if (change && change.module && change.version) releaseVersions[change.module] = change.version;
+    });
+    var items = [{
+      scope: base.href,
+      target: { module: 'hub', version: releaseVersion, hub: null },
+    }];
+    Object.keys(global.CW_MODULES || {}).forEach(function (id) {
+      items.push({
+        scope: new URL(id + '/', base).href,
+        target: {
+          module: id,
+          version: releaseVersions[id] || expectedVersion(id),
+          hub: releaseVersion,
+        },
+      });
+    });
+    /* Handshake waiting-worker'а точнее release metadata и старой страницы. */
+    (readyList || []).forEach(function (ready) {
+      var id = moduleIdForScope(ready && ready.scope);
+      var target = targetFromReady(ready);
+      if (!id || !target) return;
+      var canonical = new URL(ready.scope, global.location.href).href;
+      var found = items.find(function (item) { return item.scope === canonical; });
+      if (found) found.target = target;
+      else items.push({ scope: canonical, target: target });
+    });
+    return items;
+  }
+
+  function persistPendingTargets(readyList) {
+    var pending = readPendingRelease();
+    if (!pending) return null;
+    pending.expected = expectedListForPending(pending, readyList);
+    bootPendingRelease = pending;
+    try {
+      if (global.sessionStorage) global.sessionStorage.setItem('cwPendingRelease', JSON.stringify(pending));
+    } catch (e) {}
+    return pending;
+  }
+
+  function verifyCurrentRelease(expectedList) {
+    if (unsupported()) return Promise.resolve({ results: [], allActivated: false });
+    return ensureRegistrations().then(function () {
+      return nav.serviceWorker.getRegistrations();
+    }).then(function (regs) {
+      var byScope = {};
+      (regs || []).forEach(function (reg) {
+        var id = moduleIdForScope(reg.scope);
+        if (!id) return;
+        try { byScope[new URL(reg.scope, global.location.href).href] = reg; } catch (e) {}
+      });
+      var expected = Array.isArray(expectedList) && expectedList.length
+        ? expectedList
+        : currentExpectedList();
+      return Promise.all(expected.map(function (item) {
+        var reg = byScope[item.scope];
+        if (!reg) return Promise.resolve({
+          scope: item.scope, module: item.target.module, status: 'missing', info: null,
+        });
+        return waitForExpectedActive(reg, item.target, VERIFY_TIMEOUT_MS).then(function (result) {
+          return {
+            scope: item.scope, module: item.target.module,
+            status: result.status, info: result.info,
+          };
+        });
+      })).then(function (results) {
+        return {
+          results: results,
+          allActivated: results.length > 0 && results.every(function (r) { return r.status === 'activated'; }),
+        };
+      });
+    }).catch(function (err) {
+      return {
+        results: [{ scope: '*', module: null, status: 'verifyFailed', info: null, error: errorDetails(err) }],
+        allActivated: false,
+      };
+    });
+  }
+
+  function moduleTitle(id) {
+    if (id === 'hub') return 'Circuit Workspace';
+    return id && global.CW_MODULES && global.CW_MODULES[id]
+      ? global.CW_MODULES[id].title
+      : 'Circuit Workspace';
+  }
+
+  var finalVerificationPromise = null;
+  var suppressNextApplyPartial = false;
+
+  function readPendingRelease() {
+    try {
+      var raw = global.sessionStorage && global.sessionStorage.getItem('cwPendingRelease');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function clearPendingRelease() {
+    try { if (global.sessionStorage) global.sessionStorage.removeItem('cwPendingRelease'); }
+    catch (e) {}
+    bootPendingRelease = null;
+  }
+
+  function releaseLines() {
+    var release = global.CW_RELEASE;
+    if (!release || !Array.isArray(release.changes)) return [];
+    return release.changes.filter(function (change) {
+      return change && !change.technical;
+    }).map(function (change) {
+      var title = moduleTitle(change.module);
+      var version = change.version ? ' ' + change.version : '';
+      return change.note ? (title + version + ' — ' + change.note) : (title + version);
+    });
+  }
+
+  function showVerifiedRelease(result) {
+    var bad = (result.results || []).filter(function (r) { return r.status !== 'activated'; });
+    var lines = releaseLines();
+    bad.forEach(function (r) {
+      lines.push(moduleTitle(r.module) + ' — не обновлён');
+    });
+    showBar({
+      textKey: bad.length ? 'update.partial' : 'update.installed_multi',
+      textFallback: bad.length ? 'Обновление установлено не для всех модулей' : 'Обновление установлено',
+      listItems: lines,
+      applyKey: 'update.dismiss',
+      applyFallback: 'Понятно',
+      onApply: hideBar,
+    });
+  }
+
+  function verifyAndShowCurrentRelease(options) {
+    if (finalVerificationPromise) return finalVerificationPromise;
+    var expected = bootPendingRelease && bootPendingRelease.expected;
+    finalVerificationPromise = verifyCurrentRelease(expected).then(function (result) {
+      clearPendingRelease();
+      if (options && options.suppressNextPartial) suppressNextApplyPartial = true;
+      showVerifiedRelease(result);
+      return result;
+    }).then(function (result) {
+      finalVerificationPromise = null;
+      return result;
+    }, function (err) {
+      finalVerificationPromise = null;
+      throw err;
+    });
+    return finalVerificationPromise;
+  }
+
   function errorDetails(err) {
     return {
       name: err && err.name ? String(err.name) : 'Error',
@@ -476,6 +702,7 @@
       var swUrl = (options && options.swUrl) || './sw.js';
       uiMode = (options && options.ui) || 'hub';
       if (options && options.hubHref) hubHref = options.hubHref;
+      if (uiMode === 'hub') bootPendingRelease = readPendingRelease();
 
       nav.serviceWorker.addEventListener('controllerchange', function () {
         /* Первая установка: контроллера не было, перезагружать нечего. */
@@ -622,27 +849,47 @@
         return item && !!moduleIdForScope(item.scope) && item.reg &&
           moduleIdForScope(item.reg.scope) === moduleIdForScope(item.scope);
       });
+      /* index.html пишет marker до applyAll(); дополняем его точными
+         module/scope/version/hub targets ДО первого SKIP_WAITING, чтобы
+         reload не успел оборвать запись ожидаемого поколения. */
+      persistPendingTargets(list);
       list.forEach(function (item) {
         if (!item.reg || !item.reg.waiting) return;
         try { item.reg.waiting.postMessage({ type: 'SKIP_WAITING' }); }
         catch (e) { /* воркер уже активируется */ }
       });
       return Promise.all(list.map(function (item) {
-        if (!item.reg) return Promise.resolve('activated');
+        if (!item.reg) return Promise.resolve({ status: 'activated', info: null });
+        var target = targetFromReady(item);
         return waitForActivation(item.reg).then(function (status) {
           if (status !== 'activated') return { status: status, info: null };
-          return readWorkerVersion(item.reg.active).then(function (info) {
-            var id = moduleIdForScope(item.scope);
-            var matches = info && info.module === id && info.version === expectedVersion(id);
-            return { status: matches ? 'activated' : 'versionMismatch', info: info };
-          });
+          /* reg.waiting исчез — но reg.active может ещё на короткое время
+             указывать на прежний worker. Не делаем одноразовый snapshot:
+             ждём именно target, полученный от waiting-worker ДО apply. */
+          return waitForExpectedActive(item.reg, target, VERIFY_TIMEOUT_MS);
         });
       })).then(function (statuses) {
         var results = list.map(function (item, i) {
           return { scope: item.scope, status: statuses[i].status, info: statuses[i].info };
         });
         var allActivated = statuses.every(function (s) { return s.status === 'activated'; });
-        return { results: results, allActivated: allActivated };
+        var outcome = { results: results, allActivated: allActivated };
+
+        /* Если Hub сам не был waiting, controllerchange/reload не случится.
+           Раньше cwPendingRelease оставался до случайного будущего reload.
+           Здесь завершаем тот же post-update flow на месте, но всё равно
+           через фактическую проверку active workers. */
+        var hubWasApplied = list.some(function (item) {
+          return moduleIdForScope(item.scope) === 'hub';
+        });
+        var pending = readPendingRelease();
+        if (!hubWasApplied && pending && pending.version === global.CW_VERSION) {
+          var shouldSuppress = !allActivated || !!(pending.failed && pending.failed.length);
+          return verifyAndShowCurrentRelease({ suppressNextPartial: shouldSuppress }).then(function () {
+            return outcome;
+          });
+        }
+        return outcome;
       });
     },
 
@@ -656,6 +903,21 @@
 
     /** Показать произвольное уведомление той же полосой (без кнопки действия). */
     notify: function (key, fallback, autoHide) {
+      if (uiMode === 'hub' && key === 'update.partial') {
+        if (suppressNextApplyPartial) {
+          suppressNextApplyPartial = false;
+          return;
+        }
+        var pending = readPendingRelease();
+        if (pending) {
+          /* Если marker относится к следующему Hub-поколению, старая страница
+             уже не имеет права объявлять failure: controllerchange/reload
+             перенесёт решение на новую страницу. Если Hub уже текущий —
+             финализируем здесь реальной проверкой active workers. */
+          if (pending.version === global.CW_VERSION) verifyAndShowCurrentRelease();
+          return;
+        }
+      }
       showBar({ textKey: key, textFallback: fallback, autoHide: autoHide || 4000 });
     },
 
@@ -665,6 +927,15 @@
         же баннер с другим текстом и кнопкой-подтверждением через opts. */
     offerHubBanner: function (opts) {
       if (uiMode !== 'hub') return;
+      /* index.html post-update ветка уже прочитала marker и может даже
+         удалить его до этого вызова. Не доверяем сохранённому старой
+         страницей success/failed: перед финальным баннером заново читаем
+         реальные active workers и их версии/Hub-generation. */
+      if (opts && opts.applyKey === 'update.dismiss' && opts.onApply &&
+          (opts.textKey === 'update.installed_multi' || opts.textKey === 'update.partial')) {
+        verifyAndShowCurrentRelease();
+        return;
+      }
       showBar({
         textKey: opts.textKey || 'update.available_multi',
         textFallback: opts.textFallback || 'Доступно обновление Circuit Workspace',
@@ -674,6 +945,11 @@
         applyFallback: opts.applyFallback || 'Обновить всё',
       });
     },
+
+    /** Проверка фактически активного поколения всех Circuit Workspace SW.
+        Публична прежде всего для gate/live regression; UI вызывает её через
+        post-update финализатор выше. */
+    verifyCurrent: verifyCurrentRelease,
   };
 
   global.CWUpdate = CWUpdate;

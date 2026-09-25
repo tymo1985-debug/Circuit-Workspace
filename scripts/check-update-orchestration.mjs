@@ -25,7 +25,13 @@ import { dirname, join } from 'node:path';
 import vm from 'node:vm';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = readFileSync(join(ROOT, 'shared/update.js'), 'utf8');
+const SRC = readFileSync(join(ROOT, 'shared/update.js'), 'utf8')
+  // Gate проверяет ветвление, а не реальные wall-clock лимиты браузера.
+  // Укорачиваем bounded waits только внутри VM, чтобы regression был быстрым.
+  .replace('var UPDATE_TIMEOUT_MS = 10000;', 'var UPDATE_TIMEOUT_MS = 80;')
+  .replace('var ACTIVATE_TIMEOUT_MS = 6000;', 'var ACTIVATE_TIMEOUT_MS = 500;')
+  .replace('var VERIFY_TIMEOUT_MS = 10000;', 'var VERIFY_TIMEOUT_MS = 240;')
+  .replace('var VERIFY_POLL_MS = 250;', 'var VERIFY_POLL_MS = 10;');
 const HUB = readFileSync(join(ROOT, 'index.html'), 'utf8');
 
 let failed = 0;
@@ -66,14 +72,14 @@ function makeRegistration(scope, scenario) {
   reg.waiting = null;
   const id = scope === '/' ? 'hub' : scope.split('/').filter(Boolean).pop();
   const versions = { hub: '0.41.58', 'pioneer-school': '1.14.56', appointments: '5.5.95', documents: '1.11.5' };
-  reg.active = new FakeWorker({ module: id, version: versions[id] });
+  reg.active = new FakeWorker({ module: id, version: versions[id], ...(id === 'hub' ? {} : { hub: '0.41.58' }) });
 
   reg.update = () => {
     reg._updateCalled = true;
     if (scenario === 'update-rejects') return Promise.reject(new Error('network'));
     if (scenario === 'no-update') return Promise.resolve();
     if (scenario === 'immediate-waiting') {
-      const w = new FakeWorker({ module: id, version: versions[id] }); w.state = 'installed';
+      const w = new FakeWorker({ module: id, version: versions[id], ...(id === 'hub' ? {} : { hub: '0.41.58' }) }); w.state = 'installed';
       reg.waiting = w;
       return Promise.resolve();
     }
@@ -83,7 +89,7 @@ function makeRegistration(scope, scenario) {
       // ради которого checkAll подписывается на updatefound/statechange
       // ДО чтения reg.waiting, а не просто опрашивает его один раз.
       setTimeout(() => {
-        const w = new FakeWorker({ module: id, version: versions[id] });
+        const w = new FakeWorker({ module: id, version: versions[id], ...(id === 'hub' ? {} : { hub: '0.41.58' }) });
         reg.installing = w;
         reg.emit('updatefound');
         setTimeout(() => { w._state = 'installed'; reg.waiting = w; reg.installing = null; }, 5);
@@ -96,12 +102,18 @@ function makeRegistration(scope, scenario) {
 }
 
 function makeCtx() {
+  const storage = new Map();
   const ctx = {
     console,
     setTimeout, clearTimeout, setInterval, clearInterval, MessageChannel: FakeMessageChannel, URL,
     document: { baseURI: 'https://example.test/', readyState: 'complete', addEventListener() {}, getElementById() { return null; }, createElement() { return { style: {}, appendChild() {}, setAttribute() {} }; }, head: { appendChild() {} }, body: { appendChild() {} } },
     navigator: { serviceWorker: Object.assign(new FakeTarget(), { controller: null, register: () => Promise.resolve(null), getRegistrations: () => Promise.resolve([]) }) },
     location: { href: 'https://example.test/', reload() {} },
+    sessionStorage: {
+      getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+      setItem(key, value) { storage.set(key, String(value)); },
+      removeItem(key) { storage.delete(key); },
+    },
     CW_VERSION: '0.41.58',
     CW_MODULES: {
       'pioneer-school': { version: '1.14.56' },
@@ -220,6 +232,71 @@ console.log('\napplyAll(): SKIP_WAITING чужому scope + подтвержд�
     results[0].status === 'activated', results[0]);
   ok('allActivated=true для полностью подтверждённого списка', allActivated === true);
 }
+
+console.log('\napplyAll(): target берётся из waiting worker, а не из старой страницы');
+{
+  const ctx = makeCtx();
+  const reg = makeRegistration('/pioneer-school/', 'immediate-waiting');
+  await reg.update();
+  const target = { module: 'pioneer-school', version: '1.14.57', hub: '0.41.59' };
+  ctx.sessionStorage.setItem('cwPendingRelease', JSON.stringify({
+    version: '0.41.59',
+    changes: [{ module: 'pioneer-school', version: '1.14.57', technical: true }],
+    failed: [],
+  }));
+  reg.waiting.info = target;
+  const waiting = reg.waiting;
+  reg.waiting.postMessage = (msg, ports) => {
+    if (msg && msg.type === 'CW_VERSION' && ports && ports[0]) {
+      ports[0].postMessage(target);
+      return;
+    }
+    if (msg && msg.type === 'SKIP_WAITING') {
+      // waiting исчезает раньше, чем registration.active переключается —
+      // именно production-race, который раньше давал versionMismatch.
+      reg.waiting = null;
+      setTimeout(() => { reg.active = waiting; }, 40);
+    }
+  };
+  const { results, allActivated } = await ctx.CWUpdate.applyAll([{ scope: reg.scope, reg, info: target }]);
+  ok('новая версия waiting worker принимается, хотя CW_MODULES старой страницы ещё прежний',
+    results[0].status === 'activated' && results[0].info.version === '1.14.57', results[0]);
+  ok('delayed active swap не превращается в ложный versionMismatch', allActivated === true, results);
+  const persisted = JSON.parse(ctx.sessionStorage.getItem('cwPendingRelease'));
+  const persistedSchool = persisted.expected.find((item) => item.target.module === 'pioneer-school');
+  const persistedHub = persisted.expected.find((item) => item.target.module === 'hub');
+  ok('до SKIP_WAITING marker дополнен точным scope/version/hub target waiting worker',
+    persistedSchool && persistedSchool.target.version === '1.14.57' && persistedSchool.target.hub === '0.41.59', persistedSchool);
+  ok('marker хранит ожидаемое Hub-поколение для post-reload проверки',
+    persistedHub && persistedHub.target.version === '0.41.59', persistedHub);
+}
+
+console.log('\nverifyCurrent(): проверяет Hub-generation даже при неизменной версии модуля');
+{
+  const ctx = makeCtx();
+  ctx.CW_MODULES = { 'circuit-planner': { version: '9.95.1' } };
+  const hub = makeRegistration('/', 'no-update');
+  hub.scope = 'https://example.test/';
+  hub.active.info = { module: 'hub', version: '0.41.58' };
+  const planner = makeRegistration('/circuit-planner/', 'no-update');
+  planner.scope = 'https://example.test/circuit-planner/';
+  planner.active.info = { module: 'circuit-planner', version: '9.95.1', hub: '0.41.57' };
+  ctx.navigator.serviceWorker.getRegistrations = () => Promise.resolve([hub, planner]);
+  setTimeout(() => { planner.active.info = { module: 'circuit-planner', version: '9.95.1', hub: '0.41.58' }; }, 40);
+  const result = await ctx.CWUpdate.verifyCurrent();
+  const plannerResult = result.results.find((r) => r.module === 'circuit-planner');
+  ok('та же module-version считается текущей только после перехода на новое Hub-generation',
+    plannerResult && plannerResult.status === 'activated' && plannerResult.info.hub === '0.41.58', plannerResult);
+  ok('финальная проверка подтверждает весь ожидаемый набор', result.allActivated === true, result);
+}
+
+console.log('\npost-update финализация: статус строится по active workers, не по старому marker');
+ok('post-update offerHubBanner перехватывает installed/partial и запускает verifyAndShowCurrentRelease()',
+  /opts\.applyKey === 'update\.dismiss'[\s\S]*verifyAndShowCurrentRelease\(\)/.test(SRC));
+ok('applyAll сравнивает active worker с targetFromReady(item)',
+  /var target = targetFromReady\(item\)[\s\S]*waitForExpectedActive\(item\.reg, target/.test(SRC));
+ok('verifyCurrent проверяет hub-generation module worker',
+  /target\.module !== 'hub' && target\.hub && info\.hub !== target\.hub/.test(SRC));
 
 console.log('\napplyAll(): активация не подтвердилась в пределах таймаута');
 {
