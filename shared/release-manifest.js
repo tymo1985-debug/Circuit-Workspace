@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.60',
+  version: '0.41.61',
   changes: [
-    { module: 'hub', version: '0.41.60', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
-    { module: 'congress-project', version: '4.46.82', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
-    { module: 'pioneer-school', version: '1.14.58', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
-    { module: 'appointments', version: '5.5.97', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
-    { module: 'documents', version: '1.11.7', note: 'Version-only: доставка правки общего слоя (shared/version.js)' },
-    { module: 'journal', version: '0.15.0', note: 'Живой Обзор: реальная сводка, задачи, перенос, проекты и посещения вместо макета' },
+    { module: 'hub', version: '0.41.61', note: 'Version-only: доставка правки общего слоя (shared/style.css)' },
+    { module: 'congress-project', version: '4.46.83', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
+    { module: 'pioneer-school', version: '1.14.59', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
+    { module: 'appointments', version: '5.5.98', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
+    { module: 'documents', version: '1.11.8', note: 'Шапка на узком телефоне (320–430): кнопки не наезжают, выбор языка сжимается' },
+    { module: 'journal', version: '0.15.1', note: 'Обзор: проекты — до трёх строк; нижняя навигация и шапка влезают в 320–430' },
   ],
 };

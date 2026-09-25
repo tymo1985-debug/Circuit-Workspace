@@ -203,8 +203,8 @@
     out.tasks = { count: tasks.length, content: tasks.length ? f : hint('j.overview.empty_tasks') };
     out.plain.overviewTasks = plainIn(taskShown);
 
-    out.projects = await buildOverviewProjects(data);
-    out.plain.overviewProjects = plainIn(data.projects);
+    out.projects = await buildOverviewProjects(data, PREVIEW);
+    out.plain.overviewProjects = plainIn(data.projects.slice(0, PREVIEW));
 
     f = document.createDocumentFragment();
     visitShown.forEach(function (x) { f.appendChild(visitRow(x.item, x.dest, nodes)); });

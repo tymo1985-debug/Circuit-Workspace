@@ -165,14 +165,17 @@
    * active-проекты неархивных районов (отбор и порядок держит data.js).
    * Возвращает { count, content } и в DOM ничего не пишет: вставляет
    * renderOverview после проверки поколения. Подпись района — только если
-   * активных районов больше одного. */
-  async function buildOverviewProjects(data) {
+   * активных районов больше одного. O3: строятся только первые `limit`
+   * проектов канонического порядка (остальные — в своих районах, кнопки
+   * «Все» нет); счётчик — полный. */
+  async function buildOverviewProjects(data, limit) {
     var list = data.projects;
     if (!list.length) return { count: 0, content: el('p', 'j-sec__hint', t('j.project.empty_overview')) };
     var circuits = {};
     data.circuits.forEach(function (c) { circuits[c.id] = c; });
     var many = data.circuits.length > 1;
-    var frag = await buildProjectRows(list, many ? function (p) { return circuits[p.circuitId] ? circuits[p.circuitId].label : ''; } : null);
+    var shown = limit > 0 ? list.slice(0, limit) : list;
+    var frag = await buildProjectRows(shown, many ? function (p) { return circuits[p.circuitId] ? circuits[p.circuitId].label : ''; } : null);
     return { count: list.length, content: frag };
   }
 

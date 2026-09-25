@@ -963,8 +963,27 @@ body.cw-root {
 .md-topbar-v2__actions { display: flex; align-items: center; gap: var(--cw-space-1); flex: 0 0 auto; }
 
 @media (max-width: 600px) {
-  .md-topbar-v2 { padding: 0 var(--cw-space-2); gap: var(--cw-space-2); }
+  .md-topbar-v2 { padding: 0 var(--cw-space-2); gap: var(--cw-space-1); }
   .md-topbar-v2__sub { display: none; }
+  /* Узкий телефон (O3, замер 320/360/430 во всех шести модулях): шапка не
+     наезжает сама на себя. Декоративный маркер скрыт; «ведущая» часть не
+     сжимается уже своих кнопок (хаб, копия) и забирает свободное место вместо
+     распорки; заголовок получает остаток и обрезается многоточием; сжимается
+     только выбор языка, остальные действия сохраняют ширину. */
+  .md-topbar-v2__mark { display: none; }
+  .md-topbar-v2 .cw-home-btn { margin-right: 0; }
+  .md-topbar-v2__lead { flex: 1 1 auto; min-width: auto; }
+  .md-topbar-v2__titles { flex: 1 1 auto; width: 0; overflow: hidden; container-type: inline-size; }
+  .md-topbar-v2__spacer { display: none; }
+  .md-topbar-v2__actions { flex: 0 1 auto; min-width: 0; }
+  .md-topbar-v2__actions > label,
+  .md-topbar-v2__actions > select { flex: 0 1 auto; min-width: 0; max-width: 7.5rem; }
+  .md-topbar-v2__actions select { min-width: 0; max-width: min(100%, 7.5rem); text-overflow: ellipsis; }
+}
+/* Огрызок заголовка в 1–2 буквы хуже, чем его отсутствие: уже 64px он не
+   показывается (контейнер — .md-topbar-v2__titles на узком телефоне). */
+@container (max-width: 64px) {
+  .md-topbar-v2__title { visibility: hidden; }
 }
 @media print {
   .md-topbar-v2 { display: none !important; }
@@ -1401,14 +1420,17 @@ body.cw-root {
   justify-content: space-around;
 }
 .md-bottomnav__item {
+  /* Пункты делят ширину поровну: пять пунктов Журнала влезают в 320 (O3). */
+  flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  border: 0; background: transparent; padding: var(--cw-space-1) var(--cw-space-2);
+  border: 0; background: transparent; padding: var(--cw-space-1) 2px;
   color: var(--md-on-surface-variant); cursor: pointer;
   font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
   text-decoration: none;
 }
+.md-bottomnav__item > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-bottomnav__ind {
-  width: 56px; height: 28px; border-radius: var(--md-radius-full);
+  width: 56px; max-width: 100%; height: 28px; border-radius: var(--md-radius-full);
   display: grid; place-items: center;
 }
 .md-bottomnav__item.active .md-bottomnav__ind {

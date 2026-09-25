@@ -526,6 +526,8 @@ console.log('\n6. O2: статические границы');
   ok('словарь: старые примеры фикстуры Обзора удалены', !/EU-K-03|Уточнить, как идёт изучение/.test(dict));
   const projSrc = read('journal/js/app/projects.js');
   ok('projects.js: строка проекта не описана как фикстура J1', !/фикстур[аы] J1/i.test(projSrc));
+  ok('O3: проекты Обзора — не больше PREVIEW строк, счётчик полный', /buildOverviewProjects\(data, PREVIEW\)/.test(read('journal/js/app/overview.js'))
+    && /var shown = limit > 0 \? list\.slice\(0, limit\) : list;/.test(projSrc) && /count: list\.length/.test(projSrc) && !/<a class="j-sec__more"[^>]*overviewProjects/.test(html));
   ok('[11] выдуманные вопросы удалены', !/изучение с семьёй|расписании группы Озёрная|новый координатор/.test(html));
   ok('[12] выдуманные задачи удалены', !/письмо о переносе встречи|встречи со старейшинами|адрес зала у секретаря/.test(html));
   ok('[13] выдуманные посещения удалены', !/Западное — весна 2028|Северное — осень 2027|6 записей|11 записей/.test(html));
