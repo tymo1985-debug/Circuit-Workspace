@@ -1650,6 +1650,18 @@
     catch (e) { return null; }
   }
 
+  function updateModuleTitle(item) {
+    var id = item && (item.module || moduleIdForScope(item.scope));
+    if (id === 'hub') return 'Circuit Workspace';
+    return id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : 'Circuit Workspace';
+  }
+
+  function failedUpdateLines(failed, suffix) {
+    return (failed || []).filter(function (item) { return item.scope !== '*'; }).map(function (item) {
+      return updateModuleTitle(item) + ' — ' + suffix;
+    });
+  }
+
   // Строит подписи для баннера из CW_RELEASE.changes (текущий release,
   // shared/release-manifest.js), но ТОЛЬКО для тех модулей, что реально
   // оказались в списке ready — совпадение release-манифеста с фактически
@@ -1707,17 +1719,21 @@
           if (!failed.length) msg = MESSAGE.current;
           else if (globalFailure) msg = MESSAGE.offline;
           else msg = MESSAGE.partial;
-          CWUpdate.notify(msg[0], msg[1]);
+          if (msg === MESSAGE.partial) {
+            CWUpdate.offerHubBanner({
+              textKey: msg[0],
+              textFallback: msg[1],
+              listItems: failedUpdateLines(failed, 'не удалось проверить'),
+            });
+          } else {
+            CWUpdate.notify(msg[0], msg[1]);
+          }
           return;
         }
 
         var pendingRelease = result.release || self.CW_RELEASE;
         var lines = buildChangeLines(pendingRelease, ready);
-        failed.forEach(function (item) {
-          var id = moduleIdForScope(item.scope);
-          var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : item.scope;
-          lines.push(title + ' — не удалось проверить');
-        });
+        lines = lines.concat(failedUpdateLines(failed, 'не удалось проверить'));
         // Хаб сам мог оказаться среди ready (свой scope) — для него отдельной
         // строки в списке нет (moduleIdForScope возвращает null), баннер в
         // этом случае просто говорит про сам Circuit Workspace без деталей.
@@ -1739,11 +1755,7 @@
             // переживает reload (в отличие от переменных в памяти), поэтому
             // после перезагрузки есть с чем сверять текущий CW_RELEASE.
             try {
-              var failedLines = failed.map(function (item) {
-                var id = moduleIdForScope(item.scope);
-                var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : item.scope;
-                return title + ' — не обновлён';
-              });
+              var failedLines = failedUpdateLines(failed, 'не обновлён');
               sessionStorage.setItem('cwPendingRelease', JSON.stringify({
                 version: pendingRelease && pendingRelease.version,
                 changes: (pendingRelease && pendingRelease.changes) || [],
@@ -1766,10 +1778,7 @@
                   var title = id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : 'Circuit Workspace';
                   return title + ' (' + r.status + ')';
                 });
-                failed.forEach(function (r) {
-                  var id = moduleIdForScope(r.scope);
-                  bad.push((id && self.CW_MODULES[id] ? self.CW_MODULES[id].title : r.scope) + ' (checkFailed)');
-                });
+                failed.forEach(function (r) { bad.push(updateModuleTitle(r) + ' (checkFailed)'); });
                 CWUpdate.notify('update.partial', 'Не обновились: ' + bad.join(', ') + '. Попробуйте ещё раз.');
                 if (label) label.textContent = CWI18n.t('hub.update_label');
               }

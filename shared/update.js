@@ -430,20 +430,34 @@
     return id === 'hub' ? global.CW_VERSION : ((global.CW_MODULES[id] || {}).version || null);
   }
 
+  function errorDetails(err) {
+    return {
+      name: err && err.name ? String(err.name) : 'Error',
+      message: err && err.message ? String(err.message) : String(err || 'Unknown error'),
+    };
+  }
+
+  function scopeFailure(module, scope, phase, err) {
+    return { module: module, scope: scope, phase: phase, error: errorDetails(err) };
+  }
+
   /* «Все модули» означает весь реестр, а не только модули, которые
      пользователь уже когда-то открывал. Регистрация из хаба разрешена,
      потому что scope каждого worker лежит внутри каталога его script URL. */
   function ensureRegistrations() {
-    if (uiMode !== 'hub') return Promise.resolve();
+    if (uiMode !== 'hub') return Promise.resolve([]);
     var modules = global.CW_MODULES || {};
     var base = new URL('./', (doc && doc.baseURI) || global.location.href);
     return Promise.all(Object.keys(modules).map(function (id) {
       var worker = modules[id] && modules[id].worker;
-      if (!worker) return Promise.resolve();
+      if (!worker) return Promise.resolve(null);
       var script = new URL(worker, base).href;
       var scope = new URL(id + '/', base).href;
-      return nav.serviceWorker.register(script, { scope: scope, updateViaCache: 'none' });
-    }));
+      return nav.serviceWorker.register(script, { scope: scope, updateViaCache: 'none' }).then(
+        function () { return null; },
+        function (err) { return scopeFailure(id, scope, 'register', err); }
+      );
+    })).then(function (results) { return results.filter(Boolean); });
   }
 
   var CWUpdate = {
@@ -508,7 +522,7 @@
      * приводило к тому, что обычное «обновлений нет» показывалось
      * пользователю как «нет соединения».
      *
-     * @returns {Promise<{ready: Array<{scope:string,reg:Object}>, failed: Array<{scope:string}>}>}
+     * @returns {Promise<{ready: Array<{scope:string,reg:Object}>, failed: Array<{module:(string|null),scope:string,phase:string,error:{name:string,message:string}}>} >}
      *   ready  — hasWaiting: у регистрации к концу цикла есть reg.waiting;
      *   failed — updateFailed: сам reg.update() отклонился (реальная
      *            сетевая/иная ошибка на этот scope). noUpdate нигде не
@@ -518,53 +532,63 @@
     checkAll: function () {
       if (unsupported()) return Promise.resolve({ ready: [], failed: [] });
 
-      return ensureRegistrations().then(function () { return nav.serviceWorker.getRegistrations(); }).then(function (regs) {
-        regs = regs.filter(function (reg) { return !!moduleIdForScope(reg.scope); });
-        if (!regs.length) return { ready: [], failed: [] };
+      return ensureRegistrations().then(function (registrationFailures) {
+        return nav.serviceWorker.getRegistrations().then(function (regs) {
+          regs = regs.filter(function (reg) { return !!moduleIdForScope(reg.scope); });
+          if (!regs.length) return { ready: [], failed: registrationFailures };
 
-        return Promise.all(regs.map(function (reg) {
-          /* Подписка на исход СНАЧАЛА, update() запускается следом —
-             иначе updatefound мог бы сработать до того, как мы начали
-             слушать. */
-          var outcome = waitForOutcome(reg);
-          return reg.update().then(
-            function () { return { reg: reg, updateFailed: false }; },
-            function () { return { reg: reg, updateFailed: true }; }
-          ).then(function (r) {
-            /* updateFailed уже известен независимо от outcome — но если
+          return Promise.all(regs.map(function (reg) {
+            var module = moduleIdForScope(reg.scope);
+            /* Подписка на исход СНАЧАЛА, update() запускается следом —
+               иначе updatefound мог бы сработать до того, как мы начали
+               слушать. */
+            var outcome = waitForOutcome(reg);
+            return reg.update().then(
+              function () { return { reg: reg, module: module, updateError: null }; },
+              function (err) { return { reg: reg, module: module, updateError: err }; }
+            ).then(function (r) {
+            /* updateError уже известен независимо от outcome — но если
                update() сам отклонился, waiting всё равно может однажды
                появиться (installed от прошлой фоновой проверки браузера).
-               Ждём outcome в любом случае, updateFailed решает КАТЕГОРИЮ
+               Ждём outcome в любом случае, updateError решает КАТЕГОРИЮ
                результата ниже, не отменяет сам факт reg.waiting. */
-            return outcome.then(function (hasWaiting) {
-              r.hasWaiting = hasWaiting;
-              return r;
+              return outcome.then(function (hasWaiting) {
+                r.hasWaiting = hasWaiting;
+                return r;
+              });
             });
-          });
-        })).then(function (results) {
-          var ready = [];
-          var failed = [];
-          results.forEach(function (r) {
-            if (r.reg.waiting) { ready.push({ scope: r.reg.scope, reg: r.reg }); return; }
-            /* Регистрация без waiting: updateFailed → реальная ошибка на
+          })).then(function (results) {
+            var ready = [];
+            var failed = registrationFailures.slice();
+            results.forEach(function (r) {
+              if (r.reg.waiting) { ready.push({ scope: r.reg.scope, reg: r.reg }); return; }
+            /* Регистрация без waiting: updateError → реальная ошибка на
                этот scope (failed); иначе — noUpdate, не попадает никуда. */
-            if (r.updateFailed) failed.push({ scope: r.reg.scope, reg: r.reg });
-          });
-          return Promise.all(ready.map(function (item) {
-            return readWorkerVersion(item.reg.waiting).then(function (info) {
-              item.info = info;
-              return item;
+              if (r.updateError) failed.push(scopeFailure(r.module, r.reg.scope, 'update', r.updateError));
             });
-          })).then(function () {
-            var hub = ready.find(function (item) { return moduleIdForScope(item.scope) === 'hub'; });
-            return { ready: ready, failed: failed, release: hub && hub.info && hub.info.release || null };
+            return Promise.all(ready.map(function (item) {
+              return readWorkerVersion(item.reg.waiting).then(function (info) {
+                item.info = info;
+                return item;
+              });
+            })).then(function () {
+              var hub = ready.find(function (item) { return moduleIdForScope(item.scope) === 'hub'; });
+              return { ready: ready, failed: failed, release: hub && hub.info && hub.info.release || null };
+            });
           });
+        }, function (err) {
+          /* getRegistrations() сам отклонился — это не про сеть отдельного
+             scope, а про API целиком; единственный разумный сигнал —
+             «ничего не проверено». */
+          return { ready: [], failed: registrationFailures.concat([{
+            module: null, scope: '*', phase: 'enumerate', error: errorDetails(err),
+          }]) };
         });
-      }, function () {
-        /* getRegistrations() сам отклонился — это не про сеть отдельного
-           scope, а про API целиком; единственный разумный сигнал —
-           «ничего не проверено». */
-        return { ready: [], failed: [{ scope: '*' }] };
+      }).then(function (result) {
+        if (result.failed.length && global.console && global.console.warn) {
+          global.console.warn('CWUpdate: не удалось проверить часть service workers', result.failed);
+        }
+        return result;
       });
     },
 

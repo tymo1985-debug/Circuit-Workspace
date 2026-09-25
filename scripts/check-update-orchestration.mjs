@@ -26,6 +26,7 @@ import vm from 'node:vm';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = readFileSync(join(ROOT, 'shared/update.js'), 'utf8');
+const HUB = readFileSync(join(ROOT, 'index.html'), 'utf8');
 
 let failed = 0;
 const ok = (label, cond, extra) => {
@@ -68,6 +69,7 @@ function makeRegistration(scope, scenario) {
   reg.active = new FakeWorker({ module: id, version: versions[id] });
 
   reg.update = () => {
+    reg._updateCalled = true;
     if (scenario === 'update-rejects') return Promise.reject(new Error('network'));
     if (scenario === 'no-update') return Promise.resolve();
     if (scenario === 'immediate-waiting') {
@@ -113,6 +115,33 @@ function makeCtx() {
   return ctx;
 }
 
+console.log('\ncheckAll(): отказ register() изолирован и сохраняет диагностику');
+{
+  const ctx = makeCtx();
+  const ids = ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal'];
+  ids.forEach((id) => { ctx.CW_MODULES[id] = { version: '1.0.0', worker: id + '/sw.js' }; });
+  const registrations = [makeRegistration('/', 'no-update')];
+  let successfulRegistrations = 0;
+  ctx.navigator.serviceWorker.register = (_script, options) => {
+    const id = new URL(options.scope).pathname.split('/').filter(Boolean).pop();
+    if (id === 'journal') {
+      const err = new Error('registration blocked');
+      err.name = 'SecurityError';
+      return Promise.reject(err);
+    }
+    successfulRegistrations++;
+    registrations.push(makeRegistration(new URL(options.scope).pathname, 'no-update'));
+    return Promise.resolve(registrations.at(-1));
+  };
+  ctx.navigator.serviceWorker.getRegistrations = () => Promise.resolve(registrations);
+  const result = await ctx.CWUpdate.checkAll();
+  const failure = result.failed.find((item) => item.module === 'journal');
+  ok('после одного register rejection остальные пять модулей зарегистрированы', successfulRegistrations === 5, successfulRegistrations);
+  ok('Hub и остальные пять scope всё равно прошли update()', registrations.every((reg) => reg._updateCalled === true), registrations.map((reg) => reg.scope));
+  ok('register failure содержит module/scope/phase', failure && failure.scope === 'https://example.test/journal/' && failure.phase === 'register', failure);
+  ok('register failure сохраняет error.name/message', failure && failure.error.name === 'SecurityError' && failure.error.message === 'registration blocked', failure);
+}
+
 console.log('\ncheckAll(): гонка update()-резолвится-раньше-installed');
 {
   const ctx = makeCtx();
@@ -136,6 +165,9 @@ console.log('\ncheckAll(): update() уже отклонился (реальна�
   const result = await ctx.CWUpdate.checkAll();
   ok('отклонённый update() — это failed, а не тихий noUpdate',
     result.failed.some((r) => r.scope === '/appointments/'));
+  const failure = result.failed.find((r) => r.scope === '/appointments/');
+  ok('update failure содержит точный module/phase/error', failure && failure.module === 'appointments' && failure.phase === 'update' &&
+    failure.error.name === 'Error' && failure.error.message === 'network', failure);
   ok('и не ready одновременно', !result.ready.some((r) => r.scope === '/appointments/'));
 }
 
@@ -154,6 +186,13 @@ console.log('\ncheckAll(): foreign scope того же origin полностью
     !result.ready.some((r) => r.scope === regForeign.scope) &&
     !result.failed.some((r) => r.scope === regForeign.scope), result);
 }
+
+console.log('\nHub UI: partial failure использует только friendly module name');
+ok('failure label берётся из module/CW_MODULES, без raw scope fallback',
+  /function updateModuleTitle\(item\)[\s\S]*item\.module \|\| moduleIdForScope\(item\.scope\)[\s\S]*return id && self\.CW_MODULES\[id\] \? self\.CW_MODULES\[id\]\.title : 'Circuit Workspace'/.test(HUB));
+ok('все partial failure строки строятся одним safe helper',
+  /lines = lines\.concat\(failedUpdateLines\(failed, 'не удалось проверить'\)\)/.test(HUB) &&
+  /var failedLines = failedUpdateLines\(failed, 'не обновлён'\)/.test(HUB));
 
 console.log('\napplyAll(): SKIP_WAITING чужому scope + подтверждение активации');
 {

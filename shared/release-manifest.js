@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.63',
+  version: '0.41.64',
   changes: [
-    { module: 'hub', version: '0.41.63', note: 'Проверка обновлений изолирована от других приложений; список изменений показывает только пользовательские нововведения' },
-    { module: 'congress-project', version: '4.46.85', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'pioneer-school', version: '1.14.61', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'appointments', version: '5.5.100', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'documents', version: '1.11.10', note: 'Version-only: доставка правки общего слоя', technical: true },
-    { module: 'journal', version: '0.15.3', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'hub', version: '0.41.64', note: 'Сбой проверки одного модуля больше не прерывает остальные и показывает точное название проблемного модуля' },
+    { module: 'congress-project', version: '4.46.86', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'pioneer-school', version: '1.14.62', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'appointments', version: '5.5.101', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'documents', version: '1.11.11', note: 'Version-only: доставка правки общего слоя', technical: true },
+    { module: 'journal', version: '0.15.4', note: 'Version-only: доставка правки общего слоя', technical: true },
   ],
 };
