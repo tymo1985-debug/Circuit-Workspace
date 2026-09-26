@@ -2499,7 +2499,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           .sort((a,b) => (a.start || '').localeCompare(b.start || ''));
         App.els.calendarSideTitle.textContent = App.utils.t('day_details_title');
         App.els.calendarSideMeta.textContent = `${App.utils.prettyDateLong(date)} · W${App.utils.weekNumber(date)} · ${App.utils.prettyDate(weekStart)} — ${App.utils.prettyDate(weekEnd)}`;
+        const hol = App.utils.getHolidayNames(dateIso);
+        const holidayBlock = hol ? `<div class="side-row"><div class="side-label">🎌 ${App.utils.t('holiday_label')}</div><div class="side-value">${hol.map((name) => App.utils.escapeHtml(name)).join('<br>')}</div></div>` : '';
         const entriesBlock = `
+          ${holidayBlock}
           <div class="side-row"><div class="side-label">${App.utils.t('entries_on_day')}</div><div class="side-value">${dayEntries.length ? '' : App.utils.escapeHtml(App.utils.t('no_entries_day'))}</div></div>
           ${dayEntries.map((it) => {
             const itemData = { id: it.id, source: 'entry', refId: it.entryId, eventId: it.eventId, title: it.title, note: it.note, start: it.start, end: it.end, flags: it.flags };
