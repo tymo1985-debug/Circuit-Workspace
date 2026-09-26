@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.72',
+  version: '0.41.73',
   changes: [
-    { module: 'circuit-planner', version: '9.95.4', note: 'Компактнее плашки событий в сетке недель' },
-    { module: 'congress-project', version: '4.46.94', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.69', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.108', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.18', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.12', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'circuit-planner', version: '9.95.5', note: 'На тач-устройствах кнопка «+» в сетке дат больше не показывается на каждой ячейке — только у выбранного дня' },
+    { module: 'congress-project', version: '4.46.95', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.70', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.109', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.19', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.13', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };
