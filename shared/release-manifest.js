@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.79',
+  version: '0.41.80',
   changes: [
-    { module: 'circuit-planner', version: '9.95.11', note: 'Плашка события реально ниже — не хватало line-height:1, min-height не работал из-за унаследованного межстрочного интервала' },
-    { module: 'congress-project', version: '4.46.101', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.76', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.115', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.25', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.19', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'circuit-planner', version: '9.95.12', note: 'Найдена настоящая причина большой высоты плашек событий: grid-стретч без явного height — теперь исправлено' },
+    { module: 'congress-project', version: '4.46.102', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.77', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.116', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.26', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.20', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };
