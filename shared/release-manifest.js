@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.81',
+  version: '0.41.82',
   changes: [
-    { module: 'circuit-planner', version: '9.95.13', note: 'Плашки событий на телефоне стали низкими — сняли общее ограничение 44px для кнопок' },
-    { module: 'congress-project', version: '4.46.103', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.78', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.117', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.27', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.21', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'circuit-planner', version: '9.95.14', note: 'Плашки событий опущены ближе к середине недели, не липнут к числам' },
+    { module: 'congress-project', version: '4.46.104', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.79', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.118', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.28', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.22', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };
