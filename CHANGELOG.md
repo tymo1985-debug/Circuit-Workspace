@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.41.81 — 26.09.2026
+
+- Клиндарий: истинная причина высоких плашек на телефоне — общее правило
+  `@media (pointer:coarse){button{min-height:44px !important}}` в
+  `shared/style.css`; `.event-bar` — это `<button>`. Добавлено точечное
+  исключение `.event-bar{min-height:16px!important;min-width:0!important}`
+  в `circuit-planner/style.css`.
+- Версии: Congress 4.46.103, Planner 9.95.13, Pioneer School 1.14.78,
+  Appointments 5.5.117, Documents 1.11.27, Journal 0.15.21 (technical-каскад).
+
 ## 0.41.80 — 26.09.2026
 
 - Клиндарий: найдена настоящая причина — `.event-bar` (position:absolute)

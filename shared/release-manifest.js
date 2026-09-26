@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.80',
+  version: '0.41.81',
   changes: [
-    { module: 'circuit-planner', version: '9.95.12', note: 'Найдена настоящая причина большой высоты плашек событий: grid-стретч без явного height — теперь исправлено' },
-    { module: 'congress-project', version: '4.46.102', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.77', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.116', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.26', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.20', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'circuit-planner', version: '9.95.13', note: 'Плашки событий на телефоне стали низкими — сняли общее ограничение 44px для кнопок' },
+    { module: 'congress-project', version: '4.46.103', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.78', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.117', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.27', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.21', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };

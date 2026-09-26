@@ -276,6 +276,8 @@
   @media (hover:none){.day-add-btn{display:none}.day-cell.selected-day .day-add-btn{display:flex;opacity:.78}}
   @media (max-width:767px){.day-add-btn{right:1px;bottom:1px;width:44px;height:44px;font-size:16px;border-color:transparent;background:transparent;box-shadow:none}.day-add-btn::before{content:"";position:absolute;inset:11px;border-radius:999px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);box-shadow:var(--md-elevation-2);z-index:-1}}
   @media (pointer:coarse){.day-cell[role="button"]{min-height:44px!important}}
+  /* Плашка события — исключение из общего touch-target 44px (shared/style.css): иначе на телефоне она всегда 44px высотой. Клик по плашке сохраняется. */
+  @media (pointer:coarse){.event-bar{min-height:16px!important;min-width:0!important}}
   #calendarLayoutPresetSelect{display:none !important}
   @media (max-width:767px){body::before{display:none!important}}
  @media (max-width:1200px){body::before{display:none!important}}
