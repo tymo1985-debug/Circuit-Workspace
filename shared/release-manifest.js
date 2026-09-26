@@ -26,14 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.71',
+  version: '0.41.72',
   changes: [
-    { module: 'hub', version: '0.41.71', note: 'Устранён ложный повторный баннер обновления при первом открытии модуля после Hub update' },
-    { module: 'congress-project', version: '4.46.92', note: 'Защита от регистрации устаревшего worker сразу после общего обновления' },
-    { module: 'circuit-planner', version: '9.95.3', note: 'Защита от регистрации устаревшего worker сразу после общего обновления' },
-    { module: 'pioneer-school', version: '1.14.68', note: 'Защита от регистрации устаревшего worker сразу после общего обновления' },
-    { module: 'appointments', version: '5.5.107', note: 'Защита от регистрации устаревшего worker сразу после общего обновления' },
-    { module: 'documents', version: '1.11.17', note: 'Защита от регистрации устаревшего worker сразу после общего обновления' },
-    { module: 'journal', version: '0.15.11', note: 'Защита от регистрации устаревшего worker сразу после общего обновления' },
+    { module: 'circuit-planner', version: '9.95.4', note: 'Компактнее плашки событий в сетке недель' },
+    { module: 'congress-project', version: '4.46.94', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.69', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.108', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.18', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.12', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };
