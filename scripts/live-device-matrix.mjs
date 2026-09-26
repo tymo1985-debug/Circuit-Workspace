@@ -61,7 +61,19 @@ for (const lang of LANGS) {
   await page.addInitScript((value) => localStorage.setItem('cw-language', value), lang);
   for (const modulePath of PAGES) {
     await page.goto(`${BASE}/${modulePath}`, { waitUntil:'networkidle' });
-    const raw = await page.evaluate(() => [...document.querySelectorAll('[data-i18n]')].filter((el) => /^[-\w]+(?:\.[-\w]+)+$/.test(el.textContent.trim())).map((el) => el.textContent.trim()).slice(0,5));
+    /* Hub SW (scope '/') may control this page before the module's own,
+       narrower-scope SW registers; that registration's controllerchange
+       then fires shared/update.js's location.reload() at an arbitrary
+       moment. One retry after the reload settles is enough to observe
+       the real DOM instead of failing on the transient navigation. */
+    const readLabels = () => page.evaluate(() => [...document.querySelectorAll('[data-i18n]')].filter((el) => /^[-\w]+(?:\.[-\w]+)+$/.test(el.textContent.trim())).map((el) => el.textContent.trim()).slice(0,5));
+    let raw;
+    try {
+      raw = await readLabels();
+    } catch (err) {
+      await page.waitForLoadState('networkidle').catch(() => {});
+      raw = await readLabels();
+    }
     if (raw.length) { failures++; console.log(`✗ locale ${lang} ${modulePath||'hub'} raw=${raw.join(',')}`); }
   }
   await context.close();

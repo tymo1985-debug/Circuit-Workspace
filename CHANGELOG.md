@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-26 — CI: устранена гонка в live-device-matrix
+
+- `scripts/live-device-matrix.mjs`: locale-цикл переиспользует одну вкладку
+  для всех модулей подряд; controllerchange-reload из `shared/update.js`
+  (регистрация SW модуля поверх hub-scope worker) мог разрушить execution
+  context между `goto` и `evaluate`, роняя Release gate без изменений в
+  продукте. Добавлен один retry чтения labels после стабилизации страницы.
+  Только тестовый харнесс, версии модулей не меняются.
+
 ## 0.41.71 — 25.09.2026
 
 - Update/PWA: после успешного Hub update модуль больше не регистрирует worker
