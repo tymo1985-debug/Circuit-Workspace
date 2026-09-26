@@ -1,6 +1,6 @@
 {
   "name": "circuit-workspace",
-  "version": "0.41.70",
+  "version": "0.41.71",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22 <25" },

@@ -723,6 +723,34 @@
     })).then(function (results) { return results.filter(Boolean); });
   }
 
+  function compareReleaseVersions(a, b) {
+    var left = String(a || '').split('.').map(Number);
+    var right = String(b || '').split('.').map(Number);
+    if (left.length !== 3 || right.length !== 3 || left.some(isNaN) || right.some(isNaN)) return 0;
+    for (var i = 0; i < 3; i++) {
+      if (left[i] > right[i]) return 1;
+      if (left[i] < right[i]) return -1;
+    }
+    return 0;
+  }
+
+  /* Immediately after Hub applies a release, a module navigation can still
+     execute an older cached shared/version.js while its registration already
+     has the new active worker. Registering `?cw-release=<old>` at that point
+     creates a downgrade worker in waiting and the module shows a false
+     "Open Hub" banner. Trust the active worker handshake when its Hub
+     generation is newer than the page and keep that registration untouched. */
+  function newerActiveRegistrationForSilentPage() {
+    if (uiMode === 'hub' || typeof nav.serviceWorker.getRegistration !== 'function') return Promise.resolve(null);
+    return nav.serviceWorker.getRegistration().then(function (reg) {
+      if (!reg || !reg.active) return null;
+      return readWorkerVersion(reg.active).then(function (info) {
+        if (info && info.hub && compareReleaseVersions(info.hub, global.CW_VERSION) > 0) return reg;
+        return null;
+      });
+    }, function () { return null; });
+  }
+
   var CWUpdate = {
     /**
      * Регистрирует SW модуля/хаба и включает слежение за обновлениями.
@@ -751,7 +779,12 @@
       /* Регистрируем после load: до него страница ещё борется за сеть
          с ассетами первой отрисовки. */
       var start = function () {
-        return nav.serviceWorker.register(versionedWorkerUrl(swUrl, global.CW_VERSION), { updateViaCache: 'none' })
+        return newerActiveRegistrationForSilentPage().then(function (newerReg) {
+          if (newerReg) {
+            ownReg = newerReg;
+            return newerReg;
+          }
+          return nav.serviceWorker.register(versionedWorkerUrl(swUrl, global.CW_VERSION), { updateViaCache: 'none' })
           .then(function (reg) {
             ownReg = reg;
             watch(reg);
@@ -764,6 +797,7 @@
             console.warn('CWUpdate: регистрация service worker не удалась', err);
             return null;
           });
+        });
       };
 
       if (doc.readyState === 'complete') return start();

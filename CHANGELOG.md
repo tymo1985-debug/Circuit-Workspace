@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.41.71 — 25.09.2026
+
+- Update/PWA: после успешного Hub update модуль больше не регистрирует worker
+  старого поколения, если active worker handshake уже подтверждает более новую
+  Hub-generation. Это устраняет ложный баннер «открыть Hub» и риск downgrade
+  worker при первом переходе в модуль на медленном CI/устройстве.
+- Версии: Congress 4.46.92, Planner 9.95.3, Pioneer School 1.14.68,
+  Appointments 5.5.107, Documents 1.11.17, Journal 0.15.11.
+
 ## 0.41.70 — 25.09.2026
 
 - Update/PWA: Hub перед проверкой читает свежий release manifest вне cache-first
