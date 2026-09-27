@@ -799,10 +799,14 @@
     .cw-hub-header { padding: 16px 0 4px; }
     .cw-hub-header::before { display: none; }
     .cw-hub-header__top { flex-wrap: nowrap; gap: 8px; }
-    .cw-logo { gap: 8px; min-width: 0; }
-    .cw-logo__mark { width: 28px; height: 28px; }
-    .cw-logo__text { font-size: 16px; white-space: nowrap; }
-    .cw-hub-header__tools { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+    /* Размеры логотипа тянутся от ширины экрана: на 320px логотип 28px +
+       текст 16px и три кнопки по 44px в одну строку не помещались — текст
+       заезжал под кнопку языка. Кнопки держат обязательные 44px, сжимается
+       только логотип. Без новой контрольной точки — реестр 600/900/… */
+    .cw-logo { gap: clamp(6px, 2vw, 8px); min-width: 0; }
+    .cw-logo__mark { width: clamp(24px, 7.5vw, 28px); height: clamp(24px, 7.5vw, 28px); }
+    .cw-logo__text { font-size: clamp(13px, 4.2vw, 16px); white-space: nowrap; }
+    .cw-hub-header__tools { flex: 0 0 auto; flex-wrap: nowrap; gap: clamp(4px, 1.5vw, 6px); }
     .cw-hub-header .cw-version { display: none; }
     .cw-hub-header h1, .cw-hub-header p {
       position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
