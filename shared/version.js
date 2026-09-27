@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.41.86';
+self.CW_VERSION = '0.41.87';
 
 /**
  * Реестр модулей хаба.
@@ -35,12 +35,12 @@ self.CW_VERSION = '0.41.86';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы', version: '4.46.107', worker: 'congress-project/service-worker.js' },
-  'circuit-planner':  { title: 'Клиндарий', version: '9.95.14', worker: 'circuit-planner/sw.js' },
-  'pioneer-school':   { title: 'Школа пионеров', version: '1.14.82', worker: 'pioneer-school/sw.js' },
-  'appointments':     { title: 'Назначения', version: '5.5.121', worker: 'appointments/sw.js' },
-  'documents':        { title: 'Документы и данные', version: '1.11.31', worker: 'documents/sw.js' },
+  'congress-project': { title: 'Конгрессы', version: '4.46.108', worker: 'congress-project/service-worker.js' },
+  'circuit-planner':  { title: 'Клиндарий', version: '9.95.15', worker: 'circuit-planner/sw.js' },
+  'pioneer-school':   { title: 'Школа пионеров', version: '1.14.83', worker: 'pioneer-school/sw.js' },
+  'appointments':     { title: 'Назначения', version: '5.5.122', worker: 'appointments/sw.js' },
+  'documents':        { title: 'Документы и данные', version: '1.11.32', worker: 'documents/sw.js' },
   /* Журнал — J1–J9 завершены; J-Final держит security/session-инварианты,
      интеграции и финальную приёмку. Правила — journal/AGENTS.md. */
-  'journal':          { title: 'Журнал', version: '0.15.25', worker: 'journal/sw.js' },
+  'journal':          { title: 'Журнал', version: '0.15.26', worker: 'journal/sw.js' },
 };

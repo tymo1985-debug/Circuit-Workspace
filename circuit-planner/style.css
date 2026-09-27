@@ -504,3 +504,13 @@ body::before{display:none !important}
       top:var(--cw-topbar-h) !important;
       height:calc(100dvh - var(--cw-topbar-h)) !important;
     }
+
+/* Навигация 27.09.2026: меню — круглая иконка в строке заголовка экрана;
+   «Ещё» — иконка ⚙; дропдаун календаря — месяц+год (в виде «служебный год»
+   — служебные годы). Специфичность выше инжекта calendar-styles.js. */
+.topbar-title-row .mobile-menu-btn--icon{width:44px !important;height:44px !important;min-width:44px;padding:0 !important;border-radius:999px !important;justify-content:center;align-items:center;font-size:1.25rem;line-height:1}
+.calendar-toolbar .toolbar-more-trigger{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;border-radius:999px;font-size:1.15rem;line-height:1}
+@media (max-width:900px){
+  .calendar-toolbar .calendar-controls{grid-template-columns:minmax(0,1fr) auto !important}
+  .calendar-toolbar .calendar-controls #calendarYearSelect{grid-column:1 / -1}
+}

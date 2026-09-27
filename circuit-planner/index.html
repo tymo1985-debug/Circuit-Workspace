@@ -94,7 +94,7 @@
       <div data-i18n="cp.offline" class="offline-banner" id="offlineBanner">Вы офлайн. Изменения сохраняются локально.</div>
       <header class="topbar">
         <div class="topbar-title-row">
-          <button class="md-btn md-btn-outlined md-state-layer mobile-menu-btn" id="mobileMenuToggleBtn" type="button" aria-label="Открыть меню" data-i18n-aria-label="cp.a_open_menu" aria-expanded="false"><span data-i18n="cp.menu_btn">☰ Меню</span></button>
+          <button class="md-btn md-btn-outlined md-state-layer mobile-menu-btn mobile-menu-btn--icon" id="mobileMenuToggleBtn" type="button" aria-label="Открыть меню" data-i18n-aria-label="cp.a_open_menu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
           <div class="topbar-title-block">
             <h2 data-i18n="cp.screen_calendar" id="screenTitle">Календарь</h2>
             <div class="nv-row" id="nvRow">
@@ -113,7 +113,7 @@
               <div class="calendar-controls">
                 <div class="calendar-nav"><button class="icon-btn" id="prevMonthBtn" type="button" aria-label="Предыдущий месяц" data-i18n-aria-label="cp.a_prev_month">‹</button><button data-i18n="cp.countdown_today" class="md-chip md-state-layer" id="todayMonthBtn" type="button">Сегодня</button><button class="icon-btn" id="nextMonthBtn" type="button" aria-label="Следующий месяц" data-i18n-aria-label="cp.a_next_month">›</button></div>
                 <details class="toolbar-more">
-                  <summary data-i18n="cp.more_btn" class="md-chip md-state-layer">⚙ Ещё</summary>
+                  <summary class="md-chip md-state-layer toolbar-more-trigger" aria-label="Ещё действия" data-i18n-aria-label="cp.events_overflow_label"><span aria-hidden="true">⚙</span></summary>
                   <div class="toolbar-more-panel">
                     <button data-i18n="cp.reminders_btn" class="md-chip md-chip-full md-state-layer" id="checkRemindersBtnMain" type="button">🔔 S302/письма</button>
                     <button data-i18n="cp.statistics" class="md-chip md-chip-full md-state-layer" id="statsBtn" type="button">📊 Статистика</button>

@@ -2365,7 +2365,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         let items = [];
         const monthHtmls = monthsToRender.map(({ month: m, year: y }) => { const built = this.buildOneMonthGridHtml(m, y, showSecondMonth); items = items.concat(built.items); return built.html; });
         if (App.els.calendarGrid) App.els.calendarGrid.innerHTML = showSecondMonth ? `<div class="month-grid-multi">${monthHtmls.map((h) => `<div class="month-grid-col">${h}</div>`).join('')}</div>` : monthHtmls[0];
-        if (App.els.calendarYearSelect) { App.els.calendarYearSelect.innerHTML = Array.from({ length: 9 }, (_, i) => year - 4 + i).map((y) => `<option value="${y}">${y}</option>`).join(''); App.els.calendarYearSelect.value = String(year); }
+        if (App.els.calendarYearSelect) { const opts = []; for (let y = year - 4; y <= year + 4; y += 1) { for (let m = 0; m < 12; m += 1) opts.push(`<option value="${y}-${m}">${App.utils.escapeHtml(App.utils.monthName(m))} ${y}</option>`); } App.els.calendarYearSelect.innerHTML = opts.join(''); App.els.calendarYearSelect.value = `${year}-${month}`; }
         const detail = items.find((item) => item.id === App.state.calendarDetailId) || items[0] || null; this.renderCalendarDetails(detail); if (App.state.calendarSelectedDateIso) this.renderServiceYearDayDetails(App.state.calendarSelectedDateIso);
         document.querySelectorAll('[data-detail-calendar-item]').forEach((btn) => btn.addEventListener('click', () => { const item = items.find((entry) => entry.id === btn.dataset.detailCalendarItem); App.state.calendarDetailId = item?.id || null; App.ui.renderCalendarDetails(item || null); App.ui.scrollToDetailPanel(); }));
         document.querySelectorAll('.day-cell[data-day]').forEach((cell) => cell.addEventListener('click', () => { App.state.calendarSelectedDateIso = cell.dataset.day; App.ui.renderCalendar(); App.ui.renderServiceYearDayDetails(cell.dataset.day); }));
@@ -4201,7 +4201,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           }
         }, { passive: true });
       }
-      App.els.calendarYearSelect?.addEventListener('change', (e) => { App.state.calendarYear = Number(e.target.value); if (App.state.calendarView === 'year') App.state.calendarMonth = App.config.serviceYearStartMonth; App.ui.renderCalendar(); });
+      App.els.calendarYearSelect?.addEventListener('change', (e) => { const [selY, selM] = String(e.target.value).split('-'); App.state.calendarYear = Number(selY); if (selM !== undefined && App.state.calendarView !== 'year') App.state.calendarMonth = Number(selM); if (App.state.calendarView === 'year') App.state.calendarMonth = App.config.serviceYearStartMonth; App.ui.renderCalendar(); });
       App.els.toggleTeamPanelBtn?.addEventListener('click', () => { App.state.calendarView = App.state.calendarView === 'year' ? 'month' : 'year'; if (App.state.calendarView === 'year') { const now = new Date(); App.state.calendarSelectedDateIso = App.utils.iso(now); App.state.calendarYear = now.getFullYear(); App.state.calendarMonth = now.getMonth(); } App.state.app.settings.calendarView = App.state.calendarView; App.store.save(); App.ui.renderCalendar(); });
       App.els.editorCloseBtn?.addEventListener('click', () => App.ui.closeCalendarEditor());
       App.els.editorCancelBtn?.addEventListener('click', () => App.ui.closeCalendarEditor());
