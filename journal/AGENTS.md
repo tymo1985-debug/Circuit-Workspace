@@ -108,6 +108,16 @@
   счётчики, история — вычисление при отрисовке. `remove` — только без
   связей в обе стороны, без каскада.
 - Маршрут проекта — `#districts/<c>/project/<p>`, в хэше только id.
+- Вкладки района — `#districts/<c>/<tab>`, `tab` ∈ `DISTRICT_TABS`
+  (`congregations|entries|tasks|archive`), «Обзор» — без хвоста. Задачи и
+  Архив района — те же `CWJournal.tasks.list()`/`archive.list()`,
+  отфильтрованные по `circuitId` при чтении; своего хранилища нет.
+- Записи района — `journalEntries` `type:'note'|'question'`,
+  `nodeId = circuitId`, без `fields.visitId`; экран работает только через
+  `CWJournal.districtNotes` (`list/get/add/update/remove`). Правка —
+  `body` и смена `note↔question`; защищённый текст — `writeProtectedText`;
+  удаление без связей; в архивном районе новые не создаются. Общий
+  `entries.*` такие строки по-прежнему читает (обратная совместимость).
 
 - Клиндарий (J9a) — только через `CWJournal.planner` (`set/clear/get`):
   `journal:entry/<visitId> → cw:circuit-planner/entry/<entryId>`, rel

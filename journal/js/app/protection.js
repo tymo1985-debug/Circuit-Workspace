@@ -34,11 +34,12 @@
   var protectUi = { mode: null, resolve: null, entryId: null, busy: false, state: 'off' };
 
   /* Диалоги, где может стоять расшифрованный текст: при блокировке — закрыть. */
-  var TEXT_DIALOGS = ['taskDialog', 'carrySheet', 'projectDialog', 'pickDialog'];
+  var TEXT_DIALOGS = ['taskDialog', 'noteDialog', 'carrySheet', 'projectDialog', 'pickDialog'];
   var SECRET_FIELDS = ['protectOld', 'protectPass', 'protectConfirm'];
   var PLAIN_CONTAINERS = [
     'overviewCarry', 'overviewTasks', 'overviewProjects',
     'tasksList', 'districtProjectsList', 'congProjectsList',
+    'districtNotesList', 'districtTasksList', 'districtArchiveList',
     'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry',
     'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems',
     'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist',

@@ -313,9 +313,14 @@
       box.replaceChildren(empty);
       return;
     }
+    box.replaceChildren(archiveSection(list, archiveTab, renderArchive));
+  }
+
+  /** Секция строк архива (общая для экрана «Архив» и вкладки района). */
+  function archiveSection(list, tabKey, rerender) {
     var sec = el('div', 'j-sec');
     var head = el('div', 'j-sec__head');
-    head.appendChild(el('h2', 'j-sec__title', t('j.archive.tab_' + archiveTab)));
+    head.appendChild(el('h2', 'j-sec__title', t('j.archive.tab_' + tabKey)));
     head.appendChild(el('span', 'j-sec__count', String(list.length)));
     sec.appendChild(head);
     list.forEach(function (it) {
@@ -347,7 +352,7 @@
         restore.disabled = true;
         try { await CWJournal.archive.restore(it); }
         catch (err) { alert(errorMessage(err)); }
-        renderArchive();
+        rerender();
       });
       var open = el('button', 'md-icon-btn j-row__chevronbtn');
       open.type = 'button';
@@ -361,7 +366,32 @@
       row.appendChild(ico); row.appendChild(body); row.appendChild(end);
       sec.appendChild(row);
     });
-    box.replaceChildren(sec);
+    return sec;
+  }
+
+  /* ═══ Вкладка «Архив» района ════════════════════════════════════════════
+   * Те же строки CWJournal.archive.list(), только объекты этого района
+   * (сам район — вне списка: его архивность видна в шапке района). */
+  var districtArchiveSeq = 0;
+  async function renderDistrictArchive(circuitId) {
+    var mine = ++districtArchiveSeq;
+    var items;
+    try { items = await CWJournal.archive.list(); } catch (_) { items = []; }
+    if (mine !== districtArchiveSeq) return;
+    var list = items.filter(function (it) { return it.row && it.row.circuitId === circuitId && it.id !== circuitId; });
+    var box = $('#districtArchiveList');
+    if (!list.length) {
+      var empty = el('div', 'md-emptystate');
+      var icon = el('div', 'md-emptystate__icon');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.innerHTML = svg(ICON.archive, 'width="32" height="32"');
+      empty.appendChild(icon);
+      empty.appendChild(el('p', 'md-emptystate__title', t('j.archive.empty_title')));
+      empty.appendChild(el('p', 'md-emptystate__text', t('j.darchive.empty_text')));
+      box.replaceChildren(empty);
+      return;
+    }
+    box.replaceChildren(archiveSection(list, 'all', function () { renderDistrictArchive(circuitId); }));
   }
 
   /* Публикация для других файлов Журнала. */
@@ -377,6 +407,7 @@
   A.forgetSearchResults = forgetSearchResults;
   A.focusSearch = focusSearch;
   A.renderArchive = renderArchive;
+  A.renderDistrictArchive = renderDistrictArchive;
   A.renderSearch = renderSearch;
   A.requestSearchFocus = requestSearchFocus;
   A.wireArchiveChrome = wireArchiveChrome;

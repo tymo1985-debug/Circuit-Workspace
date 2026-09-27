@@ -6,7 +6,9 @@
  * app.js только вызывает CWJournalRoute.parse().
  *
  *   #districts                                              → список районов
- *   #districts/<c>                                          → район
+ *   #districts/<c>                                          → район, вкладка «Обзор»
+ *   #districts/<c>/<tab>                                    → район, вкладка
+ *        tab: congregations | entries | tasks | archive (DISTRICT_TABS)
  *   #districts/<c>/congregation/<n>                         → собрание, «Обзор»
  *   #districts/<c>/congregation/<n>/visits                  → собрание, «Посещения»
  *   #districts/<c>/congregation/<n>/visit/<v>               → посещение
@@ -24,6 +26,8 @@
   var ROUTES = ['overview', 'districts', 'tasks', 'search', 'archive'];
   var DEFAULT_ROUTE = 'overview';
   var TASK_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
+  /* Внутренние вкладки района; 'overview' — вкладка по умолчанию, в хэше не пишется. */
+  var DISTRICT_TABS = ['congregations', 'entries', 'tasks', 'archive'];
 
   function dec(s) {
     try { return decodeURIComponent(s); } catch (_) { return null; }
@@ -33,7 +37,7 @@
     var raw = String(hash || '').replace(/^#/, '');
     var parts = raw.split('/');
     var route = ROUTES.indexOf(parts[0]) >= 0 ? parts[0] : DEFAULT_ROUTE;
-    var state = { route: route, circuitId: null, congregationId: null, congTab: 'overview', visitId: null, projectId: null, taskId: null, normalized: false };
+    var state = { route: route, circuitId: null, congregationId: null, districtTab: 'overview', congTab: 'overview', visitId: null, projectId: null, taskId: null, normalized: false };
     if (route === 'tasks') {
       /* J9c: #tasks/<taskId> — ссылка на конкретную задачу (общий To Do).
          В адресе только id; кривой id или лишний хвост — нормализация к
@@ -48,6 +52,11 @@
 
     state.circuitId = parts[1] ? dec(parts[1]) : null;
     if (!state.circuitId) return state;
+    if (DISTRICT_TABS.indexOf(parts[2]) >= 0) {
+      state.districtTab = parts[2];
+      if (parts.length > 3) state.normalized = true;
+      return state;
+    }
     if (parts[2] === 'project') {
       var p = parts[3] ? dec(parts[3]) : null;
       if (p && parts.length === 4) state.projectId = p;
@@ -74,6 +83,9 @@
   function enc(s) { return encodeURIComponent(s); }
   var build = {
     circuit: function (c) { return '#districts/' + enc(c); },
+    circuitTab: function (c, tab) {
+      return DISTRICT_TABS.indexOf(tab) >= 0 ? '#districts/' + enc(c) + '/' + tab : '#districts/' + enc(c);
+    },
     congregation: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n); },
     visits: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visits'; },
     visit: function (c, n, v) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visit/' + enc(v); },
@@ -81,5 +93,5 @@
     task: function (id) { return typeof id === 'string' && TASK_ID.test(id) ? '#tasks/' + enc(id) : '#tasks'; },
   };
 
-  global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES };
+  global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES, DISTRICT_TABS: DISTRICT_TABS };
 })(typeof self !== 'undefined' ? self : globalThis);

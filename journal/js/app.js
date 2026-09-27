@@ -63,7 +63,13 @@
     if (state.route === 'districts' && state.projectId) return null; // экран проекта — без FAB (эталон 06)
     if (state.route === 'districts' && state.congregationId) return { labelKey: 'j.fab.new_visit', action: 'new-visit' };
     if (state.route === 'districts' && !state.circuitId) return { labelKey: 'j.fab.new_circuit', action: 'new-circuit' };
-    if (state.route === 'districts' && state.circuitId) return { labelKey: 'j.fab.new_congregation', action: 'new-congregation' };
+    if (state.route === 'districts' && state.circuitId) {
+      // Вкладки района: FAB создаёт то, что показывает вкладка.
+      if (state.districtTab === 'entries') return { labelKey: 'j.dnote.new_note', action: 'new-district-note' };
+      if (state.districtTab === 'tasks') return { labelKey: 'j.fab.new_task', action: 'new-district-task' };
+      if (state.districtTab === 'archive') return null;
+      return { labelKey: 'j.fab.new_congregation', action: 'new-congregation' };
+    }
     return null;
   }
 
@@ -90,8 +96,8 @@
       $('#projectDetailView').hidden = !showProject;
       if (!showVisit && !showProject) $('#topbarContext').textContent = '';
       if (state.normalized && state.circuitId && !state.congregationId) {
-        // Неполный маршрут проекта (…/project без id) — сам район.
-        location.replace(CWJournalRoute.build.circuit(state.circuitId));
+        // Неполный маршрут проекта (…/project без id) или лишний хвост вкладки — сам район (та же вкладка).
+        location.replace(CWJournalRoute.build.circuitTab(state.circuitId, state.districtTab));
         return;
       }
       if (state.normalized && state.congregationId) {

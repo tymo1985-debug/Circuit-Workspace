@@ -15,6 +15,14 @@
   function errorMessage() { return A.errorMessage.apply(this, arguments); }
   function esc() { return A.esc.apply(this, arguments); }
   function isDirectoryReady() { return A.isDirectoryReady.apply(this, arguments); }
+  function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
+  function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
+  function lockMark() { return A.lockMark.apply(this, arguments); }
+  function renderDistrictArchive() { return A.renderDistrictArchive.apply(this, arguments); }
+  function renderDistrictTasks() { return A.renderDistrictTasks.apply(this, arguments); }
+  function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
+  function textOr() { return A.textOr.apply(this, arguments); }
+  function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function openTaskDialog() { return A.openTaskDialog.apply(this, arguments); }
   function openVisitDialog() { return A.openVisitDialog.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
@@ -25,6 +33,7 @@
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
   function todayIso() { return A.todayIso.apply(this, arguments); }
+  function uiLang() { return A.uiLang.apply(this, arguments); }
   function wireMenuToggle() { return A.wireMenuToggle.apply(this, arguments); }
 
 
@@ -207,6 +216,18 @@
     $('#districtCrumbLabel').textContent = circuit.label;
     $('#districtTitle').textContent = circuit.label;
 
+    // Внутренняя вкладка района — из маршрута; панели без неё скрыты и не
+    // перерисовываются (кроме общей шапки).
+    var tab = parseHash().districtTab || 'overview';
+    $all('#districtTabs [data-district-tab]').forEach(function (b) {
+      var on = b.getAttribute('data-district-tab') === tab;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    $all('#districtDetailView [data-district-panel]').forEach(function (p) {
+      p.hidden = p.getAttribute('data-district-panel').split(' ').indexOf(tab) === -1;
+    });
+
     var congregations = CWJournal.sortNodes(
       (await CWJournal.nodes.byParent(circuitId)).filter(function (n) { return n.kind === 'congregation'; })
     );
@@ -226,7 +247,11 @@
       chip('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>', entryCounts.question + ' ' + esc(t('j.unit.questions')));
 
     $('#congregationsCount').textContent = String(congregations.length);
-    await renderDistrictProjects(circuit);
+    if (tab === 'overview') await renderDistrictProjects(circuit);
+    if (tab === 'entries') await renderDistrictNotes(circuit);
+    if (tab === 'tasks') await renderDistrictTasks(circuitId);
+    if (tab === 'archive') await renderDistrictArchive(circuitId);
+    if (tab !== 'overview' && tab !== 'congregations') { wireCircuitMenu(circuit); return; }
 
     var tree = $('#congregationsTree');
     tree.innerHTML = '';
@@ -829,9 +854,181 @@
     };
   }
 
+  /* ═══ Вкладка «Записи» района: заметки и вопросы (CWJournal.districtNotes) ═══
+   * Список — только чтение раскрытых копий; правка — диалог #noteDialog.
+   * Защищённая запись при заблокированной сессии открывается через
+   * разблокировку (перерисовка — по смене блокировки). */
+  var notesRenderSeq = 0;
+  var NOTE_ICON = {
+    note: '<path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/>',
+    question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
+  };
+
+  function noteDay(iso) {
+    try { return new Intl.DateTimeFormat(uiLang(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso)); }
+    catch (_) { return String(iso || '').slice(0, 10); }
+  }
+
+  async function renderDistrictNotes(circuit) {
+    var mine = ++notesRenderSeq;
+    var list = await CWJournal.districtNotes.list(circuit.id);
+    if (mine !== notesRenderSeq) return;
+    var readonly = circuit.status === 'archived';
+    $('#districtNewNote').disabled = readonly;
+    $('#districtNewQuestion').disabled = readonly;
+    $('#districtNotesCount').textContent = String(list.length);
+    var box = $('#districtNotesList');
+    if (!list.length) {
+      box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
+        svg(NOTE_ICON.note, 'width="32" height="32"') + '</div>' +
+        '<p class="md-emptystate__title">' + esc(t('j.dnote.empty_title')) + '</p>' +
+        '<p class="md-emptystate__text">' + esc(t('j.dnote.empty_text')) + '</p></div>';
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    list.forEach(function (r) {
+      var row = el('div', 'j-row');
+      var ico = el('div', 'j-row__ico');
+      ico.innerHTML = svg(NOTE_ICON[r.type] || NOTE_ICON.note);
+      var body = el('div', 'j-row__body');
+      body.setAttribute('role', 'button');
+      body.setAttribute('tabindex', '0');
+      var title = el('p', 'j-row__title j-dnote__text' + (isLockedRow(r) ? ' u-muted' : ''));
+      title.textContent = textOr(r, 'body');
+      if (isProtectedRow(r)) title.insertAdjacentHTML('beforeend', lockMark(r));
+      var meta = el('p', 'j-row__meta', t(r.type === 'question' ? 'j.dnote.type_question' : 'j.dnote.type_note') +
+        ' · ' + noteDay(r.updatedAt || r.createdAt));
+      body.appendChild(title); body.appendChild(meta);
+      var open = function () {
+        if (isLockedRow(r)) { requestUnlock(); return; }
+        openNoteDialog(circuit, r);
+      };
+      body.addEventListener('click', open);
+      body.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); open(); } });
+      row.appendChild(ico); row.appendChild(body);
+      frag.appendChild(row);
+    });
+    if (mine !== notesRenderSeq) return;
+    box.replaceChildren(frag);
+  }
+
+  /** Создание (row = null, type задан) или правка записи района. */
+  function openNoteDialog(circuit, row, type) {
+    var dlg = $('#noteDialog');
+    var form = $('#noteDialogForm');
+    var typeSel = $('#noteDialogType');
+    var body = $('#noteDialogBody');
+    var errEl = $('#noteDialogError');
+    var del = $('#noteDialogDelete');
+    var protBtn = $('#noteDialogProtect');
+    var readonly = circuit.status === 'archived';
+    var busy = false;
+    var curType = row ? row.type : (type || 'note');
+    $('#noteDialogTitle').textContent = t(row ? 'j.dnote.edit' : curType === 'question' ? 'j.dnote.new_question' : 'j.dnote.new_note');
+    typeSel.value = curType;
+    body.value = row ? String(row.body || '') : '';
+    del.hidden = !row;
+    protBtn.hidden = !row;
+    if (row) protBtn.textContent = t(isProtectedRow(row) ? 'j.prot.unprotect' : 'j.prot.protect');
+    errEl.hidden = true;
+    dlg.showModal();
+    body.focus();
+
+    function showError(msg) { errEl.textContent = msg; errEl.hidden = false; }
+    async function save() {
+      if (!row) return CWJournal.districtNotes.add(circuit.id, { type: typeSel.value, body: body.value });
+      var patch = {};
+      if (typeSel.value !== row.type) patch.type = typeSel.value;
+      if (body.value !== String(row.body || '')) patch.body = body.value;
+      if (Object.keys(patch).length) await CWJournal.districtNotes.update(row.id, patch);
+    }
+    async function onSubmit(e) {
+      e.preventDefault();
+      if (busy) return;
+      if (readonly && !row) { showError(t('j.error.district_note_readonly')); return; }
+      if (!body.value.trim()) { showError(t('j.error.district_note_empty')); return; }
+      busy = true;
+      try { await save(); } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      busy = false;
+      cleanup(); dlg.close(); refreshCurrentView();
+    }
+    async function onDelete() {
+      if (!row || busy || !confirm(t('j.confirm.delete_record'))) return;
+      busy = true;
+      try { await CWJournal.districtNotes.remove(row.id); } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      busy = false;
+      cleanup(); dlg.close(); refreshCurrentView();
+    }
+    /* J8: несохранённая правка — сначала сохранить, затем лист защиты. */
+    async function onProtect() {
+      if (!row || busy) return;
+      if (!body.value.trim()) { showError(t('j.error.district_note_empty')); return; }
+      busy = true;
+      try { await save(); } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      busy = false;
+      cleanup(); dlg.close();
+      var fresh = await CWJournal.districtNotes.get(row.id);
+      if (fresh) await toggleProtection(fresh);
+      refreshCurrentView();
+    }
+    function onCancel() { cleanup(); dlg.close(); }
+    var unbindClose;
+    function cleanup() {
+      form.removeEventListener('submit', onSubmit);
+      del.removeEventListener('click', onDelete);
+      protBtn.removeEventListener('click', onProtect);
+      $('#noteDialogCancel').removeEventListener('click', onCancel);
+      body.value = '';
+      if (unbindClose) unbindClose();
+    }
+    form.addEventListener('submit', onSubmit);
+    del.addEventListener('click', onDelete);
+    protBtn.addEventListener('click', onProtect);
+    $('#noteDialogCancel').addEventListener('click', onCancel);
+    unbindClose = bindDialogCleanup(dlg, cleanup);
+  }
+
+  /* Вкладки и кнопки района — делегирование, один обработчик на документ
+     (экран района перерисовывается многократно). */
+  document.addEventListener('click', function (e) {
+    var target = e.target && e.target.closest ? e.target : null;
+    if (!target) return;
+    var st;
+    var tabBtn = target.closest('#districtTabs [data-district-tab]');
+    if (tabBtn) {
+      st = parseHash();
+      if (!st.circuitId) return;
+      var dest = CWJournalRoute.build.circuitTab(st.circuitId, tabBtn.getAttribute('data-district-tab'));
+      if (location.hash !== dest) location.hash = dest;
+      return;
+    }
+    if (target.closest('#districtEntriesOpen')) {
+      st = parseHash();
+      if (st.circuitId) location.hash = CWJournalRoute.build.circuitTab(st.circuitId, 'entries');
+      return;
+    }
+    var newBtn = target.closest('#districtNewNote, #districtNewQuestion');
+    if (newBtn) {
+      runAction(newBtn.id === 'districtNewQuestion' ? 'new-district-question' : 'new-district-note');
+    }
+  });
+
   /* ═══ Создание района/собрания по FAB / пустому состоянию ═════════════ */
   async function runAction(action) {
     if (action === 'new-task') { openTaskDialog(null); return; }
+    if (action === 'new-district-task') {
+      var ts = parseHash();
+      if (ts.circuitId) openTaskDialog(null, { circuitId: ts.circuitId, onDone: refreshCurrentView });
+      return;
+    }
+    if (action === 'new-district-note' || action === 'new-district-question') {
+      var ns = parseHash();
+      var circ = ns.circuitId ? await CWJournal.nodes.get(ns.circuitId) : null;
+      if (!circ || circ.kind !== 'circuit') return;
+      if (circ.status === 'archived') { alert(t('j.error.district_note_readonly')); return; }
+      openNoteDialog(circ, null, action === 'new-district-question' ? 'question' : 'note');
+      return;
+    }
     if (action === 'new-visit') {
       var vs = parseHash();
       if (!vs.congregationId) return;

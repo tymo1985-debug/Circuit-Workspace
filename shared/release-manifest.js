@@ -26,14 +26,9 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.90',
+  version: '0.41.91',
   changes: [
-    { module: 'circuit-planner', version: '9.95.17', note: 'Кнопки ‹ › календаря на телефоне: прежний вид, зона нажатия снова 44×44' },
-    { module: 'hub', version: '0.41.90', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'congress-project', version: '4.46.111', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.86', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.125', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.35', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.29', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.16.0', note: 'Вкладки района работают: Собрания, Записи (новые заметки и вопросы района), Задачи и Архив района' },
+    { module: 'hub', version: '0.41.91', note: 'Версия поднята вместе с Журналом', technical: true },
   ],
 };

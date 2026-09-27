@@ -1914,6 +1914,93 @@
   function assertMetaId(id) {
     if (typeof id === 'string' && id.indexOf('crypto:') === 0) throw new Error('journal-meta-reserved');
   }
+  /* ═══ Записи уровня района (district notes) ═════════════════════════════
+   * Заметка или вопрос, принадлежащие самому району, а не собранию и не
+   * посещению: journalEntries с type 'note'|'question', nodeId === circuitId
+   * (узел вида circuit), без fields.visitId. Пятого хранилища нет.
+   *  - add(circuitId, { type, body }) — район должен существовать и не быть
+   *    в архиве; body обязателен (текст пользователя — только body);
+   *  - update(id, { body?, type? }) — тип меняется только между note и
+   *    question; nodeId/circuitId неизменяемы; защищённый текст (J8) —
+   *    только через writeProtectedText;
+   *  - remove(id) — только без связей (как у записей посещения);
+   *  - list(circuitId) — новые/изменённые сверху (updatedAt, createdAt, id).
+   * Общий фасад entries.* по-прежнему читает их; этот фасад — единственная
+   * дорога экрана «Записи» района. */
+  var DISTRICT_NOTE_TYPES = ['note', 'question'];
+  function isDistrictNote(r) {
+    return !!r && DISTRICT_NOTE_TYPES.indexOf(r.type) >= 0 && !hasVisitRef(r) &&
+      !!r.nodeId && r.nodeId === r.circuitId && !hasCarryFields(r);
+  }
+  function cleanNoteBody(body) {
+    if (typeof body !== 'string' || !body.trim()) throw new Error('journal-district-note-empty');
+    return body.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+  }
+  async function districtNoteOrThrow(id) {
+    var r = await entriesBase.get(id);
+    if (!isDistrictNote(r)) throw new Error('journal-district-note-not-found');
+    return r;
+  }
+  function sortNotes(list) {
+    return list.slice().sort(function (a, b) {
+      var au = a.updatedAt || a.createdAt || '', bu = b.updatedAt || b.createdAt || '';
+      if (au !== bu) return au < bu ? 1 : -1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+  var districtNotes = {
+    TYPES: DISTRICT_NOTE_TYPES.slice(),
+    isDistrictNote: isDistrictNote,
+    get: async function (id) {
+      var r = await entriesBase.get(id);
+      return isDistrictNote(r) ? r : null;
+    },
+    list: async function (circuitId) {
+      if (!circuitId) return [];
+      return sortNotes((await entriesBase.by('nodeId', circuitId)).filter(isDistrictNote));
+    },
+    add: async function (circuitId, record) {
+      record = record || {};
+      if (DISTRICT_NOTE_TYPES.indexOf(record.type) === -1) throw new Error('journal-district-note-invalid-type');
+      var node = circuitId ? await nodesBase.get(circuitId) : null;
+      if (!node || node.kind !== 'circuit') throw new Error('journal-node-not-found');
+      if (node.status === 'archived') throw new Error('journal-district-note-readonly');
+      return entriesBase.add({
+        type: record.type,
+        nodeId: node.id,
+        circuitId: node.id,
+        status: 'open',
+        body: cleanNoteBody(record.body),
+      });
+    },
+    update: async function (id, patch) {
+      patch = patch || {};
+      var r = await districtNoteOrThrow(id);
+      Object.keys(patch).forEach(function (k) {
+        if (k !== 'body' && k !== 'type') throw new Error('journal-district-note-immutable');
+      });
+      var out = {};
+      if ('type' in patch && patch.type !== r.type) {
+        if (DISTRICT_NOTE_TYPES.indexOf(patch.type) === -1) throw new Error('journal-district-note-invalid-type');
+        out.type = patch.type;
+      }
+      if ('body' in patch) {
+        var nextBody = cleanNoteBody(patch.body);
+        if (isProtected(r)) {
+          return writeProtectedText(r, { body: nextBody }, function (next) { Object.assign(next, out); });
+        }
+        out.body = nextBody;
+      }
+      if (!Object.keys(out).length) return r;
+      return entriesBase.update(id, out);
+    },
+    remove: async function (id) {
+      var r = await districtNoteOrThrow(id);
+      await assertRemovable(r, 'journal-district-note-has-links');
+      return entriesBase.remove(id);
+    },
+  };
+
   var meta = {
     get: function (id) { return db().journalMeta.get(id); },
     put: function (record) {
@@ -2246,6 +2333,8 @@
   tasks.list = revealing(tasks.list);
   ['openForNode', 'incoming', 'markedIn'].forEach(function (k) { carry[k] = revealing(carry[k]); });
   ['get', 'list', 'byCircuit', 'forTarget'].forEach(function (k) { projects[k] = revealing(projects[k]); });
+  districtNotes.get = revealing(districtNotes.get);
+  districtNotes.list = revealing(districtNotes.list);
   var relatedRaw = projects.related;
   projects.related = async function (projectId) {
     var out = await relatedRaw(projectId);
@@ -2396,6 +2485,7 @@
     integration: integration,
     overview: overview,
     projects: projects,
+    districtNotes: districtNotes,
     meta: meta,
     protection: protection,
     urn: urn,

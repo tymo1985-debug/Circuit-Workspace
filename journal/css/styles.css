@@ -593,3 +593,7 @@ span.j-planner__chip--broken { cursor: default; }
   .j-task-actions .md-btn { flex: 0 1 auto; min-width: 0; }
   .j-task-actions .j-editor__spacer + .md-btn { margin-left: auto; }
 }
+
+/* Вкладка «Записи» района: текст заметки/вопроса — с переносами строк, до 4 строк в списке. */
+.j-dnote__text { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+.j-dnote__actions { margin-bottom: var(--cw-space-3); }

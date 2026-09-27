@@ -19,6 +19,7 @@
   function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
   function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
   function lockMark() { return A.lockMark.apply(this, arguments); }
+  function parseHash() { return A.parseHash.apply(this, arguments); }
   function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
   function textOr() { return A.textOr.apply(this, arguments); }
   function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
@@ -79,6 +80,23 @@
         '<p class="md-emptystate__text">' + esc(t('j.task.empty_text')) + '</p></div>';
       return;
     }
+    var built = await buildTaskRows(list, byId, focusTask, renderTasks);
+    var frag = built.frag;
+    focusRow = built.focusRow;
+    if (mine !== tasksRenderSeq) return;
+    box.replaceChildren(frag);
+    if (focusRow) {
+      try { focusRow.scrollIntoView({ block: 'center' }); } catch (_) { /* старый движок */ }
+      var target = focusRow.querySelector('.j-task__main');
+      if (target) target.focus({ preventScroll: true });
+      if (isLockedRow(focusTask)) requestUnlock();
+    }
+  }
+
+  /** Строки задач (общие для экрана «Задачи» и вкладки «Задачи» района).
+   *  rerender — перерисовка вызывающего экрана после операции. */
+  async function buildTaskRows(list, byId, focusTask, rerender) {
+    var focusRow = null;
     var today = todayIso();
     var frag = document.createDocumentFragment();
     for (var i = 0; i < list.length; i++) {
@@ -102,33 +120,64 @@
       (function (r, isDone, mutable) {
         row.querySelector('.j-check__box').addEventListener('click', function () {
           if (!mutable) return;
-          runTaskOp(function () { return isDone ? CWJournal.tasks.reopen(r.id) : CWJournal.tasks.complete(r.id); });
+          runTaskOp(function () { return isDone ? CWJournal.tasks.reopen(r.id) : CWJournal.tasks.complete(r.id); }, rerender);
         });
         var main = row.querySelector('.j-task__main');
         var edit = function () {
           if (!mutable) return;
           if (isLockedRow(r)) { requestUnlock(); return; } // перерисовка — по разблокировке
-          openTaskDialog(r);
+          openTaskDialog(r, { onDone: rerender });
         };
         main.addEventListener('click', edit);
         main.addEventListener('keydown', function (e) { if (e.key === 'Enter') edit(); });
       })(r, isDone, mutable);
       frag.appendChild(row);
     }
-    if (mine !== tasksRenderSeq) return;
-    box.replaceChildren(frag);
-    if (focusRow) {
-      try { focusRow.scrollIntoView({ block: 'center' }); } catch (_) { /* старый движок */ }
-      var target = focusRow.querySelector('.j-task__main');
-      if (target) target.focus({ preventScroll: true });
-      if (isLockedRow(focusTask)) requestUnlock();
-    }
+    return { frag: frag, focusRow: focusRow };
   }
 
-  async function runTaskOp(fn) {
+  async function runTaskOp(fn, rerender) {
     try { await fn(); } catch (err) { alert(errorMessage(err)); }
-    renderTasks();
+    (rerender || renderTasks)();
   }
+
+  /* ═══ Вкладка «Задачи» района ═══════════════════════════════════════════
+   * Те же задачи и правила, что у экрана «Задачи», но только строки этого
+   * района (circuitId): задачи самого района, собраний, групп и посещений. */
+  var districtTaskTab = 'open';
+  var districtTasksSeq = 0;
+  async function renderDistrictTasks(circuitId) {
+    var mine = ++districtTasksSeq;
+    var all = (await CWJournal.tasks.list()).filter(function (r) { return r.circuitId === circuitId; });
+    var nodes = await CWJournal.nodes.byCircuit(circuitId);
+    var byId = {};
+    nodes.forEach(function (n) { byId[n.id] = n; });
+    var open = all.filter(function (r) { return r.status !== 'done'; });
+    var done = all.filter(function (r) { return r.status === 'done'; });
+    if (mine !== districtTasksSeq) return;
+    $('#districtTasksLede').textContent = t('j.visit.summary_tasks_counts').replace('%d', String(open.length)).replace('%d', String(done.length));
+    $all('#districtDetailView [data-dtask-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-dtask-tab') === districtTaskTab); });
+    var list = districtTaskTab === 'done' ? done : open;
+    var box = $('#districtTasksList');
+    if (!list.length) {
+      box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
+        svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="32" height="32"') + '</div>' +
+        '<p class="md-emptystate__title">' + esc(t(districtTaskTab === 'done' ? 'j.task.empty_done' : 'j.task.empty_open')) + '</p>' +
+        '<p class="md-emptystate__text">' + esc(t('j.dtask.empty_text')) + '</p></div>';
+      return;
+    }
+    var rerender = function () { renderDistrictTasks(circuitId); };
+    var built = await buildTaskRows(list, byId, null, rerender);
+    if (mine !== districtTasksSeq) return;
+    box.replaceChildren(built.frag);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('#districtDetailView [data-dtask-tab]') : null;
+    if (!b) return;
+    districtTaskTab = b.getAttribute('data-dtask-tab');
+    var st = parseHash();
+    if (st.circuitId) renderDistrictTasks(st.circuitId);
+  });
 
   /** Создание самостоятельной задачи (row = null) или правка. Область
    *  выбирается явно — владельца «по умолчанию» нет. J7: opts.projectId —
@@ -137,6 +186,7 @@
   async function openTaskDialog(row, opts) {
     opts = opts || {};
     var projectId = opts.projectId || null;
+    var circuitScope = opts.circuitId || null;
     var unlinkBtn = $('#taskDialogUnlink');
     var dlg = $('#taskDialog');
     var form = $('#taskDialogForm');
@@ -151,14 +201,18 @@
     $('#taskScopeField').hidden = !!row || !!projectId;
     scope.required = !row && !projectId;
     if (!row && !projectId) {
-      var nodes = (await CWJournal.nodes.getAll()).filter(function (n) { return n.status !== 'archived'; });
+      var nodes = (await CWJournal.nodes.getAll()).filter(function (n) {
+        return n.status !== 'archived' && (!opts.circuitId || n.circuitId === opts.circuitId);
+      });
       var byId = {};
       nodes.forEach(function (n) { byId[n.id] = n; });
-      var opts = [];
-      for (var i = 0; i < nodes.length; i++) opts.push({ id: nodes[i].id, label: await nodePath(byId, nodes[i]) });
-      opts.sort(function (a, b) { return a.label.localeCompare(b.label); });
+      var choices = [];
+      for (var i = 0; i < nodes.length; i++) choices.push({ id: nodes[i].id, label: await nodePath(byId, nodes[i]) });
+      choices.sort(function (a, b) { return a.label.localeCompare(b.label); });
       scope.innerHTML = '<option value="">' + esc(t('j.task.scope_pick')) + '</option>' +
-        opts.map(function (o) { return '<option value="' + esc(o.id) + '">' + esc(o.label) + '</option>'; }).join('');
+        choices.map(function (o) { return '<option value="' + esc(o.id) + '">' + esc(o.label) + '</option>'; }).join('');
+      // Вкладка района: область по умолчанию — сам район (выбор остаётся явным полем).
+      if (circuitScope && byId[circuitScope]) scope.value = circuitScope;
     }
     body.value = row ? row.body : '';
     due.value = row && row.dueDate ? row.dueDate : '';
@@ -243,6 +297,7 @@
 
   /* Публикация для других файлов Журнала. */
   A.openTaskDialog = openTaskDialog;
+  A.renderDistrictTasks = renderDistrictTasks;
   A.renderTasks = renderTasks;
   A.setTaskTab = setTaskTab;
 })();

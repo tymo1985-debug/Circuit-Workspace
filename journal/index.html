@@ -167,31 +167,30 @@
             </div>
           </div>
 
-          <!-- Внутренние вкладки района — визуальная фикстура J1/J3a. Реальных
-               экранов «Обзор/Записи/Задачи/Архив» ВНУТРИ района в этой фазе
-               нет (см. journal/AGENTS.md); переключаются только пять
-               назначений верхнего уровня в сайднаве/нижней навигации. -->
+          <!-- Внутренние вкладки района: #districts/<c>[/<tab>] (CWJournalRoute,
+               DISTRICT_TABS). «Обзор» — вся страница района; остальные вкладки
+               показывают свою панель. Данные — только через CWJournal. -->
           <div class="md-toolbar">
-            <div class="md-segmented j-tabs">
-              <button type="button" data-i18n="j.nav.overview">Обзор</button>
-              <button type="button" class="active" data-i18n="j.tab.congregations">Собрания</button>
-              <button type="button" data-i18n="j.tab.entries">Записи</button>
-              <button type="button" data-i18n="j.nav.tasks">Задачи</button>
-              <button type="button" data-i18n="j.nav.archive">Архив</button>
+            <div class="md-segmented j-tabs" id="districtTabs">
+              <button type="button" class="active" data-district-tab="overview" data-i18n="j.nav.overview">Обзор</button>
+              <button type="button" data-district-tab="congregations" data-i18n="j.tab.congregations">Собрания</button>
+              <button type="button" data-district-tab="entries" data-i18n="j.tab.entries">Записи</button>
+              <button type="button" data-district-tab="tasks" data-i18n="j.nav.tasks">Задачи</button>
+              <button type="button" data-district-tab="archive" data-i18n="j.nav.archive">Архив</button>
             </div>
           </div>
 
-          <div class="j-sec">
+          <div class="j-sec" data-district-panel="overview">
             <div class="j-sec__head">
               <span class="j-sec__title" data-i18n="j.card.district_entries_title">Записи уровня района</span>
-              <button type="button" class="j-sec__more" data-i18n="j.link.open" disabled>Открыть</button>
+              <button type="button" class="j-sec__more" id="districtEntriesOpen" data-i18n="j.link.open">Открыть</button>
             </div>
             <p class="j-sec__hint" data-i18n="j.card.district_entries_hint">Район — самостоятельный рабочий объект: у него свои проекты, заметки и задачи, не привязанные ни к одному собранию.</p>
             <div class="j-chip-row" id="districtEntryChips"></div>
           </div>
 
           <!-- Проекты района (J7): строки journalEntries type:'project' этого района. -->
-          <div class="j-sec" id="districtProjectsSec">
+          <div class="j-sec" id="districtProjectsSec" data-district-panel="overview">
             <div class="j-sec__head">
               <span class="j-sec__title" data-i18n="j.section.projects">Проекты района</span>
               <span class="j-sec__count" id="districtProjectsCount"></span>
@@ -200,12 +199,44 @@
             <div id="districtProjectsList"></div>
           </div>
 
-          <div class="j-sec">
+          <div class="j-sec" data-district-panel="overview congregations">
             <div class="j-sec__head">
               <span class="j-sec__title" data-i18n="j.card.congregations_title">Собрания и группы</span>
               <span class="j-sec__count" id="congregationsCount"></span>
             </div>
             <div id="congregationsTree"></div>
+          </div>
+
+          <!-- Вкладка «Записи»: заметки и вопросы самого района (CWJournal.districtNotes). -->
+          <div class="j-sec" data-district-panel="entries" hidden>
+            <div class="j-sec__head">
+              <span class="j-sec__title" data-i18n="j.card.district_entries_title">Записи уровня района</span>
+              <span class="j-sec__count" id="districtNotesCount"></span>
+            </div>
+            <div class="j-chip-row j-dnote__actions">
+              <button type="button" class="md-btn md-btn-tonal" id="districtNewNote" data-i18n="j.dnote.new_note">Новая заметка</button>
+              <button type="button" class="md-btn md-btn-tonal" id="districtNewQuestion" data-i18n="j.dnote.new_question">Новый вопрос</button>
+            </div>
+            <div id="districtNotesList"></div>
+          </div>
+
+          <!-- Вкладка «Задачи»: задачи этого района (сам район, собрания, группы, посещения). -->
+          <div data-district-panel="tasks" hidden>
+            <p class="md-page__lede" id="districtTasksLede"></p>
+            <div class="md-toolbar">
+              <div class="md-segmented j-tabs">
+                <button type="button" class="active" data-dtask-tab="open" data-i18n="j.task.tab_open">Открытые</button>
+                <button type="button" data-dtask-tab="done" data-i18n="j.task.tab_done">Выполненные</button>
+              </div>
+            </div>
+            <div class="j-sec">
+              <div id="districtTasksList"></div>
+            </div>
+          </div>
+
+          <!-- Вкладка «Архив»: архивные объекты этого района (CWJournal.archive.list по circuitId). -->
+          <div data-district-panel="archive" hidden>
+            <div id="districtArchiveList"></div>
           </div>
         </div>
 
@@ -746,6 +777,34 @@
             <button type="button" class="md-btn md-btn-text" id="taskDialogProtect" data-i18n="j.prot.protect" hidden>Защитить</button>
             <span class="j-editor__spacer"></span>
             <button type="button" class="md-btn md-btn-text" id="taskDialogCancel" data-i18n="j.action.cancel">Отмена</button>
+            <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Запись уровня района: заметка или вопрос (CWJournal.districtNotes). -->
+      <dialog id="noteDialog" class="md-dialog" aria-labelledby="noteDialogTitle">
+        <form method="dialog" id="noteDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="noteDialogTitle"></h3></div>
+          <div class="md-dialog-body">
+            <div class="md-field">
+              <select id="noteDialogType">
+                <option value="note" data-i18n="j.dnote.type_note">Заметка</option>
+                <option value="question" data-i18n="j.dnote.type_question">Вопрос</option>
+              </select>
+              <label for="noteDialogType" data-i18n="j.dnote.type">Вид</label>
+            </div>
+            <div class="md-field">
+              <textarea id="noteDialogBody" rows="6" required placeholder=" " autocomplete="off"></textarea>
+              <label for="noteDialogBody" data-i18n="j.dnote.body">Текст</label>
+            </div>
+            <p class="j-dialog-error" id="noteDialogError" role="alert" hidden></p>
+          </div>
+          <div class="md-dialog-actions j-task-actions">
+            <button type="button" class="md-btn md-btn-text" id="noteDialogDelete" data-i18n="j.action.delete" hidden>Удалить</button>
+            <button type="button" class="md-btn md-btn-text" id="noteDialogProtect" data-i18n="j.prot.protect" hidden>Защитить</button>
+            <span class="j-editor__spacer"></span>
+            <button type="button" class="md-btn md-btn-text" id="noteDialogCancel" data-i18n="j.action.cancel">Отмена</button>
             <button type="submit" class="md-btn md-btn-filled" data-i18n="j.action.save">Сохранить</button>
           </div>
         </form>
