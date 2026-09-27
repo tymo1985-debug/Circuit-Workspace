@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.85',
+  version: '0.41.86',
   changes: [
-    { module: 'hub', version: '0.41.85', note: 'Новая мобильная главная: компактная шапка, модули строками, подсказка под списком' },
-    { module: 'congress-project', version: '4.46.106', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.81', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.120', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.30', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.24', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'hub', version: '0.41.86', note: 'Мобильная главная: карточки «Резервное копирование» и «Отправитель» — компактными строками, кнопки копирования в меню «⋮»' },
+    { module: 'congress-project', version: '4.46.107', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.82', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.121', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.31', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.25', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };

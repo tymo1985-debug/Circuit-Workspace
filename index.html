@@ -908,6 +908,93 @@
     }
     .cw-hub-hint svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--md-primary); margin-top: 1px; }
   }
+  /* --- Системные карточки на телефоне (вариант Б, 27.09.2026) ----------
+     Карточка — строка: иконка | заголовок + состояние | «⋮». Кнопки
+     копирования живут в меню «⋮» (тот же .cw-backup__actions, открытый
+     поверх), пояснение и таблица — по пункту «Подробнее по модулям».
+     «Отправитель» — та же строка, форма по-прежнему за «Изменить данные». */
+  .cw-sysmenu-btn, .cw-sysmenu-only { display: none; }
+
+  @media (max-width: 600px) {
+    .cw-syscard {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      column-gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 12px;
+    }
+    .cw-syscard > * { grid-column: 1 / -1; }
+    .cw-syscard__head { display: contents; }
+    .cw-syscard__icon {
+      grid-column: 1; grid-row: 1 / span 2;
+      width: 38px; height: 38px;
+      border: 0; border-radius: 10px;
+    }
+    .cw-syscard__icon svg { width: 19px; height: 19px; }
+    .cw-syscard__head h3 { grid-column: 2; grid-row: 1; font: 500 14px/20px var(--md-font-family); letter-spacing: 0; align-self: end; }
+    .cw-syscard > .cw-syscard__state { grid-column: 2; grid-row: 2; margin: 1px 0 0; gap: 5px; font: 400 12px/16px var(--md-font-family); align-self: start; }
+    .cw-syscard__dot { width: 6px; height: 6px; }
+    .cw-syscard--alert { padding-left: 18px; }
+    .cw-syscard--alert::before { left: 7px; top: 12px; bottom: 12px; }
+
+    .cw-sysmenu-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      grid-column: 3; grid-row: 1 / span 2;
+      width: 44px; height: 44px; padding: 0;
+      border: 1px solid var(--md-outline-variant); border-radius: 999px;
+      background: var(--md-surface-container); color: var(--md-on-surface);
+      cursor: pointer;
+    }
+    .cw-sysmenu-btn svg { width: 18px; height: 18px; }
+    .cw-sysmenu-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+    .cw-sysmenu-btn[aria-expanded="true"] { border-color: var(--md-primary); }
+
+    .cw-syscard .cw-syscard__hint, .cw-sender-preview { display: none; }
+    .cw-syscard.is-details .cw-syscard__hint { display: block; }
+    #backupCard > .cw-disclose { display: none; }
+    #backupCard > .cw-disclose[open] { display: block; }
+    #senderCard > .cw-disclose { margin-top: 8px; }
+    .cw-backup__status { margin-top: 6px; min-height: 0; }
+    .cw-backup__status:empty { display: none; }
+
+    /* Меню действий: всплывает под «⋮», поверх следующей карточки. */
+    .cw-backup__actions { display: none; }
+    #backupCard.is-menu-open .cw-backup__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: absolute;
+      z-index: 5;
+      top: 56px; right: 8px;
+      width: min(260px, calc(100% - 16px));
+      margin: 0;
+      padding: 4px;
+      border: 1px solid var(--md-outline-variant);
+      border-radius: 12px;
+      background: var(--md-surface-container-high);
+      box-shadow: var(--cw-shadow);
+    }
+    #backupCard .cw-backup__actions .cw-btn {
+      width: 100%;
+      min-height: 44px;
+      height: auto;
+      padding: 10px 12px;
+      justify-content: flex-start;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--md-on-surface);
+      font: 500 13px/18px var(--md-font-family);
+      white-space: normal;
+      text-align: left;
+    }
+    #backupCard .cw-backup__actions .cw-btn[hidden] { display: none; }
+    #backupCard .cw-backup__actions .cw-btn--primary { color: var(--md-primary); }
+    #backupCard .cw-backup__actions .cw-btn svg { color: var(--md-primary); }
+    #backupCard .cw-backup__actions .cw-sysmenu-only { display: flex; }
+    #backupCard .cw-backup__actions .cw-sysmenu-only svg { color: var(--md-on-surface-variant); }
+  }
 </style>
 </head>
 <body class="cw-root">
@@ -1145,6 +1232,13 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
             </div>
             <h3 id="backupHeading" data-i18n="backup.title">Резервное копирование</h3>
+            <!-- Только телефон (≤600px): кнопки копирования спрятаны в меню
+                 «⋮», на виду остаётся заголовок и строка состояния копии.
+                 Меню — это тот же .cw-backup__actions, а не копия кнопок:
+                 обработчики сохранения/восстановления не дублируются. -->
+            <button type="button" class="cw-sysmenu-btn" id="backupMenuBtn" aria-expanded="false" aria-controls="backupActions" data-i18n-aria-label="hub.actions" data-i18n-title="hub.actions">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+            </button>
           </div>
 
             <!-- Возраст копии — текстом, а не только цветом: то же состояние
@@ -1158,7 +1252,7 @@
 
             <p class="cw-syscard__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
 
-            <div class="cw-backup__actions">
+            <div class="cw-backup__actions" id="backupActions">
               <button type="button" class="cw-btn cw-btn--primary" id="backupSaveAll">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                 <span data-i18n="backup.save_all">Сохранить всё</span>
@@ -1174,6 +1268,11 @@
               <button type="button" class="cw-btn" id="backupGuardBtn" hidden>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
                 <span data-i18n="backup.guard_restore">Откатиться к состоянию перед восстановлением</span>
+              </button>
+              <!-- Пункт меню телефона: раскрывает таблицу по модулям. -->
+              <button type="button" class="cw-btn cw-sysmenu-only" id="backupDetailsBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+                <span data-i18n="backup.details">Подробнее по модулям</span>
               </button>
             </div>
 
@@ -2328,6 +2427,44 @@
       if (checking || applying || (CWUpdate.isBusy && CWUpdate.isBusy())) return;
       runCheck();
     });
+  })();
+
+  // Меню «⋮» резервного копирования (телефон, ≤600px). Кнопка видна только
+  // на узком экране (CSS), поэтому на десктопе обработчики просто молчат.
+  // Пункты меню — существующие кнопки .cw-backup__actions со своими
+  // обработчиками; здесь только открытие/закрытие и фокус.
+  (function () {
+    var card = document.getElementById('backupCard');
+    var btn = document.getElementById('backupMenuBtn');
+    var menu = document.getElementById('backupActions');
+    if (!card || !btn || !menu) return;
+    var details = card.querySelector('.cw-disclose');
+    var detailsBtn = document.getElementById('backupDetailsBtn');
+    function isOpen() { return card.classList.contains('is-menu-open'); }
+    function set(open, returnFocus) {
+      card.classList.toggle('is-menu-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        var first = menu.querySelector('button:not([hidden])');
+        if (first) first.focus();
+      } else if (returnFocus) {
+        btn.focus();
+      }
+    }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); set(!isOpen()); });
+    // Обработчик самой кнопки уже отработал (всплытие) — закрываем после.
+    menu.addEventListener('click', function (e) { if (isOpen() && e.target.closest('button')) set(false); });
+    document.addEventListener('click', function (e) { if (isOpen() && !menu.contains(e.target)) set(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) set(false, true); });
+    if (details) {
+      details.addEventListener('toggle', function () { card.classList.toggle('is-details', details.open); });
+      if (detailsBtn) detailsBtn.addEventListener('click', function () {
+        details.open = true;
+        card.classList.add('is-details');
+        var summary = details.querySelector('summary');
+        if (summary) summary.focus();
+      });
+    }
   })();
 </script>
 </body>

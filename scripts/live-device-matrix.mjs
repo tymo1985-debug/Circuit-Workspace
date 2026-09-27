@@ -60,7 +60,18 @@ for (const lang of LANGS) {
   const page = await context.newPage();
   await page.addInitScript((value) => localStorage.setItem('cw-language', value), lang);
   for (const modulePath of PAGES) {
-    await page.goto(`${BASE}/${modulePath}`, { waitUntil:'networkidle' });
+    /* The same SW-driven reload (see below) can also land while goto() of
+       the NEXT page is still in flight — then goto() fails with
+       net::ERR_ABORTED although nothing is broken. Seen intermittently in CI
+       and locally (27.09.2026). One retry: the reload has already happened,
+       the second navigation is clean. A second abort is still a failure. */
+    try {
+      await page.goto(`${BASE}/${modulePath}`, { waitUntil:'networkidle' });
+    } catch (err) {
+      if (!/ERR_ABORTED/.test(String(err))) throw err;
+      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.goto(`${BASE}/${modulePath}`, { waitUntil:'networkidle' });
+    }
     /* Hub SW (scope '/') may control this page before the module's own,
        narrower-scope SW registers; that registration's controllerchange
        then fires shared/update.js's location.reload() at an arbitrary
