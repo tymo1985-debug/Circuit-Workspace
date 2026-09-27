@@ -213,6 +213,74 @@
     .cw-update-btn { min-width: 44px; justify-content: center; }
   }
 
+  /* --- Компактный хаб на телефоне ----------------------------------------
+     Мобильный вариант главного экрана: короче хиро (заголовок без длинного
+     пояснения — оно уходит в одну строку-подсказку под списком), плитки —
+     не вертикальные карточки, а горизонтальные строки (иконка слева,
+     название + однострочное описание справа, версия/статус компактно).
+     Сетка (--cw-cols) и разметка рёбер (.cw-rib) не трогаются: на этой
+     ширине уже действует --cw-cols:1 из блока выше (700px), рёбра считаются
+     от числа колонок и зазора, а не от высоты плитки — эта правка их не
+     задевает. Только косметика внутри уже существующих карточек. */
+  @media (max-width: 600px) {
+    .cw-hub-header { padding: 20px 0 16px; }
+    .cw-hub-header h1 {
+      font-size: 20px;
+      line-height: 1.3;
+      margin: 14px 0 4px;
+    }
+    /* Пояснение хиро — то же самое, что уходит в подсказку под списком
+       модулей (hub.subtitle), поэтому здесь просто не дублируем его во всю
+       длину: одна строка, остальное обрезается многоточием, текст в DOM
+       остаётся целиком (доступность и печать не страдают). */
+    .cw-hub-header p {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    .cw-order-bar { gap: 6px; margin-bottom: 12px; }
+    .cw-order-bar .cw-btn { padding: 6px 10px; font-size: 12px; }
+
+    /* Была вертикальная карточка (flex-direction: column, дети идут друг
+       под другом на всю ширину) — на телефоне превращаем её в строку без
+       правки разметки: grid-template-areas сам расставляет те же четыре
+       дочерних элемента (иконка, h2, p, footer) по двум колонкам, порядок
+       в DOM не важен. */
+    .cw-tile {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      column-gap: 12px;
+      row-gap: 0;
+      grid-template-areas:
+        "icon  h2"
+        "icon  p"
+        "icon  footer";
+      padding: 10px 12px;
+      min-height: 0;
+    }
+    .cw-tile__icon {
+      grid-area: icon;
+      align-self: start;
+      width: 38px; height: 38px;
+      margin-bottom: 0;
+    }
+    .cw-tile__icon svg { width: 19px; height: 19px; }
+    .cw-tile h2 { grid-area: h2; margin: 0 0 2px; font-size: 14px; }
+    /* Однострочное описание вместо двух-трёх — карточка не растягивается
+       по высоте длинным текстом; полный текст остаётся в DOM для SR. */
+    .cw-tile p {
+      grid-area: p;
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cw-tile__footer { grid-area: footer; margin-top: 4px; }
+    .cw-tile__ver { font-size: 11px; }
+  }
+
   /* --- Плата модулей: ствол, рёбра, ярусы ---
      Раньше шина была одна: горизонтальная планка НАД первым рядом, четыре
      ячейки жёстко в разметке, и ниже 1240px она пряталась целиком. Модулей

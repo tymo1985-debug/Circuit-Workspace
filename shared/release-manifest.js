@@ -26,13 +26,8 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.82',
+  version: '0.41.83',
   changes: [
-    { module: 'circuit-planner', version: '9.95.14', note: 'Плашки событий опущены ближе к середине недели, не липнут к числам' },
-    { module: 'congress-project', version: '4.46.104', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.79', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.118', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.28', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.22', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'hub', version: '0.41.83', note: 'Компактная мобильная главная: короче хиро, плитки модулей — строкой вместо карточки' },
   ],
 };
