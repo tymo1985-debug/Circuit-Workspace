@@ -26,14 +26,14 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.87',
+  version: '0.41.88',
   changes: [
-    { module: 'circuit-planner', version: '9.95.15', note: 'Календарь: меню — иконка ☰ в строке заголовка, «Ещё» — иконка ⚙, выбор месяца и года одним списком' },
-    { module: 'hub', version: '0.41.87', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'congress-project', version: '4.46.108', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'pioneer-school', version: '1.14.83', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'appointments', version: '5.5.122', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'documents', version: '1.11.32', note: 'Версия поднята вместе с общим слоем', technical: true },
-    { module: 'journal', version: '0.15.26', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'circuit-planner', version: '9.95.16', note: 'Календарь на телефоне: компактнее меню и заголовок; ряд «‹ Сегодня › ⚙» отдельными кнопками, месяц и год — компактным списком' },
+    { module: 'hub', version: '0.41.88', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'congress-project', version: '4.46.109', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.84', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.123', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.33', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.27', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };
