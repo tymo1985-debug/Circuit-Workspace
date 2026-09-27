@@ -106,6 +106,7 @@
 
       <div class="list-group">
         <span class="md-label-medium list-group__label" data-i18n="ap.list.elders">Назначены старейшинами</span>
+        <span class="list-count" data-count="elders" aria-hidden="true">0</span>
         <div class="list-editor" id="listElders" data-list="elders"></div>
         <div class="list-actions">
           <button type="button" class="md-btn md-btn-text" data-add="elders" data-i18n="ap.btn.add">Добавить</button>
@@ -115,6 +116,7 @@
 
       <div class="list-group">
         <span class="md-label-medium list-group__label" data-i18n="ap.list.servants">Назначены служителями собрания</span>
+        <span class="list-count" data-count="servants" aria-hidden="true">0</span>
         <div class="list-editor" id="listServants" data-list="servants"></div>
         <div class="list-actions">
           <button type="button" class="md-btn md-btn-text" data-add="servants" data-i18n="ap.btn.add">Добавить</button>
@@ -124,6 +126,7 @@
 
       <div class="list-group">
         <span class="md-label-medium list-group__label" data-i18n="ap.list.removed">Вычеркнуты</span>
+        <span class="list-count" data-count="removed" aria-hidden="true">0</span>
         <div class="list-editor" id="listRemoved" data-list="removed"></div>
         <div class="list-actions">
           <button type="button" class="md-btn md-btn-text" data-add="removed" data-i18n="ap.btn.add">Добавить</button>
@@ -209,6 +212,7 @@
   </aside>
 
   <main class="preview">
+    <p class="preview-label" data-i18n="ap.preview.label">Предпросмотр письма</p>
     <!-- Язык письма — свойство документа, а не интерфейса: письмо всегда
          украинское, даже когда интерфейс переключён на другой язык.
          См. AGENTS.md → «Локализация». -->

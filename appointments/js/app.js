@@ -526,6 +526,9 @@
       var placeholder = document.createElement('li');
       placeholder.className = 'names-empty';
       placeholder.setAttribute('aria-hidden', 'true');
+      /* Подсказка видна только на экране (::after в css/styles.css);
+         язык — интерфейса, а не письма: на бумагу она не попадает. */
+      placeholder.setAttribute('data-hint', t('ap.preview.empty_hint'));
       ul.appendChild(placeholder);
       return;
     }
@@ -558,6 +561,13 @@
     fillNames('outElders', names('elders'));
     fillNames('outServants', names('servants'));
     fillNames('outRemoved', names('removed'));
+    LISTS.forEach(function (name) {
+      var count = document.querySelector('[data-count="' + name + '"]');
+      if (!count) return;
+      var n = names(name).length;
+      count.textContent = String(n);
+      count.classList.toggle('is-zero', n === 0);
+    });
 
     $('#outSignName').textContent = sd.name || '';
     $('#outSignCode').textContent = sd.code || '';
@@ -635,6 +645,7 @@
         LISTS.forEach(renderList);
         renderSenderPanel();
         renderSignaturePanel();
+        renderLetter(); // подсказка пустого раздела — на языке интерфейса
       },
     });
   }

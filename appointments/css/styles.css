@@ -68,7 +68,19 @@ body {
    Порядок строк = порядок в письме, поэтому строки остаются
    перетаскиваемыми глазом: одинаковая высота, действие справа. */
 .list-group + .list-group { margin-top: var(--cw-space-5); }
-.list-group__label { display: block; color: var(--md-on-surface-variant); margin-bottom: var(--cw-space-2); }
+.list-group__label { color: var(--md-on-surface-variant); }
+/* Подпись списка + счётчик заполненных имён: при длинных списках видно
+   объём, не прокручивая редактор. Пустые строки не считаются — счёт тот же,
+   что уходит в письмо (names() в js/app.js). */
+.list-group > .list-group__label { display: inline-block; margin-bottom: var(--cw-space-2); }
+.list-count {
+  display: inline-block; margin-left: var(--cw-space-2); padding: 0 7px;
+  min-width: 8px; text-align: center; vertical-align: 1px;
+  border-radius: var(--md-radius-full);
+  background: var(--cw-module-container); color: var(--cw-module-on-container);
+  font: 700 11px/18px var(--md-font-family); font-variant-numeric: tabular-nums;
+}
+.list-count.is-zero { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
 
 .list-editor { display: flex; flex-direction: column; gap: var(--cw-space-2); }
 .list-row { display: flex; gap: var(--cw-space-2); align-items: center; }
@@ -87,10 +99,17 @@ body {
 
 .preview { min-width: 0; }
 
+/* Подпись над листом: на телефоне колонки схлопываются, и без неё не
+   видно, где кончается форма и начинается документ. */
+.preview-label {
+  margin: 0 0 var(--cw-space-2); text-align: center;
+  color: var(--md-on-surface-variant);
+  font: 600 11px/16px var(--md-font-family); letter-spacing: .06em; text-transform: uppercase;
+}
+
 /* --- Письмо ---------------------------------------------------------
    Отдельный масштаб: это документ, а не элемент интерфейса, поэтому
    типографика здесь не следует шкале MD3. */
-.preview { min-width: 0; }
 .letter {
   display: block;
   max-width: 820px; margin: 0 auto; padding: 44px 52px;
@@ -123,6 +142,24 @@ body {
   width: 88px;
   margin: 12px auto;
   border-top: 1px solid #c4bfcc;
+}
+
+/* Экранные акценты листа: полоса модуля сверху, метка у каждого раздела
+   и подсказка в пустом разделе. Всё только в @media screen — бумага
+   остаётся прежней (см. блок печати ниже). */
+@media screen {
+  .letter { border-top: 4px solid var(--cw-module); }
+  .letter-section { position: relative; padding-left: 14px; }
+  .letter-section::before {
+    content: ""; position: absolute; left: 0; top: 3px; bottom: 3px;
+    width: 3px; border-radius: 2px; background: var(--cw-module-container);
+  }
+  .names-empty[data-hint] { width: auto; height: auto; border-top: 0; margin: 6px 0 0; }
+  .names-empty[data-hint]::after {
+    content: "— " attr(data-hint) " —";
+    display: block; text-align: center;
+    color: #9a93a8; font: italic 400 12px/18px var(--md-font-family);
+  }
 }
 
 /* --- Подпись: панель -------------------------------------------------- */
@@ -172,7 +209,7 @@ body {
   /* Шапка скрывается и общим слоем (.md-topbar-v2 в @media print), но
      оставлена здесь явно: правило печати модуля должно быть самодостаточным
      и не зависеть от того, что делает общий файл. .editor — бывшая .panel. */
-  .md-topbar-v2, .editor, .cw-home-fab, .cw-home-btn { display: none !important; }
+  .md-topbar-v2, .editor, .preview-label, .cw-home-fab, .cw-home-btn { display: none !important; }
   .app { display: block; padding: 0; max-width: none; }
   .letter {
     max-width: none; margin: 0; padding: 0;
