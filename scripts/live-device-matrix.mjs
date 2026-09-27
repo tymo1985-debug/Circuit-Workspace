@@ -68,7 +68,9 @@ for (const lang of LANGS) {
     try {
       await page.goto(`${BASE}/${modulePath}`, { waitUntil:'networkidle' });
     } catch (err) {
-      if (!/ERR_ABORTED/.test(String(err))) throw err;
+      /* Chromium reports the same race either as net::ERR_ABORTED or as
+         "interrupted by another navigation" (CI, 27.09.2026) — both are it. */
+      if (!/ERR_ABORTED|interrupted by another navigation/.test(String(err))) throw err;
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.goto(`${BASE}/${modulePath}`, { waitUntil:'networkidle' });
     }

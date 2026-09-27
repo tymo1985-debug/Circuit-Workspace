@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.41.90 — 27.09.2026
+
+- Клиндарий 9.95.17: кнопки ‹ › календаря на телефоне видимо остались 36px
+  (макет 1B/2-2), но зона нажатия снова 44×44 — Release gate
+  (`test:device`) падал с 0.41.88.
+- `scripts/live-device-matrix.mjs`: гонка перезагрузки SW распознаётся и в
+  форме «interrupted by another navigation», не только `ERR_ABORTED`.
+- Версии: Congress 4.46.111, Pioneer School 1.14.86, Appointments 5.5.125,
+  Documents 1.11.35, Journal 0.15.29 (technical-каскад).
+
 ## 0.41.89 — 27.09.2026
 
 - Назначения 5.5.124 — экранные акценты: счётчик имён у каждого списка

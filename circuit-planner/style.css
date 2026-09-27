@@ -516,8 +516,11 @@ body::before{display:none !important}
 @media (max-width:900px){
   .topbar .topbar-title-row h2{font-size:1.3rem !important;margin-top:0 !important}
   .calendar-toolbar .calendar-controls{grid-template-columns:minmax(0,1fr) auto !important;align-items:center}
-  .calendar-toolbar .calendar-nav{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:8px;padding:0;background:none;border:0;border-radius:0}
-  .calendar-toolbar .calendar-nav .icon-btn{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;padding:0 !important;border-radius:12px !important;font-size:1rem}
+  .calendar-toolbar .calendar-nav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:4px;padding:0;background:none;border:0;border-radius:0}
+  /* ‹ › видимо 36px (макет 1B/2-2), но зона нажатия — 44×44: минимум
+     live-device-matrix (Release gate). Видимую плашку рисует ::before. */
+  .calendar-toolbar .calendar-nav .icon-btn{position:relative;isolation:isolate;width:44px !important;height:44px !important;min-width:44px !important;min-height:44px !important;padding:0 !important;border:0 !important;background:transparent !important;border-radius:12px !important;font-size:1rem}
+  .calendar-toolbar .calendar-nav .icon-btn::before{content:"";position:absolute;inset:4px;z-index:-1;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container)}
   .calendar-toolbar .calendar-nav #todayMonthBtn{width:100%;height:40px;min-height:40px;justify-content:center;border-radius:12px}
   .calendar-toolbar .calendar-controls #calendarYearSelect{grid-column:1 / -1;justify-self:start;width:auto !important;min-height:32px;padding:4px 26px 4px 6px;background-color:transparent;border:0;box-shadow:none;font-size:.9rem;font-weight:600;color:var(--md-on-surface-variant)}
 }
