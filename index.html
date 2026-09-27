@@ -213,74 +213,6 @@
     .cw-update-btn { min-width: 44px; justify-content: center; }
   }
 
-  /* --- Компактный хаб на телефоне ----------------------------------------
-     Мобильный вариант главного экрана: короче хиро (заголовок без длинного
-     пояснения — оно уходит в одну строку-подсказку под списком), плитки —
-     не вертикальные карточки, а горизонтальные строки (иконка слева,
-     название + однострочное описание справа, версия/статус компактно).
-     Сетка (--cw-cols) и разметка рёбер (.cw-rib) не трогаются: на этой
-     ширине уже действует --cw-cols:1 из блока выше (700px), рёбра считаются
-     от числа колонок и зазора, а не от высоты плитки — эта правка их не
-     задевает. Только косметика внутри уже существующих карточек. */
-  @media (max-width: 600px) {
-    .cw-hub-header { padding: 20px 0 16px; }
-    .cw-hub-header h1 {
-      font-size: 20px;
-      line-height: 1.3;
-      margin: 14px 0 4px;
-    }
-    /* Пояснение хиро — то же самое, что уходит в подсказку под списком
-       модулей (hub.subtitle), поэтому здесь просто не дублируем его во всю
-       длину: одна строка, остальное обрезается многоточием, текст в DOM
-       остаётся целиком (доступность и печать не страдают). */
-    .cw-hub-header p {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 100%;
-    }
-
-    .cw-order-bar { gap: 6px; margin-bottom: 12px; }
-    .cw-order-bar .cw-btn { padding: 6px 10px; font-size: 12px; }
-
-    /* Была вертикальная карточка (flex-direction: column, дети идут друг
-       под другом на всю ширину) — на телефоне превращаем её в строку без
-       правки разметки: grid-template-areas сам расставляет те же четыре
-       дочерних элемента (иконка, h2, p, footer) по двум колонкам, порядок
-       в DOM не важен. */
-    .cw-tile {
-      display: grid;
-      grid-template-columns: 38px 1fr;
-      column-gap: 12px;
-      row-gap: 0;
-      grid-template-areas:
-        "icon  h2"
-        "icon  p"
-        "icon  footer";
-      padding: 10px 12px;
-      min-height: 0;
-    }
-    .cw-tile__icon {
-      grid-area: icon;
-      align-self: start;
-      width: 38px; height: 38px;
-      margin-bottom: 0;
-    }
-    .cw-tile__icon svg { width: 19px; height: 19px; }
-    .cw-tile h2 { grid-area: h2; margin: 0 0 2px; font-size: 14px; }
-    /* Однострочное описание вместо двух-трёх — карточка не растягивается
-       по высоте длинным текстом; полный текст остаётся в DOM для SR. */
-    .cw-tile p {
-      grid-area: p;
-      margin: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .cw-tile__footer { grid-area: footer; margin-top: 4px; }
-    .cw-tile__ver { font-size: 11px; }
-  }
-
   /* --- Плата модулей: ствол, рёбра, ярусы ---
      Раньше шина была одна: горизонтальная планка НАД первым рядом, четыре
      ячейки жёстко в разметке, и ниже 1240px она пряталась целиком. Модулей
@@ -850,6 +782,128 @@
   .cw-order-item.is-dragging { opacity: 0.6; outline-color: var(--md-primary); }
   .cw-ordering .is-dragging .cw-order-handle { cursor: grabbing; }
   .cw-ordering, body.cw-order-dragging { user-select: none; -webkit-user-select: none; }
+
+  /* --- Мобильная главная (≤600px) ----------------------------------------
+     Утверждённый концепт 27.09.2026: компактная шапка, модули — строками,
+     пояснение — одной подсказкой под списком. Блок стоит В КОНЦЕ <style>
+     намеренно: у его правил та же специфичность, что у базовых .cw-tile /
+     .cw-tier, и при размещении выше они перекрывались базой (так и
+     случилось в 0.41.83 — правка не сработала). Рёбра шины JS продолжает
+     строить, на телефоне они просто не показываются. */
+  .cw-mhead, .cw-hub-hint, .cw-order-short, .cw-order-short__icon { display: none; }
+
+  @media (max-width: 600px) {
+    .cw-container { padding: 0 16px; }
+
+    /* Шапка: логотип и инструменты в одну строку, версия уходит в мета-строку. */
+    .cw-hub-header { padding: 16px 0 4px; }
+    .cw-hub-header::before { display: none; }
+    .cw-hub-header__top { flex-wrap: nowrap; gap: 8px; }
+    .cw-logo { gap: 8px; min-width: 0; }
+    .cw-logo__mark { width: 28px; height: 28px; }
+    .cw-logo__text { font-size: 16px; white-space: nowrap; }
+    .cw-hub-header__tools { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+    .cw-hub-header .cw-version { display: none; }
+    .cw-hub-header h1, .cw-hub-header p {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    /* Строка «Инструменты района / 6 модулей · vX» + кнопка «Порядок». */
+    .cw-board { padding-top: 8px; --cw-row-gap: 6px; }
+    .cw-order-bar { justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+    .cw-mhead { display: block; min-width: 0; flex: 1 1 auto; }
+    .cw-mhead__title { margin: 0; font: 500 16px/22px var(--md-font-family); color: var(--md-on-surface); }
+    .cw-mhead__meta { margin: 2px 0 0; font: 400 12px/16px var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+    .cw-order-bar .cw-btn { padding: 6px 12px; font-size: 12px; font-weight: 500; gap: 6px; border-radius: 999px; }
+    .cw-order-bar__hint { flex-basis: 100%; order: 3; }
+    #orderToggle[aria-pressed="false"] .cw-order-short,
+    #orderToggle[aria-pressed="false"] .cw-order-short__icon { display: inline; }
+    .cw-order-short__icon { width: 14px; height: 14px; flex: 0 0 auto; }
+    /* Длинная подпись остаётся доступным именем кнопки — скрыта визуально. */
+    #orderToggle[aria-pressed="false"] #orderToggleLabel {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    /* Ярус без ствола и рёбер; подпись рабочего яруса дублирует мета-строку. */
+    .cw-tier { padding-left: 0; }
+    .cw-tier::before, .cw-tier--system::after, .cw-rib { display: none; }
+    .cw-tier--work { padding-bottom: 24px; }
+    .cw-tier--work > .cw-tier__label {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    /* Плитка → строка: иконка | название+описание | точка+версия | шеврон. */
+    .cw-tile {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto 10px;
+      grid-template-areas:
+        "icon title  status chev"
+        "icon desc   status chev";
+      column-gap: 10px;
+      align-items: center;
+      padding: 10px;
+      min-height: 0;
+      border-radius: 12px;
+      box-shadow: none;
+    }
+    .cw-tile::after {
+      content: "";
+      grid-area: chev;
+      width: 7px; height: 7px;
+      border-top: 1.5px solid var(--md-outline);
+      border-right: 1.5px solid var(--md-outline);
+      transform: rotate(45deg);
+      justify-self: start;
+    }
+    .cw-tile__icon {
+      grid-area: icon;
+      width: 38px; height: 38px;
+      margin: 0;
+      border: 0;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--md-primary) 14%, transparent);
+    }
+    .cw-tile__icon svg { width: 19px; height: 19px; }
+    .cw-tile h2 { grid-area: title; margin: 0; font: 500 14px/20px var(--md-font-family); letter-spacing: 0; align-self: end; }
+    .cw-tile p {
+      grid-area: desc;
+      margin: 1px 0 0;
+      font: 400 12px/16px var(--md-font-family);
+      letter-spacing: 0;
+      align-self: start;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cw-tile__footer { grid-area: status; }
+    .cw-tile__badge {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      gap: 4px;
+      color: var(--md-on-surface-variant);
+      font: 400 11px/16px var(--md-font-family);
+    }
+    .cw-tile__badge [data-i18n="status.live"] { display: none; }
+    .cw-tile__dot { background: var(--status-success); }
+    .cw-tile__ver { opacity: 1; }
+    .cw-tile-link { border-radius: 12px; }
+
+    /* Подсказка под списком. */
+    .cw-hub-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin: 10px 0 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--md-primary) 8%, transparent);
+      color: var(--md-on-surface-variant);
+      font: 400 11px/15px var(--md-font-family);
+    }
+    .cw-hub-hint svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--md-primary); margin-top: 1px; }
+  }
 </style>
 </head>
 <body class="cw-root">
@@ -908,11 +962,21 @@
          принадлежность к ярусу задаёт разметка ниже, пользователь меняет
          только последовательность внутри своей зоны. -->
     <div class="cw-order-bar" id="orderBar">
+      <!-- Мобильная шапка списка (только ≤600px): короткий заголовок вместо
+           длинного hero-h1 и строка «N модулей · vX». На широком экране
+           скрыта — там работает обычный hero. Заголовок aria-hidden: для
+           скринридера h1 остаётся в DOM (визуально скрыт на телефоне). -->
+      <div class="cw-mhead">
+        <p class="cw-mhead__title" aria-hidden="true" data-i18n="hub.title_short">Инструменты района</p>
+        <p class="cw-mhead__meta" id="hubMeta"></p>
+      </div>
       <p class="cw-order-bar__hint" id="orderHint" data-i18n="hub.order_hint" hidden>Перетаскивайте плитки за ручку или двигайте стрелками. Порядок меняется только внутри своего раздела.</p>
       <button type="button" class="cw-btn" id="orderReset" hidden>
         <span data-i18n="hub.order_reset">Восстановить стандартный порядок</span>
       </button>
       <button type="button" class="cw-btn" id="orderToggle" aria-pressed="false">
+        <svg class="cw-order-short__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>
+        <span class="cw-order-short" aria-hidden="true" data-i18n="hub.order_short">Порядок</span>
         <span id="orderToggleLabel" data-i18n="hub.order_edit">Настроить порядок</span>
       </button>
     </div>
@@ -1053,6 +1117,12 @@
 
         </div>
       </div>
+      <!-- Мобильная подсказка под списком модулей — заменяет длинный
+           hero-абзац на телефоне. На широком экране скрыта. -->
+      <p class="cw-hub-hint" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span data-i18n="hub.hint">Общие данные вводятся один раз и становятся доступны во всех модулях</span>
+      </p>
     </section>
 
     <!-- ЯРУС 2: система. Действия и настройки самого хаба — без собственной
@@ -1548,12 +1618,29 @@
       });
     }
 
+    // Строка мобильной шапки «6 модулей · v0.41.84». Склонение — тем же
+    // приёмом, что у дней в резервной копии: Intl.PluralRules → ключ
+    // unit.modules.<категория>, запасной — .other.
+    var meta = document.getElementById('hubMeta');
+    var metaCount = 0;
+    function renderMeta(n) {
+      if (typeof n === 'number') metaCount = n;
+      if (!meta || !window.CWI18n) return;
+      var category = 'other';
+      try { category = new Intl.PluralRules(CWI18n.getLang()).select(metaCount); } catch (e) { /* старый браузер */ }
+      var word = CWI18n.t('unit.modules.' + category);
+      if (word === 'unit.modules.' + category) word = CWI18n.t('unit.modules.other');
+      meta.textContent = metaCount + ' ' + word + ' · v' + (self.CW_VERSION || '');
+    }
+    if (window.CWI18n) CWI18n.onChange(function () { renderMeta(); });
+
     function refresh() {
       if (work) {
         var n = items(work).length;
         board.style.setProperty('--cw-cols-wide', wideCols(n));
         var counter = document.querySelector('[data-tier-count]');
         if (counter) counter.textContent = '· ' + n;
+        renderMeta(n);
         build(work);
       }
       if (system) {

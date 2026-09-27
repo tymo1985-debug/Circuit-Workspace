@@ -26,8 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.83',
+  version: '0.41.84',
   changes: [
-    { module: 'hub', version: '0.41.83', note: 'Компактная мобильная главная: короче хиро, плитки модулей — строкой вместо карточки' },
+    { module: 'hub', version: '0.41.84', note: 'Новая мобильная главная: компактная шапка, модули строками, подсказка под списком' },
+    { module: 'congress-project', version: '4.46.105', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'pioneer-school', version: '1.14.80', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'appointments', version: '5.5.119', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'documents', version: '1.11.29', note: 'Версия поднята вместе с общим слоем', technical: true },
+    { module: 'journal', version: '0.15.23', note: 'Версия поднята вместе с общим слоем', technical: true },
   ],
 };
