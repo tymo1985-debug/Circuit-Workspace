@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.42.10 — 28.09.2026
+
+- Общий слой (`shared/style.css`): `.md-bottomnav` на узких экранах —
+  `position: fixed` вместо `sticky` (sticky при растяжении Android уезжал
+  с концом документа и повисал посреди экрана); место под панель —
+  `padding-bottom` у body с оболочкой, учтён `safe-area-inset-bottom`.
+  Сейчас панель есть только у Журнала.
+- Версии: Journal 0.18.2, Congress 4.46.121, Pioneer School 1.14.96,
+  Appointments 5.5.135, Documents 1.12.7 (technical-каскад).
+
 ## 0.42.9 — 28.09.2026
 
 - Общий слой (`shared/style.css`): доводка 0.42.7 — `overscroll-behavior`

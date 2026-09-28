@@ -1455,7 +1455,17 @@ body.cw-root {
 }
 .md-bottomnav__item.active { color: var(--md-on-surface); }
 @media (max-width: 900px) {
-  .md-bottomnav { display: flex; }
+  /* fixed, а не sticky: при растяжении Android (overscroll stretch) sticky
+     уезжает вместе с концом документа и повисает посреди экрана. fixed
+     привязан к окну. Место под панель резервирует отступ снизу у body. */
+  .md-bottomnav {
+    display: flex;
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding-bottom: calc(var(--cw-space-2) + env(safe-area-inset-bottom, 0px));
+  }
+  body:has(> .md-shell .md-bottomnav) {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
 }
 @media print {
   .md-bottomnav { display: none !important; }
