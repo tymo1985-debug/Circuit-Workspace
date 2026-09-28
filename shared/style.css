@@ -97,6 +97,11 @@ html {
   background: var(--md-surface);
   overscroll-behavior-y: none;
 }
+/* Модули с оболочкой .md-shell красят холст в её цвет: при растяжении
+   (Android overscroll stretch) у низа/боков виден фон html, и он обязан
+   совпадать с оболочкой и нижней навигацией, иначе видна светлая полоса. */
+html:has(body > .md-shell) { background: var(--md-surface-container); }
+body.cw-root:has(> .md-shell) { background: var(--md-surface-container); }
 
 body.cw-root {
   margin: 0;
