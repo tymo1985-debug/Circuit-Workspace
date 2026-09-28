@@ -28,7 +28,7 @@
  * O1 — полный список ОБЪЕКТОВ Клиндария (`listCommunities()`), отдельно от
  * записей календаря: источник — `events[]` того же блоба, а не `entries[]`.
  *
- *   { communityId, name, visitType }
+ *   { communityId, name, visitType, schedule }
  *
  *  - берутся только события с visitType `congregation|group|pregroup`;
  *    обычное событие (visitType '') и неизвестный тип — не объект;
@@ -36,6 +36,9 @@
  *  - уникальность — по id события (он же id карточки CWDirectory): у
  *    объекта с несколькими посещениями одна строка, дубликат id — первый;
  *  - name — справочник, иначе название события (как у записей);
+ *  - schedule — свободная строка события Клиндария (`events[].schedule`,
+ *    например «Ср 19:00, Вс 10:00»); Клиндарий её не разбирает на части —
+ *    здесь так же, строка целиком, без парсинга дней/времени;
  *  - порядок: name, затем communityId — детерминированно.
  * Пустой список значим только при status() 'ok' или 'empty' (канона нет —
  * Клиндарий ещё ничего не сохранял). 'idle' — ещё не прочитано, 'invalid' /
@@ -111,6 +114,7 @@
         communityId: id,
         name: directoryName(id) || str(ev.name),
         visitType: ev.visitType,
+        schedule: str(ev.schedule).trim(),
       }));
     });
     out.sort(function (a, b) {

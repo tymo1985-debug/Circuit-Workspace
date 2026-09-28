@@ -910,6 +910,16 @@
               <input type="text" id="scheduleDialogWeekend" placeholder=" " autocomplete="off" maxlength="80">
               <label for="scheduleDialogWeekend" data-i18n="j.field.schedule_weekend">Выходное собрание</label>
             </div>
+            <!-- Подсказка читается только через границу shared/planner.js
+                 (CWPlanner), блоб Клиндария сюда не попадает. Подстановка не
+                 автоматическая: кнопка открывает найденное по этому собранию
+                 событие, пользователь сам решает, в какое поле его вставить;
+                 уже введённое значение не трогается, пока он не выберет
+                 замену явно. -->
+            <div class="md-menu" id="schedulePlannerMenu">
+              <button type="button" class="md-btn md-btn-text" id="schedulePlannerBtn" aria-haspopup="menu" aria-expanded="false" data-i18n="j.action.schedule_from_planner">Подставить из Планировщика</button>
+              <div class="md-menu__panel" id="schedulePlannerPanel" role="menu" hidden></div>
+            </div>
           </div>
           <div class="md-dialog-actions">
             <button type="button" class="md-btn md-btn-text" id="scheduleDialogCancel" data-i18n="j.action.cancel">Отмена</button>

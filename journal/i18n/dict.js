@@ -132,6 +132,11 @@
       'j.field.contact_note': 'Заметка о контакте',
       'j.field.schedule_midweek': 'Серединное собрание',
       'j.field.schedule_weekend': 'Выходное собрание',
+      'j.action.schedule_from_planner': 'Подставить из Планировщика',
+      'j.action.schedule_use_midweek': '→ Серед.',
+      'j.action.schedule_use_weekend': '→ Вых.',
+      'j.hint.schedule_planner_empty': 'Нет данных Планировщика на этом устройстве.',
+      'j.hint.schedule_planner_none': 'В Планировщике нет события, связанного с этим собранием.',
 
       'j.error.directory_write_failed': 'Не удалось записать в общий справочник. Попробуйте ещё раз.',
 
@@ -616,6 +621,11 @@
       'j.field.contact_note': 'Примітка про контакт',
       'j.field.schedule_midweek': 'Серед-тижня збір',
       'j.field.schedule_weekend': 'Вихідний збір',
+      'j.action.schedule_from_planner': 'Підставити з Планувальника',
+      'j.action.schedule_use_midweek': '→ Серед.',
+      'j.action.schedule_use_weekend': '→ Вих.',
+      'j.hint.schedule_planner_empty': 'Немає даних Планувальника на цьому пристрої.',
+      'j.hint.schedule_planner_none': 'У Планувальнику немає події, повʼязаної з цим зібранням.',
 
       'j.error.directory_write_failed': 'Не вдалося записати в спільний довідник. Спробуйте ще раз.',
 
@@ -1100,6 +1110,11 @@
       'j.field.contact_note': 'Contact note',
       'j.field.schedule_midweek': 'Midweek meeting',
       'j.field.schedule_weekend': 'Weekend meeting',
+      'j.action.schedule_from_planner': 'Fill from Planner',
+      'j.action.schedule_use_midweek': '→ Midweek',
+      'j.action.schedule_use_weekend': '→ Weekend',
+      'j.hint.schedule_planner_empty': 'No Planner data on this device.',
+      'j.hint.schedule_planner_none': 'The Planner has no event linked to this congregation.',
 
       'j.error.directory_write_failed': 'Could not save to the shared directory. Please try again.',
 
@@ -1584,6 +1599,11 @@
       'j.field.contact_note': 'Notatka o kontakcie',
       'j.field.schedule_midweek': 'Zebranie w tygodniu',
       'j.field.schedule_weekend': 'Zebranie weekendowe',
+      'j.action.schedule_from_planner': 'Uzupełnij z Plannera',
+      'j.action.schedule_use_midweek': '→ Tydzień',
+      'j.action.schedule_use_weekend': '→ Weekend',
+      'j.hint.schedule_planner_empty': 'Brak danych Plannera na tym urządzeniu.',
+      'j.hint.schedule_planner_none': 'Planner nie ma wydarzenia powiązanego z tym zborem.',
 
       'j.error.directory_write_failed': 'Nie udało się zapisać do wspólnego katalogu. Spróbuj ponownie.',
 
@@ -2068,6 +2088,11 @@
       'j.field.contact_note': 'Kontaktnotiz',
       'j.field.schedule_midweek': 'Wochenmitte-Zusammenkunft',
       'j.field.schedule_weekend': 'Wochenend-Zusammenkunft',
+      'j.action.schedule_from_planner': 'Aus Planer übernehmen',
+      'j.action.schedule_use_midweek': '→ Wochenmitte',
+      'j.action.schedule_use_weekend': '→ Wochenende',
+      'j.hint.schedule_planner_empty': 'Keine Planer-Daten auf diesem Gerät.',
+      'j.hint.schedule_planner_none': 'Der Planer hat keinen Termin, der mit dieser Versammlung verknüpft ist.',
 
       'j.error.directory_write_failed': 'Speichern im gemeinsamen Verzeichnis fehlgeschlagen. Bitte erneut versuchen.',
 

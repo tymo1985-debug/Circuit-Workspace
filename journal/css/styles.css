@@ -597,3 +597,20 @@ span.j-planner__chip--broken { cursor: default; }
 /* Вкладка «Записи» района: текст заметки/вопроса — с переносами строк, до 4 строк в списке. */
 .j-dnote__text { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
 .j-dnote__actions { margin-bottom: var(--cw-space-3); }
+
+/* Диалог расписания: подсказка из Планировщика (Клиндария) — список его
+   событий внутри .md-menu__panel, у каждого своя пара кнопок «в какое
+   поле». Текст события и кнопки в одной строке, на узком экране переносятся. */
+.j-planner-suggestion {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--cw-space-2);
+  padding: var(--cw-space-2) var(--cw-space-3);
+  border-radius: var(--md-radius-sm);
+}
+.j-planner-suggestion + .j-planner-suggestion { border-top: 1px solid var(--md-outline-variant); }
+.j-planner-suggestion__text { flex: 1 1 100%; font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface); overflow-wrap: anywhere; }
+.j-planner-suggestion .md-menu__item { flex: 0 0 auto; width: auto; min-height: 36px; }
+/* Внутри диалога панель не всплывает поверх: <dialog> обрезает
+   абсолютно позиционированное содержимое, поэтому список — в потоке,
+   во всю ширину тела диалога. */
+#schedulePlannerMenu { display: block; }
+#schedulePlannerPanel { position: static; min-width: 0; max-width: none; margin-top: var(--cw-space-2); box-shadow: none; }

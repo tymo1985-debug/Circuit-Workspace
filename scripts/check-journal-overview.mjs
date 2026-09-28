@@ -78,7 +78,7 @@ const REV = 'cw-state-rev:circuit-planner';
 /* ═══ 1. CWPlanner.listCommunities ═══════════════════════════════════════ */
 console.log('\n1. CWPlanner: полный список объектов');
 const EVENTS = [
-  { id: 'evt_north', name: 'Северное', visitType: 'congregation', color: '#123', address: 'АДРЕС', contactPhone: 'ТЕЛЕФОН' },
+  { id: 'evt_north', name: 'Северное', visitType: 'congregation', color: '#123', address: 'АДРЕС', contactPhone: 'ТЕЛЕФОН', schedule: 'Ср 19:00, Вс 10:00' },
   { id: 'evt_grp', name: 'Озёрная группа', visitType: 'group' },
   { id: 'evt_pre', name: 'Предгруппа Лес', visitType: 'pregroup' },
   { id: 'evt_idle', name: 'Без посещений', visitType: 'congregation' },
@@ -119,8 +119,9 @@ ok('[5] неизвестный visitType исключён', !byId.evt_weird);
 ok('[6] объект без назначенного посещения есть', !!byId.evt_idle);
 ok('[7] несколько записей / дубль id → одна строка', cs.filter((c) => c.communityId === 'evt_north').length === 1 && cs.length === 4, cs.length);
 ok('[8] стабильный id = id события', byId.evt_north.communityId === 'evt_north' && B.getEntry('e1').communityId === 'evt_north');
-ok('[9] только { communityId, name, visitType }', cs.every((c) => JSON.stringify(Object.keys(c).sort()) === '["communityId","name","visitType"]')
+ok('[9] только { communityId, name, visitType, schedule }', cs.every((c) => JSON.stringify(Object.keys(c).sort()) === '["communityId","name","schedule","visitType"]')
   && !/АДРЕС|ТЕЛЕФОН|ПРИВАТНОЕ|ЗАМЕТКА|color|entries/.test(JSON.stringify(cs)));
+ok('[9] schedule — строка события целиком, пусто у события без неё', byId.evt_north.schedule === 'Ср 19:00, Вс 10:00' && byId.evt_grp.schedule === '');
 ok('[10] замороженные копии', cs.every(Object.isFrozen) && B.listCommunities()[0] !== cs[0]);
 try { cs[0].name = 'ПОРЧА'; } catch (_) { /* strict */ }
 ok('[10] правка копии не портит источник', !B.listCommunities().some((c) => c.name === 'ПОРЧА'));

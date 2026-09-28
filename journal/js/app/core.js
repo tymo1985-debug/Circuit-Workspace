@@ -71,7 +71,7 @@
    * панели находится как previousElementSibling, без нового состояния. */
   function toggleBtnFor(panel) {
     var prev = panel.previousElementSibling;
-    return prev && (prev.id === 'moreBtn' || prev.classList.contains('j-row__chevronbtn')) ? prev : null;
+    return prev && (prev.id === 'moreBtn' || prev.id === 'schedulePlannerBtn' || prev.classList.contains('j-row__chevronbtn')) ? prev : null;
   }
   function closeAllMenus(exceptPanel) {
     $all('.md-menu__panel').forEach(function (p) {

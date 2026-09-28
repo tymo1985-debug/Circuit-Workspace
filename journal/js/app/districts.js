@@ -625,12 +625,98 @@
   }
 
   /* ─── Расписание (Journal-owned, поле fields.schedule) ──────────────────
-   * Пишет ТОЛЬКО через CWJournal.nodes.update — CWDirectory не трогается. */
+   * Пишет ТОЛЬКО через CWJournal.nodes.update — CWDirectory не трогается.
+   * Подсказка из Клиндария (Circuit Planner) идёт ТОЛЬКО через публичную
+   * границу shared/planner.js (CWPlanner) — блоб Клиндария этот экран не
+   * видит (тот же принцип, что и у карточки посещения, см. visits.js J9a).
+   * Совпадение — по communityId узла (id карточки CWDirectory = id события
+   * Клиндария, см. заголовок shared/planner.js), без разбора расписания на
+   * части: подставляется строкой целиком, в то поле, которое явно выберет
+   * человек; ничего не подставляется автоматически и не перезаписывает уже
+   * введённое, пока не будет явного клика. */
+  var plannerRenderSeq = 0;
   function openScheduleDialog(node) {
     var dlg = $('#scheduleDialog');
     var sched = (node.fields && node.fields.schedule) || {};
     $('#scheduleDialogMidweek').value = sched.midweek || '';
     $('#scheduleDialogWeekend').value = sched.weekend || '';
+
+    var plannerBtn = $('#schedulePlannerBtn');
+    var plannerPanel = $('#schedulePlannerPanel');
+    plannerPanel.innerHTML = '';
+    plannerPanel.hidden = true;
+    plannerBtn.setAttribute('aria-expanded', 'false');
+    // Кнопка клонируется, чтобы не копить обработчики между открытиями
+    // диалога (тот же приём, что и wireCongregationMenu для #moreBtn).
+    var freshPlannerBtn = plannerBtn.cloneNode(true);
+    plannerBtn.parentNode.replaceChild(freshPlannerBtn, plannerBtn);
+    plannerBtn = freshPlannerBtn;
+    // Сначала переключатель, затем отрисовка — только если панель теперь
+    // открыта. Порядок важен: при настоящем клике микрозадачи выполняются
+    // между обработчиками, и чтение CWPlanner иначе завершалось бы, пока
+    // панель ещё скрыта.
+    wireMenuToggle(plannerBtn, plannerPanel);
+    plannerBtn.addEventListener('click', function () {
+      if (plannerPanel.hidden) return;
+      renderPlannerPanel();
+    });
+
+    function paintPlannerMessage(text) {
+      plannerPanel.innerHTML = '';
+      var row = document.createElement('div');
+      row.className = 'md-menu__group';
+      row.textContent = text;
+      plannerPanel.appendChild(row);
+    }
+
+    function paintPlannerResult(ev) {
+      if (!ev || !ev.schedule) { paintPlannerMessage(t('j.hint.schedule_planner_none')); return; }
+      plannerPanel.innerHTML = '';
+      var row = document.createElement('div');
+      row.className = 'j-planner-suggestion';
+      var label = document.createElement('span');
+      label.className = 'j-planner-suggestion__text';
+      label.textContent = (ev.name || '') + ' · ' + ev.schedule;
+      row.appendChild(label);
+      var toMidweek = document.createElement('button');
+      toMidweek.type = 'button';
+      toMidweek.className = 'md-menu__item';
+      toMidweek.setAttribute('data-target', 'midweek');
+      toMidweek.textContent = t('j.action.schedule_use_midweek');
+      toMidweek.addEventListener('click', function () {
+        $('#scheduleDialogMidweek').value = ev.schedule;
+        plannerPanel.hidden = true;
+        plannerBtn.setAttribute('aria-expanded', 'false');
+      });
+      var toWeekend = document.createElement('button');
+      toWeekend.type = 'button';
+      toWeekend.className = 'md-menu__item';
+      toWeekend.setAttribute('data-target', 'weekend');
+      toWeekend.textContent = t('j.action.schedule_use_weekend');
+      toWeekend.addEventListener('click', function () {
+        $('#scheduleDialogWeekend').value = ev.schedule;
+        plannerPanel.hidden = true;
+        plannerBtn.setAttribute('aria-expanded', 'false');
+      });
+      row.appendChild(toMidweek);
+      row.appendChild(toWeekend);
+      plannerPanel.appendChild(row);
+    }
+
+    function renderPlannerPanel() {
+      var mine = ++plannerRenderSeq;
+      plannerPanel.innerHTML = ''; // без текста-заглушки на время чтения — чтение локальное и быстрое
+      var P = self.CWPlanner;
+      if (!P) { paintPlannerMessage(t('j.hint.schedule_planner_empty')); return; }
+      Promise.resolve(P.init()).then(function () {
+        if (mine !== plannerRenderSeq || plannerPanel.hidden) return; // закрыли/переоткрыли, пока читали
+        var status = P.status();
+        if (status !== 'ok' || !node.communityId) { paintPlannerMessage(t('j.hint.schedule_planner_empty')); return; }
+        var match = P.listCommunities().filter(function (c) { return c.communityId === node.communityId; })[0] || null;
+        paintPlannerResult(match);
+      });
+    }
+
     dlg.showModal();
 
     var unbindClose;
