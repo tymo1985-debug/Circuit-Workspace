@@ -224,16 +224,22 @@
       if (!byKey[k]) { byKey[k] = { key: k, label: moduleLabel(tpl) || '—', rows: [] }; groups.push(byKey[k]); }
       byKey[k].rows.push(tpl);
     });
-    /* Раскрыта по умолчанию первая группа; при поиске/фильтре — все.
-       Выбор пользователя помнится в пределах сессии (openGroups). */
-    var forceOpen = !!state.search || state.filter !== 'all';
+    /* Раскрыта по умолчанию первая группа; при активном поиске/фильтре —
+       непосещённые группы тоже раскрываются, чтобы находки не прятались.
+       Explicit-состояние в state.openGroups (ключ группы -> true/false)
+       пишется ТОЛЬКО кликом по заголовку и с этого момента всегда побеждает
+       автораскрытие — иначе повторный рендер (ещё одна буква в поиске)
+       снова принудительно открывал бы то, что пользователь только что
+       закрыл руками, и клик «на закрытие» выглядел бы нерабочим. */
+    var autoOpen = !!state.search || state.filter !== 'all';
     if (!state.openGroups) { state.openGroups = {}; if (groups[0]) state.openGroups[groups[0].key] = true; }
     $('#list').innerHTML = groups.map(function (g) {
-      var open = forceOpen || !!state.openGroups[g.key];
-      return '<details class="doc-group" data-group="' + escapeHtml(g.key) + '"' + (open ? ' open' : '') + '>'
-        + '<summary class="doc-group__head"><span class="doc-group__name">' + escapeHtml(g.label) + '</span>'
-        + '<span class="doc-group__count">' + g.rows.length + '</span></summary>'
-        + '<div class="doc-group__rows">' + g.rows.map(rowHtml).join('') + '</div></details>';
+      var open = Object.prototype.hasOwnProperty.call(state.openGroups, g.key) ? state.openGroups[g.key] : autoOpen;
+      return '<div class="doc-group" data-group="' + escapeHtml(g.key) + '">'
+        + '<button type="button" class="doc-group__head" data-group-toggle="' + escapeHtml(g.key) + '" aria-expanded="' + open + '">'
+        + '<span class="doc-group__name">' + escapeHtml(g.label) + '</span>'
+        + '<span class="doc-group__count">' + g.rows.length + '</span></button>'
+        + '<div class="doc-group__rows"' + (open ? '' : ' hidden') + '>' + g.rows.map(rowHtml).join('') + '</div></div>';
     }).join('');
   }
 
@@ -1332,15 +1338,14 @@
       renderList();
     });
 
-    /* toggle не всплывает — ловим на capture. Помним выбор только когда
-       группы не раскрыты принудительно (поиск/фильтр). */
-    $('#list').addEventListener('toggle', function (e) {
-      var d = e.target;
-      if (!d.matches || !d.matches('details.doc-group')) return;
-      if (state.search || state.filter !== 'all') return;
+    $('#list').addEventListener('click', function (e) {
+      var head = e.target.closest('[data-group-toggle]');
+      if (!head) return;
+      var key = head.dataset.groupToggle;
       state.openGroups = state.openGroups || {};
-      state.openGroups[d.dataset.group] = d.open;
-    }, true);
+      state.openGroups[key] = head.getAttribute('aria-expanded') !== 'true';
+      renderList();
+    });
 
     $('#search').addEventListener('input', function (e) {
       state.search = e.target.value.trim();
