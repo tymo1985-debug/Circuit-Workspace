@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.42.7 — 28.09.2026
+
+- Общий слой (`shared/style.css`): на `html` добавлен фон `--md-surface` и
+  `overscroll-behavior-y: none` (и на `body.cw-root`) — раньше фон был только
+  на body, и при overscroll-подскоке (типично на Android, при быстром
+  пролистывании до верха) на миг просвечивал нативный белый фон документа
+  снизу экрана. Патч-бамп всех cache-first оболочек, кроме Клиндария
+  (stale-while-revalidate, бамп не нужен).
+- Версии: Journal 0.17.1, Congress 4.46.119, Pioneer School 1.14.94,
+  Appointments 5.5.133, Documents 1.12.5 (technical-каскад).
+
 ## 0.42.6 — 28.09.2026
 
 - Журнал 0.17.0 — вкладка «Записи» на карточке собрания стала рабочей
