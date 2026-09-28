@@ -130,7 +130,6 @@
       'j.field.contact_phone': 'Телефон',
       'j.field.contact_email': 'E-mail',
       'j.field.contact_note': 'Заметка о контакте',
-      'j.congregation.future_hint': 'Записи и задачи этого собрания появятся здесь в одной из следующих фаз.',
       'j.field.schedule_midweek': 'Серединное собрание',
       'j.field.schedule_weekend': 'Выходное собрание',
 
@@ -607,7 +606,6 @@
       'j.field.contact_phone': 'Телефон',
       'j.field.contact_email': 'E-mail',
       'j.field.contact_note': 'Примітка про контакт',
-      'j.congregation.future_hint': 'Записи та завдання цього збору з’являться тут в одній з наступних фаз.',
       'j.field.schedule_midweek': 'Серед-тижня збір',
       'j.field.schedule_weekend': 'Вихідний збір',
 
@@ -1084,7 +1082,6 @@
       'j.field.contact_phone': 'Phone',
       'j.field.contact_email': 'E-mail',
       'j.field.contact_note': 'Contact note',
-      'j.congregation.future_hint': 'Entries and tasks for this congregation will appear here in one of the upcoming phases.',
       'j.field.schedule_midweek': 'Midweek meeting',
       'j.field.schedule_weekend': 'Weekend meeting',
 
@@ -1561,7 +1558,6 @@
       'j.field.contact_phone': 'Telefon',
       'j.field.contact_email': 'E-mail',
       'j.field.contact_note': 'Notatka o kontakcie',
-      'j.congregation.future_hint': 'Wpisy i zadania tego zboru pojawią się tutaj w jednej z kolejnych faz.',
       'j.field.schedule_midweek': 'Zebranie w tygodniu',
       'j.field.schedule_weekend': 'Zebranie weekendowe',
 
@@ -2038,7 +2034,6 @@
       'j.field.contact_phone': 'Telefon',
       'j.field.contact_email': 'E-Mail',
       'j.field.contact_note': 'Kontaktnotiz',
-      'j.congregation.future_hint': 'Einträge und Aufgaben dieser Versammlung erscheinen hier in einer der kommenden Phasen.',
       'j.field.schedule_midweek': 'Wochenmitte-Zusammenkunft',
       'j.field.schedule_weekend': 'Wochenend-Zusammenkunft',
 
