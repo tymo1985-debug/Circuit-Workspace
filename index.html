@@ -192,7 +192,9 @@
      до шести модулей — все в один ряд, дальше — без ряда из одной плитки. */
   .cw-board {
     position: relative;
-    z-index: 1;
+    /* Выше подвала (.cw-footer, z-index 1): иначе меню «⋮» копирования,
+       вылезающее за карточку, просвечивало текстом подвала. */
+    z-index: 2;
     padding: 16px 0 64px;
     --cw-gap: 14px;
     --cw-row-gap: 14px;
@@ -301,8 +303,11 @@
     font: 500 14px/20px var(--md-font-family);
     letter-spacing: 0;
     margin: 0 0 8px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    /* Две строки вместо обрезки: «Документы и данные» не помещалось. */
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; overflow-wrap: anywhere;
   }
+  .cw-tile__footer { margin-top: auto; }
   .cw-tile p {
     color: var(--md-on-surface-variant);
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
@@ -686,6 +691,15 @@
   .cw-mhead__meta { margin: 4px 0 0; font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
   .cw-order-bar__hint { flex-basis: 100%; order: 3; }
   .cw-order-bar .cw-btn { height: 36px; padding: 0 14px; font-size: 13px; gap: 6px; }
+  /* Вне режима порядка кнопка — круглая иконка «стрелки вверх-вниз», как
+     органы управления шапки; подпись остаётся доступным именем. В режиме
+     порядка видна подпись «Готово». */
+  #orderToggle[aria-pressed="false"] { width: 36px; padding: 0; justify-content: center; }
+  #orderToggle[aria-pressed="false"] .cw-order-short__icon { display: inline; width: 18px; height: 18px; flex: 0 0 auto; }
+  #orderToggle[aria-pressed="false"] #orderToggleLabel {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
   .cw-hub-hint {
     display: flex;
     align-items: flex-start;
@@ -720,9 +734,10 @@
     .cw-mhead__title { font: 500 16px/22px var(--md-font-family); }
     .cw-mhead__meta { margin-top: 2px; font-size: 12px; line-height: 16px; }
     .cw-order-bar .cw-btn { height: auto; padding: 6px 12px; font-size: 12px; }
+    #orderToggle[aria-pressed="false"] { width: auto; padding: 6px 12px; }
     #orderToggle[aria-pressed="false"] .cw-order-short,
     #orderToggle[aria-pressed="false"] .cw-order-short__icon { display: inline; }
-    .cw-order-short__icon { width: 14px; height: 14px; flex: 0 0 auto; }
+    #orderToggle[aria-pressed="false"] .cw-order-short__icon { width: 14px; height: 14px; }
     /* Длинная подпись остаётся доступным именем кнопки — скрыта визуально. */
     #orderToggle[aria-pressed="false"] #orderToggleLabel {
       position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
@@ -936,7 +951,7 @@
       <button type="button" class="cw-btn" id="orderReset" hidden>
         <span data-i18n="hub.order_reset">Восстановить стандартный порядок</span>
       </button>
-      <button type="button" class="cw-btn" id="orderToggle" aria-pressed="false">
+      <button type="button" class="cw-btn" id="orderToggle" aria-pressed="false" data-i18n-title="hub.order_edit">
         <svg class="cw-order-short__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>
         <span class="cw-order-short" aria-hidden="true" data-i18n="hub.order_short">Порядок</span>
         <span id="orderToggleLabel" data-i18n="hub.order_edit">Настроить порядок</span>

@@ -26,13 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.42.0',
+  version: '0.42.1',
   changes: [
-    { module: 'hub', version: '0.42.0', note: 'Главная упрощена: строка статуса вместо заголовка, все модули одним рядом компактных плиток, резервная копия и отправитель — короткими строками' },
-    { module: 'congress-project', version: '4.46.112', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'pioneer-school', version: '1.14.87', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'appointments', version: '5.5.126', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'documents', version: '1.11.36', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'journal', version: '0.16.1', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'hub', version: '0.42.1', note: 'Кнопка порядка — иконка со стрелками, длинные названия плиток переносятся, меню копирования больше не просвечивает' },
+    { module: 'congress-project', version: '4.46.113', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'pioneer-school', version: '1.14.88', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'appointments', version: '5.5.127', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'documents', version: '1.11.37', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'journal', version: '0.16.2', note: 'Версия поднята вместе с хабом', technical: true },
   ],
 };
