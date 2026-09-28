@@ -12,6 +12,8 @@
  *   #districts/<c>/congregation/<n>                         → собрание, «Обзор»
  *   #districts/<c>/congregation/<n>/visits                  → собрание, «Посещения»
  *   #districts/<c>/congregation/<n>/entries                 → собрание, «Записи»
+ *   #districts/<c>/congregation/<n>/tasks                   → собрание, «Задачи» (свои, J10)
+ *   #districts/<c>/congregation/<n>/archive                 → собрание, «Архив» (свой, J10)
  *   #districts/<c>/congregation/<n>/visit/<v>               → посещение
  *   #districts/<c>/project/<p>                              → проект района (J7)
  *
@@ -29,6 +31,8 @@
   var TASK_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
   /* Внутренние вкладки района; 'overview' — вкладка по умолчанию, в хэше не пишется. */
   var DISTRICT_TABS = ['congregations', 'entries', 'tasks', 'archive'];
+  /* Внутренние вкладки собрания (J10); 'overview' — по умолчанию, в хэше не пишется. */
+  var CONG_TABS = ['visits', 'entries', 'tasks', 'archive'];
 
   function dec(s) {
     try { return decodeURIComponent(s); } catch (_) { return null; }
@@ -68,10 +72,8 @@
     state.congregationId = dec(parts[3]);
     if (!state.congregationId) return state;
 
-    if (parts[4] === 'visits' && parts.length === 5) {
-      state.congTab = 'visits';
-    } else if (parts[4] === 'entries' && parts.length === 5) {
-      state.congTab = 'entries';
+    if (CONG_TABS.indexOf(parts[4]) >= 0 && parts.length === 5) {
+      state.congTab = parts[4];
     } else if (parts[4] === 'visit') {
       var v = parts[5] ? dec(parts[5]) : null;
       if (v && parts.length === 6) state.visitId = v;
@@ -92,10 +94,12 @@
     congregation: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n); },
     visits: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visits'; },
     congEntries: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/entries'; },
+    congTasks: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/tasks'; },
+    congArchive: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/archive'; },
     visit: function (c, n, v) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visit/' + enc(v); },
     project: function (c, p) { return '#districts/' + enc(c) + '/project/' + enc(p); },
     task: function (id) { return typeof id === 'string' && TASK_ID.test(id) ? '#tasks/' + enc(id) : '#tasks'; },
   };
 
-  global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES, DISTRICT_TABS: DISTRICT_TABS };
+  global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES, DISTRICT_TABS: DISTRICT_TABS, CONG_TABS: CONG_TABS };
 })(typeof self !== 'undefined' ? self : globalThis);

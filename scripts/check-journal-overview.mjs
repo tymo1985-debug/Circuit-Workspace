@@ -551,7 +551,7 @@ console.log('\n6. O2: статические границы');
   ok('[41/42] подписка на изменения Журнала', /CWJournal\.integration\.onChange\(onSourceChange\)/.test(ovSrc));
   ok('[43] смена блокировки → renderOverview', /st\.route === 'overview'\) renderOverview\(\)/.test(strip(read('journal/js/app/protection.js'))));
   ok('[44/50] Обзор: без таймеров, хранилищ, CWDB и сырого Клиндария', !/setInterval|setTimeout|localStorage|sessionStorage|CWDB|indexedDB|state\/circuit-planner|listEntries/.test(ovSrc));
-  ok('[45/46] вставка — только текущим поколением на #overview', /gen === overviewRenderSeq && parseHash\(\)\.route === 'overview'/.test(ovSrc) && (ovSrc.match(/if \(!isCurrent\(gen\)\) return;/g) || []).length === 2);
+  ok('[45/46] вставка — только текущим поколением на #overview', /gen === overviewRenderSeq && parseHash\(\)\.route === 'overview'/.test(ovSrc) && (ovSrc.match(/if \(!isCurrent\(gen\)\) return;/g) || []).length === 4);
   const sw = read('journal/sw.js');
   const at = (src) => html.indexOf('<script src="' + src + '"');
   ok('overview.js: после protection.js, до app.js; в прекэше', at('js/app/protection.js') < at('js/app/overview.js') && at('js/app/overview.js') < at('js/app.js') && sw.includes("'./js/app/overview.js'"));

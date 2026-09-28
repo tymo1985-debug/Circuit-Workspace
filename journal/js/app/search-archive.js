@@ -369,16 +369,28 @@
     return sec;
   }
 
-  /* ═══ Вкладка «Архив» района ════════════════════════════════════════════
-   * Те же строки CWJournal.archive.list(), только объекты этого района
-   * (сам район — вне списка: его архивность видна в шапке района). */
+  /* ═══ Вкладка «Архив» района (J10, строгое разделение) ═══════════════════
+   * Те же строки CWJournal.archive.list(), но только то, что не переехало
+   * в архив собрания: сам район вне списка (архивность видна в шапке),
+   * архивные посещения и группы/предгруппы, чей владелец — собрание, здесь
+   * не показываются — они в архиве этого собрания. */
   var districtArchiveSeq = 0;
   async function renderDistrictArchive(circuitId) {
     var mine = ++districtArchiveSeq;
     var items;
     try { items = await CWJournal.archive.list(); } catch (_) { items = []; }
     if (mine !== districtArchiveSeq) return;
-    var list = items.filter(function (it) { return it.row && it.row.circuitId === circuitId && it.id !== circuitId; });
+    var nodes = await CWJournal.nodes.byCircuit(circuitId);
+    var congIds = {};
+    nodes.forEach(function (n) { if (n.kind === 'congregation') congIds[n.id] = true; });
+    var ownedByCongregation = function (it) {
+      if (it.kind === 'visit') return !!congIds[it.row.nodeId];
+      if (it.kind === 'node') return !!congIds[it.row.parentId];
+      return false;
+    };
+    var list = items.filter(function (it) {
+      return it.row && it.row.circuitId === circuitId && it.id !== circuitId && !ownedByCongregation(it);
+    });
     var box = $('#districtArchiveList');
     if (!list.length) {
       var empty = el('div', 'md-emptystate');
@@ -394,6 +406,35 @@
     box.replaceChildren(archiveSection(list, 'all', function () { renderDistrictArchive(circuitId); }));
   }
 
+  /* ═══ Вкладка «Архив» собрания (J10) ══════════════════════════════════════
+   * Архивные посещения этого собрания и архивные группы/предгруппы —
+   * прямые дети этого узла (сам узел — вне списка). */
+  var congArchiveSeq = 0;
+  async function renderCongregationArchive(node) {
+    var mine = ++congArchiveSeq;
+    var items;
+    try { items = await CWJournal.archive.list(); } catch (_) { items = []; }
+    if (mine !== congArchiveSeq) return;
+    var list = items.filter(function (it) {
+      if (it.kind === 'visit') return it.row.nodeId === node.id;
+      if (it.kind === 'node') return it.row.parentId === node.id;
+      return false;
+    });
+    var box = $('#congArchiveList');
+    if (!list.length) {
+      var empty = el('div', 'md-emptystate');
+      var icon = el('div', 'md-emptystate__icon');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.innerHTML = svg(ICON.archive, 'width="32" height="32"');
+      empty.appendChild(icon);
+      empty.appendChild(el('p', 'md-emptystate__title', t('j.archive.empty_title')));
+      empty.appendChild(el('p', 'md-emptystate__text', t('j.carchive.empty_text')));
+      box.replaceChildren(empty);
+      return;
+    }
+    box.replaceChildren(archiveSection(list, 'all', function () { renderCongregationArchive(node); }));
+  }
+
   /* Публикация для других файлов Журнала. */
   /** J8: блокировка — расшифрованные результаты уходят с экрана сразу,
    *  запрос в полёте отменяется; перерисовка затем ищет уже без ключа. */
@@ -407,6 +448,7 @@
   A.forgetSearchResults = forgetSearchResults;
   A.focusSearch = focusSearch;
   A.renderArchive = renderArchive;
+  A.renderCongregationArchive = renderCongregationArchive;
   A.renderDistrictArchive = renderDistrictArchive;
   A.renderSearch = renderSearch;
   A.requestSearchFocus = requestSearchFocus;

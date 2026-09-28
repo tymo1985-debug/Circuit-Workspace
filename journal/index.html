@@ -102,6 +102,10 @@
           </div>
         </div>
 
+        <!-- Баннер ближайшего посещения (J10): только когда есть открытое
+             посещение с датой начала не раньше сегодня; клик открывает его. -->
+        <div id="overviewNextVisit" hidden></div>
+
         <div class="j-sec" id="overviewCarrySec">
           <div class="j-sec__head">
             <span class="j-sec__title" data-i18n="j.section.upcoming">К следующим посещениям</span>
@@ -261,8 +265,8 @@
               <button type="button" class="active" data-cong-tab="overview" data-i18n="j.nav.overview">Обзор</button>
               <button type="button" data-cong-tab="visits" data-i18n="j.tab.visits">Посещения</button>
               <button type="button" data-cong-tab="entries" data-i18n="j.tab.entries">Записи</button>
-              <button type="button" data-cong-link="tasks" data-i18n="j.nav.tasks">Задачи</button>
-              <button type="button" data-cong-link="archive" data-i18n="j.nav.archive">Архив</button>
+              <button type="button" data-cong-tab="tasks" data-i18n="j.nav.tasks">Задачи</button>
+              <button type="button" data-cong-tab="archive" data-i18n="j.nav.archive">Архив</button>
             </div>
           </div>
 
@@ -378,6 +382,27 @@
               </div>
               <div id="congVisitsList"></div>
             </div>
+          </div>
+
+          <!-- Вкладка «Задачи» собрания (J10): только задачи этого собрания
+               (nodeId = собрание) — самостоятельные и из его посещений. -->
+          <div id="congTasksPanel" hidden>
+            <p class="md-page__lede" id="congTasksLede"></p>
+            <div class="md-toolbar">
+              <div class="md-segmented j-tabs">
+                <button type="button" class="active" data-ctask-tab="open" data-i18n="j.task.tab_open">Открытые</button>
+                <button type="button" data-ctask-tab="done" data-i18n="j.task.tab_done">Выполненные</button>
+              </div>
+            </div>
+            <div class="j-sec">
+              <div id="congTasksList"></div>
+            </div>
+          </div>
+
+          <!-- Вкладка «Архив» собрания (J10): архивные посещения этого собрания
+               и архивные группы/предгруппы — прямые дети этого узла. -->
+          <div id="congArchivePanel" hidden>
+            <div id="congArchiveList"></div>
           </div>
         </div>
 

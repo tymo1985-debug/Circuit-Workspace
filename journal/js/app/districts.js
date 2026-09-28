@@ -27,7 +27,9 @@
   function openVisitDialog() { return A.openVisitDialog.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
+  function renderCongregationArchive() { return A.renderCongregationArchive.apply(this, arguments); }
   function renderCongregationProjects() { return A.renderCongregationProjects.apply(this, arguments); }
+  function renderCongregationTasks() { return A.renderCongregationTasks.apply(this, arguments); }
   function renderCongregationVisits() { return A.renderCongregationVisits.apply(this, arguments); }
   function renderDistrictProjects() { return A.renderDistrictProjects.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
@@ -463,31 +465,29 @@
   /* ═══ Вкладки собрания: «Обзор» (J3b), «Посещения» (J4a), «Записи» ═══════ */
   function applyCongregationTab(node) {
     var state = parseHash();
-    var tab = state.congTab === 'visits' || state.congTab === 'entries' ? state.congTab : 'overview';
+    var tab = CWJournalRoute.CONG_TABS.indexOf(state.congTab) >= 0 ? state.congTab : 'overview';
+    var hashFor = {
+      visits: CWJournalRoute.build.visits,
+      entries: CWJournalRoute.build.congEntries,
+      tasks: CWJournalRoute.build.congTasks,
+      archive: CWJournalRoute.build.congArchive,
+    };
     $all('#congregationDetailView [data-cong-tab]').forEach(function (btn) {
       var btnTab = btn.getAttribute('data-cong-tab');
       btn.classList.toggle('active', btnTab === tab);
       btn.onclick = function () {
-        location.hash = btnTab === 'visits' ? CWJournalRoute.build.visits(node.circuitId, node.id)
-          : btnTab === 'entries' ? CWJournalRoute.build.congEntries(node.circuitId, node.id)
-          : CWJournalRoute.build.congregation(node.circuitId, node.id);
+        location.hash = hashFor[btnTab] ? hashFor[btnTab](node.circuitId, node.id) : CWJournalRoute.build.congregation(node.circuitId, node.id);
       };
     });
     $('#congOverviewPanel').hidden = tab !== 'overview';
     $('#congVisitsPanel').hidden = tab !== 'visits';
     $('#congEntriesPanel').hidden = tab !== 'entries';
+    $('#congTasksPanel').hidden = tab !== 'tasks';
+    $('#congArchivePanel').hidden = tab !== 'archive';
     if (tab === 'visits') renderCongregationVisits(node);
     if (tab === 'entries') renderCongregationNotes(node);
-
-    // «Задачи»/«Архив» здесь — не отдельные панели этой карточки (своего
-    // хранилища/фильтра по собранию нет, J5/J6 держат только уровень
-    // района): кнопки ведут на уже рабочую вкладку района, ту же самую,
-    // что и в «Районы → <район> → Задачи/Архив».
-    $all('#congregationDetailView [data-cong-link]').forEach(function (btn) {
-      btn.onclick = function () {
-        location.hash = CWJournalRoute.build.circuitTab(node.circuitId, btn.getAttribute('data-cong-link'));
-      };
-    });
+    if (tab === 'tasks') renderCongregationTasks(node);
+    if (tab === 'archive') renderCongregationArchive(node);
   }
 
   /** Три взаимоисключающих состояния карточки идентичности — см.
@@ -1065,6 +1065,13 @@
     if (action === 'new-district-task') {
       var ts = parseHash();
       if (ts.circuitId) openTaskDialog(null, { circuitId: ts.circuitId, onDone: refreshCurrentView });
+      return;
+    }
+    if (action === 'new-congregation-task') {
+      var cts = parseHash();
+      if (cts.circuitId && cts.congregationId) {
+        openTaskDialog(null, { circuitId: cts.circuitId, nodeId: cts.congregationId, onDone: refreshCurrentView });
+      }
       return;
     }
     if (action === 'new-district-note' || action === 'new-district-question') {

@@ -141,15 +141,18 @@
     (rerender || renderTasks)();
   }
 
-  /* ═══ Вкладка «Задачи» района ═══════════════════════════════════════════
-   * Те же задачи и правила, что у экрана «Задачи», но только строки этого
-   * района (circuitId): задачи самого района, собраний, групп и посещений. */
+  /* ═══ Вкладка «Задачи» района (J10, строгое разделение) ═════════════════
+   * Только задачи самого района и его групп/предгрупп (у них своей вкладки
+   * нет); задачи, чей nodeId — собрание, показывает вкладка «Задачи» этого
+   * собрания, не здесь. */
   var districtTaskTab = 'open';
   var districtTasksSeq = 0;
   async function renderDistrictTasks(circuitId) {
     var mine = ++districtTasksSeq;
-    var all = (await CWJournal.tasks.list()).filter(function (r) { return r.circuitId === circuitId; });
     var nodes = await CWJournal.nodes.byCircuit(circuitId);
+    var congIds = {};
+    nodes.forEach(function (n) { if (n.kind === 'congregation') congIds[n.id] = true; });
+    var all = (await CWJournal.tasks.list()).filter(function (r) { return r.circuitId === circuitId && !congIds[r.nodeId]; });
     var byId = {};
     nodes.forEach(function (n) { byId[n.id] = n; });
     var open = all.filter(function (r) { return r.status !== 'done'; });
@@ -177,6 +180,44 @@
     districtTaskTab = b.getAttribute('data-dtask-tab');
     var st = parseHash();
     if (st.circuitId) renderDistrictTasks(st.circuitId);
+  });
+
+  /* ═══ Вкладка «Задачи» собрания (J10) ════════════════════════════════════
+   * Только строки этого собрания (nodeId = собрание): самостоятельные
+   * задачи и задачи его посещений. Группы/предгруппы сюда не входят — у
+   * них своей вкладки нет, их задачи остаются в вкладке района. */
+  var congTaskTab = 'open';
+  var congTasksSeq = 0;
+  async function renderCongregationTasks(node) {
+    var mine = ++congTasksSeq;
+    var all = (await CWJournal.tasks.list()).filter(function (r) { return r.nodeId === node.id; });
+    var byId = {};
+    byId[node.id] = node;
+    var open = all.filter(function (r) { return r.status !== 'done'; });
+    var done = all.filter(function (r) { return r.status === 'done'; });
+    if (mine !== congTasksSeq) return;
+    $('#congTasksLede').textContent = t('j.visit.summary_tasks_counts').replace('%d', String(open.length)).replace('%d', String(done.length));
+    $all('#congTasksPanel [data-ctask-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-ctask-tab') === congTaskTab); });
+    var list = congTaskTab === 'done' ? done : open;
+    var box = $('#congTasksList');
+    if (!list.length) {
+      box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
+        svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="32" height="32"') + '</div>' +
+        '<p class="md-emptystate__title">' + esc(t(congTaskTab === 'done' ? 'j.task.empty_done' : 'j.task.empty_open')) + '</p>' +
+        '<p class="md-emptystate__text">' + esc(t('j.ctask.empty_text')) + '</p></div>';
+      return;
+    }
+    var rerender = function () { renderCongregationTasks(node); };
+    var built = await buildTaskRows(list, byId, null, rerender);
+    if (mine !== congTasksSeq) return;
+    box.replaceChildren(built.frag);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('#congTasksPanel [data-ctask-tab]') : null;
+    if (!b) return;
+    congTaskTab = b.getAttribute('data-ctask-tab');
+    var st = parseHash();
+    if (st.congregationId) CWJournal.nodes.get(st.congregationId).then(function (n) { if (n) renderCongregationTasks(n); });
   });
 
   /** Создание самостоятельной задачи (row = null) или правка. Область
@@ -211,8 +252,10 @@
       choices.sort(function (a, b) { return a.label.localeCompare(b.label); });
       scope.innerHTML = '<option value="">' + esc(t('j.task.scope_pick')) + '</option>' +
         choices.map(function (o) { return '<option value="' + esc(o.id) + '">' + esc(o.label) + '</option>'; }).join('');
-      // Вкладка района: область по умолчанию — сам район (выбор остаётся явным полем).
-      if (circuitScope && byId[circuitScope]) scope.value = circuitScope;
+      // Вкладка района/собрания: область по умолчанию — сам узел, с которого
+      // открыт диалог (выбор остаётся явным полем).
+      var defaultScope = opts.nodeId || circuitScope;
+      if (defaultScope && byId[defaultScope]) scope.value = defaultScope;
     }
     body.value = row ? row.body : '';
     due.value = row && row.dueDate ? row.dueDate : '';
@@ -297,6 +340,7 @@
 
   /* Публикация для других файлов Журнала. */
   A.openTaskDialog = openTaskDialog;
+  A.renderCongregationTasks = renderCongregationTasks;
   A.renderDistrictTasks = renderDistrictTasks;
   A.renderTasks = renderTasks;
   A.setTaskTab = setTaskTab;

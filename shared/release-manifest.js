@@ -1,10 +1,6 @@
 self.CW_RELEASE = {
-  version: '0.42.7',
+  version: '0.42.8',
   changes: [
-    { module: 'journal', version: '0.17.1', note: 'Устранена белая полоса снизу экрана при overscroll-подскоке на мобильных', technical: true },
-    { module: 'congress-project', version: '4.46.119', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'pioneer-school', version: '1.14.94', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'appointments', version: '5.5.133', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'documents', version: '1.12.5', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'journal', version: '0.18.0', note: 'У собрания — свои вкладки «Задачи» и «Архив»; на Обзоре — баннер ближайшего посещения' },
   ],
 };

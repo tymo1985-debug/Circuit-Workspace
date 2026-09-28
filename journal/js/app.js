@@ -62,8 +62,10 @@
     if (state.route === 'districts' && state.visitId) return null; // экран посещения — без FAB (эталон 04)
     if (state.route === 'districts' && state.projectId) return null; // экран проекта — без FAB (эталон 06)
     if (state.route === 'districts' && state.congregationId) {
-      // Вкладка «Записи» собрания — FAB создаёт заметку, остальные — посещение.
+      // Вкладки собрания: FAB создаёт то, что показывает вкладка.
       if (state.congTab === 'entries') return { labelKey: 'j.dnote.new_note', action: 'new-congregation-note' };
+      if (state.congTab === 'tasks') return { labelKey: 'j.fab.new_task', action: 'new-congregation-task' };
+      if (state.congTab === 'archive') return null;
       return { labelKey: 'j.fab.new_visit', action: 'new-visit' };
     }
     if (state.route === 'districts' && !state.circuitId) return { labelKey: 'j.fab.new_circuit', action: 'new-circuit' };

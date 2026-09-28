@@ -33,6 +33,7 @@
   function buildOverviewProjects() { return A.buildOverviewProjects.apply(this, arguments); }
   function capitalize() { return A.capitalize.apply(this, arguments); }
   function ddmm() { return A.ddmm.apply(this, arguments); }
+  function esc() { return A.esc.apply(this, arguments); }
   function el() { return A.el.apply(this, arguments); }
   function formatRange() { return A.formatRange.apply(this, arguments); }
   function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
@@ -170,6 +171,34 @@
 
   function hint(key) { return el('p', 'j-sec__hint', t(key)); }
 
+  /* ═══ Баннер ближайшего посещения (J10) ═══════════════════════════════════
+   * Показывается только при реальном открытом посещении с датой начала не
+   * раньше сегодня — ничего «для красоты» не выводится. Клик открывает
+   * посещение (для группы/предгруппы — вкладку «Посещения» собрания-
+   * родителя, как и остальной Обзор). */
+  function nearestUpcoming(visits, today) {
+    var open = visits.filter(function (x) { return x.visit.status === 'open' && x.visit.dateFrom >= today; });
+    if (!open.length) return null;
+    open.sort(function (a, b) { return a.visit.dateFrom < b.visit.dateFrom ? -1 : a.visit.dateFrom > b.visit.dateFrom ? 1 : 0; });
+    return open[0];
+  }
+  async function renderNextVisitBanner(data, today, gen) {
+    var box = $('#overviewNextVisit');
+    var item = data ? nearestUpcoming(data.visits, today) : null;
+    var dest = item ? visitDest(item) : null;
+    if (!item || !dest) { if (isCurrent(gen)) { box.hidden = true; box.replaceChildren(); } return; }
+    var node = await CWJournal.nodes.get(item.nodeId);
+    if (!isCurrent(gen)) return;
+    var name = node ? nodeName(node) : '';
+    box.innerHTML = '<a class="md-banner" href="' + dest + '">' +
+      '<span class="md-banner__icon">' + svg(OV_ICON.visit, 'width="20" height="20"') + '</span>' +
+      '<div class="md-banner__body">' +
+      '<p class="md-banner__title">' + esc((name ? name + ' — ' : '') + capitalize(seasonLabel(item.visit.dateFrom))) + '</p>' +
+      '<p class="j-banner__text">' + esc(formatRange(item.visit.dateFrom, item.visit.dateTo, true)) + '</p>' +
+      '</div></a>';
+    box.hidden = false;
+  }
+
   /** Все секции — во фрагменты, без вставки. */
   async function buildSections(data) {
     var visitById = {};
@@ -224,6 +253,7 @@
   function showLoading() {
     $('#overviewStats').replaceChildren(buildStats(null, false, plannerView()));
     SECTIONS.forEach(function (s) { setSection(s[1], '…', null, true); });
+    $('#overviewNextVisit').hidden = true;
   }
   /** Заблокировано: секции, где был раскрытый текст, очищаются сразу. */
   function dropPlain() {
@@ -270,6 +300,8 @@
     // Собрано с раскрытым текстом, а сессия уже заблокирована — не вставлять:
     // отрисовку без текста запустила смена блокировки.
     if (view && Object.keys(view.plain).some(function (k) { return view.plain[k]; }) && !unlocked()) return;
+    await renderNextVisitBanner(failed ? null : data, todayIso(), gen);
+    if (!isCurrent(gen)) return;
     commit(view, failed, data);
   }
 
