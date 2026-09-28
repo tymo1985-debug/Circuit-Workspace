@@ -112,12 +112,18 @@
   (`congregations|entries|tasks|archive`), «Обзор» — без хвоста. Задачи и
   Архив района — те же `CWJournal.tasks.list()`/`archive.list()`,
   отфильтрованные по `circuitId` при чтении; своего хранилища нет.
-- Записи района — `journalEntries` `type:'note'|'question'`,
-  `nodeId = circuitId`, без `fields.visitId`; экран работает только через
-  `CWJournal.districtNotes` (`list/get/add/update/remove`). Правка —
+- Записи узла — `journalEntries` `type:'note'|'question'`, без
+  `fields.visitId` и полей переноса; одна форма строки и одна логика
+  (`makeNodeNotes` в `data.js`) на два фасада. Район — `nodeId = circuitId`,
+  только `CWJournal.districtNotes`; собрание — `nodeId` = собрание,
+  `circuitId` = его район (`nodeId ≠ circuitId`), только
+  `CWJournal.congregationNotes` (коды `journal-cong-note-*`). Фасады не
+  пересекаются; группы/предгруппы своих записей пока не имеют. Правка —
   `body` и смена `note↔question`; защищённый текст — `writeProtectedText`;
-  удаление без связей; в архивном районе новые не создаются. Общий
-  `entries.*` такие строки по-прежнему читает (обратная совместимость).
+  удаление без связей; в архивном узле (или под архивным районом) новые не
+  создаются. Общий `entries.*` такие строки по-прежнему читает.
+- Вкладки собрания — `#districts/<c>/congregation/<n>[/visits|/entries]`;
+  «Задачи»/«Архив» собрания своих панелей не имеют и ведут на вкладки района.
 
 - Клиндарий (J9a) — только через `CWJournal.planner` (`set/clear/get`):
   `journal:entry/<visitId> → cw:circuit-planner/entry/<entryId>`, rel

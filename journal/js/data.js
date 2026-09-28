@@ -1914,32 +1914,36 @@
   function assertMetaId(id) {
     if (typeof id === 'string' && id.indexOf('crypto:') === 0) throw new Error('journal-meta-reserved');
   }
-  /* ═══ Записи уровня района (district notes) ═════════════════════════════
-   * Заметка или вопрос, принадлежащие самому району, а не собранию и не
-   * посещению: journalEntries с type 'note'|'question', nodeId === circuitId
-   * (узел вида circuit), без fields.visitId. Пятого хранилища нет.
-   *  - add(circuitId, { type, body }) — район должен существовать и не быть
-   *    в архиве; body обязателен (текст пользователя — только body);
+  /* ═══ Записи узла: района и собрания (district / congregation notes) ═════
+   * Заметка или вопрос, принадлежащие самому узлу — району или собранию, — а
+   * не посещению: journalEntries с type 'note'|'question', nodeId = id узла,
+   * без fields.visitId и полей переноса. Пятого хранилища нет, форма строки
+   * одна на оба уровня:
+   *  - запись района   — nodeId === circuitId (узел вида circuit);
+   *  - запись собрания — nodeId = id собрания (вид congregation), circuitId —
+   *    его район; nodeId !== circuitId, поэтому два фасада не пересекаются.
+   * districtNotes и congregationNotes — одна логика (makeNodeNotes), различаются
+   * вид узла-владельца и коды ошибок:
+   *  - add(ownerId, { type, body }) — узел существует, нужного вида, ни он,
+   *    ни его район не в архиве; body обязателен (текст — только body);
    *  - update(id, { body?, type? }) — тип меняется только между note и
    *    question; nodeId/circuitId неизменяемы; защищённый текст (J8) —
    *    только через writeProtectedText;
    *  - remove(id) — только без связей (как у записей посещения);
-   *  - list(circuitId) — новые/изменённые сверху (updatedAt, createdAt, id).
-   * Общий фасад entries.* по-прежнему читает их; этот фасад — единственная
-   * дорога экрана «Записи» района. */
-  var DISTRICT_NOTE_TYPES = ['note', 'question'];
+   *  - list(ownerId) — новые/изменённые сверху (updatedAt, createdAt, id).
+   * Общий фасад entries.* по-прежнему читает их; эти фасады — единственная
+   * дорога экранов «Записи» района и собрания. */
+  var NODE_NOTE_TYPES = ['note', 'question'];
+  function isNodeNoteRow(r) {
+    return !!r && NODE_NOTE_TYPES.indexOf(r.type) >= 0 && !hasVisitRef(r) &&
+      !!r.nodeId && !!r.circuitId && !hasCarryFields(r);
+  }
   function isDistrictNote(r) {
-    return !!r && DISTRICT_NOTE_TYPES.indexOf(r.type) >= 0 && !hasVisitRef(r) &&
-      !!r.nodeId && r.nodeId === r.circuitId && !hasCarryFields(r);
+    return isNodeNoteRow(r) && r.nodeId === r.circuitId;
   }
-  function cleanNoteBody(body) {
-    if (typeof body !== 'string' || !body.trim()) throw new Error('journal-district-note-empty');
+  function cleanNoteBody(body, prefix) {
+    if (typeof body !== 'string' || !body.trim()) throw new Error(prefix + '-empty');
     return body.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
-  }
-  async function districtNoteOrThrow(id) {
-    var r = await entriesBase.get(id);
-    if (!isDistrictNote(r)) throw new Error('journal-district-note-not-found');
-    return r;
   }
   function sortNotes(list) {
     return list.slice().sort(function (a, b) {
@@ -1948,58 +1952,83 @@
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
   }
-  var districtNotes = {
-    TYPES: DISTRICT_NOTE_TYPES.slice(),
-    isDistrictNote: isDistrictNote,
-    get: async function (id) {
-      var r = await entriesBase.get(id);
-      return isDistrictNote(r) ? r : null;
-    },
-    list: async function (circuitId) {
-      if (!circuitId) return [];
-      return sortNotes((await entriesBase.by('nodeId', circuitId)).filter(isDistrictNote));
-    },
-    add: async function (circuitId, record) {
-      record = record || {};
-      if (DISTRICT_NOTE_TYPES.indexOf(record.type) === -1) throw new Error('journal-district-note-invalid-type');
-      var node = circuitId ? await nodesBase.get(circuitId) : null;
-      if (!node || node.kind !== 'circuit') throw new Error('journal-node-not-found');
-      if (node.status === 'archived') throw new Error('journal-district-note-readonly');
-      return entriesBase.add({
-        type: record.type,
-        nodeId: node.id,
-        circuitId: node.id,
-        status: 'open',
-        body: cleanNoteBody(record.body),
-      });
-    },
-    update: async function (id, patch) {
-      patch = patch || {};
-      var r = await districtNoteOrThrow(id);
-      Object.keys(patch).forEach(function (k) {
-        if (k !== 'body' && k !== 'type') throw new Error('journal-district-note-immutable');
-      });
-      var out = {};
-      if ('type' in patch && patch.type !== r.type) {
-        if (DISTRICT_NOTE_TYPES.indexOf(patch.type) === -1) throw new Error('journal-district-note-invalid-type');
-        out.type = patch.type;
-      }
-      if ('body' in patch) {
-        var nextBody = cleanNoteBody(patch.body);
-        if (isProtected(r)) {
-          return writeProtectedText(r, { body: nextBody }, function (next) { Object.assign(next, out); });
+  /** kind — вид узла-владельца; prefix — префикс кодов ошибок фасада. */
+  function makeNodeNotes(kind, prefix) {
+    async function ownerOf(r) {
+      if (!isNodeNoteRow(r)) return null;
+      if (kind === 'circuit') return r.nodeId === r.circuitId ? r : null;
+      if (r.nodeId === r.circuitId) return null;
+      var n = await nodesBase.get(r.nodeId);
+      return n && n.kind === kind ? r : null;
+    }
+    async function noteOrThrow(id) {
+      var r = await ownerOf(await entriesBase.get(id));
+      if (!r) throw new Error(prefix + '-not-found');
+      return r;
+    }
+    return {
+      TYPES: NODE_NOTE_TYPES.slice(),
+      get: async function (id) {
+        return ownerOf(await entriesBase.get(id));
+      },
+      list: async function (ownerId) {
+        if (!ownerId) return [];
+        var node = await nodesBase.get(ownerId);
+        if (!node || node.kind !== kind) return [];
+        var rows = (await entriesBase.by('nodeId', ownerId)).filter(function (r) {
+          return isNodeNoteRow(r) && (kind === 'circuit' ? r.nodeId === r.circuitId : r.nodeId !== r.circuitId);
+        });
+        return sortNotes(rows);
+      },
+      add: async function (ownerId, record) {
+        record = record || {};
+        if (NODE_NOTE_TYPES.indexOf(record.type) === -1) throw new Error(prefix + '-invalid-type');
+        var node = ownerId ? await nodesBase.get(ownerId) : null;
+        if (!node || node.kind !== kind || !node.circuitId) throw new Error('journal-node-not-found');
+        if (node.status === 'archived') throw new Error(prefix + '-readonly');
+        if (node.circuitId !== node.id) {
+          var circuit = await nodesBase.get(node.circuitId);
+          if (!circuit || circuit.status === 'archived') throw new Error(prefix + '-readonly');
         }
-        out.body = nextBody;
-      }
-      if (!Object.keys(out).length) return r;
-      return entriesBase.update(id, out);
-    },
-    remove: async function (id) {
-      var r = await districtNoteOrThrow(id);
-      await assertRemovable(r, 'journal-district-note-has-links');
-      return entriesBase.remove(id);
-    },
-  };
+        return entriesBase.add({
+          type: record.type,
+          nodeId: node.id,
+          circuitId: node.circuitId,
+          status: 'open',
+          body: cleanNoteBody(record.body, prefix),
+        });
+      },
+      update: async function (id, patch) {
+        patch = patch || {};
+        var r = await noteOrThrow(id);
+        Object.keys(patch).forEach(function (k) {
+          if (k !== 'body' && k !== 'type') throw new Error(prefix + '-immutable');
+        });
+        var out = {};
+        if ('type' in patch && patch.type !== r.type) {
+          if (NODE_NOTE_TYPES.indexOf(patch.type) === -1) throw new Error(prefix + '-invalid-type');
+          out.type = patch.type;
+        }
+        if ('body' in patch) {
+          var nextBody = cleanNoteBody(patch.body, prefix);
+          if (isProtected(r)) {
+            return writeProtectedText(r, { body: nextBody }, function (next) { Object.assign(next, out); });
+          }
+          out.body = nextBody;
+        }
+        if (!Object.keys(out).length) return r;
+        return entriesBase.update(id, out);
+      },
+      remove: async function (id) {
+        var r = await noteOrThrow(id);
+        await assertRemovable(r, prefix + '-has-links');
+        return entriesBase.remove(id);
+      },
+    };
+  }
+  var districtNotes = makeNodeNotes('circuit', 'journal-district-note');
+  districtNotes.isDistrictNote = isDistrictNote;
+  var congregationNotes = makeNodeNotes('congregation', 'journal-cong-note');
 
   var meta = {
     get: function (id) { return db().journalMeta.get(id); },
@@ -2335,6 +2364,8 @@
   ['get', 'list', 'byCircuit', 'forTarget'].forEach(function (k) { projects[k] = revealing(projects[k]); });
   districtNotes.get = revealing(districtNotes.get);
   districtNotes.list = revealing(districtNotes.list);
+  congregationNotes.get = revealing(congregationNotes.get);
+  congregationNotes.list = revealing(congregationNotes.list);
   var relatedRaw = projects.related;
   projects.related = async function (projectId) {
     var out = await relatedRaw(projectId);
@@ -2486,6 +2517,7 @@
     overview: overview,
     projects: projects,
     districtNotes: districtNotes,
+    congregationNotes: congregationNotes,
     meta: meta,
     protection: protection,
     urn: urn,

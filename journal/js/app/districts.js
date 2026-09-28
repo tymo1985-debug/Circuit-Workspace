@@ -460,21 +460,24 @@
     applyCongregationTab(node);
   }
 
-  /* ═══ Вкладки собрания: «Обзор» (J3b) и «Посещения» (J4a) ═════════════ */
+  /* ═══ Вкладки собрания: «Обзор» (J3b), «Посещения» (J4a), «Записи» ═══════ */
   function applyCongregationTab(node) {
     var state = parseHash();
-    var tab = state.congTab === 'visits' ? 'visits' : 'overview';
+    var tab = state.congTab === 'visits' || state.congTab === 'entries' ? state.congTab : 'overview';
     $all('#congregationDetailView [data-cong-tab]').forEach(function (btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-cong-tab') === tab);
+      var btnTab = btn.getAttribute('data-cong-tab');
+      btn.classList.toggle('active', btnTab === tab);
       btn.onclick = function () {
-        location.hash = btn.getAttribute('data-cong-tab') === 'visits'
-          ? CWJournalRoute.build.visits(node.circuitId, node.id)
+        location.hash = btnTab === 'visits' ? CWJournalRoute.build.visits(node.circuitId, node.id)
+          : btnTab === 'entries' ? CWJournalRoute.build.congEntries(node.circuitId, node.id)
           : CWJournalRoute.build.congregation(node.circuitId, node.id);
       };
     });
     $('#congOverviewPanel').hidden = tab !== 'overview';
     $('#congVisitsPanel').hidden = tab !== 'visits';
+    $('#congEntriesPanel').hidden = tab !== 'entries';
     if (tab === 'visits') renderCongregationVisits(node);
+    if (tab === 'entries') renderCongregationNotes(node);
 
     // «Задачи»/«Архив» здесь — не отдельные панели этой карточки (своего
     // хранилища/фильтра по собранию нет, J5/J6 держат только уровень
@@ -864,11 +867,14 @@
     };
   }
 
-  /* ═══ Вкладка «Записи» района: заметки и вопросы (CWJournal.districtNotes) ═══
-   * Список — только чтение раскрытых копий; правка — диалог #noteDialog.
-   * Защищённая запись при заблокированной сессии открывается через
-   * разблокировку (перерисовка — по смене блокировки). */
+  /* ═══ Вкладка «Записи» района и собрания: заметки и вопросы ═══════════════
+   * Район — CWJournal.districtNotes, собрание — CWJournal.congregationNotes
+   * (одна форма строки и одни правила, см. data.js). Список — только чтение
+   * раскрытых копий; правка — общий диалог #noteDialog. Защищённая запись при
+   * заблокированной сессии открывается через разблокировку (перерисовка — по
+   * смене блокировки). */
   var notesRenderSeq = 0;
+  var congNotesRenderSeq = 0;
   var NOTE_ICON = {
     note: '<path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/>',
     question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>',
@@ -879,20 +885,32 @@
     catch (_) { return String(iso || '').slice(0, 10); }
   }
 
-  async function renderDistrictNotes(circuit) {
-    var mine = ++notesRenderSeq;
-    var list = await CWJournal.districtNotes.list(circuit.id);
-    if (mine !== notesRenderSeq) return;
-    var readonly = circuit.status === 'archived';
-    $('#districtNewNote').disabled = readonly;
-    $('#districtNewQuestion').disabled = readonly;
-    $('#districtNotesCount').textContent = String(list.length);
-    var box = $('#districtNotesList');
+  /** Контекст записей узла: фасад, «только чтение» и подписи. Район — сам
+   *  узел; собрание — только чтение, если в архиве оно или его район. */
+  async function noteScope(node) {
+    if (node.kind === 'circuit') {
+      return { node: node, facade: CWJournal.districtNotes, readonly: node.status === 'archived',
+        editKey: 'j.dnote.edit', readonlyKey: 'j.error.district_note_readonly',
+        emptyTitleKey: 'j.dnote.empty_title', emptyTextKey: 'j.dnote.empty_text' };
+    }
+    var circuit = await CWJournal.nodes.get(node.circuitId);
+    return { node: node, facade: CWJournal.congregationNotes,
+      readonly: node.status === 'archived' || !circuit || circuit.status === 'archived',
+      editKey: 'j.cnote.edit', readonlyKey: 'j.error.cong_note_readonly',
+      emptyTitleKey: 'j.cnote.empty_title', emptyTextKey: 'j.cnote.empty_text' };
+  }
+
+  /** Список записей в контейнер; ids — { list, count, newNote, newQuestion }. */
+  function paintNotes(scope, list, ids) {
+    $('#' + ids.newNote).disabled = scope.readonly;
+    $('#' + ids.newQuestion).disabled = scope.readonly;
+    $('#' + ids.count).textContent = String(list.length);
+    var box = $('#' + ids.list);
     if (!list.length) {
       box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
         svg(NOTE_ICON.note, 'width="32" height="32"') + '</div>' +
-        '<p class="md-emptystate__title">' + esc(t('j.dnote.empty_title')) + '</p>' +
-        '<p class="md-emptystate__text">' + esc(t('j.dnote.empty_text')) + '</p></div>';
+        '<p class="md-emptystate__title">' + esc(t(scope.emptyTitleKey)) + '</p>' +
+        '<p class="md-emptystate__text">' + esc(t(scope.emptyTextKey)) + '</p></div>';
       return;
     }
     var frag = document.createDocumentFragment();
@@ -911,19 +929,34 @@
       body.appendChild(title); body.appendChild(meta);
       var open = function () {
         if (isLockedRow(r)) { requestUnlock(); return; }
-        openNoteDialog(circuit, r);
+        openNoteDialog(scope, r);
       };
       body.addEventListener('click', open);
       body.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); open(); } });
       row.appendChild(ico); row.appendChild(body);
       frag.appendChild(row);
     });
-    if (mine !== notesRenderSeq) return;
     box.replaceChildren(frag);
   }
 
-  /** Создание (row = null, type задан) или правка записи района. */
-  function openNoteDialog(circuit, row, type) {
+  async function renderDistrictNotes(circuit) {
+    var mine = ++notesRenderSeq;
+    var scope = await noteScope(circuit);
+    var list = await scope.facade.list(circuit.id);
+    if (mine !== notesRenderSeq) return;
+    paintNotes(scope, list, { list: 'districtNotesList', count: 'districtNotesCount', newNote: 'districtNewNote', newQuestion: 'districtNewQuestion' });
+  }
+
+  async function renderCongregationNotes(node) {
+    var mine = ++congNotesRenderSeq;
+    var scope = await noteScope(node);
+    var list = await scope.facade.list(node.id);
+    if (mine !== congNotesRenderSeq) return;
+    paintNotes(scope, list, { list: 'congNotesList', count: 'congNotesCount', newNote: 'congNewNote', newQuestion: 'congNewQuestion' });
+  }
+
+  /** Создание (row = null, type задан) или правка записи района/собрания. */
+  function openNoteDialog(scope, row, type) {
     var dlg = $('#noteDialog');
     var form = $('#noteDialogForm');
     var typeSel = $('#noteDialogType');
@@ -931,10 +964,10 @@
     var errEl = $('#noteDialogError');
     var del = $('#noteDialogDelete');
     var protBtn = $('#noteDialogProtect');
-    var readonly = circuit.status === 'archived';
+    var facade = scope.facade;
     var busy = false;
     var curType = row ? row.type : (type || 'note');
-    $('#noteDialogTitle').textContent = t(row ? 'j.dnote.edit' : curType === 'question' ? 'j.dnote.new_question' : 'j.dnote.new_note');
+    $('#noteDialogTitle').textContent = t(row ? scope.editKey : curType === 'question' ? 'j.dnote.new_question' : 'j.dnote.new_note');
     typeSel.value = curType;
     body.value = row ? String(row.body || '') : '';
     del.hidden = !row;
@@ -946,16 +979,16 @@
 
     function showError(msg) { errEl.textContent = msg; errEl.hidden = false; }
     async function save() {
-      if (!row) return CWJournal.districtNotes.add(circuit.id, { type: typeSel.value, body: body.value });
+      if (!row) return facade.add(scope.node.id, { type: typeSel.value, body: body.value });
       var patch = {};
       if (typeSel.value !== row.type) patch.type = typeSel.value;
       if (body.value !== String(row.body || '')) patch.body = body.value;
-      if (Object.keys(patch).length) await CWJournal.districtNotes.update(row.id, patch);
+      if (Object.keys(patch).length) await facade.update(row.id, patch);
     }
     async function onSubmit(e) {
       e.preventDefault();
       if (busy) return;
-      if (readonly && !row) { showError(t('j.error.district_note_readonly')); return; }
+      if (scope.readonly && !row) { showError(t(scope.readonlyKey)); return; }
       if (!body.value.trim()) { showError(t('j.error.district_note_empty')); return; }
       busy = true;
       try { await save(); } catch (err) { busy = false; showError(errorMessage(err)); return; }
@@ -965,7 +998,7 @@
     async function onDelete() {
       if (!row || busy || !confirm(t('j.confirm.delete_record'))) return;
       busy = true;
-      try { await CWJournal.districtNotes.remove(row.id); } catch (err) { busy = false; showError(errorMessage(err)); return; }
+      try { await facade.remove(row.id); } catch (err) { busy = false; showError(errorMessage(err)); return; }
       busy = false;
       cleanup(); dlg.close(); refreshCurrentView();
     }
@@ -977,7 +1010,7 @@
       try { await save(); } catch (err) { busy = false; showError(errorMessage(err)); return; }
       busy = false;
       cleanup(); dlg.close();
-      var fresh = await CWJournal.districtNotes.get(row.id);
+      var fresh = await facade.get(row.id);
       if (fresh) await toggleProtection(fresh);
       refreshCurrentView();
     }
@@ -1020,7 +1053,10 @@
     var newBtn = target.closest('#districtNewNote, #districtNewQuestion');
     if (newBtn) {
       runAction(newBtn.id === 'districtNewQuestion' ? 'new-district-question' : 'new-district-note');
+      return;
     }
+    var congBtn = target.closest('#congNewNote, #congNewQuestion');
+    if (congBtn) runAction(congBtn.id === 'congNewQuestion' ? 'new-congregation-question' : 'new-congregation-note');
   });
 
   /* ═══ Создание района/собрания по FAB / пустому состоянию ═════════════ */
@@ -1035,8 +1071,18 @@
       var ns = parseHash();
       var circ = ns.circuitId ? await CWJournal.nodes.get(ns.circuitId) : null;
       if (!circ || circ.kind !== 'circuit') return;
-      if (circ.status === 'archived') { alert(t('j.error.district_note_readonly')); return; }
-      openNoteDialog(circ, null, action === 'new-district-question' ? 'question' : 'note');
+      var dScope = await noteScope(circ);
+      if (dScope.readonly) { alert(t(dScope.readonlyKey)); return; }
+      openNoteDialog(dScope, null, action === 'new-district-question' ? 'question' : 'note');
+      return;
+    }
+    if (action === 'new-congregation-note' || action === 'new-congregation-question') {
+      var cs = parseHash();
+      var cong = cs.congregationId ? await CWJournal.nodes.get(cs.congregationId) : null;
+      if (!cong || cong.kind !== 'congregation') return;
+      var cScope = await noteScope(cong);
+      if (cScope.readonly) { alert(t(cScope.readonlyKey)); return; }
+      openNoteDialog(cScope, null, action === 'new-congregation-question' ? 'question' : 'note');
       return;
     }
     if (action === 'new-visit') {

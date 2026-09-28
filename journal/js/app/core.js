@@ -174,6 +174,12 @@
       'journal-district-note-not-found': 'j.error.district_note_not_found',
       'journal-district-note-has-links': 'j.error.district_note_has_links',
       'journal-district-note-readonly': 'j.error.district_note_readonly',
+      'journal-cong-note-empty': 'j.error.district_note_empty',
+      'journal-cong-note-invalid-type': 'j.error.cong_note_type',
+      'journal-cong-note-immutable': 'j.error.cong_note_type',
+      'journal-cong-note-not-found': 'j.error.district_note_not_found',
+      'journal-cong-note-has-links': 'j.error.district_note_has_links',
+      'journal-cong-note-readonly': 'j.error.cong_note_readonly',
       'journal-planner-use-facade': 'j.error.planner_use_facade',
       'journal-planner-invalid-id': 'j.error.planner_invalid_id',
       'journal-planner-changed': 'j.error.planner_changed',
@@ -326,6 +332,7 @@
       return CWJournalRoute.build.visits(circuitId, cong.id);
     }
     if (node.kind === 'circuit') return kind === 'entry' ? CWJournalRoute.build.circuitTab(node.id, 'entries') : CWJournalRoute.build.circuit(node.id);
+    if (kind === 'entry' && node.kind === 'congregation') return CWJournalRoute.build.congEntries(circuitId, node.id);
     if (cong) return CWJournalRoute.build.congregation(circuitId, cong.id);
     return CWJournalRoute.build.circuit(circuitId);
   }

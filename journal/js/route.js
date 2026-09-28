@@ -11,6 +11,7 @@
  *        tab: congregations | entries | tasks | archive (DISTRICT_TABS)
  *   #districts/<c>/congregation/<n>                         → собрание, «Обзор»
  *   #districts/<c>/congregation/<n>/visits                  → собрание, «Посещения»
+ *   #districts/<c>/congregation/<n>/entries                 → собрание, «Записи»
  *   #districts/<c>/congregation/<n>/visit/<v>               → посещение
  *   #districts/<c>/project/<p>                              → проект района (J7)
  *
@@ -69,6 +70,8 @@
 
     if (parts[4] === 'visits' && parts.length === 5) {
       state.congTab = 'visits';
+    } else if (parts[4] === 'entries' && parts.length === 5) {
+      state.congTab = 'entries';
     } else if (parts[4] === 'visit') {
       var v = parts[5] ? dec(parts[5]) : null;
       if (v && parts.length === 6) state.visitId = v;
@@ -88,6 +91,7 @@
     },
     congregation: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n); },
     visits: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visits'; },
+    congEntries: function (c, n) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/entries'; },
     visit: function (c, n, v) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visit/' + enc(v); },
     project: function (c, p) { return '#districts/' + enc(c) + '/project/' + enc(p); },
     task: function (id) { return typeof id === 'string' && TASK_ID.test(id) ? '#tasks/' + enc(id) : '#tasks'; },

@@ -39,7 +39,7 @@
   var PLAIN_CONTAINERS = [
     'overviewCarry', 'overviewTasks', 'overviewProjects',
     'tasksList', 'districtProjectsList', 'congProjectsList',
-    'districtNotesList', 'districtTasksList', 'districtArchiveList',
+    'districtNotesList', 'congNotesList', 'districtTasksList', 'districtArchiveList',
     'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry',
     'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems',
     'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist',

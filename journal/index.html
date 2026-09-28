@@ -260,7 +260,7 @@
             <div class="md-segmented j-tabs">
               <button type="button" class="active" data-cong-tab="overview" data-i18n="j.nav.overview">Обзор</button>
               <button type="button" data-cong-tab="visits" data-i18n="j.tab.visits">Посещения</button>
-              <button type="button" data-i18n="j.tab.entries" disabled>Записи</button>
+              <button type="button" data-cong-tab="entries" data-i18n="j.tab.entries">Записи</button>
               <button type="button" data-cong-link="tasks" data-i18n="j.nav.tasks">Задачи</button>
               <button type="button" data-cong-link="archive" data-i18n="j.nav.archive">Архив</button>
             </div>
@@ -350,6 +350,22 @@
             <div id="congProjectsList"></div>
           </div>
 
+          </div>
+
+          <!-- Вкладка «Записи» собрания: заметки и вопросы самого собрания
+               (CWJournal.congregationNotes), та же форма строки, что у района. -->
+          <div id="congEntriesPanel" hidden>
+            <div class="j-sec">
+              <div class="j-sec__head">
+                <span class="j-sec__title" data-i18n="j.card.cong_entries_title">Записи собрания</span>
+                <span class="j-sec__count" id="congNotesCount"></span>
+              </div>
+              <div class="j-chip-row j-dnote__actions">
+                <button type="button" class="md-btn md-btn-tonal" id="congNewNote" data-i18n="j.dnote.new_note">Новая заметка</button>
+                <button type="button" class="md-btn md-btn-tonal" id="congNewQuestion" data-i18n="j.dnote.new_question">Новый вопрос</button>
+              </div>
+              <div id="congNotesList"></div>
+            </div>
           </div>
 
           <!-- Вкладка «Посещения» (J4a): реальные посещения узла из
