@@ -105,7 +105,12 @@ for (const id of registry) {
 /* --- Раскладка -----------------------------------------------------------
    Повторяем правило страницы и показываем, как ляжет плата: это не проверка,
    а материал для глаз при добавлении модуля. */
-const wideCols = (n) => (n % 4 === 1 ? 3 : 4);
+const wideCols = (n) => {
+  if (n <= 6) return Math.max(n, 1);
+  let cols = 6;
+  while (cols > 3 && n % cols === 1) cols--;
+  return cols;
+};
 const rowSizes = (total, cols) => {
   const sizes = [];
   for (let left = total; left > 0; left -= cols) sizes.push(Math.min(cols, left));

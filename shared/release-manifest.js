@@ -26,9 +26,13 @@ self.CW_RELEASE = {
   // Версия релиза хаба, к которому относится этот список — должна совпадать
   // с CW_VERSION в момент выпуска. Если не совпадает, значит файл забыли
   // перезаписать в эту сборку.
-  version: '0.41.91',
+  version: '0.42.0',
   changes: [
-    { module: 'journal', version: '0.16.0', note: 'Вкладки района работают: Собрания, Записи (новые заметки и вопросы района), Задачи и Архив района' },
-    { module: 'hub', version: '0.41.91', note: 'Версия поднята вместе с Журналом', technical: true },
+    { module: 'hub', version: '0.42.0', note: 'Главная упрощена: строка статуса вместо заголовка, все модули одним рядом компактных плиток, резервная копия и отправитель — короткими строками' },
+    { module: 'congress-project', version: '4.46.112', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'pioneer-school', version: '1.14.87', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'appointments', version: '5.5.126', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'documents', version: '1.11.36', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'journal', version: '0.16.1', note: 'Версия поднята вместе с хабом', technical: true },
   ],
 };

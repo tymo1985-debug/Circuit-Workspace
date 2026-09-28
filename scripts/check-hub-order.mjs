@@ -46,7 +46,7 @@ function boot(storage, markup = MARKUP) {
   w.eval(BLOCK);
   const save = () => { const s = {}; for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); s[k] = w.localStorage.getItem(k); } return s; };
   const dom_ = (sel, attr) => [...w.document.querySelector(sel).children]
-    .filter((el) => !el.className.includes('cw-rib') && (attr === 'id' ? el.id : el.getAttribute(attr)))
+    .filter((el) => (attr === 'id' ? el.id : el.getAttribute(attr)))
     .map((el) => attr === 'id' ? el.id : el.getAttribute(attr));
   return {
     w, O: w.CWHubOrder, save,
