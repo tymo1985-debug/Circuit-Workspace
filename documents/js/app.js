@@ -187,8 +187,10 @@
     { key: 'custom', label: 'doc.filter_custom' },
   ];
 
+  /* Модульные чипы убраны: список сгруппирован по модулям (renderList).
+     Остался один переключатель «Изменённые» — state.filter 'custom' ↔ 'all'. */
   function renderFilters() {
-    $('#filters').innerHTML = FILTERS.map(function (f) {
+    $('#filters').innerHTML = FILTERS.filter(function (f) { return f.key === 'custom'; }).map(function (f) {
       var on = state.filter === f.key;
       return '<button type="button" class="md-chip' + (on ? ' selected' : '') + '"'
         + ' aria-pressed="' + on + '" data-filter="' + f.key + '">' + escapeHtml(t(f.label)) + '</button>';
@@ -216,7 +218,27 @@
       $('#list').innerHTML = '<div class="md-empty">' + escapeHtml(t('doc.nothing_found')) + '</div>';
       return;
     }
-    $('#list').innerHTML = rows.map(function (tpl) {
+    var groups = [], byKey = {};
+    rows.forEach(function (tpl) {
+      var k = tpl.module || '';
+      if (!byKey[k]) { byKey[k] = { key: k, label: moduleLabel(tpl) || '—', rows: [] }; groups.push(byKey[k]); }
+      byKey[k].rows.push(tpl);
+    });
+    /* Раскрыта по умолчанию первая группа; при поиске/фильтре — все.
+       Выбор пользователя помнится в пределах сессии (openGroups). */
+    var forceOpen = !!state.search || state.filter !== 'all';
+    if (!state.openGroups) { state.openGroups = {}; if (groups[0]) state.openGroups[groups[0].key] = true; }
+    $('#list').innerHTML = groups.map(function (g) {
+      var open = forceOpen || !!state.openGroups[g.key];
+      return '<details class="doc-group" data-group="' + escapeHtml(g.key) + '"' + (open ? ' open' : '') + '>'
+        + '<summary class="doc-group__head"><span class="doc-group__name">' + escapeHtml(g.label) + '</span>'
+        + '<span class="doc-group__count">' + g.rows.length + '</span></summary>'
+        + '<div class="doc-group__rows">' + g.rows.map(rowHtml).join('') + '</div></details>';
+    }).join('');
+  }
+
+  function rowHtml(tpl) {
+    {
       var kind = kindOf(tpl);
       var tr = tpl.translations || {};
       var pills = Object.keys(tr).map(function (lang) {
@@ -225,16 +247,16 @@
           + escapeHtml(lang.toUpperCase()) + '</span>';
       }).join('');
       var pages = (tpl.pages || []).length;
-      var meta = [escapeHtml(t(kind.key)), moduleLabel(tpl)].filter(Boolean).join(' · ')
+      var meta = escapeHtml(t(kind.key))
         + (pages ? ' · ' + escapeHtml(t('doc.extra_pages', { n: pages })) : '');
       return '<button type="button" class="doc-row" data-open="' + escapeHtml(tpl.id) + '">'
         + '<span class="doc-row__icon" aria-hidden="true">' + icon(kind.icon) + '</span>'
         + '<span><span class="doc-row__name">' + escapeHtml(nameOf(tpl)) + '</span>'
         + '<span class="doc-row__meta">' + escapeHtml(meta) + '</span>'
         + '<span class="doc-row__langs">' + pills + '</span></span>'
-        + '<span class="md-chip">' + escapeHtml(t(tpl.custom ? 'doc.badge_custom' : 'doc.badge_system')) + '</span>'
+        + '<span class="doc-status doc-status--' + (tpl.custom ? 'custom' : 'system') + '">' + escapeHtml(t(tpl.custom ? 'doc.badge_custom' : 'doc.badge_system')) + '</span>'
         + '</button>';
-    }).join('');
+    }
   }
 
   /* ─────────────────────────  Архив  ─────────────────────────
@@ -1305,10 +1327,20 @@
     $('#filters').addEventListener('click', function (e) {
       var btn = e.target.closest('[data-filter]');
       if (!btn) return;
-      state.filter = btn.dataset.filter;
+      state.filter = (btn.dataset.filter === state.filter) ? 'all' : btn.dataset.filter;
       renderFilters();
       renderList();
     });
+
+    /* toggle не всплывает — ловим на capture. Помним выбор только когда
+       группы не раскрыты принудительно (поиск/фильтр). */
+    $('#list').addEventListener('toggle', function (e) {
+      var d = e.target;
+      if (!d.matches || !d.matches('details.doc-group')) return;
+      if (state.search || state.filter !== 'all') return;
+      state.openGroups = state.openGroups || {};
+      state.openGroups[d.dataset.group] = d.open;
+    }, true);
 
     $('#search').addEventListener('input', function (e) {
       state.search = e.target.value.trim();

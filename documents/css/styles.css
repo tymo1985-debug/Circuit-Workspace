@@ -41,7 +41,8 @@ body {
    #docLang — обычный видимый компактный select: показывает текущий код
    языка (UK/RU/DE/PL/EN, уже в верхнем регистре — initDocLangSelect() в
    js/app.js, не менялось), никакой прозрачной подложки.
-   #uiLanguage — единственный, что остаётся icon-only: настоящий <select>
+   (28.09.2026: #uiLanguage убран из шапки — язык интерфейса выбирается в хабе.)
+   #uiLanguage — был единственным icon-only: настоящий <select>
    растянут прозрачно (opacity:0, inset:0) на весь квадрат иконки-глобуса —
    вся площадь кликабельна/тач-таргет, открывает тот же нативный picker,
    что и раньше. Иконка — просто фон, сама не нажимается (select лежит
@@ -101,6 +102,34 @@ body {
 
 /* ─── Библиотека ─── */
 .doc-list { display: grid; gap: 12px; }
+.doc-group { border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); background: var(--md-surface-container-low); overflow: hidden; }
+.doc-group__head {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer;
+  list-style: none; font: 600 15px/20px var(--md-font-family); color: var(--md-on-surface);
+}
+.doc-group__head::-webkit-details-marker { display: none; }
+.doc-group__head::before {
+  content: ''; width: 8px; height: 8px; flex: none; margin: 0 4px 0 2px;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg); transition: transform .15s;
+}
+.doc-group[open] > .doc-group__head::before { transform: rotate(45deg); }
+.doc-group__head:focus-visible { outline: 2px solid var(--md-primary); outline-offset: -2px; }
+.doc-group__name { flex: 1; min-width: 0; }
+.doc-group__count { font: 500 12.5px/1 var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.doc-group__rows { border-top: 1px solid var(--md-outline-variant); }
+.doc-group .doc-row {
+  border: 0; border-radius: 0; background: transparent; padding: 10px 16px;
+  grid-template-columns: 36px 1fr auto;
+}
+.doc-group .doc-row + .doc-row { border-top: 1px solid var(--md-outline-variant); }
+.doc-group .doc-row:hover { background: var(--md-surface-container); }
+.doc-group .doc-row__icon { width: 36px; height: 36px; }
+.doc-group .doc-row__icon svg { width: 18px; height: 18px; }
+.doc-status { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--md-font-family); color: var(--md-on-surface-variant); white-space: nowrap; }
+.doc-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--md-outline); }
+.doc-status--custom { color: var(--md-tertiary, var(--md-primary)); }
+.doc-status--custom::before { background: currentColor; }
 .doc-row {
   display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center;
   width: 100%; text-align: left;
