@@ -475,6 +475,16 @@
     $('#congOverviewPanel').hidden = tab !== 'overview';
     $('#congVisitsPanel').hidden = tab !== 'visits';
     if (tab === 'visits') renderCongregationVisits(node);
+
+    // «Задачи»/«Архив» здесь — не отдельные панели этой карточки (своего
+    // хранилища/фильтра по собранию нет, J5/J6 держат только уровень
+    // района): кнопки ведут на уже рабочую вкладку района, ту же самую,
+    // что и в «Районы → <район> → Задачи/Архив».
+    $all('#congregationDetailView [data-cong-link]').forEach(function (btn) {
+      btn.onclick = function () {
+        location.hash = CWJournalRoute.build.circuitTab(node.circuitId, btn.getAttribute('data-cong-link'));
+      };
+    });
   }
 
   /** Три взаимоисключающих состояния карточки идентичности — см.
