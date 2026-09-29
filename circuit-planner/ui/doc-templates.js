@@ -213,8 +213,22 @@
   function setLetterTemplateFor(suffix, html) {
     docSave('letter', suffix, 'letterTemplate', html);
   }
+  /* Тело письма уходит адресату как ПРОСТОЙ текст (textarea → mailto), а
+     системный шаблон с 02.09.2026 хранится как html (<p>…</p>). Без
+     перевода в текст теги попадали в поле и в само письмо. Идемпотентно:
+     текст без тегов возвращается как есть. DOMParser не грузит ресурсы и
+     не исполняет скрипты. */
+  function emailToPlain(value) {
+    const src = String(value == null ? '' : value);
+    if (!/<\/?(p|br|div|span|b|i|u|strong|em|ul|ol|li|a)\b[^>]*>/i.test(src)) return src;
+    const marked = src
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li)>/gi, '\n\n');
+    const doc = new DOMParser().parseFromString(marked, 'text/html');
+    return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  }
   function getEmailBodyFor(suffix) {
-    return docText('email', suffix, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[suffix]);
+    return emailToPlain(docText('email', suffix, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[suffix]));
   }
   function getSalutationFor(suffix) {
     return docText('salutation', suffix, 'letterSalutation', DEFAULT_LETTER_SALUTATIONS[suffix]);
@@ -223,6 +237,6 @@
   Object.assign(App.ui, {
     docCtx, docId, docsReady, docLang, docText, docSave, docReset, docPages,
     docSavePages, adoptDocuments, getLetterTemplateFor, setLetterTemplateFor,
-    getEmailBodyFor, getSalutationFor,
+    getEmailBodyFor, getSalutationFor, emailToPlain,
   });
 });

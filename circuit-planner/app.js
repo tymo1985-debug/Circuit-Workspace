@@ -3660,7 +3660,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             context: this.docCtx('email', suffix),
             subject: entry.subject || this.buildLetterSubject(entry, event),
             bodyHtml: null,
-            bodyText: entry.emailBody || this.substitutePlaceholders(this.getEmailBodyFor(suffix), entry, event),
+            bodyText: App.ui.emailToPlain(entry.emailBody) || this.substitutePlaceholders(this.getEmailBodyFor(suffix), entry, event),
             pages: [],
           };
         }
@@ -3920,8 +3920,24 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // visit later shows what was written before. Only a brand-new (never-edited) visit falls
         // back to the type-specific default template configured in Settings.
         if (App.els.letterEmailBodyInput) {
-          const defaultTemplate = App.ui.getEmailBodyFor(suffix);
-          App.els.letterEmailBodyInput.value = entry.emailBody || this.substitutePlaceholders(defaultTemplate, entry, event);
+          /* Черновики, сохранённые с html-тегами до правки, чистим при открытии. */
+          if (entry.emailBody) {
+            const plain = App.ui.emailToPlain(entry.emailBody);
+            if (plain !== entry.emailBody) { entry.emailBody = plain; App.store.save(); }
+          }
+          const fillEmailBody = () => {
+            App.els.letterEmailBodyInput.value = entry.emailBody || this.substitutePlaceholders(App.ui.getEmailBodyFor(suffix), entry, event);
+          };
+          fillEmailBody();
+          /* Хранилище шаблонов читается один раз при загрузке страницы, а текст
+             письма правят в «Документах». Перечитываем при открытии окна, иначе
+             правка там не видна, пока Клиндарий не перезапущен. Черновик записи
+             не трогаем — только если его ещё нет. */
+          if (!entry.emailBody && self.CWTemplates && self.CWTemplates.reload) {
+            self.CWTemplates.reload().then(() => {
+              if (App.state.letterEntryId === entry.id && !entry.emailBody) fillEmailBody();
+            }).catch(() => {});
+          }
         }
         if (App.els.letterSubjectInput) App.els.letterSubjectInput.value = entry.subject || this.buildLetterSubject(entry, event);
         const extraPages = App.ui.docPages(suffix);
@@ -4383,12 +4399,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
            приложения, и её текст обязан остаться неизменным. */
         App.ui.snapshotLetterDoc(entry, event, 'print');
       });
-      App.els.letterEmailBodyResetToDefaultBtn?.addEventListener('click', () => {
+      App.els.letterEmailBodyResetToDefaultBtn?.addEventListener('click', async () => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
         const suffix = App.ui.letterTypeSuffix(event?.visitType);
         if (!window.confirm(App.utils.t('letter_reset_confirm'))) return;
+        /* «Текущий текст по умолчанию» = то, что сейчас в «Документах». */
+        if (self.CWTemplates && self.CWTemplates.reload) { try { await self.CWTemplates.reload(); } catch (e) { /* остаётся прежний кэш */ } }
         const defaultTemplate = App.ui.getEmailBodyFor(suffix);
         const fresh = App.ui.substitutePlaceholders(defaultTemplate, entry, event);
         if (App.els.letterEmailBodyInput) App.els.letterEmailBodyInput.value = fresh;

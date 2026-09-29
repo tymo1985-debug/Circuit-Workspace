@@ -298,6 +298,20 @@
     var wanted = tr[lang];
     if (wanted && wanted.body) return { lang: lang, entry: wanted, pending: false };
     var langs = Object.keys(tr);
+    /* Правленый шаблон без колонки запрошенного языка: сначала колонка, текст
+       которой пользователь действительно менял. Иначе первой шла системная
+       копия (её save() дописывает в запись при первой правке), и правка на
+       другом языке терялась — письмо уходило системным текстом. */
+    if (tpl.custom) {
+      var base = builtinById(tpl.id);
+      var btr = (base && base.translations) || {};
+      for (var c = 0; c < langs.length; c++) {
+        var own = tr[langs[c]];
+        if (own && own.body && (!btr[langs[c]] || btr[langs[c]].body !== own.body)) {
+          return { lang: langs[c], entry: own, pending: true };
+        }
+      }
+    }
     for (var i = 0; i < langs.length; i++) {
       var entry = tr[langs[i]];
       if (entry && entry.body) return { lang: langs[i], entry: entry, pending: true };
