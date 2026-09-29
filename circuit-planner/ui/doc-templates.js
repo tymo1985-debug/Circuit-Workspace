@@ -50,10 +50,10 @@
    * отката; `fallback` — системный текст на случай, если нет ни того, ни
    * другого.
    */
-  function docText(kind, suffix, settingsKey, fallback) {
+  function docText(kind, suffix, settingsKey, fallback, langOverride) {
     let found = null;
     if (docsReady()) {
-      found = self.CWTemplates.text(docCtx(kind, suffix), docLang());
+      found = self.CWTemplates.text(docCtx(kind, suffix), langOverride || docLang());
       /* Признак «правил пользователь» — `custom`, а НЕ непустое тело:
          `CWTemplates.text()` идёт через `effective()` и при отсутствии
          пользовательской записи отдаёт СИСТЕМНЫЙ шаблон, тело у которого
@@ -227,8 +227,28 @@
     const doc = new DOMParser().parseFromString(marked, 'text/html');
     return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
   }
-  function getEmailBodyFor(suffix) {
-    return emailToPlain(docText('email', suffix, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[suffix]));
+  function getEmailBodyFor(suffix, lang) {
+    return emailToPlain(docText('email', suffix, 'emailBody', DEFAULT_EMAIL_BODY_TEMPLATES[suffix], lang));
+  }
+  /* Текст e-mail на выбранном языке + язык, на котором он РЕАЛЬНО найден:
+     если в «Документах» для этого языка текста нет, хранилище отдаёт другую
+     колонку (`pending`), и окно письма обязано это показать, а не молча
+     подсунуть чужой язык. */
+  function emailBodyInfo(suffix, lang) {
+    const want = lang || docLang();
+    if (docsReady()) {
+      const found = self.CWTemplates.text(docCtx('email', suffix), want);
+      if (found && found.body && found.custom) {
+        return { body: emailToPlain(found.body), lang: found.lang, pending: !!found.pending };
+      }
+      const legacy = App.state.app.settings['emailBody' + suffix];
+      if (legacy) return { body: emailToPlain(legacy), lang: want, pending: false };
+      if (found && found.body) return { body: emailToPlain(found.body), lang: found.lang, pending: !!found.pending };
+    } else {
+      const legacy = App.state.app.settings['emailBody' + suffix];
+      if (legacy) return { body: emailToPlain(legacy), lang: want, pending: false };
+    }
+    return { body: emailToPlain(DEFAULT_EMAIL_BODY_TEMPLATES[suffix] || ''), lang: want, pending: false };
   }
   function getSalutationFor(suffix) {
     return docText('salutation', suffix, 'letterSalutation', DEFAULT_LETTER_SALUTATIONS[suffix]);
@@ -237,6 +257,6 @@
   Object.assign(App.ui, {
     docCtx, docId, docsReady, docLang, docText, docSave, docReset, docPages,
     docSavePages, adoptDocuments, getLetterTemplateFor, setLetterTemplateFor,
-    getEmailBodyFor, getSalutationFor, emailToPlain,
+    getEmailBodyFor, getSalutationFor, emailToPlain, emailBodyInfo,
   });
 });

@@ -353,6 +353,8 @@
     <div class="modal-card">
       <div class="modal-head"><div><h3 data-i18n="cp.letter_before_visit">✉ Письмо перед визитом</h3><div class="modal-sub" id="letterModalSub">—</div></div><button class="icon-btn" id="letterModalCloseBtn" type="button" aria-label="Закрыть" data-i18n-aria-label="cp.a_close">✕</button></div>
       <div data-i18n="cp.email_entry_hint" class="small" style="margin-bottom:10px">Текст самого email-сообщения для этого визита — сохраняется вместе с ним. Само письмо (PDF) и график визита прикладываются отдельными кнопками ниже — их текст редактируется в Настройках → Письмо.</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap"><label data-i18n="cp.email_lang" class="small" for="letterEmailLangSelect">Язык письма</label><select id="letterEmailLangSelect"><option value="uk">Українська</option><option value="ru">Русский</option><option value="de">Deutsch</option><option value="pl">Polski</option><option value="en">English</option></select></div>
+      <div class="small" id="letterEmailLangNote" style="margin-bottom:10px;color:var(--md-on-surface-variant)" hidden></div>
       <label data-i18n="cp.letter_subject" class="small" for="letterSubjectInput">Тема письма</label>
       <div style="display:flex;gap:6px;margin-top:6px;margin-bottom:14px"><input id="letterSubjectInput" type="text" style="flex:1" /><button class="icon-btn copy-btn" type="button" data-copy-input="letterSubjectInput" title="Скопировать тему" data-i18n-title="cp.a_copy_subject" aria-label="Скопировать тему" data-i18n-aria-label="cp.a_copy_subject">📋</button></div>
       <label data-i18n="cp.email_text" class="small" for="letterEmailBodyInput">Текст email-сообщения</label>

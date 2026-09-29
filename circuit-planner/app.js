@@ -133,6 +133,9 @@
     return tpl && Array.isArray(tpl.pages) ? JSON.parse(JSON.stringify(tpl.pages)) : [];
   }
 
+  /* Языки, на которых можно отправить письмо визита, и локали для дат. */
+  const EMAIL_LANGS = ['uk', 'ru', 'de', 'pl', 'en'];
+  const DOC_LOCALES = { uk: 'uk-UA', ru: 'ru-RU', de: 'de-DE', pl: 'pl-PL', en: 'en-GB' };
   const LETTER_SUBJECT_PARTS = {
     ru: { prefix: 'Посещение районного надзирателя', type: { Congregation: 'собрания', Group: 'группы', Pregroup: 'предгруппы' }, from: 'с', to: 'по' },
     uk: { prefix: 'Візит районного наглядача', type: { Congregation: 'збору', Group: 'групи', Pregroup: 'передгрупи' }, from: 'з', to: 'по' },
@@ -1791,7 +1794,7 @@
           'eventCongNumberInput','eventFormLanguageSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
-          'letterModal','letterModalSub','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
+          'letterModal','letterModalSub','letterEmailLangSelect','letterEmailLangNote','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
           'visitDocsModal','visitDocsSub','visitDocsList','visitDocsCloseBtn','visitDocsCloseBtn2',
           'composerModal','composerTitle','composerSub','composerSubject','composerPaper','composerCloseBtn',
           'composerEditBtn','composerCopySubjectBtn','composerCopyTextBtn','composerPrintBtn','composerPdfBtn','composerSaveBtn','composerPaperHead',
@@ -2882,6 +2885,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       // deliberately-authored text), the type's default email body template, and the salutation
       // line. Only if none of that yields any signal does it fall back to the UI language.
       detectLetterLanguage(entry, event) {
+        if (entry?.emailLang && EMAIL_LANGS.includes(entry.emailLang)) return entry.emailLang;
         if (event?.formLanguage) return event.formLanguage;
         const suffix = this.letterTypeSuffix(event?.visitType);
         const settings = App.state.app.settings;
@@ -2897,9 +2901,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }
         return settings.language || 'ru';
       },
-      buildLetterSubject(entry, event) {
+      buildLetterSubject(entry, event, langOverride) {
         if (!entry) return '';
-        const lang = this.detectLetterLanguage(entry, event);
+        const lang = langOverride || this.detectLetterLanguage(entry, event);
         const parts = LETTER_SUBJECT_PARTS[lang] || LETTER_SUBJECT_PARTS.ru;
         const suffix = this.letterTypeSuffix(event?.visitType);
         const typeLabel = parts.type[suffix];
@@ -3393,8 +3397,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        * Формат даты остаётся здесь — это свойство документа, а не движка:
        * письмо украинское независимо от языка интерфейса.
        */
-      letterData(entry, event) {
-        const ukDate = (d) => { const dt = new Date(d); return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' }); };
+      letterData(entry, event, lang) {
+        const locale = DOC_LOCALES[lang] || 'uk-UA';
+        const ukDate = (d) => { const dt = new Date(d); return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }); };
         return {
           congregation: {
             name: entry?.title || event?.name || '',
@@ -3438,6 +3443,40 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
            разметка пользователя и остаётся нетронутым. */
         return self.CWTemplates.render(tpl, this.letterData(entry, event), { escape: true });
       },
+      /* ── Язык и текст e-mail перед визитом ──────────────────────────────
+         Текст берётся из «Документов» (контекст visit.<тип>.email) на языке,
+         выбранном в окне письма и сохранённом в записи (`entry.emailLang`).
+         Пока адресат не правил текст вручную, `entry.emailBody` в записи НЕТ
+         и окно каждый раз читает актуальный шаблон; ручная правка сохраняется
+         в записи и шаблону больше не следует. Даты подставляются на языке
+         письма, а не на языке документа модуля. */
+      emailLangOf(entry, event) {
+        const lang = entry?.emailLang || event?.formLanguage || this.docLang();
+        return EMAIL_LANGS.includes(lang) ? lang : 'uk';
+      },
+      /** Готовый текст e-mail на языке `lang` (простой текст, без экранирования). */
+      emailTemplate(entry, event, lang) {
+        const suffix = this.letterTypeSuffix(event?.visitType);
+        const info = this.emailBodyInfo(suffix, lang);
+        const text = self.CWTemplates
+          ? self.CWTemplates.render(info.body, this.letterData(entry, event, lang), { escape: false })
+          : info.body;
+        return { text, lang: info.lang, pending: info.pending };
+      },
+      /** Совпадает ли сохранённый в записи текст с шаблоном (любым языком) — то есть не правился вручную. */
+      emailBodyIsDefault(entry, event) {
+        const body = String(entry?.emailBody || '').trim();
+        if (!body) return true;
+        const suffix = this.letterTypeSuffix(event?.visitType);
+        const raws = [];
+        EMAIL_LANGS.forEach((l) => raws.push(this.emailBodyInfo(suffix, l).body));
+        const tr = (builtinDoc('email', suffix) || {}).translations || {};
+        Object.keys(tr).forEach((k) => { if (tr[k] && tr[k].body) raws.push(this.emailToPlain(tr[k].body)); });
+        return EMAIL_LANGS.some((l) => raws.some((raw) => {
+          const text = self.CWTemplates ? self.CWTemplates.render(raw, this.letterData(entry, event, l), { escape: false }) : raw;
+          return String(text).trim() === body;
+        }));
+      },
       /* ═══════════════════════════════════════════════════════════════════
          АРХИВ ВЫДАННЫХ ДОКУМЕНТОВ (фаза 4 общего слоя документов)
 
@@ -3472,19 +3511,20 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
        * который получил адресат, иначе запись врёт (у нас уже так вышло на
        * прогоне: язык документа `en`, текст украинский).
        */
-      docActualLang(kind, suffix) {
+      docActualLang(kind, suffix, langOverride) {
+        const want = langOverride || this.docLang();
         if (this.docsReady() && self.CWTemplates) {
-          const found = self.CWTemplates.text(this.docCtx(kind, suffix), this.docLang());
+          const found = self.CWTemplates.text(this.docCtx(kind, suffix), want);
           /* Отвечать обязан ТОТ ЖЕ источник, из которого собран текст, иначе
              архив соврёт. Пользовательская запись — её язык; иначе, если текст
              взят из настроек модуля, язык там только запрошенный (колонок
              перевода у настроек нет); и лишь затем язык системного шаблона. */
           if (found && found.custom && found.lang) return found.lang;
           const legacyKey = { letter: 'letterTemplate', email: 'emailBody', salutation: 'letterSalutation' }[kind];
-          if (legacyKey && App.state.app.settings[legacyKey + suffix]) return this.docLang();
+          if (legacyKey && App.state.app.settings[legacyKey + suffix]) return want;
           if (found && found.lang) return found.lang;
         }
-        return this.docLang();
+        return want;
       },
       /** Когда шаблон правился в последний раз — чтобы отличить версии текста. */
       docTemplateUpdatedAt(kind, suffix) {
@@ -3529,7 +3569,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           templateId: this.docId('email', suffix),
           context: this.docCtx('email', suffix),
           title: App.utils.t('docs_kind_email'),
-          lang: this.docActualLang('email', suffix),
+          lang: this.docActualLang('email', suffix, this.emailLangOf(entry, event)),
           templateUpdatedAt: this.docTemplateUpdatedAt('email', suffix),
           format: 'text',
           subject: App.els.letterSubjectInput?.value || entry.subject || '',
@@ -3658,9 +3698,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           return {
             templateId: this.docId('email', suffix),
             context: this.docCtx('email', suffix),
-            subject: entry.subject || this.buildLetterSubject(entry, event),
+            subject: entry.subject || this.buildLetterSubject(entry, event, this.emailLangOf(entry, event)),
             bodyHtml: null,
-            bodyText: App.ui.emailToPlain(entry.emailBody) || this.substitutePlaceholders(this.getEmailBodyFor(suffix), entry, event),
+            bodyText: App.ui.emailToPlain(entry.emailBody) || this.emailTemplate(entry, event, this.emailLangOf(entry, event)).text,
             pages: [],
           };
         }
@@ -3920,26 +3960,37 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // visit later shows what was written before. Only a brand-new (never-edited) visit falls
         // back to the type-specific default template configured in Settings.
         if (App.els.letterEmailBodyInput) {
-          /* Черновики, сохранённые с html-тегами до правки, чистим при открытии. */
+          /* Черновик в записи — только если текст правили вручную. Совпадающий с
+             шаблоном (в том числе «залипший» от прежних версий) отбрасываем, иначе
+             письмо не следует ни за «Документами», ни за выбором языка. */
           if (entry.emailBody) {
             const plain = App.ui.emailToPlain(entry.emailBody);
-            if (plain !== entry.emailBody) { entry.emailBody = plain; App.store.save(); }
+            if (plain !== entry.emailBody) entry.emailBody = plain;
+            if (App.ui.emailBodyIsDefault(entry, event)) delete entry.emailBody;
+            App.store.save();
           }
-          const fillEmailBody = () => {
-            App.els.letterEmailBodyInput.value = entry.emailBody || this.substitutePlaceholders(App.ui.getEmailBodyFor(suffix), entry, event);
+          const fillEmail = () => {
+            const lang = App.ui.emailLangOf(entry, event);
+            const info = App.ui.emailTemplate(entry, event, lang);
+            App.els.letterEmailBodyInput.value = entry.emailBody || info.text;
+            if (App.els.letterEmailLangSelect) App.els.letterEmailLangSelect.value = lang;
+            if (App.els.letterEmailLangNote) {
+              const note = !entry.emailBody && info.pending ? App.utils.t('email_lang_pending', { lang: lang.toUpperCase(), shown: String(info.lang).toUpperCase() }) : '';
+              App.els.letterEmailLangNote.textContent = note;
+              App.els.letterEmailLangNote.hidden = !note;
+            }
           };
-          fillEmailBody();
+          fillEmail();
           /* Хранилище шаблонов читается один раз при загрузке страницы, а текст
-             письма правят в «Документах». Перечитываем при открытии окна, иначе
-             правка там не видна, пока Клиндарий не перезапущен. Черновик записи
-             не трогаем — только если его ещё нет. */
-          if (!entry.emailBody && self.CWTemplates && self.CWTemplates.reload) {
+             письма правят в «Документах» — перечитываем при открытии окна. */
+          if (self.CWTemplates && self.CWTemplates.reload) {
             self.CWTemplates.reload().then(() => {
-              if (App.state.letterEntryId === entry.id && !entry.emailBody) fillEmailBody();
+              if (App.state.letterEntryId === entry.id && !entry.emailBody) fillEmail();
             }).catch(() => {});
           }
+          this.fillEmailForLang = fillEmail;
         }
-        if (App.els.letterSubjectInput) App.els.letterSubjectInput.value = entry.subject || this.buildLetterSubject(entry, event);
+        if (App.els.letterSubjectInput) App.els.letterSubjectInput.value = entry.subject || this.buildLetterSubject(entry, event, this.emailLangOf(entry, event));
         const extraPages = App.ui.docPages(suffix);
         const totalPages = 1 + extraPages.length;
         if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = entry.visitForm ? App.utils.t('attach_letter_and_plan', { pages: totalPages }) : App.utils.t('attach_letter_only', { pages: totalPages });
@@ -4403,16 +4454,33 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
         if (!entry) return;
         const event = App.data.getEventById(entry.eventId);
-        const suffix = App.ui.letterTypeSuffix(event?.visitType);
         if (!window.confirm(App.utils.t('letter_reset_confirm'))) return;
         /* «Текущий текст по умолчанию» = то, что сейчас в «Документах». */
         if (self.CWTemplates && self.CWTemplates.reload) { try { await self.CWTemplates.reload(); } catch (e) { /* остаётся прежний кэш */ } }
-        const defaultTemplate = App.ui.getEmailBodyFor(suffix);
-        const fresh = App.ui.substitutePlaceholders(defaultTemplate, entry, event);
-        if (App.els.letterEmailBodyInput) App.els.letterEmailBodyInput.value = fresh;
-        entry.emailBody = fresh;
+        delete entry.emailBody;
         App.store.save();
+        App.ui.fillEmailForLang?.();
         App.utils.toast(App.utils.t('letter_reset_done'));
+      });
+      App.els.letterEmailLangSelect?.addEventListener('change', async (e) => {
+        const entry = App.state.app.entries.find((en) => en.id === App.state.letterEntryId);
+        if (!entry) return;
+        const event = App.data.getEventById(entry.eventId);
+        const oldLang = App.ui.emailLangOf(entry, event);
+        const newLang = e.target.value;
+        if (newLang === oldLang) return;
+        if (entry.emailBody && !App.ui.emailBodyIsDefault(entry, event) && !window.confirm(App.utils.t('letter_reset_confirm'))) {
+          e.target.value = oldLang;
+          return;
+        }
+        if (self.CWTemplates && self.CWTemplates.reload) { try { await self.CWTemplates.reload(); } catch (err) { /* прежний кэш */ } }
+        const oldSubject = App.ui.buildLetterSubject(entry, event, oldLang);
+        entry.emailLang = newLang;
+        delete entry.emailBody;
+        if (!entry.subject || entry.subject === oldSubject) delete entry.subject;
+        App.store.save();
+        App.ui.fillEmailForLang?.();
+        if (App.els.letterSubjectInput) App.els.letterSubjectInput.value = entry.subject || App.ui.buildLetterSubject(entry, event, newLang);
       });
       App.els.letterAttachPdfBtn?.addEventListener('click', async () => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.letterEntryId);
