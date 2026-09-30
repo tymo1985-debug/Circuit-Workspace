@@ -1475,11 +1475,24 @@ body.cw-root {
    this file and several legacy controls hard-code 20–40px sizes. `!important`
    is restricted to hit geometry so colors/layout remain module-owned. */
 @media (pointer: coarse) {
-  button, [role="button"], select:not(.sr-only), input:not([type="hidden"]):not(.sr-only),
+  button, [role="button"], select:not(.sr-only),
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not(.sr-only),
   .md-btn, .md-icon-btn, .md-chip, .cw-home-btn, .md-menu__item, .md-bottomnav__item {
     min-width: 44px !important;
     min-height: 44px !important;
   }
+  /* Чекбокс/радио не растягиваются до 44×44 (раздутые квадраты на телефоне,
+     30.09.2026): цель касания 44px даёт обёртка-label, а не сам нативный
+     элемент. */
+  input[type="checkbox"]:not(.sr-only), input[type="radio"]:not(.sr-only) {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    flex: none;
+    accent-color: var(--md-primary);
+  }
+  .send-toggle, .flag-toggle { min-height: 44px; }
 }
 
 /* --- 5.16 Утилиты ---------------------------------------------------------- */
