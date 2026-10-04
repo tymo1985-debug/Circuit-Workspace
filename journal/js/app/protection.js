@@ -40,7 +40,7 @@
     'overviewCarry', 'overviewTasks', 'overviewProjects',
     'tasksList', 'districtProjectsList', 'congProjectsList',
     'districtNotesList', 'congNotesList', 'districtTasksList', 'districtArchiveList',
-    'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry',
+    'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry', 'visitSummaryTasksList', 'visitSummaryCarryList',
     'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems',
     'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist',
   ];

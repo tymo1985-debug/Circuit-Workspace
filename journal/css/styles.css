@@ -614,3 +614,17 @@ span.j-planner__chip--broken { cursor: default; }
    во всю ширину тела диалога. */
 #schedulePlannerMenu { display: block; }
 #schedulePlannerPanel { position: static; min-width: 0; max-width: none; margin-top: var(--cw-space-2); box-shadow: none; }
+/* --- Итоги визита: раскрываемые строки ------------------------------------- */
+.j-sumrow { width: 100%; background: none; border: 0; border-top: 1px solid var(--md-outline-variant); color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 0; }
+.j-sec .j-sumrow:first-of-type { border-top: 0; }
+.j-sumrow:disabled { cursor: default; }
+.j-sumrow:not(:disabled):hover .j-row__title, .j-sumrow:focus-visible .j-row__title { text-decoration: underline; }
+.j-sumrow:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; }
+.j-sumlist { list-style: none; margin: 0 0 var(--cw-space-2); padding: 0 0 0 calc(34px + var(--cw-space-3)); }
+.j-sumlist__item { display: block; padding: 8px 0; min-height: 36px; color: var(--md-primary); font: 400 14px/20px var(--md-font-family); text-decoration: none; overflow-wrap: anywhere; }
+.j-sumlist__item:hover, .j-sumlist__item:focus-visible { text-decoration: underline; }
+.j-sumlist__item--done { color: var(--md-on-surface-variant); text-decoration: line-through; }
+.j-editor__hint { margin: 0; padding: var(--cw-space-2) var(--cw-space-4); font: 400 12px/16px var(--md-font-family); color: var(--md-on-surface-variant); }
+@keyframes j-flash { from { background: var(--cw-module-container); } to { background: transparent; } }
+.j-block--flash { animation: j-flash 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .j-block--flash { animation: none; outline: 2px solid var(--cw-module); } }

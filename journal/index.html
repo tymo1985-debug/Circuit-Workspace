@@ -467,6 +467,7 @@
               <button type="button" class="j-tool" data-cmd="carry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg><span data-i18n="j.editor.next_visit">На след. визит</span></button>
               <button type="button" class="j-tool" data-cmd="link" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg><span data-i18n="j.editor.link">Связать</span></button>
             </div>
+            <p class="j-editor__hint" id="visitBarHint" data-i18n="j.editor.select_hint" hidden>Выберите запись, чтобы перенести её на след. визит или связать</p>
             <div class="j-editor__body">
               <!-- Записи посещения (J4b): блоки из CWJournal.visitRecords.
                    Правка — по клику на блок, явное «Сохранить», без автосохранения. -->
@@ -485,20 +486,22 @@
             <div class="j-sec__head">
               <span class="j-sec__title" data-i18n="j.visit.summary_title">Итоги визита</span>
             </div>
-            <div class="j-row">
+            <button type="button" class="j-row j-sumrow" data-sum="summary_tasks" aria-expanded="false" aria-controls="visitSummaryTasksList" disabled>
               <div class="j-row__ico"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/></svg></div>
               <div class="j-row__body">
                 <p class="j-row__title" data-i18n="j.visit.summary_tasks">Задачи, созданные на этом визите</p>
                 <p class="j-row__meta" id="visitSummaryTasks"></p>
               </div>
-            </div>
-            <div class="j-row">
+            </button>
+            <ul class="j-sumlist" id="visitSummaryTasksList" hidden></ul>
+            <button type="button" class="j-row j-sumrow" data-sum="summary_carry" aria-expanded="false" aria-controls="visitSummaryCarryList" disabled>
               <div class="j-row__ico"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg></div>
               <div class="j-row__body">
                 <p class="j-row__title" data-i18n="j.visit.summary_carry">Помечено «на следующее посещение»</p>
                 <p class="j-row__meta" id="visitSummaryCarry"></p>
               </div>
-            </div>
+            </button>
+            <ul class="j-sumlist" id="visitSummaryCarryList" hidden></ul>
           </div>
         </div>
 

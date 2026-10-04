@@ -369,6 +369,9 @@
     $('#visitSummaryCarry').textContent = marked.length
       ? t('j.visit.summary_marked').replace('%d', String(marked.length))
       : t('j.visit.summary_none');
+    renderSummaryList('summary_tasks', todos, true);
+    renderSummaryList('summary_carry', marked, false);
+    $('#visitBarHint').hidden = !editable || !!editor.draft;
     $all('#visitDetailView .j-editor__bar [data-cmd="link"]').forEach(function (b) {
       b.disabled = !editable || !(editor.draft && editor.draft.id);
     });
@@ -381,6 +384,36 @@
 
     var input = box.querySelector('.j-block__input');
     if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+  }
+
+  /* Итоги визита: строка раскрывает список; задача → #tasks/<id>,
+     пометка → прокрутка к блоку записи (если он на этом посещении). */
+  function renderSummaryList(key, items, isTask) {
+    var btn = document.querySelector('#visitDetailView [data-sum="' + key + '"]');
+    var list = $('#' + btn.getAttribute('aria-controls'));
+    btn.disabled = !items.length;
+    if (!items.length) { list.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+    list.innerHTML = '';
+    items.forEach(function (r) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.className = 'j-sumlist__item' + (isTask && r.status === 'done' ? ' j-sumlist__item--done' : '');
+      a.textContent = isLockedRow(r) ? lockedLabel(r) : textOr(r, 'body');
+      if (isTask) {
+        a.href = CWJournalRoute.build.task(r.id);
+      } else {
+        a.href = '#';
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var block = $('#visitRecords').querySelector('[data-record-id="' + CSS.escape(String(r.id)) + '"]');
+          if (!block) return;
+          block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          block.classList.remove('j-block--flash'); void block.offsetWidth; block.classList.add('j-block--flash');
+        });
+      }
+      li.appendChild(a);
+      list.appendChild(li);
+    });
   }
 
   function syncToolbar() {
@@ -782,6 +815,14 @@
       b.addEventListener('click', function () {
         if (!visitEditable() || editor.busy || !editor.draft || !editor.draft.id) return;
         openRecordProjectPicker(editor.draft.id);
+      });
+    });
+    $all('#visitDetailView [data-sum]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var list = $('#' + b.getAttribute('aria-controls'));
+        var open = b.getAttribute('aria-expanded') !== 'true';
+        b.setAttribute('aria-expanded', String(open));
+        list.hidden = !open;
       });
     });
     $('#carryReviewBtn').addEventListener('click', function () {
