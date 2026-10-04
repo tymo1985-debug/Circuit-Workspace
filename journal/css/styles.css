@@ -204,7 +204,13 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
    Карточка редактора повторяет геометрию эталона: полоса инструментов
    (типы блоков слева, действия справа) над телом. В J4a инструменты
    неактивны — содержимое записей появится в J4b, фиктивных блоков нет. */
-.j-visit__chips { display: flex; gap: var(--cw-space-2); flex-wrap: wrap; align-items: center; }
+.j-visit__chips { display: flex; gap: var(--cw-space-2); flex-wrap: wrap; align-items: center; min-width: 0; max-width: 100%; }
+/* Шапка посещения не шире экрана: длинное имя группы в крошках и заголовке
+   переносится, чип Клиндария обрезается многоточием (у flex-элемента
+   min-width:auto раздувал страницу и уводил вбок нижнюю навигацию). */
+#visitDetailView { min-width: 0; overflow-x: clip; }
+#visitDetailView .md-page__header > div:first-child { min-width: 0; max-width: 100%; }
+#visitDetailView .j-crumb, #visitDetailView .md-page__title, #visitDetailView .md-page__lede { overflow-wrap: anywhere; }
 .j-visit__chips .md-chip svg { width: 16px; height: 16px; flex: 0 0 auto; }
 .j-editor {
   background: var(--md-surface-container-low);
@@ -220,6 +226,20 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
   background: var(--md-surface-container);
 }
 .j-editor__spacer { flex: 1 1 auto; }
+/* Телефон: панель записи — одна строка с горизонтальной прокруткой (4А);
+   затухание справа подсказывает, что кнопки есть дальше. */
+@media (max-width: 600px) {
+  #visitDetailView .j-editor__bar {
+    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    padding-right: var(--cw-space-5, 24px);
+  }
+  #visitDetailView .j-editor__bar::-webkit-scrollbar { display: none; }
+  #visitDetailView .j-editor__bar > .j-tool { flex: 0 0 auto; white-space: nowrap; }
+  #visitDetailView .j-editor__spacer { flex: 0 0 var(--cw-space-3); }
+}
 .j-tool {
   height: 32px; min-width: 32px; padding: 0 10px;
   border-radius: var(--md-radius-sm); border: 0; background: transparent;
