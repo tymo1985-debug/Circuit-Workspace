@@ -41,6 +41,7 @@ const APP_SHELL_URLS = [
   './ui/ui-aux.js',
   './ui/ui-toggles.js',
   './ui/map.js',
+  './ui/archive-year.js',
   './visit-pdf.js',
   // Leaflet — модуль-локальная зависимость (карта собраний, desktop-only).
   // cache-first, как шрифты: без прекэша карта не инициализируется офлайн
@@ -78,6 +79,7 @@ const APP_SHELL_URLS = [
   '../shared/docsview.js',
   '../shared/print.js',
   '../shared/db.js',
+  '../shared/archive.js',
   '../shared/directory.js',
   '../shared/escape.js',
   '../shared/pdfstack.js',

@@ -35,6 +35,7 @@
      поднимает его вместе с состоянием. -->
 <script src="../shared/snapshots.js"></script>
 <script src="../shared/db.js"></script>
+<script src="../shared/archive.js"></script>
 <!-- Общий справочник собраний (фаза 5). Подключать ПОСЛЕ db.js: слой работает
      поверх хранилища communities. -->
 <script src="../shared/directory.js"></script>
@@ -105,6 +106,14 @@
           </div>
         </div>
       </header>
+      <!-- Предложение отправить закончившийся служебный год в Архив (A3). Скрыто, пока нечего предлагать. -->
+      <div class="md-banner" id="archiveProposal" role="status" hidden>
+        <div class="md-banner__body"><span id="archiveProposalText"></span></div>
+        <div class="md-banner__actions">
+          <button data-i18n="cp.arch_send_short" class="md-btn md-btn-filled md-state-layer" id="archiveProposalYesBtn" type="button">В архив</button>
+          <button data-i18n="cp.arch_later" class="md-btn md-btn-outlined md-state-layer" id="archiveProposalLaterBtn" type="button">Не сейчас</button>
+        </div>
+      </div>
       <section id="calendar" class="screen active">
         <div class="calendar-layout" id="calendarLayout">
           <div class="calendar-shell">
@@ -264,6 +273,20 @@
               </div>
             </div>
             <div style="display:flex;justify-content:flex-start;gap:12px;flex-wrap:wrap;margin-top:14px"><button data-i18n="cp.create_backup" class="md-btn md-btn-filled md-state-layer" id="backupBtn" type="button">Создать backup</button><button data-i18n="cp.pin_off" class="md-btn md-btn-outlined md-state-layer" id="pinSetupBtn" type="button">🔒 PIN-код: выкл</button><label class="md-btn md-btn-outlined md-state-layer" style="display:flex;align-items:center;gap:8px"><input id="holidaysToggle" type="checkbox" style="width:auto" /> <span data-i18n="cp.holidays_toggle">Праздники CZ/AT/DE</span></label><label class="md-btn md-btn-outlined md-state-layer" style="display:flex;align-items:center;gap:8px"><input id="autoShowRemindersToggle" type="checkbox" style="width:auto" /> <span data-i18n="cp.auto_reminders_toggle">Всплывающее окно напоминаний при открытии</span></label></div>
+          </div>
+          <div class="md-card" id="archiveYearCard" style="margin-top:14px" hidden>
+            <h3 data-i18n="cp.arch_title">Архив служебного года</h3>
+            <div data-i18n="cp.arch_hint" class="small" style="margin-bottom:10px">Копия года (недели, визиты, S-302, ссылки на письма) уходит в модуль «Архив». Оригинал в календаре остаётся.</div>
+            <div class="form-grid">
+              <div>
+                <label for="archiveYearSelect" data-i18n="cp.arch_year" class="small">Служебный год</label>
+                <select id="archiveYearSelect"></select>
+                <div class="small" id="archiveYearStatus" style="margin-top:6px" aria-live="polite"></div>
+              </div>
+              <div style="display:grid;gap:10px;align-content:end">
+                <button data-i18n="cp.arch_send" class="md-btn md-btn-filled md-state-layer" id="archiveYearBtn" type="button">Отправить год в архив</button>
+              </div>
+            </div>
           </div>
           <div class="md-card" style="margin-top:14px">
             <h3 data-i18n="cp.history_title">История изменений</h3>
@@ -520,6 +543,7 @@
   <script src="ui/ui-aux.js"></script>
   <script src="ui/ui-toggles.js"></script>
   <script src="ui/map.js"></script>
+  <script src="ui/archive-year.js"></script>
   <script src="app.js" defer></script>
   <script src="../shared/backup.js"></script>
 <!-- Общий слой обновления: регистрация SW и полоса «Доступна новая версия».
