@@ -650,3 +650,11 @@ span.j-planner__chip--broken { cursor: default; }
 @keyframes j-flash { from { background: var(--cw-module-container); } to { background: transparent; } }
 .j-block--flash { animation: j-flash 1.6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .j-block--flash { animation: none; outline: 2px solid var(--cw-module); } }
+
+/* Импорт из Клиндария (R3) */
+.j-import__h { margin: var(--cw-space-3) 0 var(--cw-space-1); font-size: var(--md-title-small, 0.9rem); }
+.j-import__row { align-items: flex-start; gap: var(--cw-space-2); }
+.j-import__row input[type="checkbox"] { margin-top: 6px; flex: none; }
+.j-import__select { display: block; max-width: 100%; margin-top: 4px; padding: 6px 8px; font: inherit; color: inherit; background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-sm, 8px); }
+#importDialog { width: min(560px, calc(100vw - 24px)); }
+#importDialog .md-dialog-body { max-height: 60vh; overflow-y: auto; }

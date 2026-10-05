@@ -1239,6 +1239,7 @@
 
   /* Публикация для других файлов Журнала. */
   A.canonicalName = canonicalName;
+  A.claimAndLink = claimAndLink;
   A.chip = chip;
   A.renderCircuitsList = renderCircuitsList;
   A.renderCongregationDetail = renderCongregationDetail;

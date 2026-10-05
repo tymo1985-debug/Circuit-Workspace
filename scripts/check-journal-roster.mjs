@@ -180,6 +180,14 @@ ok('пункт меню: боковая навигация; нижняя — п�
 ok('плашки Обзора ведут в «Состав» (путь для телефона)', /'#roster\/groups'/.test(strip(read('journal/js/app/overview.js'))));
 ok('roster.js в прекэше SW', read('journal/sw.js').includes("'./js/app/roster.js'"));
 ok('опроса нет', intervals === 0);
+/* R3: импорт из Клиндария — только чтение календаря, только добавление узлов. */
+const imp = strip(read('journal/js/app/import.js'));
+ok('R3: импорт читает календарь только через CWPlanner.listCommunities, без CWDB и хранилищ браузера', /CWPlanner/.test(imp) && /listCommunities\(\)/.test(imp) && !/CWDB|localStorage|sessionStorage|indexedDB|setInterval/.test(imp));
+ok('R3: импорт ничего не удаляет и не правит карточки справочника', !/CWDirectory\.(upsert|create|remove|detach)/.test(imp) && !/nodes\.update\(/.test(imp));
+ok('R3: связь узла идёт через claimAndLink, дубли отсекаются по communityId', /claimAndLink\(node, row\.c\.communityId\)/.test(imp) && /have\[row\.c\.communityId\]|have\[r\.c\.communityId\]/.test(imp));
+const impKeys = [...new Set([...imp.matchAll(/'(j\.import\.[a-z_]+)'/g)].map((m) => m[1]))];
+ok('R3: ключи импорта на пяти языках', impKeys.length >= 15 && impKeys.every((k) => (dict.match(new RegExp("'" + k.replace(/\./g, '\\.') + "'", 'g')) || []).length === 5), impKeys.filter((k) => (dict.match(new RegExp("'" + k.replace(/\./g, '\\.') + "'", 'g')) || []).length !== 5).join());
+ok('R3: import.js в прекэше SW, кнопка и окно в разметке', read('journal/sw.js').includes("'./js/app/import.js'") && /id="rosterImportBtn"/.test(html) && /id="importDialog"/.test(html));
 /* R2: ключ связи группы/предгруппы со справочником. */
 const dj = strip(read('journal/js/app/districts.js'));
 const refsFn = (dj.match(/async function countJournalRefs[\s\S]*?\n  }\n/) || [''])[0];

@@ -30,6 +30,7 @@ const ASSETS = [
   './js/app/protection.js',
   './js/app/overview.js',
   './js/app/roster.js',
+  './js/app/import.js',
   './js/crypto.js',
   './js/data.js',
   './js/route.js',

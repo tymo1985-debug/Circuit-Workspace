@@ -54,6 +54,7 @@
   function wireProtectionChrome() { return A.wireProtectionChrome.apply(this, arguments); }
   function wireOverviewChrome() { return A.wireOverviewChrome.apply(this, arguments); }
   function wireRosterChrome() { return A.wireRosterChrome.apply(this, arguments); }
+  function wireImportChrome() { return A.wireImportChrome.apply(this, arguments); }
 
 
 
@@ -177,6 +178,7 @@
     wireProtectionChrome();
     wireOverviewChrome();
     wireRosterChrome();
+    wireImportChrome();
     applyRoute();
 
     wireSearchChrome();
