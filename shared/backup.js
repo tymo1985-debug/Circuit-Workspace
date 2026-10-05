@@ -164,7 +164,9 @@
          хранилище `snapshots` общей базы, а не в localStorage. Отбор по
          префиксу ключа: хранилище общее, и без отбора копия Конгрессов везла
          бы полные состояния Клиндария. */
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['congress-project', 'shared:sender'] }, { store: 'snapshots', prefix: 'congress-project:' }] },
+      /* Архив (A1, 05.10.2026): конверты Конгрессов в хранилище `archive`,
+         отбор по префиксу ключа — см. запись Клиндария ниже. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', { store: 'state', ids: ['congress-project', 'shared:sender'] }, { store: 'snapshots', prefix: 'congress-project:' }, { store: 'archive', prefix: 'congress-project:' }] },
     },
     'circuit-planner': {
       /* Фаза E: главный ключ `service-year-planner-v9-4-2` убран — та же
@@ -202,7 +204,14 @@
          одного модуля везёт и чужие карточки; при восстановлении секция
          `partial` СЛИВАЕТСЯ, поэтому чужого она не стирает — тот же
          осознанный размен, что у `documents`. */
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', 'communities', { store: 'state', ids: ['circuit-planner', 'shared:sender'] }, { store: 'snapshots', prefix: 'circuit-planner:' }] },
+      /* Архив (A1, 05.10.2026): конверты служебных годов модуля лежат в
+         хранилище `archive` общей базы (shared/archive.js). Когда включится
+         удаление оригиналов (A5), прошлые годы будут жить ТОЛЬКО там — и
+         копия без них восстановилась бы «без прошлых лет», без единой
+         ошибки. Отбор по префиксу, как у `snapshots`: ключ конверта
+         `<module>:<entity>:<sourceId>`, чужие конверты в копию не едут, а
+         восстановление сливает по ключу и соседа не затирает. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', 'communities', { store: 'state', ids: ['circuit-planner', 'shared:sender'] }, { store: 'snapshots', prefix: 'circuit-planner:' }, { store: 'archive', prefix: 'circuit-planner:' }] },
     },
     'pioneer-school': {
       local: [],
@@ -266,6 +275,12 @@
          входит и по-прежнему сливается. См. restoreReplaceSets(). */
       restoreReplace: { 'circuit-workspace-db': ['journalNodes', 'journalEntries', 'journalLinks', 'journalMeta'] },
     },
+    /* Модуль «Архив» (`archive`, `sharedStores: ['archive', 'documents']`)
+       появится здесь вместе со своей страницей на шаге A2, не раньше: строка
+       реестра без страницы и без CW_MODULES дала бы в таблице копий хаба
+       строку модуля, которого нет. Данные при этом не теряются — до A3/A4
+       хранилище пусто, полная копия хаба везёт базу целиком, а конверты
+       источников уже едут в копиях Клиндария и Конгрессов (префиксы выше). */
   };
 
   /* ⚠️ ХРАНИЛИЩЕ `state` — ЕДИНСТВЕННОЕ, ГДЕ ВЫГРУЖАТЬ ЦЕЛИКОМ НЕЛЬЗЯ.

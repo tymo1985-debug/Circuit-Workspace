@@ -99,10 +99,13 @@ const storesLiteral = dbSrc.slice(dbSrc.indexOf('const STORES = {') + 'const STO
   dbSrc.indexOf('};', dbSrc.indexOf('const STORES = {')) + 1);
 // eslint-disable-next-line no-new-func
 const ALL_STORES = new Function('return (' + storesLiteral + ');')();
-const V5_STORES = Object.fromEntries(Object.entries(ALL_STORES).filter(([n]) => !JOURNAL.includes(n)));
+/* Хранилища, появившиеся ПОСЛЕ v6 (v7 — `archive`, шаг A1 Архива): в базе v5
+   их не было, и апгрейд 5 → текущая создаёт их тем же аддитивным путём. */
+const AFTER_V6 = ['archive'];
+const V5_STORES = Object.fromEntries(Object.entries(ALL_STORES).filter(([n]) => !JOURNAL.includes(n) && !AFTER_V6.includes(n)));
 
-/* ═══ 1. Апгрейд v5 → v6 на базе с данными ═════════════════════════════ */
-console.log('\nАпгрейд схемы 5 → 6');
+/* ═══ 1. Апгрейд v5 → текущая (≥ v6) на базе с данными ═════════════════ */
+console.log('\nАпгрейд схемы 5 → ' + 'текущая');
 const SENTINELS = {};
 {
   const d5 = await open(DB, 5, (db) => {
@@ -127,10 +130,13 @@ eval(read('shared/db.js'));
 eval(read('shared/backup.js'));
 eval(read('journal/js/data.js'));
 
-ok('CWDB.DB_VERSION = 6', CWDB.DB_VERSION === 6, String(CWDB.DB_VERSION));
+/* Число не фиксируется: схема законно растёт в других фазах (v7 — Архив, A1).
+   Проверяется намерение: хранилища Журнала есть с v6, апгрейд доходит до
+   версии, которой базу открывает CWDB. */
+ok('CWDB.DB_VERSION ≥ 6', CWDB.DB_VERSION >= 6, String(CWDB.DB_VERSION));
 await CWDB.init();
 const after = await describe(DB);
-ok('база поднята до v6', after.version === 6, String(after.version));
+ok('база поднята до CWDB.DB_VERSION', after.version === CWDB.DB_VERSION, String(after.version));
 
 for (const name of Object.keys(V5_STORES)) {
   ok(`прежнее хранилище ${name} на месте`, !!after.stores[name]);

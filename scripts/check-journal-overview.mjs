@@ -20,7 +20,7 @@
  *    проекты, посещения; архивный контекст исключён, порядок совпадает с
  *    рабочими экранами, id достаточно для существующего маршрута;
  *  - J8: при блокировке открытый текст не выходит;
- *  - ничего не пишется (база, localStorage), DB_VERSION = 6, новых
+ *  - ничего не пишется (база, localStorage), DB_VERSION = 7 (с A1), новых
  *    хранилищ нет, опроса нет, Журнал не читает блоб Клиндария.
  *
  *   node scripts/check-journal-overview.mjs   (fake-indexeddb)
@@ -293,9 +293,9 @@ const d1 = await dump();
 await J.overview.read(); await B.refresh(); B.listCommunities();
 ok('[29] повторное чтение базу не меняет', (await dump()) === d1);
 ok('[32] localStorage не тронут чтением', lsWrites.length === lsBefore && ![...mem.keys()].some((k) => /journal|overview/i.test(k)), lsWrites.join());
-ok('[30] DB_VERSION = 6', CWDB.DB_VERSION === 6);
+ok('[30] DB_VERSION = 7 (v7 — Архив, A1; Обзор схему не трогает)', CWDB.DB_VERSION === 7);
 const stores = [...(await new Promise((res) => { const r = indexedDB.open('circuit-workspace-db'); r.onsuccess = () => { res(r.result.objectStoreNames); r.result.close(); }; }))].sort();
-ok('[29] новых хранилищ нет', JSON.stringify(stores) === JSON.stringify(['communities', 'documents', 'journalEntries', 'journalLinks', 'journalMeta', 'journalNodes', 'meetings', 'people', 'roles', 'snapshots', 'state', 'templates']), stores.join());
+ok('[29] новых хранилищ нет', JSON.stringify(stores) === JSON.stringify(['archive', 'communities', 'documents', 'journalEntries', 'journalLinks', 'journalMeta', 'journalNodes', 'meetings', 'people', 'roles', 'snapshots', 'state', 'templates']), stores.join());
 ok('[33] опроса нет', intervals === 0);
 const plannerSrc = strip(read('shared/planner.js'));
 ok('[33] CWPlanner: без таймеров и записи', !/setInterval|setTimeout|\.put\(|\.add\(|setItem|removeItem|caches\.|BroadcastChannel/.test(plannerSrc));

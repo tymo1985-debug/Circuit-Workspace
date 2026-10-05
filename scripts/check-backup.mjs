@@ -52,6 +52,9 @@ globalThis.CW_MODULES = {};
    начнёт подтверждать саму себя и переживёт следующий подъём схемы. */
 eval(readFileSync(join(ROOT, 'shared/db.js'), 'utf8'));
 eval(readFileSync(join(ROOT, 'shared/backup.js'), 'utf8'));
+/* Архив (A1): конверты источников едут в копии модулей отбором по префиксу. */
+const ARCHIVE_SRC = readFileSync(join(ROOT, 'shared/archive.js'), 'utf8');
+eval(ARCHIVE_SRC);
 
 let failed = 0;
 const ok = (label, cond, extra) => {
@@ -841,6 +844,119 @@ for (const { moduleId, legacyKey, nested, label } of plannerCongressBridges) {
     ok(`  вложенная структура сохранена целиком`,
       restored && JSON.stringify(restored) === JSON.stringify(nested));
   }
+}
+
+/* --- 10. Архив (A1, 05.10.2026) -----------------------------------------
+   Конверты служебных лет и конгрессов лежат в общем хранилище `archive`.
+   После A5 часть данных модуля будет жить ТОЛЬКО там, поэтому копия модуля
+   обязана везти свои конверты — и только свои, — а её восстановление не
+   имеет права стереть конверты соседа. Здесь же контракт CWArchive: отказ
+   записи не глотается, ревизии растут, удаление только с подтверждением. */
+console.log('\nАрхив (A1)');
+{
+  const A = globalThis.CWArchive;
+  const reg = CWBackup.MODULES;
+  Object.keys(A.SOURCES).forEach((m) => {
+    const decl = (reg[m] && reg[m].sharedStores && reg[m].sharedStores[DB]) || [];
+    ok(`${m}: конверты архива объявлены в копии модуля префиксом '${m}:'`,
+      decl.some((st) => st && st.store === 'archive' && st.prefix === m + ':'),
+      'источник архива без строки в реестре копий = копия «без прошлых лет», без единой ошибки');
+  });
+  ok('хранилище archive нигде не объявлено целиком у модулей-источников',
+    Object.keys(A.SOURCES).every((m) => !((reg[m].sharedStores[DB]) || []).includes('archive')));
+
+  await wipe(DB);
+  await CWDB.init();
+  ok('чистое устройство: база открывается версией CWDB.DB_VERSION (с хранилищем archive)', await versionOf(DB) === SCHEMA);
+
+  const env = (module, entity, sourceId, serviceYear, extra) => Object.assign({
+    module, entity, sourceId, serviceYear, title: module + ' ' + sourceId, sourceVersion: '1.0.0',
+    display: { sections: [{ heading: 'H', rows: [{ date: '2025-09-01', title: 'r', note: '', tags: [] }] }] },
+    summary: { n: 1 }, payload: { secret: module + ':' + sourceId }, docRefs: [],
+  }, extra || {});
+
+  const p1 = await A.put(env('circuit-planner', 'serviceYear', '2025', 2025));
+  ok('put: id детерминированный', p1.id === 'circuit-planner:serviceYear:2025', p1.id);
+  ok('put: первая запись — revision 1, firstArchivedAt = archivedAt', p1.revision === 1 && p1.firstArchivedAt === p1.archivedAt);
+  await new Promise((r) => setTimeout(r, 5));
+  const p2 = await A.put(env('circuit-planner', 'serviceYear', '2025', 2025, { title: 'обновлён' }));
+  ok('повторная архивация пишет поверх: revision 2, firstArchivedAt не сдвинут',
+    p2.revision === 2 && p2.firstArchivedAt === p1.firstArchivedAt && p2.archivedAt !== p1.archivedAt && p2.title === 'обновлён');
+  await A.put(env('circuit-planner', 'serviceYear', '2024', 2024));
+  await A.put(env('congress-project', 'congress', 'c1', 2025));
+  ok('в хранилище ровно три конверта (без дублей)', (await rows(DB, 'archive')).length === 3);
+
+  const reject = async (p) => { try { await p; return null; } catch (e) { return e; } };
+  const bad = [
+    ['чужой модуль', env('journal', 'serviceYear', '2025', 2025), 'module'],
+    ['чужая сущность', env('circuit-planner', 'congress', 'x', 2025), 'entity'],
+    ['год числом в sourceId', env('circuit-planner', 'serviceYear', 2025, 2025), 'sourceId'],
+    ['sourceId года ≠ serviceYear', env('circuit-planner', 'serviceYear', '2025', 2026), 'sourceId'],
+    ['serviceYear строкой', env('congress-project', 'congress', 'c9', '2025'), 'serviceYear'],
+    ['id не совпадает с module:entity:sourceId', env('congress-project', 'congress', 'c9', 2025, { id: 'congress-project:c9' }), 'id'],
+    ['без payload', env('congress-project', 'congress', 'c9', 2025, { payload: undefined }), 'payload'],
+    ['display без sections', env('congress-project', 'congress', 'c9', 2025, { display: {} }), 'display'],
+    ['docRefs с пустой строкой', env('congress-project', 'congress', 'c9', 2025, { docRefs: [''] }), 'docRefs'],
+    ['чужой формат', env('congress-project', 'congress', 'c9', 2025, { format: 2 }), 'format'],
+  ];
+  for (const [label, e, field] of bad) {
+    const err = await reject(A.put(e));
+    ok('отказ записи не глотается: ' + label, err && err.code === 'invalid' && err.field === field, err ? err.code + '/' + err.field : 'записалось');
+  }
+  ok('отказы ничего не записали', (await rows(DB, 'archive')).length === 3);
+
+  const all = await A.list();
+  ok('list(): все конверты, без payload', all.length === 3 && all.every((r) => !('payload' in r) && r.display));
+  ok('list(): новые годы сверху', all[0].serviceYear === 2025 && all[all.length - 1].serviceYear === 2024);
+  ok('list({module})', (await A.list({ module: 'congress-project' })).map((r) => r.id).join() === 'congress-project:congress:c1');
+  ok('list({serviceYear})', (await A.list({ serviceYear: 2024 })).map((r) => r.id).join() === 'circuit-planner:serviceYear:2024');
+  ok('list({module, serviceYear})', (await A.list({ module: 'circuit-planner', serviceYear: 2025 })).length === 1);
+  ok('years()', JSON.stringify(await A.years()) === '[2025,2024]');
+  ok('get() отдаёт payload', (await A.get('congress-project:congress:c1')).payload.secret === 'congress-project:c1');
+  ok('has() / get() отсутствующего', (await A.has('circuit-planner:serviceYear:1999')) === false && (await A.get('nope')) === null);
+
+  const unconfirmed = await reject(A.remove('circuit-planner:serviceYear:2024'));
+  ok('remove() без подтверждения — отказ, конверт на месте',
+    unconfirmed && unconfirmed.code === 'unconfirmed' && await A.has('circuit-planner:serviceYear:2024'));
+
+  /* Без общей базы — честный отказ, а не пустой список. */
+  {
+    const bare = {};
+    new Function('self', ARCHIVE_SRC)(bare);
+    const err = await reject(bare.CWArchive.list());
+    ok('без CWDB: list() отказывает кодом unavailable, а не пустым списком', err && err.code === 'unavailable', err && err.code);
+  }
+
+  /* Копия Клиндария: только свои конверты. */
+  const snapPlanner = await CWBackup.snapshot(['circuit-planner']);
+  const arcRows = snapPlanner.sections.shared?.idb?.[DB]?.stores?.archive?.rows || [];
+  ok('копия Клиндария везёт свои конверты', arcRows.length === 2 && arcRows.every((r) => r.id.startsWith('circuit-planner:')),
+    arcRows.map((r) => r.id).join());
+  ok('копия Клиндария НЕ везёт конверты Конгрессов', !arcRows.some((r) => r.id.startsWith('congress-project:')));
+  const snapCongress = await CWBackup.snapshot(['congress-project']);
+  const congRows = snapCongress.sections.shared?.idb?.[DB]?.stores?.archive?.rows || [];
+  ok('копия Конгрессов везёт только свои конверты', congRows.length === 1 && congRows[0].id === 'congress-project:congress:c1');
+  const full = await CWBackup.snapshot();
+  ok('полная копия хаба везёт хранилище archive целиком',
+    (full.sections.shared?.idb?.[DB]?.stores?.archive?.rows || []).length === 3);
+
+  /* После копии: сосед архивирует ещё, свой конверт удалён. Восстановление
+     копии Клиндария возвращает своё и не трогает соседа. */
+  await A.put(env('congress-project', 'congress', 'c1', 2025));
+  await A.put(env('congress-project', 'congress', 'c2', 2026));
+  ok('remove() с подтверждением', (await A.remove('circuit-planner:serviceYear:2024', { confirmed: true })) === true);
+  ok('remove() отсутствующего — false', (await A.remove('circuit-planner:serviceYear:2024', { confirmed: true })) === false);
+
+  await CWBackup.restore(snapPlanner);
+  const after = Object.fromEntries((await rows(DB, 'archive')).map((r) => [r.id, r]));
+  ok('восстановление копии Клиндария вернуло его конверт', !!after['circuit-planner:serviceYear:2024']);
+  ok('восстановление копии Клиндария НЕ стёрло конверты Конгрессов',
+    !!after['congress-project:congress:c1'] && !!after['congress-project:congress:c2']);
+  ok('и не откатило ревизию соседа', after['congress-project:congress:c1']?.revision === 2,
+    String(after['congress-project:congress:c1']?.revision));
+  ok('версия базы после восстановления не выше CWDB.DB_VERSION', await versionOf(DB) <= SCHEMA);
+  await CWDB.init();
+  ok('CWArchive работает после восстановления', (await A.years()).join() === '2026,2025,2024');
 }
 
 /* 6.3. Предохранительный снимок переживает полное восстановление.

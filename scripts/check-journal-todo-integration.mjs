@@ -11,7 +11,7 @@
  *  - ссылка #tasks/<id>: разбор, сборка, нормализация кривого id;
  *  - свежесть без опроса: подписка в вкладке, BroadcastChannel соседних,
  *    pageshow; сигнал без данных; ничего не пишется, localStorage пуст;
- *  - DB_VERSION = 6, новых хранилищ нет, копия Журнала прежняя.
+ *  - DB_VERSION = 7 (с A1), новых хранилищ нет, копия Журнала прежняя.
  *
  *   node scripts/check-journal-todo-integration.mjs   (fake-indexeddb)
  */
@@ -283,9 +283,9 @@ ok('localStorage не тронут за весь прогон', lsWrites.length 
 ok('у моста нет методов изменения', ['complete', 'reopen', 'update', 'remove', 'add', 'setDue', 'protect', 'unprotect'].every((m) => !(m in T)));
 ok('в общем слое нет записи/хранилищ', !/\.(put|add|update|remove|delete|clear|setItem|mutate|batch)\(|indexedDB|caches\./.test(todoSrc));
 ok('граница интеграции без методов изменения', JSON.stringify(Object.keys(J.integration).sort()) === JSON.stringify(['CHANNEL', 'isTaskId', 'onChange', 'task', 'tasks']));
-ok('DB_VERSION = 6', CWDB.DB_VERSION === 6);
+ok('DB_VERSION = 7 (v7 — Архив, A1; J9c схему не трогает)', CWDB.DB_VERSION === 7);
 const stores = [...(await new Promise((res) => { const r = indexedDB.open('circuit-workspace-db'); r.onsuccess = () => { res(r.result.objectStoreNames); r.result.close(); }; }))].sort();
-ok('новых хранилищ нет', JSON.stringify(stores) === JSON.stringify(['communities', 'documents', 'journalEntries', 'journalLinks', 'journalMeta', 'journalNodes', 'meetings', 'people', 'roles', 'snapshots', 'state', 'templates']), stores.join());
+ok('новых хранилищ нет', JSON.stringify(stores) === JSON.stringify(['archive', 'communities', 'documents', 'journalEntries', 'journalLinks', 'journalMeta', 'journalNodes', 'meetings', 'people', 'roles', 'snapshots', 'state', 'templates']), stores.join());
 const reg = CWBackup.MODULES.journal;
 ok('копия Журнала прежняя', JSON.stringify(reg.restoreReplace['circuit-workspace-db'].slice().sort()) === JSON.stringify(['journalEntries', 'journalLinks', 'journalMeta', 'journalNodes'])
   && JSON.stringify(reg.local) === '[]' && JSON.stringify(reg.sharedLocal) === '[]');

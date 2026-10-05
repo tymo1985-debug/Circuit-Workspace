@@ -26,7 +26,7 @@
   'use strict';
 
   const DB_NAME = 'circuit-workspace-db';
-  const DB_VERSION = 6;
+  const DB_VERSION = 7;
 
   /** Схема хранилищ: имя store → keyPath + индексы */
   const STORES = {
@@ -95,6 +95,17 @@
     journalEntries: { keyPath: 'id', indexes: ['nodeId', 'circuitId', 'type', 'status', 'updatedAt', 'dueDate', 'carryKey'] },
     journalLinks:   { keyPath: 'id', indexes: ['from', 'to', 'rel'] },
     journalMeta:    { keyPath: 'id' },
+    /* Архив (v7, шаг A1, 05.10.2026). Конверты завершённых единиц работы:
+       служебный год Клиндария, конгресс. Ключ детерминированный —
+       `<module>:<entity>:<sourceId>`, поэтому повторная архивация того же
+       объекта пишет поверх, а не заводит второй конверт. Префикс модуля в
+       ключе — тот же приём, что у `snapshots`: бэкап отбирает конверты модуля
+       по префиксу (shared/backup.js).
+       Апгрейд 6→7 чисто аддитивный: общий обработчик ниже создаёт только
+       отсутствующие хранилища и не трогает существующие.
+       Работать напрямую модули не должны: точка входа — CWArchive
+       (shared/archive.js). Проект схемы — docs/db-migration/05-archive-schema.md. */
+    archive:        { keyPath: 'id', indexes: ['module', 'serviceYear', 'entity', 'archivedAt'] },
   };
 
   let dbPromise = null;
@@ -506,6 +517,8 @@
     journalLinks: makeCrud('journalLinks', 'jl'),
     /** Журнал: служебные записи модуля (схема, в J8 — крипто-материал). */
     journalMeta: makeCrud('journalMeta', 'jm'),
+    /** Архив завершённых единиц работы (v7). Через CWArchive (shared/archive.js), не напрямую. */
+    archive: makeCrud('archive', 'arc'),
 
     /** Открыть соединение заранее (например, при загрузке хаба) */
     init: openDb,
