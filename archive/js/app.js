@@ -212,7 +212,16 @@
         ? '<section class="arc-section"><h3 class="arc-section__title">' + esc(t('arc.letters_title')) + '</h3>'
           + '<div class="arc-letters" id="letters"><div class="md-empty">' + esc(t('arc.loading')) + '</div></div></section>'
         : '')
-      + '<div class="arc-actions"><button type="button" class="md-btn md-btn-outlined md-state-layer" id="deleteBtn">'
+      + '<div class="arc-actions">'
+      /* A5: Архив сам ничего не восстанавливает — он только ведёт в модуль-
+         источник, а тот, владелец своих данных, проверяет конфликт, снимает
+         копию и спрашивает подтверждение. */
+      + (Object.prototype.hasOwnProperty.call(self.CWArchive.SOURCES, rec.module)
+        ? '<a class="md-btn md-btn-filled md-state-layer" id="restoreBtn" href="'
+          + esc('../' + rec.module + '/#archive-restore=' + encodeURIComponent(rec.id)) + '">'
+          + esc(t('arc.restore_btn', { module: moduleTitle(rec.module) })) + '</a>'
+        : '')
+      + '<button type="button" class="md-btn md-btn-outlined md-state-layer" id="deleteBtn">'
       + esc(t('arc.delete_btn')) + '</button></div>';
   }
 

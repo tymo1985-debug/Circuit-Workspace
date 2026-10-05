@@ -78,6 +78,7 @@ body {
 .arc-row__note { margin-top: 2px; color: var(--md-on-surface-variant); white-space: pre-wrap; }
 .arc-row__tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .arc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.arc-actions a.md-btn { text-decoration: none; }
 
 /* ─── Письма (карточки общего слоя) ─── */
 .arc-letters { display: grid; gap: 10px; }

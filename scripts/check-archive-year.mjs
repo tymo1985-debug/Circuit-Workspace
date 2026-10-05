@@ -174,14 +174,56 @@ console.log('\nПодключение (разметка, прекэш, слов�
   ok('Архив подписывает summary.weeks на 5 языках', (arc.match(/'arc\.summary\.weeks'/g) || []).length === 5);
 }
 
-/* ─── 6. Граница ответственности: A3 читает, A5 удаляет ─── */
-console.log('\nГраница A3: блоб только читается');
+/* ─── 6. A5: убрать и восстановить год (чистая часть) ─── */
+console.log('\nA5: убрать год и вернуть его');
+{
+  const app = baseApp();
+  const env = L.buildEnvelope(app, 2025, mk());
+  const n = L.removeYear(app, 2025, SY.bounds(2025));
+  ok('убраны недели года и визиты в границах (a, b)', !app.serviceYears[2025] && n.entries === 2 && n.weeks === 2, JSON.stringify(n));
+  ok('визиты соседних лет (c, d) и другой год (2024) на месте', app.entries.map((e) => e.id).join() === 'c,d' && !!app.serviceYears[2024]);
+  /* блоб досоздал пустые недели при просмотре календаря — это не конфликт */
+  app.serviceYears[2025] = { weeks: { '2025-09-08': week('2025-09-08') } };
+  const r = L.restoreYear(app, 2025, env.payload, SY.bounds(2025));
+  ok('год вернулся: недели и визиты', Object.keys(app.serviceYears[2025].weeks).length === 3 && app.entries.length === 4 && r.entries === 2);
+  const again = L.buildEnvelope(app, 2025, mk());
+  ok('после восстановления отпечаток совпадает с архивным (архив снова актуален)', again.payload.fingerprint === env.payload.fingerprint);
+  let code = '';
+  try { L.restoreYear(app, 2025, env.payload, SY.bounds(2025)); } catch (e) { code = e.code; }
+  ok('повторное восстановление поверх данных — отказ conflict', code === 'conflict', code);
+  ok('при отказе блоб не тронут', app.entries.length === 4);
+  code = '';
+  try { L.restoreYear(baseApp(), 2023, { serviceYears: {} }, SY.bounds(2023)); } catch (e) { code = e.code; }
+  ok('битый payload — отказ invalid', code === 'invalid', code);
+  const gone = { serviceYears: {}, entries: [], events: [] };
+  L.restoreYear(gone, 2025, env.payload, SY.bounds(2025));
+  ok('удалённые из справочника собрания возвращаются копией', gone.events.length === 2 && gone.events.every((e) => e.name));
+  const kept = { serviceYears: {}, entries: [], events: [{ id: 'e1', name: 'Переименовано' }] };
+  L.restoreYear(kept, 2025, env.payload, SY.bounds(2025));
+  ok('существующее собрание не перезаписывается', kept.events.find((e) => e.id === 'e1').name === 'Переименовано' && kept.events.length === 2);
+}
+
+/* ─── 7. Порядок необратимых шагов в интерфейсе ─── */
+console.log('\nA5: порядок шагов (правила необратимого переноса)');
 {
   const src = read('circuit-planner/ui/archive-year.js');
+  const body = (name) => { const i = src.indexOf('async function ' + name); return i < 0 ? '' : src.slice(i, src.indexOf('\n    }\n', i)); };
+  const rm = body('removeYearFlow');
+  const order = (txt, parts) => parts.every((p, i) => i === 0 || (txt.indexOf(parts[i - 1]) >= 0 && txt.indexOf(parts[i - 1]) < txt.indexOf(p)));
+  ok('убрать: confirm → запись разрешена → перечитать конверт → сверить отпечаток → снимок → удалить → сохранить',
+    order(rm, ['confirm(', 'writable()', 'CWArchive.get(', 'fingerprint !==', 'backupFirst(', 'L.removeYear(', 'App.store.save()']), rm.slice(0, 200));
+  ok('убрать: только закончившийся год', /isFinished\(year, currentYear\(\)\)\) throw/.test(rm));
+  const rs = body('restoreFlow');
+  ok('вернуть: конверт → конфликт → confirm → запись разрешена → снимок → вернуть → сохранить',
+    order(rs, ['CWArchive.get(', 'yearHasContent(year)', 'confirm(', 'writable()', 'backupFirst(', 'L.restoreYear(', 'App.store.save()']));
+  ok('без снимка — отказ (backupFirst бросает)', /if \(!id\) throw codeError\('backup'\)/.test(src));
+  ok('восстановление ждёт снятия PIN', /getStoredPin/.test(src) && /MutationObserver/.test(src) && /seenLocked/.test(src));
+  ok('хэш намерения снимается сразу (перезагрузка не повторяет)', /history\.replaceState/.test(src));
   const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  ok('нет присваиваний в App.state.app', !/App\.state\.app[\w.\[\]'"]*\s*(=[^=]|\+\+|--)/.test(code));
-  ok('нет delete / splice / remove над данными', !/\bdelete\s|\.splice\(|CWArchive\.remove|CWDocs\.remove|App\.store\.save|App\.actions\./.test(code));
+  ok('блоб меняют только removeYear/restoreYear', !/App\.state\.app[\w.\[\]'"]*\s*(=[^=]|\+\+|--)/.test(code) && !/CWArchive\.remove|CWDocs\.remove/.test(code));
   ok('ключ хранилища блоба не упоминается', !/service-year-planner-v9-4-2/.test(code));
+  const html = read('circuit-planner/index.html');
+  ok('index.html: #archiveYearRemoveBtn и #archiveProposalOkBtn', html.includes('id="archiveYearRemoveBtn"') && html.includes('id="archiveProposalOkBtn"'));
 }
 
 console.log(failed ? '\nПровалено: ' + failed : '\nВсё в порядке.');

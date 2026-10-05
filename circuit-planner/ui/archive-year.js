@@ -15,9 +15,14 @@
 //     в конце `renderAll()`.
 //
 // ИНВАРИАНТЫ
-//  • Оригинал НЕ меняется и НЕ удаляется (это шаг A5). Архив — копия.
-//  • Блоб `App.state.app` здесь только читается: ни одной записи, ключ
-//    хранилища и PIN не затронуты.
+//  • Отправка в архив (A3) блоб только ЧИТАЕТ. Менять его могут ровно два
+//    действия шага A5, оба по `confirm` и по правилам необратимого переноса
+//    (docs/journal/documents.md): «Убрать год из Клиндария» — только у
+//    закончившегося года с АКТУАЛЬНЫМ конвертом, перечитанным перед удалением,
+//    и только после снятого снимка; «Восстановить из Архива» (переход из
+//    модуля Архив с `#archive-restore=<id>`) — только если у года в блобе
+//    нет содержимого, тоже после снимка. Ключ хранилища и PIN не затронуты;
+//    восстановление ждёт снятия PIN.
 //  • Отказ `CWArchive.put()` не глотается: пользователь видит, что год НЕ
 //    отправлен (тост + постоянная строка состояния).
 //  • «Архив недоступен» ≠ «года нет в архиве»: при сбое чтения состояние
@@ -171,7 +176,52 @@
   /** Закончившийся год: начался раньше текущего служебного года. */
   const isFinished = (year, currentYear) => Number.isInteger(year) && year < currentYear;
 
-  root.CPArchiveYear = { MODULE, ENTITY, DECLINED_KEY, collect, hasContent, fingerprint, buildEnvelope, idOf, isFinished, meaningfulWeek };
+  const fail = (code, field) => { const e = new Error('CPArchiveYear: ' + code + (field ? ' ' + field : '')); e.code = code; if (field) e.field = field; return e; };
+
+  /**
+   * A5: убрать год из блоба (меняет `app` на месте). Только недели года
+   * (`serviceYears[year]`) и визиты с `start` в границах года. Собрания
+   * (справочник) и письма («Документы») общие для всех лет и остаются.
+   * @returns {{ weeks: number, entries: number }} сколько убрано
+   */
+  function removeYear(app, year, bounds) {
+    const lo = isoOf(bounds.start);
+    const hi = isoOf(bounds.end);
+    const weeks = Object.keys(((app.serviceYears || {})[year] || {}).weeks || {}).filter((k) => meaningfulWeek(app.serviceYears[year].weeks[k])).length;
+    if (app.serviceYears) delete app.serviceYears[year];
+    const before = (app.entries || []).length;
+    app.entries = (app.entries || []).filter((e) => { const d = dayOf(e && e.start); return !(d >= lo && d <= hi); });
+    return { weeks, entries: before - app.entries.length };
+  }
+
+  /**
+   * A5: вернуть год из конверта (меняет `app` на месте). Если в блобе у этого
+   * года уже есть содержимое — отказ `conflict`, ничего не трогаем: решение
+   * Алекса — не перезаписывать, человек сам решает, что убрать.
+   * Пустые недели, которые блоб досоздал сам, конфликтом не считаются.
+   */
+  function restoreYear(app, year, payload, bounds) {
+    const src = payload && payload.serviceYears && payload.serviceYears[year];
+    if (!src || typeof src !== 'object' || !src.weeks || typeof src.weeks !== 'object') throw fail('invalid', 'payload.serviceYears');
+    if (!Array.isArray(payload.entries)) throw fail('invalid', 'payload.entries');
+    if (hasContent(collect(app, year, bounds, null), year)) throw fail('conflict');
+    if (!app.serviceYears) app.serviceYears = {};
+    if (!Array.isArray(app.entries)) app.entries = [];
+    if (!Array.isArray(app.events)) app.events = [];
+    const weeks = Object.assign({}, ((app.serviceYears[year] || {}).weeks) || {}, clone(src.weeks));
+    app.serviceYears[year] = Object.assign({}, clone(src), { weeks });
+    const have = new Set(app.entries.map((e) => e && e.id));
+    const add = payload.entries.filter((e) => e && !have.has(e.id)).map(clone);
+    app.entries.push(...add);
+    /* Собрание могли удалить из справочника после архивации — возвращаем
+       замороженную копию. Существующее не трогаем: его могли переименовать. */
+    const known = new Set(app.events.map((e) => e && e.id));
+    const evAdd = (payload.events || []).filter((e) => e && e.id && !e.missing && !known.has(e.id)).map(clone);
+    app.events.push(...evAdd);
+    return { weeks: Object.keys(src.weeks).length, entries: add.length, events: evAdd.length };
+  }
+
+  root.CPArchiveYear = { MODULE, ENTITY, DECLINED_KEY, collect, hasContent, fingerprint, buildEnvelope, idOf, isFinished, meaningfulWeek, removeYear, restoreYear };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -179,7 +229,7 @@
     const L = root.CPArchiveYear;
     const t = (k, v) => App.utils.t(k, v || {});
     const $ = (id) => document.getElementById(id);
-    const sy = () => root.CWServiceYear;
+    const RESTORE_PREFIX = 'archive-restore=';
 
     let bound = false;
     let booted = false;
@@ -188,6 +238,8 @@
     let panelToken = 0;
     let proposalYear = null;
     let chosenYear = null;
+    let notice = null;          // { text, error } — сообщение в баннере до «ОК»
+    let restoreId = null;       // намерение «восстановить» из Архива (#archive-restore=…)
 
     function declined() {
       try { const v = JSON.parse(root.localStorage.getItem(L.DECLINED_KEY) || '[]'); return Array.isArray(v) ? v : []; }
@@ -201,10 +253,18 @@
     const currentYear = () => App.utils.getServiceYearForDate(new Date());
     const years = () => Object.keys(App.state.app.serviceYears || {}).map(Number)
       .filter(Number.isInteger).sort((a, b) => b - a);
-    const slice = (year) => L.collect(App.state.app, year, App.utils.serviceYearBounds(year), (id) => App.data.getEventById(id));
+    const bounds = (year) => App.utils.serviceYearBounds(year);
+    const slice = (year) => L.collect(App.state.app, year, bounds(year), (id) => App.data.getEventById(id));
     const yearHasContent = (year) => L.hasContent(slice(year), year);
 
     const archiveReady = () => !!(root.CWArchive && root.CWDocs && App.ui.docsAvailable());
+    /* Необратимые шаги (A5) — только когда запись в канон точно разрешена:
+       режим чтения, конфликт вкладок или старая оболочка без общего слоя
+       означают «не трогать». */
+    const writable = () => !!(App.store && !App.store.degraded && !App.store.conflict
+      && typeof App.store.canWrite === 'function' && App.store.canWrite());
+
+    const codeError = (code, field) => { const e = new Error(code); e.code = code; if (field) e.field = field; return e; };
 
     /** entityKey писем визитов года. listStrict: сбой чтения — это ошибка, а не «писем нет». */
     async function docKeysFor(year) {
@@ -219,7 +279,7 @@
     async function envelopeFor(year) {
       const docKeys = await docKeysFor(year);
       return L.buildEnvelope(App.state.app, year, {
-        bounds: App.utils.serviceYearBounds(year),
+        bounds: bounds(year),
         label: App.utils.serviceYearLabel(year),
         getEvent: (id) => App.data.getEventById(id),
         t,
@@ -252,9 +312,15 @@
       return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(App.utils.lang(), { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
-    function errorText(e) {
+    function errorText(e, notDone) {
       if (e && e.code === 'unavailable') return t('arch_err_unavailable');
       if (e && e.code === 'invalid') return t('arch_err_invalid', { field: e.field || '' });
+      if (e && e.code === 'readonly') return t('arch_err_readonly') + ' ' + t(notDone);
+      if (e && e.code === 'backup') return t('arch_err_backup') + ' ' + t(notDone);
+      if (e && e.code === 'stale') return t('arch_err_stale');
+      if (e && e.code === 'conflict') return t('arch_err_conflict', { year: e.year || '' });
+      if (e && e.code === 'missing') return t('arch_err_missing');
+      if (e && e.code === 'current') return t('arch_err_current');
       return t('arch_err', { message: (e && e.message) || String(e) });
     }
 
@@ -263,6 +329,11 @@
       if (!el) return;
       el.textContent = text;
       el.style.color = isError ? 'var(--status-critical, #b3261e)' : '';
+    }
+    function say(text, error) {
+      notice = { text, error: !!error };
+      App.utils.toast(text);
+      renderBanner();
     }
 
     function defaultYear(list) {
@@ -274,9 +345,11 @@
       const card = $('archiveYearCard');
       const select = $('archiveYearSelect');
       const btn = $('archiveYearBtn');
+      const rm = $('archiveYearRemoveBtn');
       if (!card || !select || !btn || busy) return;
       const token = ++panelToken;
       const list = years();
+      if (rm) rm.hidden = true;
       if (!list.length) { card.hidden = true; return; }
       card.hidden = false;
       if (!list.includes(chosenYear)) chosenYear = defaultYear(list);
@@ -296,6 +369,8 @@
       if (token !== panelToken) return;   // за время чтения выбрали другой год
       btn.textContent = t(st.state === 'stale' ? 'arch_update' : 'arch_send');
       btn.disabled = st.state === 'ok';
+      /* «Убрать год» — только у закончившегося года с АКТУАЛЬНЫМ архивом. */
+      if (rm) rm.hidden = !(st.state === 'ok' && L.isFinished(year, currentYear()));
       const text = {
         none: t('arch_state_none'),
         ok: t('arch_state_ok', { rev: st.revision, date: fmtStamp(st.archivedAt) }),
@@ -312,13 +387,12 @@
       if (btn) btn.disabled = true;
       let ok = false;
       try {
-        if (!archiveReady()) { const e = new Error('CWArchive'); e.code = 'unavailable'; throw e; }
+        if (!archiveReady()) throw codeError('unavailable');
         const rec = await root.CWArchive.put(await envelopeFor(year));
-        const msg = t('arch_done', { year: App.utils.serviceYearLabel(year), rev: rec.revision });
-        App.utils.toast(msg);
+        App.utils.toast(t('arch_done', { year: App.utils.serviceYearLabel(year), rev: rec.revision }));
         ok = true;
       } catch (e) {
-        const msg = errorText(e);
+        const msg = errorText(e, 'arch_not_sent');
         App.utils.toast(msg);
         setStatusLine(msg, true);
         if (btn) btn.disabled = false;
@@ -329,13 +403,125 @@
       return ok;
     }
 
-    /* ── Предложение ── */
-    function renderProposalText() {
+    /**
+     * Снимок перед необратимым шагом. Правило переноса №1: без копии — ничего
+     * не трогаем. Очередь записи сначала догоняется, иначе снимок оказался бы
+     * старее того, что человек видит.
+     */
+    async function backupFirst(label) {
+      App.store.flushNow(label);
+      let id = null;
+      try { id = await App.store.checkpointNow(label); } catch (e) { id = null; }
+      if (!id) throw codeError('backup');
+    }
+
+    /* ── A5: убрать год из Клиндария (копия остаётся в Архиве) ── */
+    async function removeYearFlow(year) {
+      if (busy) return;
+      const label = App.utils.serviceYearLabel(year);
+      if (!root.confirm(t('arch_remove_confirm', { year: label }))) return;
+      busy = true;
+      try {
+        if (!writable()) throw codeError('readonly');
+        if (!archiveReady()) throw codeError('unavailable');
+        if (!L.isFinished(year, currentYear())) throw codeError('current');
+        /* Правило №3 (проверка чтением): конверт прочитан ЗАНОВО и совпадает
+           с тем, что сейчас в Клиндарии, — иначе удалили бы то, чего в
+           архиве нет. */
+        const rec = await root.CWArchive.get(L.idOf(year));
+        const cur = await envelopeFor(year);
+        if (!rec || !rec.payload || rec.payload.fingerprint !== cur.payload.fingerprint) throw codeError('stale');
+        await backupFirst('archive-remove');
+        const n = L.removeYear(App.state.app, year, bounds(year));
+        if (App.state.selectedYear === year) App.state.selectedYear = currentYear();
+        App.store.save();
+        App.store.flushNow('archive-remove');
+        chosenYear = null;
+        say(t('arch_removed', { year: label, visits: n.entries }), false);
+        App.ui.renderAll();
+      } catch (e) {
+        say(errorText(e, 'arch_not_removed'), true);
+      } finally {
+        busy = false;
+      }
+      refreshPanel();
+    }
+
+    /* ── A5: восстановить год из Архива ── */
+    async function restoreFlow(id) {
+      restoreId = null;
+      if (busy) return;
+      busy = true;
+      try {
+        if (!archiveReady()) throw codeError('unavailable');
+        const rec = await root.CWArchive.get(id);
+        if (!rec || rec.module !== L.MODULE || rec.entity !== L.ENTITY || !Number.isInteger(rec.serviceYear)) throw codeError('missing');
+        const year = rec.serviceYear;
+        const label = App.utils.serviceYearLabel(year);
+        if (yearHasContent(year)) { const e = codeError('conflict'); e.year = label; throw e; }
+        busy = false;
+        if (!root.confirm(t('arch_restore_confirm', { year: label }))) return;
+        busy = true;
+        if (!writable()) throw codeError('readonly');
+        await backupFirst('archive-restore');
+        L.restoreYear(App.state.app, year, rec.payload, bounds(year));
+        App.state.selectedYear = year;
+        App.store.save();
+        App.store.flushNow('archive-restore');
+        chosenYear = year;
+        say(t('arch_restored', { year: label }), false);
+        App.ui.renderAll();
+      } catch (e) {
+        say(errorText(e, 'arch_not_restored'), true);
+      } finally {
+        busy = false;
+      }
+      refreshProposal();
+    }
+
+    /** `#archive-restore=<id>` из Архива. Хэш снимается сразу: перезагрузка не должна повторять действие. */
+    function takeRestoreIntent() {
+      const raw = String(root.location.hash || '').replace(/^#/, '');
+      if (raw.indexOf(RESTORE_PREFIX) !== 0) return null;
+      let id = '';
+      try { id = decodeURIComponent(raw.slice(RESTORE_PREFIX.length)); } catch (e) { id = ''; }
+      try { root.history.replaceState(null, '', root.location.pathname + root.location.search); } catch (e) { /* хэш останется — не критично */ }
+      return id.indexOf(L.MODULE + ':' + L.ENTITY + ':') === 0 ? id : null;
+    }
+    /* Действие ждёт снятия PIN: подтверждение поверх экрана PIN показало бы
+       название года тому, кто PIN не знает. Экран PIN включается в init()
+       ПОСЛЕ первого renderAll(), поэтому смотрим не на overlay, а на сам PIN:
+       задан — ждём, пока overlay покажется и снова скроется. Найдено живым
+       прогоном: проверка по overlay пропускала подтверждение раньше PIN. */
+    function runRestoreWhenUnlocked() {
+      if (!restoreId) return;
+      const needPin = typeof App.ui.getStoredPin === 'function' && !!App.ui.getStoredPin();
+      const ov = App.els.pinOverlay;
+      if (!needPin) { root.setTimeout(() => { if (restoreId) restoreFlow(restoreId); }, 0); return; }
+      if (!ov) { restoreId = null; return; }   // PIN задан, а экрана нет — не рискуем
+      let seenLocked = !ov.hidden;
+      const mo = new MutationObserver(() => {
+        if (!ov.hidden) { seenLocked = true; return; }
+        if (!seenLocked) return;
+        mo.disconnect();
+        if (restoreId) restoreFlow(restoreId);
+      });
+      mo.observe(ov, { attributes: true, attributeFilter: ['hidden'] });
+    }
+
+    /* ── Баннер: предложение или сообщение ── */
+    function renderBanner() {
       const box = $('archiveProposal');
       if (!box) return;
-      box.hidden = proposalYear === null;
+      const showMsg = !!notice;
+      const showProp = !showMsg && proposalYear !== null;
+      box.hidden = !(showMsg || showProp);
+      box.classList.toggle('md-banner--error', showMsg && notice.error);
       const text = $('archiveProposalText');
-      if (text && proposalYear !== null) text.textContent = t('arch_proposal', { year: App.utils.serviceYearLabel(proposalYear) });
+      if (text) text.textContent = showMsg ? notice.text : (showProp ? t('arch_proposal', { year: App.utils.serviceYearLabel(proposalYear) }) : '');
+      ['archiveProposalYesBtn', 'archiveProposalLaterBtn'].forEach((id) => { const b = $(id); if (b) b.hidden = !showProp; });
+      const ok = $('archiveProposalOkBtn');
+      if (ok) ok.hidden = !showMsg;
     }
 
     async function refreshProposal() {
@@ -352,7 +538,7 @@
       } catch (e) {
         proposalYear = null;   // базы нет — не предлагаем; кнопка в настройках покажет причину
       }
-      renderProposalText();
+      renderBanner();
     }
 
     function bind() {
@@ -360,6 +546,7 @@
       bound = true;
       $('archiveYearSelect')?.addEventListener('change', (e) => { chosenYear = Number(e.target.value); refreshPanel(); });
       $('archiveYearBtn')?.addEventListener('click', () => { send(chosenYear); });
+      $('archiveYearRemoveBtn')?.addEventListener('click', () => { removeYearFlow(chosenYear); });
       $('archiveProposalYesBtn')?.addEventListener('click', () => {
         const year = proposalYear;
         if (year === null) return;
@@ -369,21 +556,27 @@
       $('archiveProposalLaterBtn')?.addEventListener('click', () => {
         if (proposalYear !== null) decline(proposalYear);
         proposalYear = null;
-        renderProposalText();
+        renderBanner();
       });
+      $('archiveProposalOkBtn')?.addEventListener('click', () => { notice = null; renderBanner(); });
     }
 
     /** Из конца renderAll(): подпись баннера — синхронно, чтение базы — отложенно. */
     function archiveYearRender() {
       bind();
-      renderProposalText();
-      if (!booted) { booted = true; refreshProposal(); }
+      renderBanner();
+      if (!booted) {
+        booted = true;
+        restoreId = takeRestoreIntent();
+        refreshProposal();
+        runRestoreWhenUnlocked();
+      }
       if (App.state.selectedScreen === 'settings') {
         root.clearTimeout(panelTimer);
         panelTimer = root.setTimeout(refreshPanel, 250);
       }
     }
 
-    Object.assign(App.ui, { archiveYearRender, archiveYearSend: send, archiveYearStatus: status });
+    Object.assign(App.ui, { archiveYearRender, archiveYearSend: send, archiveYearStatus: status, archiveYearRemove: removeYearFlow });
   });
 })(typeof window !== 'undefined' ? window : globalThis);

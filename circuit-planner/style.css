@@ -528,3 +528,4 @@ body::before{display:none !important}
 /* A3: предложение отправить закончившийся год в Архив. На телефоне текст на всю ширину, кнопки под ним. */
 #archiveProposal{margin:0 0 12px}
 @media (max-width:600px){#archiveProposal{flex-wrap:wrap}#archiveProposal .md-banner__body{flex-basis:100%}}
+#archiveYearRemoveBtn.archive-remove-btn{color:var(--status-critical,#b3261e);border-color:var(--status-critical,#b3261e)}

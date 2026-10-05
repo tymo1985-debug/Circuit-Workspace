@@ -86,3 +86,35 @@ export function buildEnvelope(c, ctx) {
     docRefs: docKeys,
   };
 }
+
+const fail = (code, field) => { const e = new Error('archive-logic: ' + code + (field ? ' ' + field : '')); e.code = code; if (field) e.field = field; return e; };
+
+/**
+ * A5: убрать конгресс из состояния (меняет `st` на месте). Письма заданий
+ * остаются в «Документах», серия — в списке серий.
+ * @returns {boolean} был ли конгресс
+ */
+export function removeCongress(st, congressId) {
+  const before = (st.congresses || []).length;
+  st.congresses = (st.congresses || []).filter((c) => c.id !== congressId);
+  if (st.activeId === congressId) st.activeId = st.congresses[0] ? st.congresses[0].id : null;
+  return st.congresses.length !== before;
+}
+
+/**
+ * A5: вернуть конгресс из конверта (меняет `st` на месте). Конгресс с тем же
+ * id уже есть — отказ `conflict`, ничего не трогаем (решение Алекса).
+ * Серию, которой больше нет, не воскрешаем: конгресс встаёт «без серии».
+ * @returns {Object} восстановленный конгресс
+ */
+export function restoreCongress(st, payload) {
+  const src = payload && payload.congress;
+  if (!src || typeof src !== 'object' || typeof src.id !== 'string' || !src.id || !Array.isArray(src.tasks)) throw fail('invalid', 'payload.congress');
+  if (!Array.isArray(st.congresses)) st.congresses = [];
+  if (st.congresses.some((c) => c.id === src.id)) throw fail('conflict');
+  const c = clone(src);
+  if (c.seriesId && !(st.series || []).some((s) => s.id === c.seriesId)) c.seriesId = null;
+  st.congresses.unshift(c);
+  st.activeId = c.id;
+  return c;
+}

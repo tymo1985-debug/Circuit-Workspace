@@ -21,4 +21,4 @@
 - `letterLanguage` — язык **письма**, не интерфейса. Путать нельзя.
 - `settings.language` собственный, к общему слою не приведён: «язык документа»
   здесь ещё не подключён.
-- **Архив (A4):** `js/archive-logic.js` (чистая логика) + `js/archive-congress.js` (меню «В архив», баннер). Данные только читаются; удаление оригинала — не здесь (A5). Проверка — `scripts/check-archive-congress.mjs`.
+- **Архив (A4):** `js/archive-logic.js` (чистая логика) + `js/archive-congress.js` (меню «В архив», баннер; A5 — «Убрать из Конгрессов» и восстановление по `#archive-restore=`, §13 схемы архива). Проверка — `scripts/check-archive-congress.mjs`.
