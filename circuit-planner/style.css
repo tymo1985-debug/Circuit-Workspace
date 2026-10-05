@@ -96,7 +96,7 @@
   .week-item,.event-row,.note-row{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--md-primary);outline:2px solid color-mix(in srgb, var(--md-primary) 20%, transparent)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
   #eventsList.is-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
   #eventsList.is-cards .event-row.is-card{flex-direction:column;align-items:stretch}
-  @media (max-width:760px){#eventsList.is-cards{grid-template-columns:1fr}}
+  @media (max-width:600px){#eventsList.is-cards{grid-template-columns:1fr}}
   .calendar-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}.calendar-layout.team-hidden{grid-template-columns:minmax(0,1fr)}.calendar-layout.team-hidden .calendar-side{display:none}
   .calendar-shell{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);box-shadow:var(--md-elevation-2);overflow:visible;position:relative}
   .calendar-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding:22px 24px 16px;border-bottom:1px solid rgba(216,226,219,.85)}
@@ -296,7 +296,7 @@
  .day-cell.today-col.weekend{background:linear-gradient(to bottom, color-mix(in srgb, var(--md-primary) 10%, transparent), transparent 55%)}
  .modal{overflow:auto;-webkit-overflow-scrolling:touch;align-items:flex-start}.modal-card{max-height:calc(100dvh - 36px);overflow:auto}
  
- @media (max-width:820px){.calendar-layout{grid-template-columns:1fr !important}.calendar-side{position:static;max-height:none;overflow:visible}.calendar-side .side-card{margin-top:12px}}
+ @media (max-width:900px){.calendar-layout{grid-template-columns:1fr !important}.calendar-side{position:static;max-height:none;overflow:visible}.calendar-side .side-card{margin-top:12px}}
  @media (max-width:767px){.app.menu-open .sidebar{left:0 !important;z-index:2500 !important}}
 
  
@@ -349,7 +349,7 @@ body::before{display:none !important}
    отдельным литералом) — обе переменные те же самые, что использует само
    .calendar-layout между колонками, не отдельные магические числа. */
 @media (min-width:1181px){.nv-row{max-width:calc(100% - var(--calendar-side-width) - var(--calendar-layout-gap))}}
-@media (max-width:680px){.main{padding:14px 12px 92px !important}.service-year-grid{grid-template-columns:1fr !important;padding:10px !important;gap:12px !important}.calendar-toolbar{padding:14px !important}.calendar-title{font-size:1.2rem}.sidebar{width:86vw !important;left:-90vw !important}.app.menu-open .sidebar{left:0 !important}}
+@media (max-width:600px){.main{padding:14px 12px 92px !important}.service-year-grid{grid-template-columns:1fr !important;padding:10px !important;gap:12px !important}.calendar-toolbar{padding:14px !important}.calendar-title{font-size:1.2rem}.sidebar{width:86vw !important;left:-90vw !important}.app.menu-open .sidebar{left:0 !important}}
  [data-font-size="80"]{--ui-font-scale:.80}
  [data-font-size="85"]{--ui-font-scale:.85}
  [data-font-size="90"]{--ui-font-scale:.90}
@@ -382,7 +382,7 @@ body::before{display:none !important}
 .day-popover-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .day-popover-actions .md-btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}
 .sy-day.has-events:hover{outline:2px solid var(--md-primary);outline-offset:1px}
-@media (max-width:680px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .md-btn{flex:1 1 auto}}
+@media (max-width:600px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .md-btn{flex:1 1 auto}}
 
 
 /* v9.5.9-year-week-bars: stable popover + sending workflow */
@@ -446,7 +446,7 @@ body::before{display:none !important}
 .send-status{font-size:11px;color:var(--md-on-surface-variant)}
 .send-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none}
 .send-toggle input{width:auto;margin:0;accent-color:var(--md-primary)}
-@media (max-width:680px){.send-control-grid{grid-template-columns:1fr}}
+@media (max-width:600px){.send-control-grid{grid-template-columns:1fr}}
 
 .calendar-details-card #calendarSideDetails .side-item-card:has(.entry-actions){display:none !important}
 
@@ -469,7 +469,7 @@ body::before{display:none !important}
 .sy-bar-more{position:absolute;right:4px;bottom:0;z-index:5;border:0;background:transparent;color:var(--md-on-surface-variant);font-size:9px;cursor:pointer;padding:0}
 @supports not (background: color-mix(in srgb, red 20%, white)){.sy-period-bar{background:var(--status-success-bg)}
 }
-@media (max-width:680px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
+@media (max-width:600px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
 
     /* --- Общая шапка модуля (дизайн-система) ---------------------------
        Логотип Клиндария — цветной SVG, поэтому подложке маркера фон не нужен:

@@ -50,7 +50,7 @@
       .sy-legend-sample.today{background:var(--md-primary)}
       .sy-compact-hint{display:none;padding:8px 18px 0;background:var(--md-surface-container)}
       @media (max-width:1100px){.service-year-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-      @media (max-width:680px){.service-year-grid{grid-template-columns:1fr;padding:10px;gap:10px}.sy-month-card{padding:10px;border-radius:16px}.sy-day{min-height:30px;font-size:10px}.sy-dow span{font-size:9px}.sy-legend{padding:10px 10px 0;gap:6px}.sy-legend-chip{font-size:11px;padding:5px 8px}.sy-compact-hint{display:block;padding:8px 10px 0}.calendar-side{gap:10px}.side-card{padding:14px}}
+      @media (max-width:600px){.service-year-grid{grid-template-columns:1fr;padding:10px;gap:10px}.sy-month-card{padding:10px;border-radius:16px}.sy-day{min-height:30px;font-size:10px}.sy-dow span{font-size:9px}.sy-legend{padding:10px 10px 0;gap:6px}.sy-legend-chip{font-size:11px;padding:5px 8px}.sy-compact-hint{display:block;padding:8px 10px 0}.calendar-side{gap:10px}.side-card{padding:14px}}
       @media (max-width:420px){.sy-days,.sy-dow{gap:2px}.sy-day{min-height:26px;border-radius:7px}.sy-month-title{font-size:13px;margin-bottom:6px}.sy-event-dot{width:3px;height:3px}.sy-day .sy-count{display:none}.service-year-grid{padding:8px}.sy-month-card{padding:8px}}
     
       /* Mobile modal scrolling fix */
@@ -67,7 +67,7 @@
       .day-cell{cursor:pointer}
       .day-cell.selected-day{outline:2px solid var(--md-primary);outline-offset:-2px;background:color-mix(in srgb, var(--md-primary) 10%, transparent)}
       .day-cell.selected-day.weekend{background:color-mix(in srgb, var(--md-primary) 14%, transparent)}
-      @media (max-width:820px){.calendar-layout{grid-template-columns:1fr !important}.calendar-side{position:static;max-height:none;overflow:visible}.calendar-side .side-card:not(:first-child){margin-top:12px}}
+      @media (max-width:900px){.calendar-layout{grid-template-columns:1fr !important}.calendar-side{position:static;max-height:none;overflow:visible}.calendar-side .side-card:not(:first-child){margin-top:12px}}
 
       /* v9.5.2 layout cleanup */
       .legend,.sy-legend,.sy-compact-hint{display:none !important}
@@ -200,9 +200,9 @@
  .send-status{font-size:11px;color:var(--md-on-surface-variant)}
  .send-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none}
  .send-toggle input{width:auto;margin:0;accent-color:var(--md-primary)}
- @media (max-width:680px){.send-control-grid{grid-template-columns:1fr}}
+ @media (max-width:600px){.send-control-grid{grid-template-columns:1fr}}
  
- @media (max-width:680px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .btn{flex:1 1 auto}}
+ @media (max-width:600px){.day-popover{left:12px !important;right:12px !important;top:auto !important;bottom:86px !important;max-width:none;width:auto}.day-popover-actions .btn{flex:1 1 auto}}
  
 
 `;

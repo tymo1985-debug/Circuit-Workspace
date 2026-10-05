@@ -718,11 +718,6 @@ body.cw-root {
 .md-nav-bottom-item.active .md-icon { color: var(--md-on-secondary-container); }
 .md-nav-bottom-item.active .md-nav-label { color: var(--md-on-surface); }
 
-@media (max-width: 720px) {
-  .md-nav-rail { display: none; }
-  .md-nav-bottom { display: flex; }
-}
-
 /* --- Утилиты --- */
 .md-hidden { display: none !important; }
 .md-flex { display: flex; }
@@ -1201,7 +1196,7 @@ body.cw-root {
 
 /* Мобильный: таблица превращается в список карточек.
    Разметку не меняем — заголовки берутся из data-label у <td>. */
-@media (max-width: 720px) {
+@media (max-width: 600px) {
   .md-table--cards, .md-table--cards tbody, .md-table--cards tr, .md-table--cards td { display: block; width: 100%; }
   .md-table--cards thead { display: none; }
   .md-table--cards tr {
@@ -1259,7 +1254,7 @@ body.cw-root {
    вокруг подписи виден кусок чужого фона. */
 .md-formsection .md-field label { background: var(--md-surface-container-low); }
 
-@media (max-width: 720px) {
+@media (max-width: 600px) {
   .md-formgrid, .md-formgrid--3 { grid-template-columns: minmax(0, 1fr); }
   .md-formsection { padding: var(--cw-space-4); }
 }

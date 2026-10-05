@@ -304,7 +304,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 
 .simple-list { padding-left: 18px; font-size: 13.5px; }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .app-shell { flex-direction: column; }
   .sidebar {
     width: 100%;
