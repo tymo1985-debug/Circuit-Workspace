@@ -1,6 +1,7 @@
 // Auto-generated module: render.js
 import { openLinkSeries, openNew } from "./congress.js";
 import { applyDegradedUI } from "./degraded.js";
+import { archiveRender } from "./archive-congress.js";
 import { $, $$ } from "./dom.js";
 import { icon } from "./icons.js";
 import { openLetter } from "./letters.js";
@@ -42,7 +43,7 @@ function directoryCongregations(){
   }catch(e){console.warn("Конгрессы: справочник собраний недоступен",e);return[]}
 }
 export function renderLists(){let s=S();s.congregations=clean(s.congregations);s.speakers=clean(s.speakers.concat((s.speakerProfiles||[]).map(p=>p.name)));s.assignmentTypes=clean(s.assignmentTypes);s.assignmentKinds=clean(s.assignmentKinds);$("#congregationDatalist").innerHTML=clean(s.congregations.concat(directoryCongregations())).map(x=>`<option value="${esc(x)}"></option>`).join("");$("#speakerDatalist").innerHTML=s.speakers.map(x=>`<option value="${esc(x)}"></option>`).join("");$("#typeDatalist").innerHTML=s.assignmentTypes.map(x=>`<option value="${esc(x)}"></option>`).join("");$("#kindDatalist").innerHTML=s.assignmentKinds.map(x=>`<option value="${esc(x)}"></option>`).join("")}
-export function render(){renderCongresses();renderLists();renderSettings();let c=A();if(!c){/* Раньше после удаления последнего конгресса на экране оставалась таблица заданий уже несуществующего конгресса. */let b=$("#tasksBody");if(b)b.innerHTML="";let t=$("#tableTitle");if(t)t.textContent="";["congressName","congressPlace","congressDate"].forEach(id=>{let el=$("#"+id);if(el)el.value=""});let mn=$("#congressMetaName");if(mn)mn.textContent="";let ml=$("#congressMetaLine");if(ml)ml.textContent="";return}$("#congressName").value=c.name;$("#congressPlace").value=c.place||"";$("#congressDate").value=c.date||"";$("#tableTitle").textContent=tableHeading(c);/* Компактная шапка (фаза UI-упрощения): то же имя/дата/место, что и в
+export function render(){archiveRender();renderCongresses();renderLists();renderSettings();let c=A();if(!c){/* Раньше после удаления последнего конгресса на экране оставалась таблица заданий уже несуществующего конгресса. */let b=$("#tasksBody");if(b)b.innerHTML="";let t=$("#tableTitle");if(t)t.textContent="";["congressName","congressPlace","congressDate"].forEach(id=>{let el=$("#"+id);if(el)el.value=""});let mn=$("#congressMetaName");if(mn)mn.textContent="";let ml=$("#congressMetaLine");if(ml)ml.textContent="";return}$("#congressName").value=c.name;$("#congressPlace").value=c.place||"";$("#congressDate").value=c.date||"";$("#tableTitle").textContent=tableHeading(c);/* Компактная шапка (фаза UI-упрощения): то же имя/дата/место, что и в
 скрытых по умолчанию input-полях выше, но как читаемый текст без входа в
 настройки. Поля не удалены — редактирование через #congressSettingsBtn
 по-прежнему меняет ту же модель. */let mn=$("#congressMetaName");if(mn)mn.textContent=c.name;let ml=$("#congressMetaLine");if(ml){let parts=[];if(c.date)parts.push("📅 "+fmt(c.date));if(c.place)parts.push("📍 "+esc(c.place));ml.innerHTML=parts.join(" · ")}renderTasks()
