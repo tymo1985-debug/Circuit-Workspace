@@ -16,6 +16,8 @@
  *   #districts/<c>/congregation/<n>/archive                 → собрание, «Архив» (свой, J10)
  *   #districts/<c>/congregation/<n>/visit/<v>               → посещение
  *   #districts/<c>/project/<p>                              → проект района (J7)
+ *   #roster                                                 → «Состав», вкладка «Собрания» (R1)
+ *   #roster/groups | #roster/pregroups                      → «Состав», вкладка «Группы» / «Предгруппы»
  *
  * Неполный хвост (`…/visit` без id, неизвестный сегмент) сводится к
  * ближайшему валидному контексту — собранию на вкладке «Посещения» — а не
@@ -26,8 +28,10 @@
 (function (global) {
   'use strict';
 
-  var ROUTES = ['overview', 'districts', 'tasks', 'search', 'archive'];
+  var ROUTES = ['overview', 'districts', 'roster', 'tasks', 'search', 'archive'];
   var DEFAULT_ROUTE = 'overview';
+  /* Вкладки «Состава» (R1); 'congregations' — по умолчанию, в хэше не пишется. */
+  var ROSTER_TABS = ['congregations', 'groups', 'pregroups'];
   var TASK_ID = /^[A-Za-z0-9._~@+-]{1,200}$/;
   /* Внутренние вкладки района; 'overview' — вкладка по умолчанию, в хэше не пишется. */
   var DISTRICT_TABS = ['congregations', 'entries', 'tasks', 'archive'];
@@ -42,7 +46,16 @@
     var raw = String(hash || '').replace(/^#/, '');
     var parts = raw.split('/');
     var route = ROUTES.indexOf(parts[0]) >= 0 ? parts[0] : DEFAULT_ROUTE;
-    var state = { route: route, circuitId: null, congregationId: null, districtTab: 'overview', congTab: 'overview', visitId: null, projectId: null, taskId: null, normalized: false };
+    var state = { route: route, circuitId: null, congregationId: null, districtTab: 'overview', congTab: 'overview', visitId: null, projectId: null, taskId: null, rosterTab: 'congregations', normalized: false };
+    if (route === 'roster') {
+      /* R1: #roster[/groups|/pregroups]. Неизвестная вкладка, '/congregations'
+         и лишний хвост — нормализация к ближайшей валидной вкладке. */
+      if (parts.length === 1) return state;
+      var rt = parts[1];
+      if (parts.length === 2 && (rt === 'groups' || rt === 'pregroups')) state.rosterTab = rt;
+      else state.normalized = true;
+      return state;
+    }
     if (route === 'tasks') {
       /* J9c: #tasks/<taskId> — ссылка на конкретную задачу (общий To Do).
          В адресе только id; кривой id или лишний хвост — нормализация к
@@ -99,7 +112,8 @@
     visit: function (c, n, v) { return '#districts/' + enc(c) + '/congregation/' + enc(n) + '/visit/' + enc(v); },
     project: function (c, p) { return '#districts/' + enc(c) + '/project/' + enc(p); },
     task: function (id) { return typeof id === 'string' && TASK_ID.test(id) ? '#tasks/' + enc(id) : '#tasks'; },
+    roster: function (tab) { return tab === 'groups' || tab === 'pregroups' ? '#roster/' + tab : '#roster'; },
   };
 
-  global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES, DISTRICT_TABS: DISTRICT_TABS, CONG_TABS: CONG_TABS };
+  global.CWJournalRoute = { parse: parse, build: build, ROUTES: ROUTES, DISTRICT_TABS: DISTRICT_TABS, CONG_TABS: CONG_TABS, ROSTER_TABS: ROSTER_TABS };
 })(typeof self !== 'undefined' ? self : globalThis);

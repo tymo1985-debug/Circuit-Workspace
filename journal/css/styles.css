@@ -62,6 +62,8 @@ a.j-sec__more:hover, a.j-sec__more:focus-visible { text-decoration: underline; }
 }
 a.j-ovstat:hover, a.j-ovstat:focus-visible { background: var(--md-surface-container-highest); }
 .j-ovstat__value { font-weight: 500; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+/* Состав района (R1): счётчик на вкладке. */
+.j-roster__n { margin-inline-start: 4px; opacity: 0.7; font-variant-numeric: tabular-nums; }
 @media (pointer: coarse) {
   .j-sec__more { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
   .j-ovstat { min-height: 44px; }

@@ -22,6 +22,7 @@
   function renderCongregationDetail() { return A.renderCongregationDetail.apply(this, arguments); }
   function renderDistrictDetail() { return A.renderDistrictDetail.apply(this, arguments); }
   function renderProjectDetail() { return A.renderProjectDetail.apply(this, arguments); }
+  function renderRoster() { return A.renderRoster.apply(this, arguments); }
   function renderVisitDetail() { return A.renderVisitDetail.apply(this, arguments); }
 
 
@@ -233,6 +234,7 @@
 
   function refreshCurrentView() {
     var state = parseHash();
+    if (state.route === 'roster') { renderRoster(); return; } // R1: название/номер из справочника
     if (state.route !== 'districts') return;
     if (state.projectId) renderProjectDetail(state.circuitId, state.projectId);
     else if (state.visitId) renderVisitDetail(state.circuitId, state.congregationId, state.visitId);

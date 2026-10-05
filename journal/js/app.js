@@ -37,6 +37,7 @@
   function renderDistrictDetail() { return A.renderDistrictDetail.apply(this, arguments); }
   function renderOverview() { return A.renderOverview.apply(this, arguments); }
   function renderProjectDetail() { return A.renderProjectDetail.apply(this, arguments); }
+  function renderRoster() { return A.renderRoster.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
   function renderSearch() { return A.renderSearch.apply(this, arguments); }
   function renderTasks() { return A.renderTasks.apply(this, arguments); }
@@ -52,6 +53,7 @@
   function wireVisitEditorChrome() { return A.wireVisitEditorChrome.apply(this, arguments); }
   function wireProtectionChrome() { return A.wireProtectionChrome.apply(this, arguments); }
   function wireOverviewChrome() { return A.wireOverviewChrome.apply(this, arguments); }
+  function wireRosterChrome() { return A.wireRosterChrome.apply(this, arguments); }
 
 
 
@@ -131,6 +133,11 @@
         renderSearch();
         consumeSearchFocus();
       } else if (state.route === 'archive') renderArchive();
+      else if (state.route === 'roster') {
+        // R1: неизвестная вкладка / лишний хвост — «Состав» на вкладке по умолчанию.
+        if (state.normalized) { location.replace(CWJournalRoute.build.roster(null)); return; }
+        renderRoster();
+      }
     }
 
     var fab = $('#fab');
@@ -169,6 +176,7 @@
     wireProjectChrome();
     wireProtectionChrome();
     wireOverviewChrome();
+    wireRosterChrome();
     applyRoute();
 
     wireSearchChrome();

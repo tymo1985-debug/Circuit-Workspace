@@ -95,7 +95,7 @@ const stats = (p) => p.$$eval('#overviewStats .j-ovstat__value', (xs) => xs.map(
 /* ═══ A. Desktop ═════════════════════════════════════════════════════════ */
 console.log('\nA. Desktop 1280×900');
 ok('Обзор — стартовый экран', await pj.isVisible('#route-overview'));
-ok('сводка: 2 района · 3 собрания · 1 группа · 0 предгрупп', (await stats(pj)).join() === '2,3,1,0', (await stats(pj)).join());
+ok('сводка по Журналу (R1): 2 района · 1 собрание · 0 групп · 0 предгрупп; календарь на плашки не влияет', (await stats(pj)).join() === '2,1,0,0', (await stats(pj)).join());
 const html = await pj.content();
 ok('фикстуры J1 нет', !/EU-K-03|Западное — весна|Недавно изменённые|Уточнить адрес зала/.test(html));
 ok('заблокировано: секрета нет в DOM', !html.includes(SECRET));
@@ -174,13 +174,14 @@ await settle(pj);
 ok('устаревшая разблокированная отрисовка не вернула текст', !(await pj.content()).includes(SECRET));
 
 /* ═══ F. Клиндарий недоступен / испорчен / пуст ═══════════════════════════ */
-console.log('\nF. Состояния Клиндария');
+console.log('\nF. Состояния Клиндария не меняют плашки (R1)');
+const baseStats = (await stats(pj)).join();
 await pj.evaluate(async () => {
   await CWDB.state.put({ id: 'circuit-planner', savedAt: Date.now(), rev: 9, payload: '{испорчено' });
   await CWPlanner.refresh();
 });
 await settle(pj);
-ok('invalid → «—», не 0', (await stats(pj)).slice(1).every((x) => x === '—'), (await stats(pj)).join());
+ok('календарь испорчен → плашки те же', (await stats(pj)).join() === baseStats, (await stats(pj)).join());
 await pj.evaluate(async () => {
   const real = CWDB.state.get;
   CWDB.state.get = () => Promise.reject(new Error('недоступно'));
@@ -188,10 +189,10 @@ await pj.evaluate(async () => {
   CWDB.state.get = real;
 });
 await settle(pj);
-ok('unavailable → «—», не 0', (await stats(pj)).slice(1).every((x) => x === '—'));
+ok('календарь недоступен → плашки те же', (await stats(pj)).join() === baseStats);
 await pj.evaluate(async () => { await CWDB.state.remove('circuit-planner'); await CWPlanner.refresh(); });
 await settle(pj);
-ok('пустой Клиндарий → настоящие нули', (await stats(pj)).slice(1).join() === '0,0,0', (await stats(pj)).join());
+ok('календарь пуст → плашки те же', (await stats(pj)).join() === baseStats, (await stats(pj)).join());
 // Намеренные сбои чтения пишут console.error у CWPlanner — это ожидаемо.
 for (let i = errors.length - 1; i >= 0; i--) if (/канон Клиндария не прочитан|недоступно/.test(errors[i])) errors.splice(i, 1);
 

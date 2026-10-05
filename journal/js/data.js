@@ -2448,6 +2448,30 @@
     },
   };
 
+  /* ═══ Состав района (R1) ═════════════════════════════════════════════
+   * ТОЛЬКО ЧТЕНИЕ, один снимок на вызов. Собрания, группы и предгруппы
+   * Журнала — по `journalNodes`, не по календарю. Узел в архивном контексте
+   * (свой статус или архивный предок) в состав не входит: тот же
+   * `nodeArchived`, что у Обзора. Ничего не пишется и не кэшируется.
+   * Подпись справочника здесь НЕ подмешивается — её добавляет экран
+   * (`nodeName`), как и везде в Журнале. */
+  var roster = {
+    read: async function () {
+      var snap = await snapshot(false);
+      var live = snap.nodes.filter(function (n) { return !snap.nodeArchived(n.id); });
+      var circuits = sortNodes(live.filter(function (n) { return n.kind === 'circuit'; }));
+      var out = { circuits: circuits, congregations: [], groups: [], pregroups: [] };
+      var byKind = { congregation: out.congregations, group: out.groups, pregroup: out.pregroups };
+      sortNodes(live).forEach(function (n) {
+        var bucket = byKind[n.kind];
+        if (!bucket) return;
+        var parent = n.parentId && n.parentId !== ROOT_PARENT ? snap.nodeById[n.parentId] || null : null;
+        bucket.push({ node: n, circuitId: n.circuitId || null, parent: n.kind === 'congregation' ? null : parent });
+      });
+      return out;
+    },
+  };
+
   /* ═══ Граница интеграции (J9c): задачи Журнала для общего To Do ══════
    * ТОЛЬКО ЧТЕНИЕ. Владелец данных и правил — CWJournal.tasks; здесь нет ни
    * complete/reopen, ни правки, ни удаления. Строки читаются СЫРЫМИ
@@ -2515,6 +2539,7 @@
     documents: documents,
     integration: integration,
     overview: overview,
+    roster: roster,
     projects: projects,
     districtNotes: districtNotes,
     congregationNotes: congregationNotes,

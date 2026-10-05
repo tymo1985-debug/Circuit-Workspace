@@ -342,16 +342,17 @@ console.log('\n3. Пусто / наполнено');
   ok('восстановление: повторный вход на маршрут → живой Обзор без перезагрузки', (await page.$$('#overviewTasks .j-row')).length === 3 && (await stats(page))[0] === '2');
 
   /* ═══ 4. Клиндарий: сбой → восстановление, две вкладки ════════════════ */
-  console.log('\n4. Клиндарий: восстановление из соседней вкладки');
+  console.log('\n4. Клиндарий не влияет на плашки (R1): сбой и запись из соседней вкладки');
+  const baseStats = (await stats(page)).slice(1).join();
   const tab2 = await ctx.newPage(); watch(tab2, 'tab2');
   await tab2.goto(J_URL + '#tasks', { waitUntil: 'load' });
   await tab2.waitForFunction(() => !!self.CWDB);
   await plannerWrite(tab2, '{испорчено');
   await settle(page, 700);
-  ok('соседняя вкладка записала испорченный канон → «—»', (await stats(page)).slice(1).every((x) => x === '—'), (await stats(page)).join());
+  ok('соседняя вкладка записала испорченный канон → плашки те же', (await stats(page)).slice(1).join() === baseStats, (await stats(page)).join());
   await plannerWrite(tab2, PLANNER([{ id: 'ev_c', name: 'В', visitType: 'congregation' }, { id: 'ev_p2', name: 'П2', visitType: 'pregroup' }]));
   await settle(page, 700);
-  ok('исправленный канон → верные числа без перезагрузки', (await stats(page)).slice(1).join() === '3,1,2', (await stats(page)).join());
+  ok('исправленный канон (3/1/2) → плашки по Журналу те же', (await stats(page)).slice(1).join() === baseStats, (await stats(page)).join());
   const unav = await page.evaluate(async () => {
     const real = CWDB.state.get; CWDB.state.get = () => Promise.reject(new Error('O3: канон недоступен'));
     await CWPlanner.refresh(); await new Promise((r) => setTimeout(r, 300));
@@ -359,10 +360,10 @@ console.log('\n3. Пусто / наполнено');
     CWDB.state.get = real; return a;
   });
   expected.push(/O3: канон недоступен|Клиндари/);
-  ok('unavailable → «—»', unav === '—,—,—', unav);
+  ok('календарь недоступен → плашки те же', unav === baseStats, unav);
   await plannerWrite(tab2, PLANNER());
   await settle(page, 700);
-  ok('unavailable → запись из соседней вкладки → числа вернулись', (await stats(page)).slice(1).join() === '2,1,1', (await stats(page)).join());
+  ok('запись календаря из соседней вкладки → плашки те же', (await stats(page)).slice(1).join() === baseStats, (await stats(page)).join());
   await tab2.close();
 
   /* ═══ 9. Назад/вперёд и BFCache ═══════════════════════════════════════════ */

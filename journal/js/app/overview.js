@@ -2,9 +2,10 @@
  *
  * Данные — только публичные границы: снимок CWJournal.overview.read() (районы,
  * открытые задачи, перенос, активные проекты, посещения — отбор, порядок и
- * архивный контекст держит data.js) и CWPlanner.listCommunities() (объекты
- * Клиндария). Точечно — CWJournal.nodes.get() для подписей не более чем
- * девяти показанных строк. Ничего не пишется и не кэшируется.
+ * архивный контекст держит data.js) и CWJournal.roster.read() (собрания,
+ * группы и предгруппы Журнала — плашки сводки; календарь не читается).
+ * Точечно — CWJournal.nodes.get() для подписей не более чем девяти
+ * показанных строк. Ничего не пишется и не кэшируется.
  *
  * Показ: не больше PREVIEW строк в секции, счётчик — полный. Ссылки — только
  * существующие маршруты; строка, для которой безопасного маршрута нет, в
@@ -17,7 +18,7 @@
  * отрисовки в заблокированной сессии секции, где был раскрытый текст,
  * очищаются сразу — не дожидаясь чтения.
  *
- * Свежесть без опроса: CWPlanner.subscribe, CWJournal.integration.onChange
+ * Свежесть без опроса: CWJournal.integration.onChange
  * (записи и узлы, эта и соседние вкладки); CWDirectory.onChange и смена
  * блокировки приходят через app.js/protection.js в тот же renderOverview. */
 (function () {
@@ -65,17 +66,6 @@
   function plainIn(list) { return list.some(function (r) { return isProtectedRow(r) && !isLockedRow(r); }); }
 
   /* ═══ Сводка ═══════════════════════════════════════════════════════════ */
-  /** Объекты Клиндария: числа только при 'ok'/'empty' — иначе неизвестно. */
-  function plannerView() {
-    var P = self.CWPlanner;
-    if (!P) return { known: false, status: 'unavailable', href: null };
-    var st = P.status();
-    var view = { known: st === 'ok' || st === 'empty', status: st, href: P.urlForEntry(null), n: { congregation: 0, group: 0, pregroup: 0 } };
-    if (view.known) P.listCommunities().forEach(function (c) { if (c.visitType in view.n) view.n[c.visitType]++; });
-    return view;
-  }
-  function unknownMark(status) { return status === 'idle' ? '…' : '—'; }
-
   function statItem(labelKey, value, href, title) {
     var label = t(labelKey);
     var item = el(href ? 'a' : 'span', 'j-ovstat');
@@ -86,14 +76,17 @@
     item.appendChild(el('span', 'j-ovstat__label', label));
     return item;
   }
-  function buildStats(data, failed, planner) {
+  /** Плашки сводки: районы — из снимка Обзора, остальные — из состава
+   *  Журнала (R1). Не прочитано — «—» с подсказкой, пока читается — «…». */
+  function buildStats(data, failed, roster) {
     var frag = document.createDocumentFragment();
     var circuits = failed ? '—' : data ? String(data.circuits.length) : '…';
     frag.appendChild(statItem('j.nav.districts', circuits, '#districts', failed ? t('j.overview.unavailable') : null));
-    var unknownTitle = planner.status === 'idle' ? null : t('j.planner.unavailable');
-    [['congregation', 'j.overview.stat.congregations'], ['group', 'j.overview.stat.groups'], ['pregroup', 'j.overview.stat.pregroups']].forEach(function (x) {
-      var value = planner.known ? String(planner.n[x[0]]) : unknownMark(planner.status);
-      frag.appendChild(statItem(x[1], value, planner.href, planner.known ? null : unknownTitle));
+    [['congregations', 'j.overview.stat.congregations', '#roster'],
+     ['groups', 'j.overview.stat.groups', '#roster/groups'],
+     ['pregroups', 'j.overview.stat.pregroups', '#roster/pregroups']].forEach(function (x) {
+      var value = failed ? '—' : roster ? String(roster[x[0]].length) : '…';
+      frag.appendChild(statItem(x[1], value, x[2], failed ? t('j.overview.unavailable') : null));
     });
     return frag;
   }
@@ -251,7 +244,7 @@
     if (content) $('#' + box).replaceChildren(content); else $('#' + box).replaceChildren();
   }
   function showLoading() {
-    $('#overviewStats').replaceChildren(buildStats(null, false, plannerView()));
+    $('#overviewStats').replaceChildren(buildStats(null, false, null));
     SECTIONS.forEach(function (s) { setSection(s[1], '…', null, true); });
     $('#overviewNextVisit').hidden = true;
   }
@@ -262,8 +255,8 @@
       if (box && box.hasAttribute('data-ov-plain')) { box.replaceChildren(); box.removeAttribute('data-ov-plain'); }
     });
   }
-  function commit(view, failed, data) {
-    $('#overviewStats').replaceChildren(buildStats(data, failed, plannerView()));
+  function commit(view, failed, data, roster) {
+    $('#overviewStats').replaceChildren(buildStats(data, failed, roster));
     SECTIONS.forEach(function (s) {
       var box = $('#' + s[1]);
       if (failed) {
@@ -281,10 +274,11 @@
     var gen = ++overviewRenderSeq;
     if (!unlocked()) dropPlain();
     if (!overviewUi.loaded) showLoading();
-    var P = self.CWPlanner;
-    if (P && !P.ready()) await P.init();
-    var data = null, failed = false;
-    try { data = await CWJournal.overview.read(); } catch (e) {
+    var data = null, roster = null, failed = false;
+    try {
+      data = await CWJournal.overview.read();
+      roster = await CWJournal.roster.read();
+    } catch (e) {
       failed = true;
       console.error('Журнал: данные Обзора не прочитаны', e);
     }
@@ -302,7 +296,7 @@
     if (view && Object.keys(view.plain).some(function (k) { return view.plain[k]; }) && !unlocked()) return;
     await renderNextVisitBanner(failed ? null : data, todayIso(), gen);
     if (!isCurrent(gen)) return;
-    commit(view, failed, data);
+    commit(view, failed, data, roster);
   }
 
   function onSourceChange() { if (parseHash().route === 'overview') renderOverview(); }
@@ -311,7 +305,6 @@
   function wireOverviewChrome() {
     if (overviewUi.bound) return;
     overviewUi.bound = true;
-    if (self.CWPlanner) { self.CWPlanner.subscribe(onSourceChange); self.CWPlanner.init(); }
     CWJournal.integration.onChange(onSourceChange);
   }
 

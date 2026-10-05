@@ -386,22 +386,21 @@ console.log('\n5. O2: экран Обзора');
   const rows = (id) => [...doc.querySelectorAll('#' + id + ' .j-row')];
   const ov = () => $('#route-overview').outerHTML;
 
-  // Состояния Клиндария ДО первого чтения: idle не равен нулю.
+  // R1: Обзор календарь не читает — плашки считаются по узлам Журнала.
   await wait(20);
   srcs.slice(split).forEach(evalSrc);
   const A = W.CWJournalApp;
-  ok('[7] до чтения Клиндарий idle', W.CWPlanner.status() === 'idle');
   A.renderOverview();
-  ok('[7] idle → «…», не 0', [...doc.querySelectorAll('#overviewStats .j-ovstat__value')].slice(1).every((x) => x.textContent === '…'));
+  ok('[7] пока читается → «…», не 0', [...doc.querySelectorAll('#overviewStats .j-ovstat__value')].slice(1).every((x) => x.textContent === '…'));
   doc.dispatchEvent(new W.Event('DOMContentLoaded'));
   await settle();
   ok('маршрут по умолчанию — Обзор', !$('#route-overview').hidden);
   const st = stats();
   ok('[1] районы — из Журнала (архивный не считается)', st[0] === '2', st.join());
-  ok('[2–4] собрания/группы/предгруппы — из listCommunities()', st[1] === '2' && st[2] === '1' && st[3] === '1', st.join());
-  ok('[5] обычная запись календаря не считается, посещения не дублируют', st[1] === '2');
-  ok('районы → #districts; объекты → Клиндарий', $('#overviewStats a.j-ovstat').getAttribute('href') === '#districts'
-    && [...doc.querySelectorAll('#overviewStats a.j-ovstat')].slice(1).every((a) => a.getAttribute('href') === '../circuit-planner/index.html#calendar'));
+  ok('[2–4] собрания/группы/предгруппы — из узлов Журнала (R1)', st[1] === '1' && st[2] === '1' && st[3] === '0', st.join());
+  ok('[5] календарь (2/1/1) на плашки не влияет', st[1] !== '2' && st[3] !== '1', st.join());
+  ok('районы → #districts; остальные → «Состав»', $('#overviewStats a.j-ovstat').getAttribute('href') === '#districts'
+    && JSON.stringify([...doc.querySelectorAll('#overviewStats a.j-ovstat')].slice(1).map((a) => a.getAttribute('href'))) === '["#roster","#roster/groups","#roster/pregroups"]');
   ok('статистики — с доступным именем', [...doc.querySelectorAll('#overviewStats .j-ovstat')].every((a) => /: /.test(a.getAttribute('aria-label') || '')));
 
   // Задачи
@@ -453,7 +452,10 @@ console.log('\n5. O2: экран Обзора');
   await W.CWDB.state.put({ id: 'circuit-planner', payload: PBLOB(PEVENTS.concat([{ id: 'ev_c3', name: 'С3', visitType: 'congregation' }])), savedAt: Date.now(), rev: 2 });
   W.dispatchEvent(Object.assign(new W.Event('storage'), { key: W.CWPlanner.REV_KEY }));
   await settle();
-  ok('[40] Клиндарий → Обзор обновился', stats()[1] === '3', stats().join());
+  ok('[40] новое событие календаря → плашки не изменились', stats()[1] === '1', stats().join());
+  await WJ.nodes.add({ kind: 'congregation', parentId: cA, label: 'Собрание Второе' });
+  await settle();
+  ok('[40] новое собрание Журнала → плашка обновилась', stats()[1] === '2', stats().join());
   await WJ.protection.unlock('correct horse battery');
   await settle();
   ok('[43] разблокировка → текст виден', ov().includes(TXT) && ov().includes('Вопрос номер 1'));
@@ -486,20 +488,20 @@ console.log('\n5. O2: экран Обзора');
   ok('[46] старая разблокированная отрисовка не вернула текст', !ov().includes(TXT) && !ov().includes('Вопрос номер 1'));
   WJ.overview.read = realRead;
 
-  // Состояния Клиндария и сбой Журнала
+  // Состояния календаря на плашки не влияют; сбой Журнала — «—».
   const P = W.CWPlanner;
+  const baseline = stats().join();
   await W.CWDB.state.remove('circuit-planner');
   await P.refresh(); await settle();
-  ok('[6] Клиндарий пуст (empty) → настоящие нули', P.status() === 'empty' && stats().slice(1).join() === '0,0,0', stats().join());
+  ok('[6] календарь пуст → плашки Журнала те же', stats().join() === baseline, stats().join());
   await W.CWDB.state.put({ id: 'circuit-planner', payload: '{испорчено', savedAt: Date.now(), rev: 3 });
   await P.refresh(); await settle();
-  ok('[8] invalid → не 0', P.status() === 'invalid' && stats().slice(1).every((x) => x === '—'), stats().join());
+  ok('[8] календарь испорчен → плашки те же', stats().join() === baseline, stats().join());
   const realGet = W.CWDB.state.get;
   W.CWDB.state.get = () => Promise.reject(new Error('boom'));
   await P.refresh(); await settle();
   W.CWDB.state.get = realGet;
-  ok('[9] unavailable → не 0', P.status() === 'unavailable' && stats().slice(1).every((x) => x === '—'));
-  ok('[7] idle показывается как «…»', read('journal/js/app/overview.js').includes("status === 'idle' ? '…' : '—'"));
+  ok('[9] календарь недоступен → плашки те же', stats().join() === baseline, stats().join());
   WJ.overview.read = () => Promise.reject(new Error('read failed'));
   await A.renderOverview();
   ok('сбой чтения Журнала → «—» и подсказка, не нули', stats()[0] === '—' && $('#overviewTasksCount').textContent === '—'
@@ -548,7 +550,7 @@ console.log('\n6. O2: статические границы');
   ok('[35] fabSpecFor(overview) → null', /state\.route === 'overview'\) return null;/.test(app));
   ok('справочник → refreshCurrentView, одного пути', !/renderOverviewProjects/.test(app + strip(read('journal/js/app/protection.js'))) && (app.match(/refreshCurrentView\(\)/g) || []).length >= 3);
   const ovSrc = strip(read('journal/js/app/overview.js'));
-  ok('[40] подписка на Клиндарий', /CWPlanner\.subscribe\(onSourceChange\)/.test(ovSrc));
+  ok('[40] Обзор не читает и не слушает календарь (R1)', !/CWPlanner/.test(ovSrc));
   ok('[41/42] подписка на изменения Журнала', /CWJournal\.integration\.onChange\(onSourceChange\)/.test(ovSrc));
   ok('[43] смена блокировки → renderOverview', /st\.route === 'overview'\) renderOverview\(\)/.test(strip(read('journal/js/app/protection.js'))));
   ok('[44/50] Обзор: без таймеров, хранилищ, CWDB и сырого Клиндария', !/setInterval|setTimeout|localStorage|sessionStorage|CWDB|indexedDB|state\/circuit-planner|listEntries/.test(ovSrc));
