@@ -63,6 +63,7 @@ const PAGES = [
      и не заметила необъявленный --cw-teal в .j-tag--link (найден и заменён
      на --status-success/-bg в этой же фазе). */
   { title: 'Журнал', dir: 'journal' },
+  { title: 'Архив', dir: 'archive' },
 ];
 
 const EXTS = ['.css', '.html', '.js'];

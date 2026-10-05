@@ -2,7 +2,7 @@
 /**
  * Circuit Workspace — scripts/live-run.mjs
  *
- * Живой прогон шести страниц в Chromium. НЕ ВХОДИТ В ГЕЙТ и намеренно:
+ * Живой прогон страниц в Chromium. НЕ ВХОДИТ В ГЕЙТ и намеренно:
  * `check-all.mjs` обязан работать на любой машине без браузера, а здесь нужен
  * Chromium и `playwright-core`. Запускается вручную перед выдачей файлов.
  *
@@ -84,6 +84,7 @@ const PAGES = [
   ['Назначения', '/appointments/'],
   ['Документы', '/documents/'],
   ['Журнал', '/journal/'],
+  ['Архив', '/archive/'],
 ];
 
 const browser = await chromium.launch({
@@ -135,5 +136,5 @@ for (const [name, url] of PAGES) {
 }
 await browser.close();
 server.close();
-console.log(bad ? '\nСТРАНИЦ С НАХОДКАМИ: ' + bad : '\nВсе семь страниц чисты.');
+console.log(bad ? '\nСТРАНИЦ С НАХОДКАМИ: ' + bad : '\nВсе страницы чисты.');
 process.exit(bad ? 1 : 0);

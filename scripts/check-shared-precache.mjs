@@ -42,6 +42,7 @@ const MODULES = [
   { id: 'pioneer-school',   html: 'pioneer-school/index.html',   sw: 'pioneer-school/sw.js' },
   { id: 'appointments',     html: 'appointments/index.html',     sw: 'appointments/sw.js' },
   { id: 'documents',        html: 'documents/index.html',        sw: 'documents/sw.js' },
+  { id: 'archive',          html: 'archive/index.html',          sw: 'archive/sw.js' },
 ];
 
 /**

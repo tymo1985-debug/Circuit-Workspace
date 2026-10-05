@@ -1,0 +1,128 @@
+// Архив — service worker модуля.
+//
+// Кэши удаляются строго свои, по префиксу: Cache Storage общий на весь origin,
+// и «удали всё, кроме моего» стёрло бы офлайн-кэши соседних модулей.
+//
+// Модуль не хранит собственных данных — он читает конверты из общего
+// хранилища `archive` (shared/archive.js) и письма из `documents`
+// (shared/documents.js + shared/docsview.js), поэтому в ASSETS обязательны
+// shared/db.js и эти три файла. Без них офлайн-запуск покажет пустой архив
+// или упадёт на CWArchive undefined.
+/* ВЕРСИЯ БЕРЁТСЯ ИЗ ЕДИНОГО ИСТОЧНИКА (28.08.2026, приём Клиндария).
+   Раньше число дублировалось здесь и в shared/version.js: при каждом выпуске
+   правились два места, а расхождение ловил гейт — но только если его
+   запустили. Побочный выигрыш важнее самого дедупа: браузер при проверке
+   обновления сверяет не только sw.js, но и импортированные им скрипты,
+   поэтому ЛЮБОЙ выпуск, поднявший версию в реестре, сам инвалидирует кэш
+   этого модуля. Запасное '0' — на случай, если импорт не удался: имя кэша
+   всё равно должно получиться строкой, иначе SW не установится вовсе. */
+importScripts('../shared/version.js');
+const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['archive']
+  ? self.CW_MODULES['archive'].version
+  : '0');
+const CACHE_PREFIX = 'archive-cache-v';
+const CACHE_NAME = CACHE_PREFIX + APP_VERSION + '-hub-' + self.CW_VERSION;
+
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './css/styles.css',
+  './js/pin.js',
+  './js/logic.js',
+  './js/app.js',
+  './i18n/dict.js',
+  './icons/favicon-32.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png',
+  // Общий слой хаба. Без него офлайн-запуск теряет стили, кнопку возврата
+  // и падает на CWI18n undefined.
+  '../shared/style.css',
+  '../shared/nav.js',
+  '../shared/theme.js',
+  '../shared/backup.js',
+  '../shared/version.js',
+  '../shared/update.js',
+  '../shared/i18n.js',
+  '../shared/escape.js',
+  '../shared/i18n/common.js',
+  '../shared/db.js',
+  '../shared/archive.js',
+  '../shared/documents.js',
+  '../shared/docsview.js',
+  '../shared/fonts/roboto-latin-400-normal.woff2',
+  '../shared/fonts/roboto-latin-500-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-400-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-500-normal.woff2',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(ASSETS);
+  })());
+});
+
+// Досрочная активация — только по явной просьбе пользователя (кнопка
+// «Обновить» из shared/update.js). skipWaiting() на установке убран
+// намеренно: он подменял ассеты под уже открытой страницей.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.type === 'CW_VERSION' && event.ports && event.ports[0]) event.ports[0].postMessage({ module: 'archive', version: APP_VERSION, hub: self.CW_VERSION });
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map((k) => caches.delete(k))
+    );
+    await self.clients.claim();
+  })());
+});
+
+// Чтение строго из СВОЕГО кэша.
+//
+// Раньше здесь стоял глобальный `caches.match()`, который перебирает ВСЕ кэши
+// origin в порядке их создания. Общие файлы (`../shared/style.css` и остальной
+// общий слой) лежат под тем же URL ещё и в кэше хаба, и в кэшах соседних
+// модулей — модуль мог получить чужую копию. Это подрывало правило «поднял
+// `shared/*` — патч-бампи модули»: бамп меняет имя СВОЕГО кэша, а глобальный
+// поиск всё равно мог отдать старый файл соседа.
+//
+// Условие корректности: каждый общий файл, который модуль подключает, обязан
+// лежать в его собственном прекэше — это стережёт `check-shared-precache.mjs`.
+// Образец — `matchOwn` в `circuit-planner/sw.js` (там кэшей два, здесь один).
+async function matchOwn(request) {
+  const cache = await caches.open(CACHE_NAME);
+  return cache.match(request);
+}
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  event.respondWith((async () => {
+    const cached = await matchOwn(request);
+    if (cached) return cached;
+    try {
+      const response = await fetch(request);
+      if (response && response.ok && url.origin === self.location.origin) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch (_) {
+      if (request.mode === 'navigate') {
+        const shell = await matchOwn('./index.html');
+        if (shell) return shell;
+      }
+      return Response.error();
+    }
+  })());
+});

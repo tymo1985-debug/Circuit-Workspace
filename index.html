@@ -1092,6 +1092,27 @@
         </article>
       </a>
 
+      <!-- Седьмая плитка (шаг A2 трека «Архив»). Как у «Документов», собственного
+           блока [data-module="archive"] в shared/style.css нет намеренно: действует
+           общая палитра хаба. Атрибут data-module нужен — по нему скрипт ниже
+           проставляет версию из реестра. -->
+      <a class="cw-tile-link" href="archive/index.html" data-module="archive">
+        <article class="cw-card cw-tile">
+          <div class="cw-tile__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+          </div>
+          <h2 data-i18n="module.archive.title">Архив</h2>
+          <p data-i18n="module.archive.desc">Завершённые служебные годы и конгрессы: просмотр, поиск и выданные письма.</p>
+          <div class="cw-tile__footer">
+            <span class="cw-badge cw-badge--live cw-tile__badge">
+              <span class="cw-tile__dot" aria-hidden="true"></span>
+              <span data-i18n="status.live">работает</span>
+              <span class="cw-tile__ver" data-module-version></span>
+            </span>
+          </div>
+        </article>
+      </a>
+
         </div>
       </div>
       <!-- Мобильная подсказка под списком модулей — заменяет длинный

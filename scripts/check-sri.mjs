@@ -55,6 +55,7 @@ const PAGES = [
   'pioneer-school/register.html',
   'appointments/index.html',
   'documents/index.html',
+  'archive/index.html',
 ];
 
 let failed = 0;

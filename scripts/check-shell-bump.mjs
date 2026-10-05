@@ -39,6 +39,7 @@ const SHELLS = [
   { id: 'appointments',     dir: 'appointments',     sw: 'appointments/sw.js' },
   { id: 'documents',        dir: 'documents',        sw: 'documents/sw.js' },
   { id: 'journal',          dir: 'journal',           sw: 'journal/sw.js' },
+  { id: 'archive',          dir: 'archive',           sw: 'archive/sw.js' },
 ];
 
 const base = process.env.CW_BUMP_BASE || '';

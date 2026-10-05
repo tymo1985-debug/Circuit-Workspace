@@ -62,6 +62,7 @@ const BRIDGES = [
   { file: 'pioneer-school/js/i18n.js', module: 'pioneer-school' },
   { file: 'appointments/js/app.js', module: 'appointments' },
   { file: 'documents/js/app.js', module: 'documents' },
+  { file: 'archive/js/app.js', module: 'archive' },
 ];
 BRIDGES.forEach((b) => {
   if (!existsSync(join(ROOT, b.file))) { ok(b.file + ': файл на месте', false); return; }

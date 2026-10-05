@@ -78,6 +78,7 @@ const SHELLS = [
   { sw: 'appointments/sw.js', module: 'appointments', title: 'Назначения' },
   { sw: 'documents/sw.js', module: 'documents', title: 'Документы' },
   { sw: 'journal/sw.js', module: 'journal', title: 'Журнал' },
+  { sw: 'archive/sw.js', module: 'archive', title: 'Архив' },
 ];
 
 let failed = 0;

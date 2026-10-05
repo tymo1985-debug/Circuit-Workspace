@@ -8,7 +8,7 @@ const read = (file) => readFileSync(join(ROOT, file), 'utf8');
 const registrySource = read('shared/version.js');
 const modules = [...registrySource.matchAll(/'([^']+)':\s*\{[^}]*version:\s*'([^']+)'[^}]*worker:\s*'([^']+)'/g)]
   .map((m) => ({ id: m[1], version: m[2], worker: m[3] }));
-const expected = ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal'];
+const expected = ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal', 'archive'];
 let failures = 0;
 const ok = (label, value) => {
   console.log('  ' + (value ? '✓ ' : '✗ ') + label);

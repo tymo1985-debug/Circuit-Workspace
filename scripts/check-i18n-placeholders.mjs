@@ -39,6 +39,7 @@ const ok = (name, cond, extra = '') => {
 const DICTS = [
   'shared/i18n/common.js',
   'appointments/i18n/dict.js',
+  'archive/i18n/dict.js',
   'circuit-planner/i18n/dict.js',
   'congress-project/i18n/dict.js',
   'documents/i18n/dict.js',

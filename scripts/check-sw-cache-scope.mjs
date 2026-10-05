@@ -55,6 +55,7 @@ const WORKERS = [
   { id: 'pioneer-school', file: 'pioneer-school/sw.js', cacheVar: 'CACHE_NAME', behavioural: true },
   { id: 'appointments', file: 'appointments/sw.js', cacheVar: 'CACHE_NAME', behavioural: true },
   { id: 'documents', file: 'documents/sw.js', cacheVar: 'CACHE_NAME', behavioural: true },
+  { id: 'archive', file: 'archive/sw.js', cacheVar: 'CACHE_NAME', behavioural: true },
   { id: 'congress-project', file: 'congress-project/service-worker.js', cacheVar: 'CACHE', behavioural: true },
   { id: 'circuit-planner', file: 'circuit-planner/sw.js', cacheVar: 'CACHE_STATIC', behavioural: false,
     why: 'два кэша (static + runtime) и собственный matchOwn с осознанным порядком чтения' },

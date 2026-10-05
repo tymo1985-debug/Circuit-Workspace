@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="../shared/theme.js"></script>
+<meta charset="utf-8">
+<title data-i18n="module.archive.title">Архив</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6a45c9">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="css/styles.css">
+
+<!-- Локализация — строго в <head>: при нерусском языке иначе на кадр мелькает
+     русская разметка (то же правило, что в хабе и остальных модулях). -->
+<script src="../shared/version.js"></script>
+<script src="../shared/i18n.js"></script>
+<script src="../shared/escape.js"></script>
+<script src="../shared/i18n/common.js"></script>
+<script src="i18n/dict.js"></script>
+
+<!-- Хранилище. Своих данных у модуля нет: он читает конверты через CWArchive и
+     письма через CWDocs (`docRefs`). db.js — раньше обоих. -->
+<script src="../shared/db.js"></script>
+<script src="../shared/archive.js"></script>
+<script src="../shared/documents.js"></script>
+<script src="../shared/docsview.js"></script>
+</head>
+<!-- data-module у модуля НЕТ намеренно: как у «Документов», Архив держит общую
+     фирменную палитру хаба, собственного акцента нет. -->
+<body>
+
+<header class="md-topbar-v2">
+  <div class="md-topbar-v2__lead">
+    <div class="md-topbar-v2__mark" aria-hidden="true">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+    </div>
+    <div class="md-topbar-v2__titles">
+      <p class="md-topbar-v2__title" data-i18n="module.archive.title">Архив</p>
+      <p class="md-topbar-v2__sub"><span id="moduleVersion"></span></p>
+    </div>
+  </div>
+  <span class="md-topbar-v2__spacer"></span>
+  <div class="md-topbar-v2__actions">
+    <button type="button" class="md-btn md-btn-text md-state-layer" id="lockBtn" hidden data-i18n="arc.lock_btn">Закрыть PIN-ом</button>
+  </div>
+</header>
+
+<div class="arc-wrap">
+
+  <!-- Экран 1: список по служебным годам. -->
+  <section id="listScreen">
+    <div class="arc-toolbar">
+      <label class="md-field arc-search">
+        <span data-i18n="arc.search_label">Поиск по архиву</span>
+        <input id="search" type="search" autocomplete="off" placeholder="Название, дата, заметка, метка…" data-i18n-placeholder="arc.search_placeholder">
+      </label>
+    </div>
+    <div class="arc-years" id="yearChips" role="group" aria-labelledby="yearsLabel" hidden>
+      <span class="sr-only" id="yearsLabel" data-i18n="arc.years_label">Служебный год</span>
+    </div>
+
+    <!-- Раздел Клиндария закрыт PIN-ом (пока PIN задан и не введён). Ни число
+         закрытых конвертов, ни их названия здесь не показываются. -->
+    <div class="md-banner arc-locked" id="lockedBox" hidden>
+      <div class="md-banner__body">
+        <p class="md-banner__title" data-i18n="arc.locked_title">Раздел Клиндария закрыт PIN-ом</p>
+        <p class="arc-locked__text" data-i18n="arc.locked_text">Введите тот же PIN, что и в самом Клиндарии, чтобы увидеть его архивные годы.</p>
+        <button type="button" class="md-btn md-btn-tonal md-state-layer" id="unlockBtn" data-i18n="arc.unlock_btn">Ввести PIN</button>
+      </div>
+    </div>
+
+    <div id="list" aria-live="polite"></div>
+  </section>
+
+  <!-- Экран 2: одна запись. -->
+  <section id="detailScreen" hidden>
+    <button type="button" class="md-btn md-btn-text md-state-layer" id="backBtn" data-i18n="arc.back">К списку</button>
+    <div id="detail"></div>
+  </section>
+
+</div>
+
+<dialog class="md-dialog arc-pin" id="pinDialog" aria-labelledby="pinTitle">
+  <form id="pinForm" method="dialog" novalidate>
+    <div class="md-dialog-head"><h2 id="pinTitle" class="arc-pin__title" data-i18n="arc.pin_title">PIN Клиндария</h2></div>
+    <div class="md-dialog-body">
+      <label class="md-field">
+        <span data-i18n="arc.pin_label">PIN</span>
+        <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" maxlength="8">
+      </label>
+      <p class="arc-pin__error" id="pinError" role="alert"></p>
+    </div>
+    <div class="md-dialog-actions">
+      <button type="button" class="md-btn md-btn-text md-state-layer" id="pinCancel" data-i18n="common.cancel">Отмена</button>
+      <button type="submit" class="md-btn md-btn-filled md-state-layer" data-i18n="arc.unlock_submit">Открыть</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="arc-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/pin.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/app.js"></script>
+<script src="../shared/backup.js"></script>
+<script src="../shared/nav.js" defer></script>
+<script src="../shared/update.js"></script>
+</body>
+</html>

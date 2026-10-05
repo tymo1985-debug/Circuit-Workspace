@@ -52,7 +52,7 @@ const shell = (registrySrc.match(/CW_VERSION\s*=\s*'([^']+)'/) || [])[1];
 const semver = /^\d+\.\d+\.\d+$/;
 
 ok('CW_VERSION объявлен и корректен', !!shell && semver.test(shell), shell);
-const MODULES = ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal'];
+const MODULES = ['congress-project', 'circuit-planner', 'pioneer-school', 'appointments', 'documents', 'journal', 'archive'];
 MODULES.forEach((id) => {
   ok('реестр знает ' + id, !!registry[id] && semver.test(registry[id]), registry[id]);
 });
@@ -72,6 +72,7 @@ const DERIVED = [
   { file: 'appointments/sw.js', expect: /CW_MODULES\s*\[\s*'appointments'\s*\]/, what: "CW_MODULES['appointments']" },
   { file: 'documents/sw.js', expect: /CW_MODULES\s*\[\s*'documents'\s*\]/, what: "CW_MODULES['documents']" },
   { file: 'journal/sw.js', expect: /CW_MODULES\s*\[\s*'journal'\s*\]/, what: "CW_MODULES['journal']" },
+  { file: 'archive/sw.js', expect: /CW_MODULES\s*\[\s*'archive'\s*\]/, what: "CW_MODULES['archive']" },
 ];
 
 /* Литерал — это `APP_VERSION = '1.2.3'` или `version: '1.2.3'` с настоящим
@@ -92,7 +93,7 @@ DERIVED.forEach((entry) => {
 
 /* Импорт реестра обязателен там, где он единственный способ его получить. */
 ['congress-project/service-worker.js', 'pioneer-school/sw.js',
- 'appointments/sw.js', 'documents/sw.js', 'journal/sw.js', 'circuit-planner/sw.js'].forEach((file) => {
+ 'appointments/sw.js', 'documents/sw.js', 'journal/sw.js', 'archive/sw.js', 'circuit-planner/sw.js'].forEach((file) => {
   ok(file + ': реестр импортирован', /importScripts\([^)]*shared\/version\.js/.test(read(file)),
     'без importScripts у service worker нет доступа к CW_MODULES, и APP_VERSION станет запасным «0»');
 });

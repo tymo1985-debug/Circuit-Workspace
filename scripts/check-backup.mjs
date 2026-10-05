@@ -959,6 +959,51 @@ console.log('\nАрхив (A1)');
   ok('CWArchive работает после восстановления', (await A.years()).join() === '2026,2025,2024');
 }
 
+/* Архив (A2): собственная запись реестра. Модуль без своих данных — копия
+   состоит из хранилища `archive` (слиянием) и `documents` (письма по
+   docRefs). Префиксы у источников (A1) остаются нетронутыми. */
+console.log('\nАрхив (A2): запись реестра модуля');
+{
+  const A = globalThis.CWArchive;
+  const entry = CWBackup.MODULES['archive'];
+  ok('реестр: модуль archive объявлен (запись переехала с A1 на A2)', !!entry);
+  const decl = (entry && entry.sharedStores && entry.sharedStores[DB]) || [];
+  ok('archive: хранилища archive и documents — целиком, строками', decl.includes('archive') && decl.includes('documents') && decl.length === 2,
+    JSON.stringify(decl));
+  ok('archive: собственных данных (local/idb) нет', entry && entry.local.length === 0 && entry.idb.length === 0 && entry.sharedLocal.length === 0);
+  ok('archive не требует замены (restoreReplace) — только слияние', entry && !entry.restoreReplace);
+
+  const env = (sourceId, year) => ({
+    module: 'congress-project', entity: 'congress', sourceId, serviceYear: year, title: 'Конгресс ' + sourceId, sourceVersion: '1.0.0',
+    display: { sections: [{ heading: 'H', rows: [{ date: '2025-09-01', title: 'r', note: '', tags: [] }] }] },
+    summary: {}, payload: { n: sourceId }, docRefs: [],
+  });
+  await CWDB.init();
+  const known = (await rows(DB, 'archive')).length;
+  const snap = await CWBackup.snapshot(['archive']);
+  const stores = snap.sections.shared?.idb?.[DB]?.stores || {};
+  ok('копия archive везёт ВСЕ конверты всех источников', (stores.archive?.rows || []).length === known && known >= 2,
+    (stores.archive?.rows || []).length + ' из ' + known);
+  ok('копия archive содержит хранилище documents', !!stores.documents);
+  ok('копия archive не везёт чужих хранилищ', Object.keys(stores).sort().join() === 'archive,documents', Object.keys(stores).join());
+
+  /* Слияние: конверт, появившийся после копии, переживает восстановление. */
+  await A.put(env('c-late', 2027));
+  await CWBackup.restore(snap);
+  const merged = (await rows(DB, 'archive')).map((r) => r.id);
+  ok('восстановление archive — слияние: поздний конверт не стёрт', merged.includes('congress-project:congress:c-late'));
+  ok('восстановление archive вернуло всё из копии', (stores.archive.rows || []).every((r) => merged.includes(r.id)));
+
+  /* Чистое устройство: восстановление поднимает архив целиком. */
+  await wipe(DB);
+  await CWDB.init();
+  await CWBackup.restore(snap);
+  const clean = (await rows(DB, 'archive')).map((r) => r.id).sort().join();
+  ok('чистое устройство: архив поднят из копии, без чужих конвертов',
+    clean === (stores.archive.rows || []).map((r) => r.id).sort().join() && !clean.includes('c-late'), clean);
+  ok('версия базы после восстановления не выше CWDB.DB_VERSION', await versionOf(DB) <= SCHEMA);
+}
+
 /* 6.3. Предохранительный снимок переживает полное восстановление.
    Это и есть причина, по которой он лежит в отдельной базе, а не в хранилище
    `snapshots` общей: полная копия заменяет общую базу целиком и стёрла бы

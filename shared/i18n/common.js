@@ -142,6 +142,8 @@
       'module.documents.desc': 'Шаблоны писем и общие справочники.',
       'module.journal.title': 'Журнал',
       'module.journal.desc': 'Локальные рабочие записи района: собрания, визиты, проекты и задачи.',
+      'module.archive.title': 'Архив',
+      'module.archive.desc': 'Завершённые служебные годы и конгрессы: просмотр, поиск и выданные письма.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -165,6 +167,7 @@
       'doc.kind.salutation': 'Обращение',
       'doc.kind.letter': 'Письмо',
       'doc.tab_archive': 'Архив',
+      'doc.tab_documents': 'Документы',
       'doc.archive_hint': 'Здесь то, что уже покинуло приложение: напечатанные и отправленные документы. Текст сохранён таким, каким он ушёл, и правка шаблона его не меняет.',
       'doc.archive_search_label': 'Поиск по тексту и получателю',
       /* Справочник собраний: подписи для экрана просмотра в «Документах».
@@ -294,6 +297,8 @@
       'module.documents.desc': 'Шаблони листів і спільні довідники.',
       'module.journal.title': 'Журнал',
       'module.journal.desc': 'Локальні робочі записи округу: збори, відвідування, проєкти та завдання.',
+      'module.archive.title': 'Архів',
+      'module.archive.desc': 'Завершені службові роки та конгреси: перегляд, пошук і видані листи.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -317,6 +322,7 @@
       'doc.kind.salutation': 'Звернення',
       'doc.kind.letter': 'Лист',
       'doc.tab_archive': 'Архів',
+      'doc.tab_documents': 'Документи',
       'doc.archive_hint': 'Тут те, що вже покинуло додаток: надруковані та надіслані документи. Текст збережений таким, яким він пішов, і редагування шаблону його не змінює.',
       'doc.archive_search_label': 'Пошук за текстом та отримувачем',
       /* Справочник собраний: подписи для экрана просмотра в «Документах».
@@ -446,6 +452,8 @@
       'module.documents.desc': 'Letter templates and shared directories.',
       'module.journal.title': 'Journal',
       'module.journal.desc': 'Local working notes for the circuit: congregations, visits, projects and tasks.',
+      'module.archive.title': 'Archive',
+      'module.archive.desc': 'Completed service years and conventions: browse, search and issued letters.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -469,6 +477,7 @@
       'doc.kind.salutation': 'Salutation',
       'doc.kind.letter': 'Email',
       'doc.tab_archive': 'Archive',
+      'doc.tab_documents': 'Documents',
       'doc.archive_hint': 'Here is what has already left the app: printed and sent documents. The text is saved as it was sent, and editing the template does not change it.',
       'doc.archive_search_label': 'Search by text and recipient',
       /* Справочник собраний: подписи для экрана просмотра в «Документах».
@@ -598,6 +607,8 @@
       'module.documents.desc': 'Szablony listów i wspólne spisy.',
       'module.journal.title': 'Dziennik',
       'module.journal.desc': 'Lokalne notatki robocze obwodu: zbory, odwiedziny, projekty i zadania.',
+      'module.archive.title': 'Archiwum',
+      'module.archive.desc': 'Zakończone lata służbowe i kongresy: przeglądanie, wyszukiwanie i wydane listy.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -621,6 +632,7 @@
       'doc.kind.salutation': 'Zwrócenie się',
       'doc.kind.letter': 'List',
       'doc.tab_archive': 'Archiwum',
+      'doc.tab_documents': 'Dokumenty',
       'doc.archive_hint': 'Tutaj są rzeczy, które opuściły już aplikację: wydrukowane i wysłane dokumenty. Tekst jest zapisany taki, jaki był wysłany, a zmiana szablonu go nie zmienia.',
       'doc.archive_search_label': 'Szukaj po tekście i odbiorcy',
       /* Справочник собраний: подписи для экрана просмотра в «Документах».
@@ -750,6 +762,8 @@
       'module.documents.desc': 'Briefvorlagen und gemeinsame Verzeichnisse.',
       'module.journal.title': 'Journal',
       'module.journal.desc': 'Lokale Arbeitsnotizen des Kreises: Versammlungen, Besuche, Projekte und Aufgaben.',
+      'module.archive.title': 'Archiv',
+      'module.archive.desc': 'Abgeschlossene Dienstjahre und Kongresse: Ansehen, Suchen und ausgestellte Briefe.',
       /* Архив выданных документов. Строки переехали сюда из
          documents/i18n/dict.js 24.08.2026 БЕЗ ИЗМЕНЕНИЯ ТЕКСТА: карточку
          снимка рисует общий shared/docsview.js, и подписи к ней нужны
@@ -773,6 +787,7 @@
       'doc.kind.salutation': 'Anrede',
       'doc.kind.letter': 'Brief',
       'doc.tab_archive': 'Archiv',
+      'doc.tab_documents': 'Dokumente',
       'doc.archive_hint': 'Hier ist, was die Anwendung bereits verlassen hat: gedruckte und gesendete Dokumente. Der Text ist so gespeichert, wie er gesendet wurde, und eine Vorlagenbearbeitung ändert ihn nicht.',
       'doc.archive_search_label': 'Suche nach Text und Empfänger',
       /* Справочник собраний: подписи для экрана просмотра в «Документах».
