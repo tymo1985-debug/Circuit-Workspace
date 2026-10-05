@@ -152,6 +152,7 @@
       'j.hint.schedule_planner_none': 'В Планировщике нет события, связанного с этим собранием.',
 
       'j.error.directory_write_failed': 'Не удалось записать в общий справочник. Попробуйте ещё раз.',
+      'j.error.directory_already_linked': 'Эта карточка справочника уже связана с другой группой или предгруппой Журнала.',
 
       'j.badge.archive': 'архив',
       'j.badge.visit_open': 'визит открыт',
@@ -655,6 +656,7 @@
       'j.hint.schedule_planner_none': 'У Планувальнику немає події, повʼязаної з цим зібранням.',
 
       'j.error.directory_write_failed': 'Не вдалося записати в спільний довідник. Спробуйте ще раз.',
+      'j.error.directory_already_linked': 'Ця картка довідника вже пов’язана з іншою групою або предгрупою Журналу.',
 
       'j.badge.archive': 'архів',
       'j.badge.visit_open': 'візит відкрито',
@@ -1158,6 +1160,7 @@
       'j.hint.schedule_planner_none': 'The Planner has no event linked to this congregation.',
 
       'j.error.directory_write_failed': 'Could not save to the shared directory. Please try again.',
+      'j.error.directory_already_linked': 'This directory card is already linked to another group or pregroup in the Journal.',
 
       'j.badge.archive': 'archived',
       'j.badge.visit_open': 'visit in progress',
@@ -1661,6 +1664,7 @@
       'j.hint.schedule_planner_none': 'Planner nie ma wydarzenia powiązanego z tym zborem.',
 
       'j.error.directory_write_failed': 'Nie udało się zapisać do wspólnego katalogu. Spróbuj ponownie.',
+      'j.error.directory_already_linked': 'Ta karta katalogu jest już powiązana z inną grupą lub pregrupą w Dzienniku.',
 
       'j.badge.archive': 'archiwum',
       'j.badge.visit_open': 'wizyta w toku',
@@ -2164,6 +2168,7 @@
       'j.hint.schedule_planner_none': 'Der Planer hat keinen Termin, der mit dieser Versammlung verknüpft ist.',
 
       'j.error.directory_write_failed': 'Speichern im gemeinsamen Verzeichnis fehlgeschlagen. Bitte erneut versuchen.',
+      'j.error.directory_already_linked': 'Diese Verzeichniskarte ist bereits mit einer anderen Gruppe oder Vorgruppe im Journal verknüpft.',
 
       'j.badge.archive': 'archiviert',
       'j.badge.visit_open': 'Besuch läuft',

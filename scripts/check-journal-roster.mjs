@@ -180,6 +180,12 @@ ok('пункт меню: боковая навигация; нижняя — п�
 ok('плашки Обзора ведут в «Состав» (путь для телефона)', /'#roster\/groups'/.test(strip(read('journal/js/app/overview.js'))));
 ok('roster.js в прекэше SW', read('journal/sw.js').includes("'./js/app/roster.js'"));
 ok('опроса нет', intervals === 0);
+/* R2: ключ связи группы/предгруппы со справочником. */
+const dj = strip(read('journal/js/app/districts.js'));
+const refsFn = (dj.match(/async function countJournalRefs[\s\S]*?\n  }\n/) || [''])[0];
+ok('R2: countJournalRefs считает узлы всех видов', refsFn.includes('n.communityId === communityId') && !/n\.kind\s*===/.test(refsFn));
+ok('R2: пункт «связать» только у группы и предгруппы, через ручной выбор карточки', /kind === 'group' \|\| kind === 'pregroup'[\s\S]{0,200}link-directory/.test(dj) && /data-action="link-directory"/.test(dj));
+ok('R2: ключ directory_already_linked на пяти языках', (dict.match(/'j\.error\.directory_already_linked'/g) || []).length === 5);
 errors.length = errors.filter((e) => !/не прочитан|не собран/.test(e)).length;
 ok('ошибок консоли нет', errors.length === 0, errors.join(' | '));
 

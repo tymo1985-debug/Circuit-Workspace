@@ -127,6 +127,9 @@
       items += '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>'
         + '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>';
     }
+    if (kind === 'group' || kind === 'pregroup') {
+      items += '<button type="button" class="md-menu__item" role="menuitem" data-action="link-directory">' + esc(t('j.identity.link_action')) + '</button>';
+    }
     var archiveLabel = node.status === 'archived' ? t('j.action.unarchive') : t('j.action.archive');
     items += '<button type="button" class="md-menu__item" role="menuitem" data-action="toggle-archive">' + esc(archiveLabel) + '</button>'
       + '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
@@ -156,6 +159,11 @@
     try {
       if (action === 'rename') {
         renameNode(node);
+        return;
+      }
+      if (action === 'link-directory') {
+        if (!isDirectoryReady()) { alert(t('j.error.directory_write_failed')); return; }
+        openLinkDialog(node);
         return;
       }
       if (action === 'toggle-archive') {
@@ -336,12 +344,13 @@
 
   /** Сколько узлов Журнала (кроме исключённого) всё ещё ссылаются на
    *  communityId — нужен для «отпускать 'journal' только если это была
-   *  последняя ссылка» (relink и удаление, см. spec п.1). */
+   *  последняя ссылка» (relink и удаление, см. spec п.1). Считаются ВСЕ виды
+   *  узлов: группа/предгруппа (R2) тоже держит источник 'journal'. */
   async function countJournalRefs(communityId, excludeNodeId) {
     if (!communityId) return 0;
     var all = await CWJournal.nodes.getAll();
     return all.filter(function (n) {
-      return n.kind === 'congregation' && n.communityId === communityId && n.id !== excludeNodeId;
+      return n.communityId === communityId && n.id !== excludeNodeId;
     }).length;
   }
 
@@ -818,6 +827,13 @@
     $('#linkDialogNewContactEmail').value = '';
     $('#linkDialogNewContactNote').value = '';
     $('#linkDialogCreate').open = false;
+    /* R2: группа/предгруппа только связывается с УЖЕ существующей карточкой;
+       создавать карточку справочника из группы здесь нельзя. */
+    var congOnly = node.kind === 'congregation';
+    $('#linkDialogCreate').hidden = !congOnly;
+    function afterLink() {
+      if (congOnly) renderCongregationDetail(node.circuitId, node.id); else refreshCurrentView();
+    }
 
     function renderCandidates(query) {
       var all = isDirectoryReady() ? CWDirectory.all() : [];
@@ -840,7 +856,13 @@
       });
     }
 
-    function confirmLink(communityId) {
+    async function confirmLink(communityId) {
+      /* Одна карточка — один узел группы/предгруппы: иначе «уже есть» при
+         импорте (R3) стало бы неоднозначным. */
+      if (!congOnly) {
+        var taken = (await CWJournal.nodes.getAll()).some(function (n) { return n.id !== node.id && n.communityId === communityId; });
+        if (taken) { alert(t('j.error.directory_already_linked')); return; }
+      }
       // Явное подтверждение человеком — клик по конкретной карточке
       // кандидата. claimAndLink() заявляет 'journal' за новую запись,
       // сохраняет communityId и отпускает старую (если была и больше не
@@ -849,7 +871,7 @@
         if (!result.ok) { alert(t('j.error.directory_write_failed')); return; }
         cleanup();
         dlg.close();
-        renderCongregationDetail(node.circuitId, node.id);
+        afterLink();
       });
     }
 
@@ -891,7 +913,7 @@
           }
           cleanup();
           dlg.close();
-          renderCongregationDetail(node.circuitId, node.id);
+          afterLink();
         });
       });
     }
@@ -899,6 +921,7 @@
     function onCancel() { cleanup(); dlg.close(); }
     var unbindClose;
     function cleanup() {
+      $('#linkDialogCreate').hidden = false;
       $('#linkDialogSearch').removeEventListener('input', onSearchInput);
       $('#linkDialogCreateBtn').removeEventListener('click', onCreateClick);
       $('#linkDialogCancel').removeEventListener('click', onCancel);
