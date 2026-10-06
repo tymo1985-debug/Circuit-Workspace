@@ -171,6 +171,7 @@
       navItems: [
         { id: 'calendar', icon: '📆', tKey: 'nav_calendar' },
         { id: 'events', icon: '🎯', tKey: 'nav_events' },
+        { id: 'route', icon: '🗺️', tKey: 'nav_route' },
         { id: 'settings', icon: '⚙️', tKey: 'nav_settings' }
       ],
       layoutPresets: [
@@ -1977,6 +1978,8 @@
         this.applyDegraded();
         /* A3: баннер «отправить год в архив» и панель в настройках (ui/archive-year.js). */
         if (typeof this.archiveYearRender === 'function') this.archiveYearRender();
+        /* R1: экран «Маршрут посещений» — только просмотр (ui/route.js). */
+        if (typeof this.routeRender === 'function') this.routeRender();
       },
 
       /* ── Режим только для чтения ───────────────────────────────────────────
@@ -2101,7 +2104,7 @@
         // показывать, вернуть строку и снять правило. Учесть, что высота шапки
         // меряется из живого DOM (measureTopbarHeight) и лишняя строка сдвинет
         // раскладку календаря — такую правку нужно проверять в браузере.
-        const map = { calendar:'screen_calendar', weeks:'screen_weeks', events:'screen_events', notes:'screen_notes', settings:'screen_settings' };
+        const map = { calendar:'screen_calendar', weeks:'screen_weeks', events:'screen_events', route:'screen_route', notes:'screen_notes', settings:'screen_settings' };
         const titleKey = map[App.state.selectedScreen] || 'appTitle'; if (App.els.screenTitle) App.els.screenTitle.textContent = App.utils.t(titleKey);
       },
       renderStatus() {
