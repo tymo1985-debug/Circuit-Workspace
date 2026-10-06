@@ -3,7 +3,7 @@
 // «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта,
 // R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка,
 // R5 (06.10.2026) сравнение «Календарь ↔ Черновик», R6 (06.10.2026)
-// «Предложить оптимальный порядок».
+// «Предложить оптимальный порядок», R7 (06.10.2026) «Применить к календарю».
 // Календарь не меняется никогда: ТОЛЬКО ПРОСМОТР и черновик сессии. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
 // планирует и не пишет: он показывает уже назначенные посещения служебного
@@ -17,10 +17,12 @@
 //     `App.ui.routeRender()` в конце `renderAll()`.
 //
 // ИНВАРИАНТЫ
-//  • Этот файл ничего не пишет: ни в канонический блоб, ни в localStorage/
-//    ни в IndexedDB. Единственная запись этого файла — черновик R4 в
-//    sessionStorage (ключ `cp.route.draft.<год>`, функции draftRead/
-//    draftWrite). Кэш дорожных отрезков R3 — целиком в ui/route-legs.js.
+//  • Запись в КАНОНИЧЕСКИЙ блоб — только R7, только функция applyDraft(), только
+//    по явному нажатию и window.confirm, после контрольной точки
+//    истории (`App.store.checkpointNow('route-apply')`). Кроме неё этот файл
+//    пишет лишь черновик R4 в sessionStorage (ключ `cp.route.draft.<год>`,
+//    функции draftRead/draftWrite). localStorage/IndexedDB — нет; кэш
+//    дорожных отрезков R3 — целиком в ui/route-legs.js.
 //  • Данные — `App.data.getServiceYearStats(year).visitEntries`: записи
 //    календаря, у которых событие имеет visitType. Координаты — из события
 //    (`getEventById` отдаёт копию, слитую со справочником).
@@ -57,6 +59,18 @@
 //    (дорожные отрезки есть только для уже запрошенных пар, N² в кэше не
 //    бывает). Результат — обычный черновик R4: его можно править руками,
 //    сравнивать (R5) и откатить «Вернуть прежний».
+//  • R7: решения Алекса 06.10.2026. (1) Применение ПЕРЕНОСИТ ДАТЫ записей:
+//    запись остаётся со своим собранием, заметками, формуляром и связью с
+//    Журналом (по id записи); меняются только start/end на даты слота,
+//    notified60 сбрасывается, как в редакторе календаря. (2) Флажки «S-302
+//    отправлен»/«Письмо отправлено» НЕ трогаются — в подтверждении такие
+//    посещения перечислены с просьбой отправить заново. (3) Прошедшие
+//    посещения (конец раньше сегодня) всегда стоят на месте: в черновике,
+//    в оптимизации и при применении. Перед записью — проверка, что даты
+//    записей не изменились с момента подтверждения; режим только для
+//    чтения / конфликт вкладок — применение запрещено. После применения
+//    черновик удаляется: календарь теперь и есть этот порядок. Откат —
+//    «История изменений» (контрольная точка снята перед записью).
 (function (root) {
   'use strict';
 
@@ -80,6 +94,8 @@
         visitType: String(ev.visitType || ''),
         start: entry.start,
         end: ISO.test(String(entry.end || '')) ? entry.end : entry.start,
+        sent302: !!(entry.flags && entry.flags.f302),
+        sentLetter: !!(entry.flags && entry.flags.letter),
         hasCoords: isNum(ev.lat) && isNum(ev.lng),
         lat: isNum(ev.lat) ? ev.lat : null,
         lng: isNum(ev.lng) ? ev.lng : null,
@@ -228,7 +244,37 @@
     return { order, before, after: win.cost, changed: order.join('\u0001') !== ids0.join('\u0001') };
   }
 
-  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move, moved, optimize };
+  /**
+   * R7: прошедшие строки — на своих календарных местах. order — полный
+   * порядок id (после applyOrder); past — id прошедших. Остальные заполняют
+   * свободные места в порядке order.
+   */
+  function pinPast(order, calRows, past) {
+    const ps = new Set(past || []);
+    if (!ps.size) return (order || []).slice();
+    const res = (calRows || []).map((r) => (ps.has(r.id) ? r.id : null));
+    const rest = (order || []).filter((id) => !ps.has(id));
+    let k = 0;
+    for (let i = 0; i < res.length; i++) if (res[i] === null) res[i] = rest[k++];
+    return res.filter((id) => id != null);
+  }
+
+  /**
+   * R7: что изменит применение. Слот i = даты calRows[i]; строка draftRows[i]
+   * переезжает в него. → [{ id, name, from:{start,end}, to:{start,end},
+   * sent302, sentLetter }] только для строк, чьи даты реально меняются.
+   */
+  function applyPlan(calRows, draftRows) {
+    const out = [];
+    (draftRows || []).forEach((row, i) => {
+      const slot = (calRows || [])[i];
+      if (!slot || (slot.start === row.start && slot.end === row.end)) return;
+      out.push({ id: row.id, name: row.name, from: { start: row.start, end: row.end }, to: { start: slot.start, end: slot.end }, sent302: !!row.sent302, sentLetter: !!row.sentLetter });
+    });
+    return out;
+  }
+
+  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move, moved, optimize, pinPast, applyPlan };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -253,6 +299,8 @@
     let draft = null, draftYear = null; // R4: { on, order, locks } | null
     let focusAfter = null;     // [id, селектор] — вернуть фокус после перерисовки
     let optNote = '', optUndo = null; // R6: итог последнего предложения; откат (только в памяти)
+    let pastIds = new Set();   // R7: прошедшие записи — всегда на месте
+    const effLocks = () => (draft ? draft.locks : []).concat(Array.from(pastIds).filter((id) => !(draft && draft.locks.includes(id))));
 
     // R4: черновик — ЕДИНСТВЕННАЯ запись экрана, только sessionStorage.
     const draftKey = (y) => 'cp.route.draft.' + y;
@@ -347,11 +395,15 @@
     function draftCtl(row) {
       const id = App.utils.escapeAttr(row.id);
       const order = rows.map((r) => r.id);
-      const locked = draft.locks.includes(row.id);
-      const can = (dir) => move(order, draft.locks, row.id, dir).join('\u0001') !== order.join('\u0001');
+      const past = pastIds.has(row.id);
+      const locked = past || draft.locks.includes(row.id);
+      const locks = effLocks();
+      const can = (dir) => move(order, locks, row.id, dir).join('\u0001') !== order.join('\u0001');
       const b = (dir, sym, key) => `<button type="button" class="route-mv md-btn md-btn-outlined md-state-layer" data-route-move="${dir}" data-id="${id}"${can(dir) ? '' : ' disabled'} title="${esc(t(key))}" aria-label="${esc(t(key))}: ${esc(row.name)}">${sym}</button>`;
       return `<span class="route-ctl">${b(-1, '↑', 'route_up')}${b(1, '↓', 'route_down')}`
-        + `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer${locked ? ' is-locked' : ''}" data-route-lock="${id}" aria-pressed="${locked}" title="${esc(t(locked ? 'route_unlock' : 'route_lock'))}" aria-label="${esc(t(locked ? 'route_unlock' : 'route_lock'))}: ${esc(row.name)}">${locked ? '🔒' : '🔓'}</button></span>`;
+        + (past
+          ? `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer is-locked" disabled aria-pressed="true" title="${esc(t('route_past'))}" aria-label="${esc(t('route_past'))}: ${esc(row.name)}">🔒</button></span>`
+          : `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer${locked ? ' is-locked' : ''}" data-route-lock="${id}" aria-pressed="${locked}" title="${esc(t(locked ? 'route_unlock' : 'route_lock'))}" aria-label="${esc(t(locked ? 'route_unlock' : 'route_lock'))}: ${esc(row.name)}">${locked ? '🔒' : '🔓'}</button></span>`);
     }
 
     function renderDraftBar() {
@@ -364,17 +416,57 @@
       const undoBtn = optUndo ? btn('opt-undo', 'route_opt_undo', false) : '';
       const status = optNote ? `<span class="small route-opt-note" role="status">${esc(optNote)}</span>` : '';
       if (draft && draft.on) {
+        const ro = !!(App.store.degraded || App.store.conflict);
+        const applyBtn = applyPlan(calRows, rows).length
+          ? `<button type="button" class="md-btn md-btn-filled md-state-layer route-draft-btn" data-route-draft="apply"${ro ? ' disabled aria-disabled="true"' : ''} title="${esc(t(ro ? 'msg_storage_readonly' : 'route_apply_hint'))}">${esc(t('route_apply'))}</button>`
+          : '';
         bar.innerHTML = `<span class="small route-draft-note">${esc(t('route_draft_note'))}</span>`
-          + btn('view', 'route_draft_view', false) + optBtn + undoBtn + btn('reset', 'route_draft_reset', false) + status;
+          + btn('view', 'route_draft_view', false) + optBtn + undoBtn + btn('reset', 'route_draft_reset', false) + applyBtn + status;
       } else {
         bar.innerHTML = btn('edit', draft ? 'route_draft_open' : 'route_draft_edit', true)
           + optBtn + undoBtn + (draft ? btn('reset', 'route_draft_reset', false) : '') + status;
       }
     }
 
+    /* R7: ЕДИНСТВЕННАЯ запись этого файла в канонический блоб. */
+    function applyDraft() {
+      if (!draft || !draft.on) return;
+      if (App.store.degraded || App.store.conflict) { App.utils.toast(t('msg_storage_readonly')); return; }
+      const plan = applyPlan(calRows, rows);
+      if (!plan.length) return;
+      const d = (iso) => App.utils.prettyDate(App.utils.parseLocalDate(iso));
+      const rng = (x) => (x.end && x.end !== x.start ? `${d(x.start)} – ${d(x.end)}` : d(x.start));
+      const lines = plan.map((c) => t('route_apply_line', { name: c.name, from: rng(c.from), to: rng(c.to) }));
+      const sent = plan.filter((c) => c.sent302 || c.sentLetter)
+        .map((c) => `• ${c.name}: ${[c.sent302 ? t('s302') : '', c.sentLetter ? t('letter_short') : ''].filter(Boolean).join(', ')}`);
+      const msg = [t('route_apply_confirm', { n: plan.length }), '', ...lines]
+        .concat(sent.length ? ['', t('route_apply_warn'), ...sent] : [])
+        .concat(['', t('route_apply_restore')]).join('\n');
+      if (!window.confirm(msg)) return;
+      const applyYear = year;
+      try { App.store.flushNow('snapshot'); } catch (_) { /* не фатально */ }
+      App.store.checkpointNow('route-apply').catch(() => null).then(() => {
+        const entries = App.state.app.entries || [];
+        const byId = new Map(entries.map((e) => [e.id, e]));
+        // Календарь мог измениться, пока ждали снимок, — тогда не пишем ничего.
+        const stale = plan.some((c) => { const e = byId.get(c.id); return !e || e.start !== c.from.start || e.end !== c.from.end; });
+        if (stale) { App.utils.toast(t('route_apply_stale')); render(); return; }
+        plan.forEach((c) => {
+          const e = byId.get(c.id);
+          if (e.start !== c.to.start) e.notified60 = false;
+          e.start = c.to.start; e.end = c.to.end;
+        });
+        App.store.save();
+        draft = null; optNote = ''; optUndo = null;
+        draftWrite(applyYear, null);
+        App.utils.toast(t('route_apply_done', { n: plan.length }));
+        App.ui.renderAll();
+      });
+    }
+
     function draftOptimize() {
       const cur = draft ? applyOrder(calRows, draft.order) : calRows;
-      const res = optimize(cur, draft ? draft.locks : [], home(), (a, b) => App.utils.haversineKm(a.lat, a.lng, b.lat, b.lng));
+      const res = optimize(cur, effLocks(), home(), (a, b) => App.utils.haversineKm(a.lat, a.lng, b.lat, b.lng));
       if (!res.changed) { optNote = t('route_opt_same'); optUndo = null; render(); return; }
       optUndo = draft ? { order: draft.order.slice(), on: draft.on, existed: true } : { existed: false };
       draft = draft || { on: true, order: [], locks: [] };
@@ -394,6 +486,7 @@
 
     function draftAction(act) {
       if (act === 'optimize') { draftOptimize(); return; }
+      if (act === 'apply') { applyDraft(); return; }
       if (act === 'opt-undo') { draftOptUndo(); return; }
       optNote = ''; optUndo = null;
       if (act === 'edit') {
@@ -411,14 +504,14 @@
     function draftMove(id, dir) {
       if (!draft || !draft.on) return;
       optNote = ''; optUndo = null;
-      draft.order = move(rows.map((r) => r.id), draft.locks, id, dir);
+      draft.order = move(rows.map((r) => r.id), effLocks(), id, dir);
       draftWrite(year, draft);
       focusAfter = [id, `[data-route-move="${dir}"]`];
       render();
     }
 
     function draftLock(id) {
-      if (!draft || !draft.on) return;
+      if (!draft || !draft.on || pastIds.has(id)) return;
       optNote = ''; optUndo = null;
       draft.locks = draft.locks.includes(id) ? draft.locks.filter((x) => x !== id) : draft.locks.concat(id);
       draftWrite(year, draft);
@@ -646,12 +739,14 @@
       const stats = App.data.getServiceYearStats(year);
       calRows = collect(stats.visitEntries, (id) => App.data.getEventById(id));
       if (draftYear !== year) { draftYear = year; draft = draftRead(year); optNote = ''; optUndo = null; }
+      const todayIso = App.utils.iso(new Date());
+      pastIds = new Set(calRows.filter((r) => r.end < todayIso).map((r) => r.id));
       if (draft) {
         // Черновик сверяется с календарём: выпавшие id убираются из порядка
         // и замков, новые записи дописываются в конец.
         const ids = new Set(calRows.map((r) => r.id));
         draft.locks = draft.locks.filter((id) => ids.has(id));
-        draft.order = applyOrder(calRows, draft.order).map((r) => r.id);
+        draft.order = pinPast(applyOrder(calRows, draft.order).map((r) => r.id), calRows, pastIds);
       }
       rows = draft && draft.on ? applyOrder(calRows, draft.order) : calRows;
       calPts = points(calRows, home());

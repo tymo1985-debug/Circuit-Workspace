@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта + R3 дорожные км
- * + R4 черновик порядка + R5 сравнение + R6 предложение порядка (календарь не меняется).
+ * + R4 черновик порядка + R5 сравнение + R6 предложение порядка + R7 применение к календарю
+ * (единственная запись в календарь — applyDraft).
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -49,7 +50,16 @@ for (const k of ['nav_route', 'screen_route', 'route_sub', 'route_year', 'route_
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
 const code = src.replace(/\/\/.*$/gm, '');
-ok(!/localStorage|indexedDB|CWDB\.|\.put\(|fetch\(|App\.store|App\.actions\.(?!focusEntryFromHash)/.test(code), 'экран не пишет в блоб/localStorage/IndexedDB и сам не ходит в сеть');
+ok(!/localStorage|indexedDB|CWDB\.|\.put\(|fetch\(|App\.actions\.(?!focusEntryFromHash)/.test(code), 'экран не трогает localStorage/IndexedDB/CWDB и сам не ходит в сеть');
+const applyFn = (code.match(/function applyDraft\(\) \{[\s\S]*?\n    \}\n/) || [''])[0];
+const outside = code.replace(applyFn, '');
+ok(applyFn && (code.match(/App\.store\.save\(/g) || []).length === 1 && applyFn.includes('App.store.save('), 'R7: запись в блоб — только App.store.save() в applyDraft');
+ok(!/App\.store\.(save|checkpointNow|flushNow|writeNow)\(|App\.state\.app\.entries/.test(outside), 'R7: вне applyDraft нет записи и доступа к entries');
+ok(/checkpointNow\('route-apply'\)[\s\S]*App\.store\.save\(/.test(applyFn), 'R7: контрольная точка истории до записи');
+ok(/window\.confirm\(msg\)/.test(applyFn) && applyFn.indexOf('window.confirm') < applyFn.indexOf('checkpointNow'), 'R7: подтверждение до любой записи');
+ok(/App\.store\.degraded \|\| App\.store\.conflict/.test(applyFn), 'R7: режим только для чтения/конфликт — запрет');
+ok(/stale/.test(applyFn) && /e\.start !== c\.from\.start/.test(applyFn), 'R7: проверка «календарь не изменился» перед записью');
+ok(!/flags\s*=|\.f302\s*=|\.letter\s*=|eventId\s*=/.test(applyFn) && /e\.start = c\.to\.start; e\.end = c\.to\.end;/.test(applyFn), 'R7: меняются только даты, собрание и флажки не трогаются');
 ok((code.match(/sessionStorage/g) || []).length === 3 && /function draftRead[\s\S]*sessionStorage\.getItem/.test(code) && /function draftWrite[\s\S]*sessionStorage\.(setItem|removeItem)/.test(code), 'R4: sessionStorage — только в draftRead/draftWrite');
 ok(src.includes("'./vendor/leaflet.js'") && !/marker-icon|\.png/.test(src.replace(/tile\.openstreetmap\.org[^']*/g, '')), 'R2: локальный Leaflet, маркеры без PNG');
 ok(read('circuit-planner/sw.js').includes('leaflet.js'), 'R2: Leaflet в прекэше SW (офлайн-инициализация)');
@@ -137,6 +147,23 @@ ok(o5.after <= o5.before && Math.abs(o5.after - 31) < 1e-9 && Date.now() - t0 < 
 ok(new Set(o5.order).size === 30, 'перестановка без потерь и повторов');
 ok(src.includes('function slotOf') && src.includes("t('route_was'"), 'в черновике — даты слота, свои даты — «в календаре»');
 for (const k of ['route_opt_btn', 'route_opt_undo', 'route_opt_same', 'route_opt_done', 'route_was']) {
+  ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
+}
+
+console.log('R7: применение к календарю');
+const cal = [{ id: 'a', start: '2026-10-05', end: '2026-10-11' }, { id: 'b', start: '2026-11-02', end: '2026-11-08' }, { id: 'c', start: '2026-12-07', end: '2026-12-13', sent302: true }, { id: 'd', start: '2027-01-11', end: '2027-01-17' }];
+ok(R.pinPast(['c', 'a', 'b', 'd'], cal, ['a']).join('') === 'acbd', 'прошедшая строка возвращается на своё календарное место');
+ok(R.pinPast(['d', 'c', 'b', 'a'], cal, ['a', 'b']).join('') === 'abdc', 'несколько прошедших — на местах, остальные по черновику');
+ok(R.pinPast(['b', 'a'], cal.slice(0, 2), []).join('') === 'ba', 'без прошедших — порядок как есть');
+const plan = R.applyPlan(cal, R.applyOrder(cal, ['a', 'c', 'b', 'd']));
+ok(plan.length === 2 && plan[0].id === 'c' && plan[0].to.start === '2026-11-02' && plan[0].from.start === '2026-12-07' && plan[1].id === 'b' && plan[1].to.end === '2026-12-13', 'план: строки, чьи даты меняются, с датами слота');
+ok(plan[0].sent302 === true && plan[1].sent302 === false, 'план: флажок «отправлено» передан для предупреждения');
+ok(R.applyPlan(cal, R.applyOrder(cal, [])).length === 0, 'календарный порядок → нечего применять');
+const sameDates = [{ id: 'x', start: '2026-10-05', end: '2026-10-11' }, { id: 'y', start: '2026-10-05', end: '2026-10-11' }];
+ok(R.applyPlan(sameDates, R.applyOrder(sameDates, ['y', 'x'])).length === 0, 'одинаковые даты слотов — изменений нет');
+const fl = R.collect([{ id: 'e1', eventId: 'a', start: '2026-11-02', end: '2026-11-08', flags: { f302: true, letter: false } }], (id) => events[id] || null);
+ok(fl[0].sent302 === true && fl[0].sentLetter === false, 'collect переносит флажки «отправлено»');
+for (const k of ['route_past', 'route_apply', 'route_apply_hint', 'route_apply_confirm', 'route_apply_line', 'route_apply_warn', 'route_apply_restore', 'route_apply_stale', 'route_apply_done']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
 
