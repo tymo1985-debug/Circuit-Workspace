@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта (только просмотр).
+ * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта + R3 дорожные км
+ * (только просмотр).
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -50,6 +51,38 @@ for (const k of ['nav_route', 'screen_route', 'route_sub', 'route_year', 'route_
 ok(!/localStorage|sessionStorage|indexedDB|CWDB\.|\.put\(|fetch\(/.test(src.replace(/\/\/.*$/gm, '')), 'экран ничего не пишет и сам не ходит в сеть (кроме тайлов карты)');
 ok(src.includes("'./vendor/leaflet.js'") && !/marker-icon|\.png/.test(src.replace(/tile\.openstreetmap\.org[^']*/g, '')), 'R2: локальный Leaflet, маркеры без PNG');
 ok(read('circuit-planner/sw.js').includes('leaflet.js'), 'R2: Leaflet в прекэше SW (офлайн-инициализация)');
+
+console.log('R3: дом и дорожные отрезки');
+const H = R.points([{ id: 'x', hasCoords: false }, { id: 'y', hasCoords: true, lat: 1, lng: 1 }], { lat: 0, lng: 0, name: 'Praha' });
+ok(H.length === 2 && H[0].home && H[0].n === 0 && H[1].id === 'y', 'дом — точка 0, строки без координат пропущены');
+ok(R.points([{ id: 'y', hasCoords: true, lat: 1, lng: 1 }], { lat: null, lng: null }).length === 1, 'дом без координат не добавляется');
+ok(R.pathLength(H, flat).legs === 1 && R.pathLength(H, flat).km === 2, 'км по прямой учитывают дом');
+
+const lsrc = read('circuit-planner/ui/route-legs.js');
+const lwin = {};
+vm.runInNewContext(lsrc, { window: lwin, Date, setTimeout, clearTimeout });
+const G = lwin.CPRouteLegs;
+const P = (lat, lng) => ({ lat, lng });
+ok(G.legKey(P(50.123456, 14.5), P(50, 14)) === '50.12346,14.5>50,14', 'ключ отрезка: направленный, округление 1e-5');
+ok(G.buildUrl([P(50, 14), P(51, 15)]) === 'https://router.project-osrm.org/route/v1/driving/14,50;15,51?overview=false&alternatives=false&steps=false', 'URL OSRM: lng,lat; без геометрии');
+const parsed = G.parse({ code: 'Ok', routes: [{ legs: [{ distance: 12500, duration: 600 }, { distance: 1000, duration: 60 }] }] }, 3);
+ok(parsed && parsed[0].km === 12.5 && parsed[0].min === 10 && parsed[1].min === 1, 'разбор ответа: м→км, с→мин');
+ok(G.parse({ code: 'NoRoute' }, 2) === null && G.parse({ code: 'Ok', routes: [{ legs: [{}] }] }, 2) === null && G.parse({ code: 'Ok', routes: [{ legs: [] }] }, 2) === null, 'битый/неполный ответ → null');
+const line = Array.from({ length: 30 }, (_, i) => P(50 + i * 0.1, 14));
+const all = G.runs(line, () => false);
+ok(all.length === 2 && all[0].length === 25 && all[1].length === 6 && all[1][0] === all[0][24], 'нарезка ≤25 точек с перекрытием в одну');
+const knownKey = G.legKey(line[1], line[2]);
+const gaps = G.runs(line.slice(0, 5), (k) => k === knownKey);
+ok(gaps.length === 2 && gaps[0].length === 2 && gaps[1].length === 3, 'запрашиваются только недостающие участки');
+ok(G.runs([P(1, 1), P(1, 1)], () => false).length === 0, 'совпадающие точки не запрашиваются');
+const tot = G.totals([P(0, 0), P(0, 1), P(0, 1), P(0, 3)], (k) => (k === G.legKey(P(0, 0), P(0, 1)) ? { km: 5, min: 7 } : null), flat);
+ok(tot.count === 3 && tot.roadLegs === 2 && !tot.complete && tot.km === 7 && tot.min === 7 && tot.legs[2].road === false, 'сводка: дороги + прямая для недостающих, 0 км для совпадающих');
+ok(/indexedDB\.open\(DB_NAME/.test(lsrc) && lsrc.includes("const DB_NAME = 'cp-route-legs'") && !/CWDB\.|localStorage|sessionStorage/.test(lsrc.replace(/\/\/.*$/gm, '')), 'кэш — отдельная база cp-route-legs, не CWDB/блоб');
+ok(read('circuit-planner/sw.js').includes("'./ui/route-legs.js'") && read('circuit-planner/index.html').includes('ui/route-legs.js'), 'route-legs.js в прекэше SW и в index.html');
+ok(/fetchRoads\(\)/.test(src) && /routeRoadBtn/.test(src), 'сеть только по кнопке (fetchRoads)');
+for (const k of ['route_home', 'route_road', 'route_road_partial', 'route_road_btn', 'route_road_busy', 'route_road_offline', 'route_road_failed', 'route_road_privacy', 'route_leg_road', 'route_leg_straight', 'route_dur', 'route_dur_min']) {
+  ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
+}
 
 if (failed) { console.error(`\nПровалено: ${failed}`); process.exit(1); }
 console.log('\nOK');

@@ -1,7 +1,7 @@
 // circuit-planner/ui/route.js
 //
-// «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта:
-// ТОЛЬКО ПРОСМОТР. Идея и фазы
+// «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта,
+// R3 (06.10.2026) дорожные км/время: ТОЛЬКО ПРОСМОТР. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
 // планирует и не пишет: он показывает уже назначенные посещения служебного
 // года в календарном порядке и отмечает те, у которых нет координат.
@@ -14,9 +14,10 @@
 //     `App.ui.routeRender()` в конце `renderAll()`.
 //
 // ИНВАРИАНТЫ
-//  • Ничего не пишется: ни в канонический блоб, ни в localStorage/
+//  • Этот файл ничего не пишет: ни в канонический блоб, ни в localStorage/
 //    sessionStorage, ни в IndexedDB. Черновик порядка появится только в R4
-//    и только в sessionStorage.
+//    и только в sessionStorage. Единственное исключение экрана — кэш
+//    дорожных отрезков R3, и он целиком в ui/route-legs.js (своя база).
 //  • Данные — `App.data.getServiceYearStats(year).visitEntries`: записи
 //    календаря, у которых событие имеет visitType. Координаты — из события
 //    (`getEventById` отдаёт копию, слитую со справочником).
@@ -27,6 +28,11 @@
 //    список и сводка работают, на карте — уведомление. Маркеры — divIcon,
 //    без PNG. Карта создаётся один раз; перерисовка точек — только при
 //    смене данных, «вписать» — только при первом показе и смене года.
+//  • R3: дом (settings.homeLat/homeLng) — точка 0, только если координаты
+//    заданы; без них маршрут как в R2. Дом входит и в км по прямой.
+//    Дорожные км/время — CPRouteLegs (OSRM): кэш показывается сам, сеть —
+//    только по кнопке. Линии на карте остаются прямыми (геометрия дорог не
+//    запрашивается). Нет дорожных данных — отрезок по прямой, с пометкой.
 (function (root) {
   'use strict';
 
@@ -78,7 +84,18 @@
     return { km, legs: Math.max(0, pts.length - 1) };
   }
 
-  root.CPRoute = { collect, summarize, pathLength };
+  /**
+   * Точки маршрута: дом (если задан числами) как точка 0, затем строки с
+   * координатами в календарном порядке.
+   */
+  function points(rows, home) {
+    const pts = (rows || []).filter((r) => r && r.hasCoords);
+    return home && isNum(home.lat) && isNum(home.lng)
+      ? [{ id: '', n: 0, home: true, hasCoords: true, lat: home.lat, lng: home.lng, name: String(home.name || '') }].concat(pts)
+      : pts;
+  }
+
+  root.CPRoute = { collect, summarize, pathLength, points };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -92,6 +109,12 @@
     let selectedId = null;     // подсветка строки/точки; только в памяти
     let map = null, pinsLayer = null, lineLayer = null, tileLayer = null;
     let drawnSig = '', fittedYear = null, tileError = false, leafletPromise = null;
+    let pts = [];              // точки маршрута (дом + строки с координатами)
+    const legMemo = new Map(); // кэш дорожных отрезков в памяти вкладки
+    let legByRow = new Map();  // id строки → отрезок, ведущий в неё
+    let roadState = '';        // '' | 'busy' | 'offline' | 'failed'
+    let roadProgress = [0, 0], loadedSig = '';
+    const Legs = () => root.CPRouteLegs;
 
     const currentYear = () => App.utils.getServiceYearForDate(new Date());
     const yearsList = () => {
@@ -123,12 +146,32 @@
       return row.end && row.end !== row.start ? `${d(row.start)} – ${d(row.end)}` : d(row.start);
     }
 
+    function fmtKm(km) { return Math.round(km).toLocaleString(App.utils.lang()); }
+    function fmtDur(min) {
+      const total = Math.round(min);
+      const h = Math.floor(total / 60), m = total % 60;
+      return h ? t('route_dur', { h, m }) : t('route_dur_min', { m });
+    }
+    function legText(leg) {
+      if (!leg) return '';
+      return '↳ ' + (leg.road ? t('route_leg_road', { km: fmtKm(leg.km), time: fmtDur(leg.min) }) : t('route_leg_straight', { km: fmtKm(leg.km) }));
+    }
+
+    function homeRowHtml(home) {
+      return `<div class="route-row route-row-home"><div class="route-pick route-pick-static">`
+        + `<span class="route-n route-n-home" aria-hidden="true">⌂</span><span class="route-main"><span class="route-name">${esc(t('route_home'))}</span>`
+        + (home.name ? `<span class="small">${esc(home.name)}</span>` : '') + `</span></div></div>`;
+    }
+
     function rowHtml(row) {
       const badge = row.hasCoords
         ? `<span class="route-n">${row.n}</span>`
         : `<span class="route-n route-n-off" aria-hidden="true">–</span>`;
       const typeLabel = row.visitType ? App.utils.visitTypeLabel(row.visitType) : '';
-      const note = row.hasCoords ? '' : `<span class="small route-warn">${esc(t('route_no_coords'))}</span>`;
+      const leg = legByRow.get(row.id);
+      const note = row.hasCoords
+        ? (leg ? `<span class="small route-leg${leg.road ? '' : ' is-straight'}">${esc(legText(leg))}</span>` : '')
+        : `<span class="small route-warn">${esc(t('route_no_coords'))}</span>`;
       const id = App.utils.escapeAttr(row.id);
       return `<div class="route-row${row.id === selectedId ? ' is-selected' : ''}" data-route-row="${id}">`
         + `<button type="button" class="route-pick md-state-layer" data-route-pick="${id}" aria-pressed="${row.id === selectedId}">`
@@ -142,6 +185,8 @@
         <div class="small route-sub">${esc(t('route_sub'))}</div>
         <label class="small route-year">${esc(t('route_year'))} <select id="routeYearSelect"></select></label>
         <div class="small route-summary" id="routeSummary"></div>
+        <div class="route-road"><span class="small" id="routeRoad"></span>
+          <button type="button" class="md-btn md-btn-outlined md-state-layer route-road-btn" id="routeRoadBtn" hidden title="${esc(t('route_road_privacy'))}">${esc(t('route_road_btn'))}</button></div>
         <div class="route-layout">
           <div class="route-list" id="routeList"></div>
           <div class="route-map-pane" id="routeMapPane"><div class="route-map" id="routeMap"></div>
@@ -161,15 +206,19 @@
 
     function drawMap() {
       if (!map) return;
-      const pts = rows.filter((r) => r.hasCoords);
       const sig = year + '|' + pts.map((r) => [r.id, r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId;
       if (sig === drawnSig) return;
       drawnSig = sig;
       pinsLayer.clearLayers(); lineLayer.clearLayers();
-      if (!pts.length) { setMapNote(t('map_no_coords')); return; }
+      if (!pts.some((r) => !r.home)) { setMapNote(t('map_no_coords')); return; }
       if (!tileError) setMapNote('');
       if (pts.length > 1) L.polyline(pts.map((r) => [r.lat, r.lng]), { color: '#3b6fd8', weight: 3, opacity: 0.85 }).addTo(lineLayer);
       pts.forEach((r) => {
+        if (r.home) {
+          L.marker([r.lat, r.lng], { icon: L.divIcon({ className: 'route-pin is-home', html: '<span>⌂</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), keyboard: false, title: t('route_home') })
+            .bindTooltip(esc(t('route_home'))).addTo(pinsLayer);
+          return;
+        }
         const m = L.marker([r.lat, r.lng], { icon: pinIcon(r, r.id === selectedId), keyboard: true, title: `${r.n}. ${r.name}`, zIndexOffset: r.id === selectedId ? 1000 : 0 });
         m.bindTooltip(`${r.n}. ${esc(r.name)}`);
         m.on('click', () => select(r.id, false));
@@ -216,7 +265,75 @@
     function renderList() {
       const list = $('routeList');
       if (!list) return;
-      list.innerHTML = rows.length ? rows.map(rowHtml).join('') : `<div class="md-empty">${esc(t('route_none'))}</div>`;
+      const h = pts.length && pts[0].home ? pts[0] : null;
+      list.innerHTML = rows.length ? (h ? homeRowHtml(h) : '') + rows.map(rowHtml).join('') : `<div class="md-empty">${esc(t('route_none'))}</div>`;
+    }
+
+    function home() {
+      const s = App.state.app.settings || {};
+      return { lat: s.homeLat, lng: s.homeLng, name: typeof s.homeAddress === 'string' ? s.homeAddress : '' };
+    }
+
+    function computeLegs() {
+      legByRow = new Map();
+      if (!Legs() || pts.length < 2) return null;
+      const tot = Legs().totals(pts, (k) => { const r = legMemo.get(k); return r && typeof r.km === 'number' ? r : null; }, App.utils.haversineKm);
+      tot.legs.forEach((leg, i) => { if (!pts[i + 1].home) legByRow.set(pts[i + 1].id, leg); });
+      return tot;
+    }
+
+    function renderSummary() {
+      const sumEl = $('routeSummary'), roadEl = $('routeRoad'), btn = $('routeRoadBtn');
+      if (!sumEl) return;
+      const tot = computeLegs();
+      const sum = summarize(rows);
+      const path = pathLength(pts, App.utils.haversineKm);
+      sumEl.textContent = rows.length
+        ? [t('route_summary', { count: sum.count, missing: sum.missing }), path.legs ? t('route_km_straight', { km: fmtKm(path.km), legs: path.legs }) : ''].filter(Boolean).join(' · ')
+        : '';
+      let road = '';
+      if (tot && tot.roadLegs) {
+        road = tot.complete
+          ? t('route_road', { km: fmtKm(tot.km), time: fmtDur(tot.min) })
+          : t('route_road_partial', { done: tot.roadLegs, legs: tot.count, km: fmtKm(tot.km) });
+      }
+      if (roadState === 'busy') road = t('route_road_busy', { done: roadProgress[0], total: roadProgress[1] });
+      else if (roadState === 'offline') road = [road, t('route_road_offline')].filter(Boolean).join(' · ');
+      else if (roadState === 'failed') road = [road, t('route_road_failed')].filter(Boolean).join(' · ');
+      roadEl.textContent = road;
+      btn.hidden = !tot || tot.complete;
+      btn.disabled = roadState === 'busy';
+    }
+
+    // Подтянуть сохранённые отрезки для текущих точек (без сети).
+    function loadCachedLegs() {
+      if (!Legs() || pts.length < 2) return;
+      const keys = [];
+      for (let i = 1; i < pts.length; i++) keys.push(Legs().legKey(pts[i - 1], pts[i]));
+      const sig = keys.join('|');
+      if (sig === loadedSig) return;
+      loadedSig = sig;
+      const need = keys.filter((k) => !legMemo.has(k));
+      if (!need.length) return;
+      Legs().loadMany(need).then((found) => {
+        if (!found.size) return;
+        found.forEach((v, k) => { if (!legMemo.has(k)) legMemo.set(k, v); });
+        renderSummary(); renderList();
+      });
+    }
+
+    function fetchRoads() {
+      if (!Legs() || roadState === 'busy' || pts.length < 2) return;
+      if (navigator.onLine === false) { roadState = 'offline'; renderSummary(); return; }
+      roadState = 'busy'; roadProgress = [0, 0];
+      renderSummary();
+      const snapshot = pts.slice();
+      Legs().fetchMissing(snapshot, legMemo, (done, total) => {
+        roadProgress = [done, total]; renderSummary(); renderList();
+      }).then((res) => {
+        roadState = res.offline ? 'offline' : res.failed ? 'failed' : '';
+        renderSummary(); renderList();
+      }, () => { roadState = 'failed'; renderSummary(); });
     }
 
     function render() {
@@ -230,12 +347,11 @@
       const stats = App.data.getServiceYearStats(year);
       rows = collect(stats.visitEntries, (id) => App.data.getEventById(id));
       if (selectedId && !rows.some((r) => r.id === selectedId)) selectedId = null;
-      const sum = summarize(rows);
-      const path = pathLength(rows, App.utils.haversineKm);
-      $('routeSummary').textContent = rows.length
-        ? [t('route_summary', { count: sum.count, missing: sum.missing }), path.legs ? t('route_km_straight', { km: Math.round(path.km).toLocaleString(App.utils.lang()), legs: path.legs }) : ''].filter(Boolean).join(' · ')
-        : '';
+      pts = points(rows, home());
+      if (roadState !== 'busy') roadState = '';
+      renderSummary();
       renderList();
+      loadCachedLegs();
       ensureMap();
     }
 
@@ -248,6 +364,7 @@
         if (e.target && e.target.id === 'routeYearSelect') { year = Number(e.target.value); selectedId = null; render(); }
       });
       host.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('#routeRoadBtn')) { fetchRoads(); return; }
         const cal = e.target.closest && e.target.closest('[data-route-entry]');
         if (cal) {
           if (App.actions.focusEntryFromHash('#calendar?entry=' + encodeURIComponent(cal.dataset.routeEntry))) App.ui.renderAll();
