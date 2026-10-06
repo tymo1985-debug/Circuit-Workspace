@@ -3,7 +3,8 @@
 // «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта,
 // R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка,
 // R5 (06.10.2026) сравнение «Календарь ↔ Черновик», R6 (06.10.2026)
-// «Предложить оптимальный порядок», R7 (06.10.2026) «Применить к календарю».
+// «Предложить оптимальный порядок», R7 (06.10.2026) «Применить к календарю»,
+// R8 (06.10.2026) мобильная раскладка [Список]/[Карта].
 // Календарь не меняется никогда: ТОЛЬКО ПРОСМОТР и черновик сессии. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
 // планирует и не пишет: он показывает уже назначенные посещения служебного
@@ -71,6 +72,11 @@
 //    чтения / конфликт вкладок — применение запрещено. После применения
 //    черновик удаляется: календарь теперь и есть этот порядок. Откат —
 //    «История изменений» (контрольная точка снята перед записью).
+//  • R8: ≤900px (та же точка, что у карты собраний) вместо «карта над списком»
+//    — две вкладки [Список]/[Карта], виден один блок. Выбор вкладки — только
+//    в памяти. Карта, созданная в скрытом блоке, не знает своего размера:
+//    при первом показе вкладки — invalidateSize и перепривязка к точкам.
+//    Шире 900px вкладки скрыты, оба блока видны рядом, как раньше.
 (function (root) {
   'use strict';
 
@@ -299,6 +305,8 @@
     let draft = null, draftYear = null; // R4: { on, order, locks } | null
     let focusAfter = null;     // [id, селектор] — вернуть фокус после перерисовки
     let optNote = '', optUndo = null; // R6: итог последнего предложения; откат (только в памяти)
+    let mobileView = 'list';   // R8: 'list' | 'map' (≤900px); только в памяти
+    let resizeBound = false;
     let pastIds = new Set();   // R7: прошедшие записи — всегда на месте
     const effLocks = () => (draft ? draft.locks : []).concat(Array.from(pastIds).filter((id) => !(draft && draft.locks.includes(id))));
 
@@ -538,11 +546,38 @@
         <div class="route-road"><span class="small" id="routeRoad"></span>
           <button type="button" class="md-btn md-btn-outlined md-state-layer route-road-btn" id="routeRoadBtn" hidden title="${esc(t('route_road_privacy'))}">${esc(t('route_road_btn'))}</button></div>
         <div class="route-compare" id="routeCompare" hidden></div>
-        <div class="route-layout">
+        <div class="route-tabs" id="routeTabs" role="tablist" aria-label="${esc(t('screen_route'))}">
+          <button type="button" role="tab" class="md-btn md-btn-outlined md-state-layer route-tab" id="routeTabList" data-route-tab="list" aria-controls="routeList">${esc(t('route_tab_list'))}</button>
+          <button type="button" role="tab" class="md-btn md-btn-outlined md-state-layer route-tab" id="routeTabMap" data-route-tab="map" aria-controls="routeMapPane">${esc(t('route_tab_map'))}</button></div>
+        <div class="route-layout" id="routeLayout" data-view="list">
           <div class="route-list" id="routeList"></div>
           <div class="route-map-pane" id="routeMapPane"><div class="route-map" id="routeMap"></div>
             <div class="small route-map-note" id="routeMapNote" hidden></div></div>
         </div></div>`;
+    }
+
+    // R8: показать вкладку. Карта, жившая в скрытом блоке, пересчитывает размер.
+    function setView(view, focus) {
+      mobileView = view === 'map' ? 'map' : 'list';
+      const layout = $('routeLayout');
+      if (!layout) return;
+      layout.dataset.view = mobileView;
+      [['list', 'routeTabList'], ['map', 'routeTabMap']].forEach(([v, id]) => {
+        const b = $(id);
+        if (!b) return;
+        const on = v === mobileView;
+        b.setAttribute('aria-selected', String(on));
+        b.tabIndex = on ? 0 : -1;
+        b.classList.toggle('is-active', on);
+        if (on && focus) b.focus();
+      });
+      if (mobileView === 'map') {
+        requestAnimationFrame(() => {
+          if (!map) { ensureMap(); return; }
+          map.invalidateSize();
+          fittedYear = null; drawnSig = ''; drawMap();
+        });
+      }
     }
 
     function setMapNote(text) {
@@ -754,6 +789,7 @@
       if (selectedId && !rows.some((r) => r.id === selectedId)) selectedId = null;
       pts = points(rows, home());
       if (roadState !== 'busy') roadState = '';
+      setView(mobileView, false);
       renderDraftBar();
       renderSummary();
       renderList();
@@ -770,7 +806,20 @@
       host.addEventListener('change', (e) => {
         if (e.target && e.target.id === 'routeYearSelect') { year = Number(e.target.value); selectedId = null; render(); }
       });
+      host.addEventListener('keydown', (e) => {
+        const tab = e.target && e.target.closest && e.target.closest('[data-route-tab]');
+        if (!tab || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End')) return;
+        e.preventDefault();
+        setView(e.key === 'ArrowLeft' || e.key === 'Home' ? 'list' : 'map', true);
+      });
+      if (!resizeBound) {
+        resizeBound = true;
+        let timer = null;
+        window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (map && App.state.selectedScreen === 'route') map.invalidateSize(); }, 150); });
+      }
       host.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest && e.target.closest('[data-route-tab]');
+        if (tabBtn) { setView(tabBtn.dataset.routeTab, false); return; }
         if (e.target && e.target.closest && e.target.closest('#routeRoadBtn')) { fetchRoads(); return; }
         const da = e.target.closest && e.target.closest('[data-route-draft]');
         if (da) { draftAction(da.dataset.routeDraft); return; }

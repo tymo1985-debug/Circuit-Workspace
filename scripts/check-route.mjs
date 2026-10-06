@@ -2,7 +2,7 @@
 /**
  * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта + R3 дорожные км
  * + R4 черновик порядка + R5 сравнение + R6 предложение порядка + R7 применение к календарю
- * (единственная запись в календарь — applyDraft).
+ * (единственная запись в календарь — applyDraft) + R8 мобильные вкладки [Список]/[Карта].
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -166,6 +166,15 @@ ok(fl[0].sent302 === true && fl[0].sentLetter === false, 'collect перенос
 for (const k of ['route_past', 'route_apply', 'route_apply_hint', 'route_apply_confirm', 'route_apply_line', 'route_apply_warn', 'route_apply_restore', 'route_apply_stale', 'route_apply_done']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
+
+console.log('R8: мобильные вкладки');
+const css = read('circuit-planner/style.css');
+ok(/\.route-tabs\{display:none\}/.test(css) && /@media \(max-width:900px\)\{[^}]*\.route-tabs\{display:flex/.test(css.replace(/\n\s*/g, '').replace(/\/\*[^*]*\*\//g, '')), 'вкладки скрыты по умолчанию и видны только ≤900px');
+ok(/data-view="list"\] \.route-map-pane\{display:none\}/.test(css) && /data-view="map"\] \.route-list\{display:none\}/.test(css), 'на узком экране виден ровно один блок');
+ok(src.includes('role="tablist"') && /role="tab"/.test(src) && src.includes('aria-selected') && src.includes('ArrowRight'), 'доступность: tablist/tab, aria-selected, стрелки');
+ok(/function setView[\s\S]*invalidateSize\(\)[\s\S]*fittedYear = null/.test(src), 'карта пересчитывает размер и точки при показе вкладки');
+ok(!/sessionStorage\.setItem\([^)]*mobileView|localStorage/.test(code), 'выбор вкладки только в памяти');
+for (const k of ['route_tab_list', 'route_tab_map']) ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 
 if (failed) { console.error(`\nПровалено: ${failed}`); process.exit(1); }
 console.log('\nOK');

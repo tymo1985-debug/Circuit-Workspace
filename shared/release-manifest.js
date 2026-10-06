@@ -1,12 +1,12 @@
 self.CW_RELEASE = {
-  version: '0.42.34',
+  version: '0.42.35',
   changes: [
-    { module: 'circuit-planner', version: '9.104.0', note: '«Маршрут посещений» (R7): «Применить к календарю» — даты посещений переносятся по черновику после подтверждения и контрольной точки истории; прошедшие посещения не двигаются' },
-    { module: 'congress-project', version: '4.48.12', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'pioneer-school', version: '1.14.117', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'appointments', version: '5.5.156', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'documents', version: '1.12.28', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'journal', version: '0.22.7', note: 'Версия поднята вместе с хабом', technical: true },
-    { module: 'archive', version: '0.2.12', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'circuit-planner', version: '9.105.0', note: '«Маршрут посещений» (R8): на телефоне — вкладки «Список» и «Карта» вместо карты над списком' },
+    { module: 'congress-project', version: '4.48.13', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'pioneer-school', version: '1.14.118', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'appointments', version: '5.5.157', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'documents', version: '1.12.29', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'journal', version: '0.22.8', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'archive', version: '0.2.13', note: 'Версия поднята вместе с хабом', technical: true },
   ],
 };
