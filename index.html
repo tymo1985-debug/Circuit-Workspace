@@ -1157,6 +1157,7 @@
               <span class="cw-syscard__dot" aria-hidden="true"></span>
               <span id="backupAge"></span>
             </p>
+            <p class="cw-syscard__hint" id="backupPersist" hidden></p>
 
             <p class="cw-syscard__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
 
@@ -1918,9 +1919,31 @@
       });
     })();
 
+    // Постоянное хранилище: без него браузер вправе стереть IndexedDB и
+    // localStorage при нехватке места. persist() вызывается один раз при
+    // загрузке хаба (молчаливый запрос, диалога нет); результат показывается
+    // текстом рядом с возрастом копии. API нет — строка остаётся скрытой.
+    var persistSlot = document.getElementById('backupPersist');
+    var persistState = null;
+    function renderPersist() {
+      if (!persistSlot || persistState === null) return;
+      persistSlot.textContent = CWI18n.t(persistState ? 'backup.persist_on' : 'backup.persist_off');
+      persistSlot.hidden = false;
+    }
+    (function () {
+      var st = navigator.storage;
+      if (!st || !st.persisted) return;
+      st.persisted().then(function (ok) {
+        return ok || !st.persist ? ok : st.persist();
+      }).then(function (ok) {
+        persistState = !!ok;
+        renderPersist();
+      }).catch(function () { /* без индикатора, поведение прежнее */ });
+    })();
+
     renderRows();
     renderState();
-    CWI18n.onChange(function () { renderRows(); renderState(); });
+    CWI18n.onChange(function () { renderRows(); renderState(); renderPersist(); });
   })();
 
   // --- Отправитель ------------------------------------------------------

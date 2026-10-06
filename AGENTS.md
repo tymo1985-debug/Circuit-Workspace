@@ -65,6 +65,15 @@ docs/       journal/ rules/ context/ audit/ design-system/ db-migration/ print/
 (communities, people, meetings, roles). `shared/nav.js` — возврат в хаб.
 Правки одного модуля — только его файлы, не весь проект.
 
+## ⚠️ Инвариант общего origin
+
+GitHub Pages: все репозитории `tymo1985-debug` (хаб, Current-Exchange, прочие
+PWA) живут на одном origin `tymo1985-debug.github.io`. Общие у них
+IndexedDB, localStorage и Cache Storage. Следствия: service worker удаляет
+только кэши со **своим** префиксом, никогда «всё, кроме текущего»; имена баз,
+ключей и кэшей получают префикс приложения/модуля; чужой ключ не читается и не
+чистится.
+
 ## Версии
 
 `shared/version.js` — единственное место объявления: `CW_VERSION` (хаб) и
