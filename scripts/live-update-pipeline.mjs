@@ -138,6 +138,20 @@ try {
     if (!found || found.version !== pair[1]) throw new Error(`${id}: active=${JSON.stringify(found)}, expected=${pair[1]}`);
   }
 
+  /* Каждая регистрация обязана держать ОДИН script URL с `?cw-release=<новый>`
+     и не иметь лишнего installing/waiting. Иной URL у той же регистрации —
+     повторная установка того же кода; до 07.10.2026 она давала ложную полосу
+     «открыть Hub» (~40% прогонов) и зависание навигации к модулю. */
+  const assertSingleWorker = async (label) => {
+    const regs = await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((reg) => ({
+      scope: reg.scope, active: reg.active && reg.active.scriptURL, waiting: reg.waiting && reg.waiting.scriptURL, installing: reg.installing && reg.installing.scriptURL,
+    })));
+    const ours = regs.filter((r) => !r.scope.endsWith('/Weather-App-Claude/'));
+    const bad = ours.filter((r) => r.waiting || r.installing || !r.active || new URL(r.active).searchParams.get('cw-release') !== NEXT.hub[1]);
+    if (bad.length) throw new Error(label + ': duplicate/unversioned worker: ' + JSON.stringify(bad));
+  };
+  await assertSingleWorker('after apply');
+
   for (const id of Object.keys(NEXT).filter((id) => id !== 'hub')) {
     const response = await page.goto(base + id + '/index.html', { waitUntil: 'domcontentloaded' });
     if (!response || !String(response.headers()['content-type']).includes('text/html')) throw new Error(id + ': navigation did not return HTML');
@@ -147,7 +161,10 @@ try {
   }
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   if (!await page.locator('#hubVersion').count()) throw new Error('Hub return produced broken/plain-text UI');
-  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, technicalChangesHidden: true, mobileBannerViewport: '430x900', foreignScopeIgnored: true, foreignSkipWaitingBlocked: true, hardRefreshUsed: false, moduleReturnChecks: 6 }, null, 2));
+  await page.waitForTimeout(2000);
+  await assertSingleWorker('after module returns');
+  if (await page.locator('#cwUpdateBar').count()) throw new Error('Hub: update banner again after a completed update');
+  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, technicalChangesHidden: true, mobileBannerViewport: '430x900', foreignScopeIgnored: true, foreignSkipWaitingBlocked: true, hardRefreshUsed: false, moduleReturnChecks: 6, singleWorkerPerScope: true }, null, 2));
 } finally {
   await context.close();
   await new Promise((resolve) => server.close(resolve));

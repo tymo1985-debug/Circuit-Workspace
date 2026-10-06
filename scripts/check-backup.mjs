@@ -1028,5 +1028,26 @@ for (let i = 0; i < 4; i++) await CWBackup.guard.save(before);
 const many = await CWBackup.guard.list();
 ok('число предохранительных снимков ограничено', many.length <= 3, 'снимков ' + many.length);
 
+/* 7. Копия вне устройства (аудит 03, P1-3). Возраст копии на главной
+   считается по offsiteAt — его ставит только отправленная полная копия, и
+   последующее обычное скачивание не должно его стирать. */
+console.log('\nКопия вне устройства');
+localStorage.removeItem('cw-backup-log');
+CWBackup.noteShared(before);
+const logA = CWBackup.log();
+const sharedAt = logA.shared && logA.shared.offsiteAt;
+ok('отправленная копия ставит offsiteAt', !!sharedAt && logA.shared.scope === 'full');
+await new Promise((r) => setTimeout(r, 5));
+// saveAll() скачивает через <a download>: подменяем минимальный document.
+globalThis.document = { createElement: () => ({ click() {}, remove() {} }), body: { appendChild() {} } };
+await CWBackup.saveAll();
+const logB = CWBackup.log();
+ok('скачивание после отправки не стирает offsiteAt', logB.shared && logB.shared.offsiteAt === sharedAt && logB.shared.at > sharedAt,
+  JSON.stringify(logB.shared));
+localStorage.removeItem('cw-backup-log');
+await CWBackup.saveAll();
+ok('одно скачивание offsiteAt не ставит', !CWBackup.log().shared.offsiteAt);
+ok('без navigator.share отправка недоступна', CWBackup.canShareFiles() === false);
+
 console.log(failed ? `\nПРОВАЛЕНО проверок: ${failed}` : '\nВсе проверки резервного копирования пройдены.');
 process.exit(failed ? 1 : 0);

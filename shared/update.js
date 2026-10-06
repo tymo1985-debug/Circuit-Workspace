@@ -77,6 +77,10 @@
 
   /* Своя регистрация: та, что управляет текущей страницей. */
   var ownReg = null;
+  /* Script URL своего worker'а из init() — без `?cw-release=`. Нужен
+     ensureRegistrations(), чтобы хаб регистрировал и себя тем же versioned
+     URL, что и модули. */
+  var ownSwUrl = null;
   /* Режим страницы: 'hub' — полный UI и apply; 'silent' — только нейтральное
      уведомление-ссылка, никогда кнопка «Обновить», никогда локальный
      SKIP_WAITING по инициативе пользователя. */
@@ -556,7 +560,13 @@
 
   function verifyCurrentRelease(expectedList) {
     if (unsupported()) return Promise.resolve({ results: [], allActivated: false });
-    return ensureRegistrations().then(function () {
+    /* Тот же versioned URL, что у checkAll() и у init() модулей. Прежде здесь
+       регистрировался URL БЕЗ `?cw-release=`: для браузера это другой script
+       URL, и сразу после применения обновления каждый модуль ставил тот же
+       код повторно (лишняя загрузка прекэша), а следующая регистрация
+       модульной страницей с `?cw-release=` давала ещё один waiting worker —
+       ложная полоса «открыть Hub» и зависавшая навигация в живом прогоне. */
+    return ensureRegistrations(global.CW_VERSION || null).then(function () {
       return nav.serviceWorker.getRegistrations();
     }).then(function (regs) {
       var byScope = {};
@@ -720,7 +730,18 @@
         function () { return null; },
         function (err) { return scopeFailure(id, scope, 'register', err); }
       );
-    })).then(function (results) { return results.filter(Boolean); });
+    })).then(function (results) {
+      /* Хаб — тем же способом, что модули. Прежде новый worker хаба ставился
+         через reg.update() по СТАРОМУ URL (`?cw-release=<прежний>`), а после
+         перезагрузки init() регистрировал `?cw-release=<новый>` — другой
+         script URL, и хаб сразу после обновления ставил тот же код второй
+         раз и снова держал waiting worker. */
+      if (!ownSwUrl || !releaseVersion) return results.filter(Boolean);
+      return nav.serviceWorker.register(versionedWorkerUrl(ownSwUrl, releaseVersion), { updateViaCache: 'none' }).then(
+        function () { return results.filter(Boolean); },
+        function (err) { return results.filter(Boolean).concat([scopeFailure('hub', new URL('./', (doc && doc.baseURI) || global.location.href).href, 'register', err)]); }
+      );
+    });
   }
 
   function compareReleaseVersions(a, b) {
@@ -766,6 +787,7 @@
       if (unsupported()) return Promise.resolve(null);
       var swUrl = (options && options.swUrl) || './sw.js';
       uiMode = (options && options.ui) || 'hub';
+      ownSwUrl = swUrl;
       if (options && options.hubHref) hubHref = options.hubHref;
       if (uiMode === 'hub') bootPendingRelease = readPendingRelease();
 

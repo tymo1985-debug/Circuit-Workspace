@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
 
+# Заливка через веб-интерфейс приходит несколькими коммитами подряд: прогон
+# старого коммита отменяется новым, и выкладывается только последний.
+concurrency:
+  group: release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   static-and-data:
     runs-on: ubuntu-latest
@@ -34,3 +40,41 @@ jobs:
       - run: npm run test:smoke
       - run: npm run test:update
       - run: npm run test:device
+
+  # Выкладка на GitHub Pages только после зелёного гейта (аудит 03, P1-4).
+  # Работает, когда в Settings → Pages источник = «GitHub Actions». Пока там
+  # «Deploy from a branch», шаг ниже это видит и выкладку пропускает: сайт
+  # публикует прежний механизм, гейт не краснеет из-за выкладки.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [static-and-data, chromium-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          type=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type 2>/dev/null || echo unknown)
+          echo "build_type=$type"
+          echo "type=$type" >> "$GITHUB_OUTPUT"
+          if [ "$type" != "workflow" ]; then
+            echo "::notice::Pages source is '$type', not 'GitHub Actions' — deploy skipped, site is published by the branch build."
+          fi
+      - if: steps.source.outputs.type == 'workflow'
+        uses: actions/checkout@v4
+      - if: steps.source.outputs.type == 'workflow'
+        uses: actions/configure-pages@v5
+      - if: steps.source.outputs.type == 'workflow'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - if: steps.source.outputs.type == 'workflow'
+        id: deployment
+        uses: actions/deploy-pages@v4

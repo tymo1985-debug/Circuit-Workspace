@@ -1282,11 +1282,19 @@
     catch (e) { return {}; }
   }
 
-  function note(ids, scope) {
+  /* `offsite` — копия ушла с устройства через меню «Поделиться» (аудит 03,
+     P1-3). Отметка `offsiteAt` переносится из прежней записи: последующее
+     обычное скачивание обновляет «последнюю копию», но не стирает дату
+     последней копии вне устройства — по ней хаб считает возраст. */
+  function note(ids, scope, offsite) {
     var log = readLog();
     var stamp = new Date().toISOString();
     ids.forEach(function (id) {
-      log[id] = { at: stamp, scope: scope, version: (global.CW_MODULES && global.CW_MODULES[id] || {}).version || '' };
+      var prev = log[id] || {};
+      var entry = { at: stamp, scope: scope, version: (global.CW_MODULES && global.CW_MODULES[id] || {}).version || '' };
+      var offsiteAt = offsite ? stamp : prev.offsiteAt;
+      if (offsiteAt) entry.offsiteAt = offsiteAt;
+      log[id] = entry;
     });
     try { global.localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch (e) { /* no-op */ }
     return log;
@@ -1311,6 +1319,33 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
+  /* --- Отправка копии с устройства (Web Share с файлом) ------------------
+     Скачанный файл лежит в «Загрузках» того же телефона: потеря устройства
+     уносит и данные, и копию. Отправка (Диск, почта, мессенджер) — то, что
+     действительно переживает потерю, поэтому только она гасит предупреждение
+     о возрасте копии там, где браузер её умеет. */
+  function makeFile(snap, name) {
+    return new File([JSON.stringify(snap, null, 2)], name || filename(snap), { type: 'application/json' });
+  }
+
+  function canShareFiles() {
+    try {
+      var nav = global.navigator;
+      if (!nav || typeof nav.share !== 'function' || typeof nav.canShare !== 'function' || typeof File !== 'function') return false;
+      return !!nav.canShare({ files: [new File(['{}'], 'probe.json', { type: 'application/json' })] });
+    } catch (e) { return false; }
+  }
+
+  /** Открывает меню «Поделиться». Итог: 'shared' | 'cancelled'; иные отказы
+   *  (NotAllowedError — жест пользователя истёк, пока собирался снимок)
+   *  отклоняют промис, чтобы вызывающий мог предложить второе нажатие. */
+  function shareFile(file) {
+    return global.navigator.share({ files: [file], title: file.name }).then(
+      function () { return 'shared'; },
+      function (e) { if (e && e.name === 'AbortError') return 'cancelled'; throw e; }
+    );
+  }
+
   global.CWBackup = {
     FORMAT: FORMAT,
     FORMAT_VERSION: FORMAT_VERSION,
@@ -1331,6 +1366,11 @@
     },
     download: download,
     filename: filename,
+    canShareFiles: canShareFiles,
+    makeFile: makeFile,
+    shareFile: shareFile,
+    /** Засчитать отправленную полную копию (вызывается после 'shared'). */
+    noteShared: function (snap) { return note(snap.modules.concat(['shared']), 'full', true); },
     log: readLog,
 
     /** Копия хаба: все модули + общий слой, одним файлом. */

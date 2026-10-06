@@ -1162,6 +1162,14 @@
             <p class="cw-syscard__hint" data-i18n="backup.hint">Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.</p>
 
             <div class="cw-backup__actions" id="backupActions">
+              <!-- «Отправить копию» (аудит 03, P1-3): Диск, почта, мессенджер
+                   через меню «Поделиться». Скрыта, пока браузер не умеет
+                   делиться файлом; там, где умеет, только она гасит
+                   предупреждение о возрасте копии. -->
+              <button type="button" class="cw-btn cw-btn--primary" id="backupShareAll" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                <span data-i18n="backup.share_all">Отправить копию</span>
+              </button>
               <button type="button" class="cw-btn cw-btn--primary" id="backupSaveAll">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                 <span data-i18n="backup.save_all">Сохранить всё</span>
@@ -1716,6 +1724,20 @@
       }, null);
     }
 
+    // Аудит 03, P1-3: где браузер умеет отправлять файл, копией считается
+    // только ОТПРАВЛЕННАЯ полная копия — скачанная остаётся на том же
+    // устройстве. offsiteAt ставит лишь noteShared() полной копии. Где
+    // отправки нет (часть настольных браузеров), считается скачанная — иначе
+    // предупреждение там горело бы вечно без способа его погасить.
+    var SHARE = CWBackup.canShareFiles();
+    function lastOffsiteAt(log) {
+      return Object.keys(log).reduce(function (best, id) {
+        var at = log[id] && log[id].offsiteAt;
+        if (!at) return best;
+        return (!best || at > best) ? at : best;
+      }, null);
+    }
+
     // Склонение числа дней отдаём Intl.PluralRules: он знает категории всех
     // пяти языков, а словарь хранит только сами формы. Иначе пришлось бы
     // держать в словаре по три-четыре готовые фразы на язык и помнить о
@@ -1732,19 +1754,21 @@
 
     function renderState() {
       if (!card || !ageSlot) return;
-      var at = lastFullAt(CWBackup.log());
+      var log = CWBackup.log();
+      var at = SHARE ? lastOffsiteAt(log) : lastFullAt(log);
+      var k = SHARE ? 'backup.offsite_' : 'backup.age_';
       var level, text;
 
       if (!at) {
         level = 'alert';
-        text = CWI18n.t('backup.age_never');
+        text = CWI18n.t(k + 'never');
       } else {
         var age = Math.floor((Date.now() - new Date(at).getTime()) / 86400000);
         if (!(age >= 0)) age = 0;
         level = age > 30 ? 'alert' : (age > 10 ? 'warn' : 'ok');
-        if (age === 0) text = CWI18n.t('backup.age_today');
-        else if (level === 'alert') text = CWI18n.t('backup.age_stale', { age: days(age) });
-        else text = CWI18n.t('backup.age_last', { age: days(age) });
+        if (age === 0) text = CWI18n.t(k + 'today');
+        else if (level === 'alert') text = CWI18n.t(k + 'stale', { age: days(age) });
+        else text = CWI18n.t(k + 'last', { age: days(age) });
       }
 
       ageSlot.textContent = text;
@@ -1775,6 +1799,56 @@
         say('backup.failed');
       });
     });
+
+    // Отправка копии. Снимок собирается асинхронно, и к моменту share()
+    // браузер (особенно Safari) может счесть жест пользователя истёкшим —
+    // NotAllowedError. Тогда готовый файл остаётся в памяти, и следующее
+    // нажатие отправляет его сразу, внутри жеста. Готовый файл живёт минуту,
+    // чтобы не отправить устаревшие данные.
+    var shareBtn = document.getElementById('backupShareAll');
+    var shareLabel = shareBtn && shareBtn.querySelector('span');
+    var pending = null;
+    function setPending(p) {
+      pending = p;
+      if (shareLabel) {
+        shareLabel.setAttribute('data-i18n', p ? 'backup.share_ready' : 'backup.share_all');
+        shareLabel.textContent = CWI18n.t(p ? 'backup.share_ready' : 'backup.share_all');
+      }
+    }
+    function runShare(prepared) {
+      return CWBackup.shareFile(prepared.file).then(function (result) {
+        setPending(null);
+        if (result === 'shared') {
+          CWBackup.noteShared(prepared.snap);
+          renderRows();
+          renderState();
+          say('backup.shared', { count: prepared.snap.modules.length });
+        } else {
+          say('backup.share_cancelled');
+        }
+      });
+    }
+    if (shareBtn && SHARE) {
+      shareBtn.hidden = false;
+      document.getElementById('backupSaveAll').classList.remove('cw-btn--primary');
+      shareBtn.addEventListener('click', function () {
+        var ready = pending && (Date.now() - pending.t < 60000) ? pending : null;
+        var flow = ready ? runShare(ready) : (function () {
+          say('backup.working');
+          return CWBackup.snapshot().then(function (snap) {
+            var prepared = { snap: snap, file: CWBackup.makeFile(snap), t: Date.now() };
+            setPending(prepared);
+            return runShare(prepared);
+          });
+        })();
+        flow.catch(function (e) {
+          if (e && e.name === 'NotAllowedError' && pending) { say('backup.share_again'); return; }
+          setPending(null);
+          console.error(e);
+          say('backup.failed');
+        });
+      });
+    }
 
     document.getElementById('backupRestoreBtn').addEventListener('click', function () { fileInput.click(); });
 
