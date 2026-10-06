@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scripts/check-route.mjs — «Маршрут посещений», этап R1 (только просмотр).
+ * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта (только просмотр).
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -33,6 +33,10 @@ ok(rows[0].hasCoords === false && rows[1].hasCoords === true, 'отсутств�
 const s = R.summarize(rows);
 ok(s.count === 2 && s.missing === 1 && s.withCoords === 1, 'сводка: всего, без координат');
 ok(R.collect(undefined, null).length === 0, 'пустой вход → пустой список');
+const flat = (a, b, c, d) => Math.abs(a - c) + Math.abs(b - d);
+const pl = R.pathLength([{ hasCoords: true, lat: 0, lng: 0 }, { hasCoords: false }, { hasCoords: true, lat: 1, lng: 2 }, { hasCoords: true, lat: 1, lng: 5 }], flat);
+ok(pl.km === 6 && pl.legs === 2, 'длина по прямой: точки без координат пропущены, переездов N−1');
+ok(R.pathLength([], flat).legs === 0 && R.pathLength([{ hasCoords: true, lat: 1, lng: 1 }], flat).km === 0, 'ноль/одна точка → 0 км, 0 переездов');
 
 console.log('Подключение');
 ok(/id: 'route'[^}]*nav_route/.test(read('circuit-planner/app.js')), 'пункт route в navItems');
@@ -40,10 +44,12 @@ ok(/route:'screen_route'/.test(read('circuit-planner/app.js')), 'заголов�
 ok(read('circuit-planner/index.html').includes('id="routeRoot"') && read('circuit-planner/index.html').includes('ui/route.js'), 'секция и скрипт в index.html');
 ok(read('circuit-planner/sw.js').includes("'./ui/route.js'"), 'ui/route.js в APP_SHELL_URLS');
 const dict = read('circuit-planner/i18n/dict.js');
-for (const k of ['nav_route', 'screen_route', 'route_sub', 'route_year', 'route_summary', 'route_none', 'route_no_coords', 'route_open']) {
+for (const k of ['nav_route', 'screen_route', 'route_sub', 'route_year', 'route_summary', 'route_none', 'route_no_coords', 'route_open', 'route_km_straight']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
-ok(!/localStorage|sessionStorage|indexedDB|CWDB\.|\.put\(|fetch\(/.test(src.replace(/\/\/.*$/gm, '')), 'R1 ничего не пишет и не ходит в сеть');
+ok(!/localStorage|sessionStorage|indexedDB|CWDB\.|\.put\(|fetch\(/.test(src.replace(/\/\/.*$/gm, '')), 'экран ничего не пишет и сам не ходит в сеть (кроме тайлов карты)');
+ok(src.includes("'./vendor/leaflet.js'") && !/marker-icon|\.png/.test(src.replace(/tile\.openstreetmap\.org[^']*/g, '')), 'R2: локальный Leaflet, маркеры без PNG');
+ok(read('circuit-planner/sw.js').includes('leaflet.js'), 'R2: Leaflet в прекэше SW (офлайн-инициализация)');
 
 if (failed) { console.error(`\nПровалено: ${failed}`); process.exit(1); }
 console.log('\nOK');

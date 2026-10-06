@@ -92,6 +92,34 @@
      но правило сужено под сам @media, чтобы больше не переопределять
      sticky выше и не полагаться на порядок объявления. */
   @media (max-width:1180px){.events-map-pane{position:relative}}
+
+  /* «Маршрут посещений» (ui/route.js): R1 список, R2 карта. Шире 900px —
+     список слева, карта справа (sticky, как карта собраний); до 900px —
+     карта над списком. Раздельные режимы [Список]/[Карта] на телефоне — R8. */
+  .route-sub{margin-bottom:10px}
+  .route-year{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .route-summary{margin-bottom:10px}
+  .route-layout{display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);gap:14px;align-items:start}
+  .route-row{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--md-outline-variant)}
+  .route-row.is-selected{background:var(--md-surface-variant,#eef0f6)}
+  .route-pick{display:flex;flex:1 1 auto;gap:12px;align-items:flex-start;min-width:0;text-align:left;background:none;border:0;padding:10px 4px;cursor:pointer;color:inherit;font:inherit}
+  .route-cal{flex:0 0 auto;min-width:40px;padding:6px 8px}
+  .route-n{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;background:#3b6fd8;color:#fff}
+  .route-n-off{background:none;color:inherit;border:1px dashed var(--md-outline-variant)}
+  .route-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .route-name{font-weight:600}
+  .route-warn{color:var(--md-error,#b3261e)}
+  .route-map-pane{position:sticky;top:var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px))}
+  .route-map{width:100%;height:520px;border-radius:16px;overflow:hidden;background:var(--md-surface-variant,#e7e7e7)}
+  .route-map-note{margin-top:6px}
+  .route-pin{background:none;border:0}
+  .route-pin span{display:flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#3b6fd8;color:#fff;font-weight:700;font-size:13px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .route-pin.is-active span{background:#d8592f;transform:scale(1.15)}
+  @media (max-width:900px){
+    .route-layout{display:flex;flex-direction:column-reverse;align-items:stretch}
+    .route-map-pane{position:relative;top:auto}
+    .route-map{height:320px}
+  }
   .overflow-menu{position:relative}.overflow-menu-trigger{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;user-select:none}.overflow-menu-trigger::-webkit-details-marker{display:none}.overflow-menu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:20;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:12px;box-shadow:var(--md-elevation-2);padding:8px;display:flex;flex-direction:column;min-width:220px}.overflow-menu-panel .md-btn{width:100%;justify-content:flex-start}
   .week-item,.event-row,.note-row{background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:16px;padding:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.week-item{display:grid;cursor:pointer;text-align:left}.week-item.active{border-color:var(--md-primary);outline:2px solid color-mix(in srgb, var(--md-primary) 20%, transparent)}.week-item-top{display:flex;justify-content:space-between;align-items:center}.pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill,.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
   #eventsList.is-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
