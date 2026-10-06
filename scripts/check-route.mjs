@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта + R3 дорожные км
- * (только просмотр).
+ * + R4 черновик порядка (календарь не меняется).
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -48,7 +48,9 @@ const dict = read('circuit-planner/i18n/dict.js');
 for (const k of ['nav_route', 'screen_route', 'route_sub', 'route_year', 'route_summary', 'route_none', 'route_no_coords', 'route_open', 'route_km_straight']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
-ok(!/localStorage|sessionStorage|indexedDB|CWDB\.|\.put\(|fetch\(/.test(src.replace(/\/\/.*$/gm, '')), 'экран ничего не пишет и сам не ходит в сеть (кроме тайлов карты)');
+const code = src.replace(/\/\/.*$/gm, '');
+ok(!/localStorage|indexedDB|CWDB\.|\.put\(|fetch\(|App\.store|App\.actions\.(?!focusEntryFromHash)/.test(code), 'экран не пишет в блоб/localStorage/IndexedDB и сам не ходит в сеть');
+ok((code.match(/sessionStorage/g) || []).length === 3 && /function draftRead[\s\S]*sessionStorage\.getItem/.test(code) && /function draftWrite[\s\S]*sessionStorage\.(setItem|removeItem)/.test(code), 'R4: sessionStorage — только в draftRead/draftWrite');
 ok(src.includes("'./vendor/leaflet.js'") && !/marker-icon|\.png/.test(src.replace(/tile\.openstreetmap\.org[^']*/g, '')), 'R2: локальный Leaflet, маркеры без PNG');
 ok(read('circuit-planner/sw.js').includes('leaflet.js'), 'R2: Leaflet в прекэше SW (офлайн-инициализация)');
 
@@ -81,6 +83,22 @@ ok(/indexedDB\.open\(DB_NAME/.test(lsrc) && lsrc.includes("const DB_NAME = 'cp-r
 ok(read('circuit-planner/sw.js').includes("'./ui/route-legs.js'") && read('circuit-planner/index.html').includes('ui/route-legs.js'), 'route-legs.js в прекэше SW и в index.html');
 ok(/fetchRoads\(\)/.test(src) && /routeRoadBtn/.test(src), 'сеть только по кнопке (fetchRoads)');
 for (const k of ['route_home', 'route_road', 'route_road_partial', 'route_road_btn', 'route_road_busy', 'route_road_offline', 'route_road_failed', 'route_road_privacy', 'route_leg_road', 'route_leg_straight', 'route_dur', 'route_dur_min']) {
+  ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
+}
+
+console.log('R4: черновик порядка');
+const base = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }].map((r, i) => ({ ...r, n: i + 1 }));
+const ao = R.applyOrder(base, ['c', 'zzz', 'a', 'c']);
+ok(ao.map((r) => r.id).join('') === 'cabd' && ao.map((r) => r.n).join('') === '1234', 'порядок черновика: неизвестные/повторы отброшены, новые в конце, номера пересчитаны');
+ok(base[2].n === 3, 'исходные строки не мутируются');
+ok(R.applyOrder(base, null).map((r) => r.id).join('') === 'abcd', 'без порядка — календарный');
+const O = ['a', 'b', 'c', 'd'];
+ok(R.move(O, [], 'c', -1).join('') === 'acbd' && R.move(O, [], 'a', -1).join('') === 'abcd' && R.move(O, [], 'd', 1).join('') === 'abcd', '↑↓ и границы');
+ok(R.move(O, ['b'], 'c', -1).join('') === 'cbad', 'закреплённая строка перепрыгивается и остаётся на месте');
+ok(R.move(O, ['b'], 'b', 1).join('') === 'abcd' && R.move(O, ['a'], 'b', -1).join('') === 'abcd', 'закреплённую не двигаем; за закреплённой у края хода нет');
+ok(O.join('') === 'abcd', 'move не мутирует вход');
+ok(src.includes("'cp.route.draft.' + y"), 'ключ черновика — по служебному году');
+for (const k of ['route_draft_edit', 'route_draft_open', 'route_draft_view', 'route_draft_reset', 'route_draft_note', 'route_up', 'route_down', 'route_lock', 'route_unlock']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
 

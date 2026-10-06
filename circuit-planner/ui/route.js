@@ -1,7 +1,8 @@
 // circuit-planner/ui/route.js
 //
 // «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта,
-// R3 (06.10.2026) дорожные км/время: ТОЛЬКО ПРОСМОТР. Идея и фазы
+// R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка.
+// Календарь не меняется никогда: ТОЛЬКО ПРОСМОТР и черновик сессии. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
 // планирует и не пишет: он показывает уже назначенные посещения служебного
 // года в календарном порядке и отмечает те, у которых нет координат.
@@ -15,9 +16,9 @@
 //
 // ИНВАРИАНТЫ
 //  • Этот файл ничего не пишет: ни в канонический блоб, ни в localStorage/
-//    sessionStorage, ни в IndexedDB. Черновик порядка появится только в R4
-//    и только в sessionStorage. Единственное исключение экрана — кэш
-//    дорожных отрезков R3, и он целиком в ui/route-legs.js (своя база).
+//    ни в IndexedDB. Единственная запись этого файла — черновик R4 в
+//    sessionStorage (ключ `cp.route.draft.<год>`, функции draftRead/
+//    draftWrite). Кэш дорожных отрезков R3 — целиком в ui/route-legs.js.
 //  • Данные — `App.data.getServiceYearStats(year).visitEntries`: записи
 //    календаря, у которых событие имеет visitType. Координаты — из события
 //    (`getEventById` отдаёт копию, слитую со справочником).
@@ -33,6 +34,13 @@
 //    Дорожные км/время — CPRouteLegs (OSRM): кэш показывается сам, сеть —
 //    только по кнопке. Линии на карте остаются прямыми (геометрия дорог не
 //    запрашивается). Нет дорожных данных — отрезок по прямой, с пометкой.
+//  • R4: «Изменить порядок» → ↑↓ и 🔒 (закрепить на месте) в черновике.
+//    Черновик = { on, order: [id записи], locks: [id] } в sessionStorage,
+//    живёт до закрытия вкладки, в календарь и блоб НЕ пишется (это R7).
+//    Закреплённая строка не двигается, и ↑↓ соседей перепрыгивают её.
+//    Записи календаря, которых нет в черновике, дописываются в конец в
+//    календарном порядке; исчезнувшие — молча выпадают. Номера, линия на
+//    карте и километры идут по порядку черновика, пока он показан.
 (function (root) {
   'use strict';
 
@@ -95,7 +103,41 @@
       : pts;
   }
 
-  root.CPRoute = { collect, summarize, pathLength, points };
+  /**
+   * R4: строки в порядке черновика. order — id записей; неизвестные id
+   * отбрасываются, строки вне order дописываются в конец в календарном
+   * порядке. Номера n пересчитываются; входные объекты не меняются.
+   */
+  function applyOrder(rows, order) {
+    const byId = new Map((rows || []).map((r) => [r.id, r]));
+    const seen = new Set();
+    const out = [];
+    (Array.isArray(order) ? order : []).forEach((id) => {
+      const r = byId.get(id);
+      if (r && !seen.has(id)) { seen.add(id); out.push(r); }
+    });
+    (rows || []).forEach((r) => { if (!seen.has(r.id)) { seen.add(r.id); out.push(r); } });
+    return out.map((r, i) => Object.assign({}, r, { n: i + 1 }));
+  }
+
+  /**
+   * R4: сдвинуть id на шаг dir (−1 вверх, +1 вниз) — обмен с ближайшей
+   * НЕзакреплённой строкой; закреплённые остаются на своих местах.
+   * Закреплённую саму не двигаем. Нечего менять → тот же порядок (копия).
+   */
+  function move(order, locks, id, dir) {
+    const lk = new Set(locks || []);
+    const a = (order || []).slice();
+    const i = a.indexOf(id);
+    if (i < 0 || lk.has(id) || (dir !== 1 && dir !== -1)) return a;
+    let j = i + dir;
+    while (j >= 0 && j < a.length && lk.has(a[j])) j += dir;
+    if (j < 0 || j >= a.length) return a;
+    a[i] = a[j]; a[j] = id;
+    return a;
+  }
+
+  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -115,6 +157,25 @@
     let roadState = '';        // '' | 'busy' | 'offline' | 'failed'
     let roadProgress = [0, 0], loadedSig = '';
     const Legs = () => root.CPRouteLegs;
+    let calRows = [];          // строки в календарном порядке
+    let draft = null, draftYear = null; // R4: { on, order, locks } | null
+    let focusAfter = null;     // [id, селектор] — вернуть фокус после перерисовки
+
+    // R4: черновик — ЕДИНСТВЕННАЯ запись экрана, только sessionStorage.
+    const draftKey = (y) => 'cp.route.draft.' + y;
+    function draftRead(y) {
+      try {
+        const v = JSON.parse(root.sessionStorage.getItem(draftKey(y)) || 'null');
+        if (!v || !Array.isArray(v.order)) return null;
+        return { on: !!v.on, order: v.order.map(String), locks: Array.isArray(v.locks) ? v.locks.map(String) : [] };
+      } catch (_) { return null; }
+    }
+    function draftWrite(y, d) {
+      try {
+        if (d) root.sessionStorage.setItem(draftKey(y), JSON.stringify({ on: d.on, order: d.order, locks: d.locks }));
+        else root.sessionStorage.removeItem(draftKey(y));
+      } catch (_) { /* приватный режим и т. п.: черновик живёт только в памяти */ }
+    }
 
     const currentYear = () => App.utils.getServiceYearForDate(new Date());
     const yearsList = () => {
@@ -177,13 +238,78 @@
         + `<button type="button" class="route-pick md-state-layer" data-route-pick="${id}" aria-pressed="${row.id === selectedId}">`
         + `${badge}<span class="route-main"><span class="route-name">${esc(row.name)}</span>`
         + `<span class="small">${esc([typeLabel, range(row)].filter(Boolean).join(' · '))}</span>${note}</span></button>`
-        + `<button type="button" class="route-cal md-btn md-btn-outlined md-state-layer" data-route-entry="${id}" title="${esc(t('route_open'))}" aria-label="${esc(t('route_open'))}: ${esc(row.name)}">📆</button></div>`;
+        + (draft && draft.on ? draftCtl(row) : `<button type="button" class="route-cal md-btn md-btn-outlined md-state-layer" data-route-entry="${id}" title="${esc(t('route_open'))}" aria-label="${esc(t('route_open'))}: ${esc(row.name)}">📆</button>`)
+        + `</div>`;
+    }
+
+    function draftCtl(row) {
+      const id = App.utils.escapeAttr(row.id);
+      const order = rows.map((r) => r.id);
+      const locked = draft.locks.includes(row.id);
+      const can = (dir) => move(order, draft.locks, row.id, dir).join('\u0001') !== order.join('\u0001');
+      const b = (dir, sym, key) => `<button type="button" class="route-mv md-btn md-btn-outlined md-state-layer" data-route-move="${dir}" data-id="${id}"${can(dir) ? '' : ' disabled'} title="${esc(t(key))}" aria-label="${esc(t(key))}: ${esc(row.name)}">${sym}</button>`;
+      return `<span class="route-ctl">${b(-1, '↑', 'route_up')}${b(1, '↓', 'route_down')}`
+        + `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer${locked ? ' is-locked' : ''}" data-route-lock="${id}" aria-pressed="${locked}" title="${esc(t(locked ? 'route_unlock' : 'route_lock'))}" aria-label="${esc(t(locked ? 'route_unlock' : 'route_lock'))}: ${esc(row.name)}">${locked ? '🔒' : '🔓'}</button></span>`;
+    }
+
+    function renderDraftBar() {
+      const bar = $('routeDraftBar');
+      if (!bar) return;
+      const btn = (act, key, primary) => `<button type="button" class="md-btn ${primary ? 'md-btn-tonal' : 'md-btn-outlined'} md-state-layer route-draft-btn" data-route-draft="${act}">${esc(t(key))}</button>`;
+      if (!rows.length) { bar.innerHTML = ''; return; }
+      if (draft && draft.on) {
+        bar.innerHTML = `<span class="small route-draft-note">${esc(t('route_draft_note'))}</span>`
+          + btn('view', 'route_draft_view', false) + btn('reset', 'route_draft_reset', false);
+      } else {
+        bar.innerHTML = btn('edit', draft ? 'route_draft_open' : 'route_draft_edit', true)
+          + (draft ? btn('reset', 'route_draft_reset', false) : '');
+      }
+    }
+
+    function draftAction(act) {
+      if (act === 'edit') {
+        draft = draft || { on: true, order: calRows.map((r) => r.id), locks: [] };
+        draft.on = true;
+      } else if (act === 'view' && draft) {
+        draft.on = false;
+      } else if (act === 'reset') {
+        draft = null;
+      }
+      draftWrite(year, draft);
+      render();
+    }
+
+    function draftMove(id, dir) {
+      if (!draft || !draft.on) return;
+      draft.order = move(rows.map((r) => r.id), draft.locks, id, dir);
+      draftWrite(year, draft);
+      focusAfter = [id, `[data-route-move="${dir}"]`];
+      render();
+    }
+
+    function draftLock(id) {
+      if (!draft || !draft.on) return;
+      draft.locks = draft.locks.includes(id) ? draft.locks.filter((x) => x !== id) : draft.locks.concat(id);
+      draftWrite(year, draft);
+      focusAfter = [id, '[data-route-lock]'];
+      render();
+    }
+
+    function restoreFocus() {
+      if (!focusAfter) return;
+      const [id, sel] = focusAfter;
+      focusAfter = null;
+      const row = document.querySelector(`[data-route-row="${CSS.escape(id)}"]`);
+      if (!row) return;
+      const el = row.querySelector(sel + ':not([disabled])') || row.querySelector('[data-route-move]:not([disabled])') || row.querySelector('[data-route-lock]');
+      if (el) el.focus();
     }
 
     function skeleton(host) {
       host.innerHTML = `<div class="md-card route-card">
         <div class="small route-sub">${esc(t('route_sub'))}</div>
         <label class="small route-year">${esc(t('route_year'))} <select id="routeYearSelect"></select></label>
+        <div class="route-draft-bar" id="routeDraftBar"></div>
         <div class="small route-summary" id="routeSummary"></div>
         <div class="route-road"><span class="small" id="routeRoad"></span>
           <button type="button" class="md-btn md-btn-outlined md-state-layer route-road-btn" id="routeRoadBtn" hidden title="${esc(t('route_road_privacy'))}">${esc(t('route_road_btn'))}</button></div>
@@ -345,12 +471,23 @@
       const select_ = $('routeYearSelect');
       select_.innerHTML = years.map((y) => `<option value="${y}" ${y === year ? 'selected' : ''}>${esc(App.utils.serviceYearLabel(y))}</option>`).join('');
       const stats = App.data.getServiceYearStats(year);
-      rows = collect(stats.visitEntries, (id) => App.data.getEventById(id));
+      calRows = collect(stats.visitEntries, (id) => App.data.getEventById(id));
+      if (draftYear !== year) { draftYear = year; draft = draftRead(year); }
+      if (draft) {
+        // Черновик сверяется с календарём: выпавшие id убираются из порядка
+        // и замков, новые записи дописываются в конец.
+        const ids = new Set(calRows.map((r) => r.id));
+        draft.locks = draft.locks.filter((id) => ids.has(id));
+        draft.order = applyOrder(calRows, draft.order).map((r) => r.id);
+      }
+      rows = draft && draft.on ? applyOrder(calRows, draft.order) : calRows;
       if (selectedId && !rows.some((r) => r.id === selectedId)) selectedId = null;
       pts = points(rows, home());
       if (roadState !== 'busy') roadState = '';
+      renderDraftBar();
       renderSummary();
       renderList();
+      restoreFocus();
       loadCachedLegs();
       ensureMap();
     }
@@ -365,6 +502,12 @@
       });
       host.addEventListener('click', (e) => {
         if (e.target && e.target.closest && e.target.closest('#routeRoadBtn')) { fetchRoads(); return; }
+        const da = e.target.closest && e.target.closest('[data-route-draft]');
+        if (da) { draftAction(da.dataset.routeDraft); return; }
+        const mv = e.target.closest && e.target.closest('[data-route-move]');
+        if (mv) { if (!mv.disabled) draftMove(mv.dataset.id, Number(mv.dataset.routeMove)); return; }
+        const lk = e.target.closest && e.target.closest('[data-route-lock]');
+        if (lk) { draftLock(lk.dataset.routeLock); return; }
         const cal = e.target.closest && e.target.closest('[data-route-entry]');
         if (cal) {
           if (App.actions.focusEntryFromHash('#calendar?entry=' + encodeURIComponent(cal.dataset.routeEntry))) App.ui.renderAll();
