@@ -2,7 +2,8 @@
 //
 // «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта,
 // R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка,
-// R5 (06.10.2026) сравнение «Календарь ↔ Черновик».
+// R5 (06.10.2026) сравнение «Календарь ↔ Черновик», R6 (06.10.2026)
+// «Предложить оптимальный порядок».
 // Календарь не меняется никогда: ТОЛЬКО ПРОСМОТР и черновик сессии. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
 // планирует и не пишет: он показывает уже назначенные посещения служебного
@@ -47,6 +48,15 @@
 //    В режиме черновика на карте под его линией — пунктир календарного
 //    порядка. Кнопка «по дорогам» дозапрашивает отрезки обоих порядков
 //    одним проходом (общие отрезки — один раз). Ничего нового не пишется.
+//  • R6: решение Алекса 06.10.2026 — «Optimized» меняет ТОЛЬКО порядок в
+//    занятых слотах: недели и даты календаря не трогаются, посещение
+//    переезжает в другой слот. Поэтому в режиме черновика строка показывает
+//    даты СЛОТА (calRows[n−1]); собственные даты посещения — второй строкой
+//    «в календаре: …», если оно сдвинулось. Закреплённые 🔒 и записи без
+//    координат остаются в своих слотах. Цель — сумма км по ПРЯМОЙ от дома
+//    (дорожные отрезки есть только для уже запрошенных пар, N² в кэше не
+//    бывает). Результат — обычный черновик R4: его можно править руками,
+//    сравнивать (R5) и откатить «Вернуть прежний».
 (function (root) {
   'use strict';
 
@@ -149,7 +159,76 @@
     return (draftRows || []).reduce((n, r, i) => n + (pos.has(r.id) && pos.get(r.id) !== i ? 1 : 0), 0);
   }
 
-  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move, moved };
+  /**
+   * R6: предложить порядок с минимальной суммой км по прямой.
+   * rows — строки В ТЕКУЩЕМ порядке (id, lat, lng, hasCoords); locks — id
+   * закреплённых; home — {lat,lng} | null; dist(a,b) → км по точкам {lat,lng}.
+   * Свободные = не закреплены И с координатами; остальные стоят в своих
+   * слотах. Переставляются только свободные между свободными слотами.
+   * Детерминированно: два старта (текущий порядок и жадный «ближайший
+   * сосед») + локальный поиск (обмен, разворот отрезка, перенос одного).
+   * → { order: [id], before, after, changed } (км, сумма от дома по строкам с
+   * координатами в порядке слотов).
+   */
+  function optimize(rows, locks, home, dist) {
+    const list = Array.isArray(rows) ? rows : [];
+    const lk = new Set(locks || []);
+    const isFree = (r) => r.hasCoords && !lk.has(r.id);
+    const slots = [];
+    list.forEach((r, i) => { if (isFree(r)) slots.push(i); });
+    const ids0 = list.map((r) => r.id);
+    const hasHome = home && isNum(home.lat) && isNum(home.lng);
+    const cost = (seq) => {
+      let km = 0, prev = hasHome ? home : null;
+      for (const r of seq) { if (!r.hasCoords) continue; if (prev) km += dist(prev, r); prev = r; }
+      return km;
+    };
+    const build = (free) => { const out = list.slice(); slots.forEach((si, k) => { out[si] = free[k]; }); return out; };
+    const before = cost(list);
+    if (slots.length < 2) return { order: ids0, before, after: before, changed: false };
+
+    const start = slots.map((si) => list[si]);
+    // Жадный старт: идём по слотам, в свободный ставим ближайшего к предыдущей точке.
+    const greedy = (() => {
+      const pool = start.slice(), free = [];
+      let prev = hasHome ? home : null;
+      list.forEach((r, i) => {
+        if (slots.includes(i)) {
+          let bi = 0;
+          if (prev) { let bd = Infinity; pool.forEach((c, j) => { const d = dist(prev, c); if (d < bd - 1e-12) { bd = d; bi = j; } }); }
+          const pick = pool.splice(bi, 1)[0]; free.push(pick); prev = pick;
+        } else if (r.hasCoords) prev = r;
+      });
+      return free;
+    })();
+
+    const improve = (free0) => {
+      let free = free0.slice(), best = cost(build(free));
+      for (let pass = 0; pass < 60; pass++) {
+        let improved = false;
+        const tryFree = (cand) => { const c = cost(build(cand)); if (c < best - 1e-9) { best = c; free = cand; improved = true; return true; } return false; };
+        const n = free.length;
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+          const sw = free.slice(); sw[i] = free[j]; sw[j] = free[i]; tryFree(sw);
+          const rv = free.slice(0, i).concat(free.slice(i, j + 1).reverse(), free.slice(j + 1)); tryFree(rv);
+        }
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+          if (i === j) continue;
+          const mv = free.slice(); const [x] = mv.splice(i, 1); mv.splice(j, 0, x); tryFree(mv);
+        }
+        if (!improved) break;
+      }
+      return { free, cost: best };
+    };
+
+    const a = improve(start), b = improve(greedy);
+    const win = b.cost < a.cost - 1e-9 ? b : a;
+    if (!(win.cost < before - 1e-9)) return { order: ids0, before, after: before, changed: false };
+    const order = build(win.free).map((r) => r.id);
+    return { order, before, after: win.cost, changed: order.join('\u0001') !== ids0.join('\u0001') };
+  }
+
+  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move, moved, optimize };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -173,6 +252,7 @@
     let calPts = [], draftPts = null; // R5: точки обоих порядков (draftPts — если черновик есть)
     let draft = null, draftYear = null; // R4: { on, order, locks } | null
     let focusAfter = null;     // [id, селектор] — вернуть фокус после перерисовки
+    let optNote = '', optUndo = null; // R6: итог последнего предложения; откат (только в памяти)
 
     // R4: черновик — ЕДИНСТВЕННАЯ запись экрана, только sessionStorage.
     const draftKey = (y) => 'cp.route.draft.' + y;
@@ -237,6 +317,13 @@
         + (home.name ? `<span class="small">${esc(home.name)}</span>` : '') + `</span></div></div>`;
     }
 
+    // R6: в режиме черновика строка показывает даты СЛОТА (позиция n), а не свои.
+    function slotOf(row) {
+      if (!(draft && draft.on)) return row;
+      const slot = calRows[row.n - 1];
+      return slot && slot.id !== row.id ? slot : row;
+    }
+
     function rowHtml(row) {
       const badge = row.hasCoords
         ? `<span class="route-n">${row.n}</span>`
@@ -250,7 +337,9 @@
       return `<div class="route-row${row.id === selectedId ? ' is-selected' : ''}" data-route-row="${id}">`
         + `<button type="button" class="route-pick md-state-layer" data-route-pick="${id}" aria-pressed="${row.id === selectedId}">`
         + `${badge}<span class="route-main"><span class="route-name">${esc(row.name)}</span>`
-        + `<span class="small">${esc([typeLabel, range(row)].filter(Boolean).join(' · '))}</span>${note}</span></button>`
+        + `<span class="small">${esc([typeLabel, range(slotOf(row))].filter(Boolean).join(' · '))}</span>`
+        + (slotOf(row) !== row ? `<span class="small route-was">${esc(t('route_was', { range: range(row) }))}</span>` : '')
+        + `${note}</span></button>`
         + (draft && draft.on ? draftCtl(row) : `<button type="button" class="route-cal md-btn md-btn-outlined md-state-layer" data-route-entry="${id}" title="${esc(t('route_open'))}" aria-label="${esc(t('route_open'))}: ${esc(row.name)}">📆</button>`)
         + `</div>`;
     }
@@ -270,16 +359,43 @@
       if (!bar) return;
       const btn = (act, key, primary) => `<button type="button" class="md-btn ${primary ? 'md-btn-tonal' : 'md-btn-outlined'} md-state-layer route-draft-btn" data-route-draft="${act}">${esc(t(key))}</button>`;
       if (!rows.length) { bar.innerHTML = ''; return; }
+      const canOpt = rows.filter((r) => r.hasCoords).length > 1;
+      const optBtn = canOpt ? btn('optimize', 'route_opt_btn', false) : '';
+      const undoBtn = optUndo ? btn('opt-undo', 'route_opt_undo', false) : '';
+      const status = optNote ? `<span class="small route-opt-note" role="status">${esc(optNote)}</span>` : '';
       if (draft && draft.on) {
         bar.innerHTML = `<span class="small route-draft-note">${esc(t('route_draft_note'))}</span>`
-          + btn('view', 'route_draft_view', false) + btn('reset', 'route_draft_reset', false);
+          + btn('view', 'route_draft_view', false) + optBtn + undoBtn + btn('reset', 'route_draft_reset', false) + status;
       } else {
         bar.innerHTML = btn('edit', draft ? 'route_draft_open' : 'route_draft_edit', true)
-          + (draft ? btn('reset', 'route_draft_reset', false) : '');
+          + optBtn + undoBtn + (draft ? btn('reset', 'route_draft_reset', false) : '') + status;
       }
     }
 
+    function draftOptimize() {
+      const cur = draft ? applyOrder(calRows, draft.order) : calRows;
+      const res = optimize(cur, draft ? draft.locks : [], home(), (a, b) => App.utils.haversineKm(a.lat, a.lng, b.lat, b.lng));
+      if (!res.changed) { optNote = t('route_opt_same'); optUndo = null; render(); return; }
+      optUndo = draft ? { order: draft.order.slice(), on: draft.on, existed: true } : { existed: false };
+      draft = draft || { on: true, order: [], locks: [] };
+      draft.on = true; draft.order = res.order;
+      optNote = t('route_opt_done', { before: fmtKm(res.before), after: fmtKm(res.after), diff: fmtKm(res.before - res.after) });
+      draftWrite(year, draft);
+      render();
+    }
+
+    function draftOptUndo() {
+      if (!optUndo) return;
+      if (optUndo.existed) { draft.order = optUndo.order; draft.on = optUndo.on; draftWrite(year, draft); }
+      else { draft = null; draftWrite(year, null); }
+      optUndo = null; optNote = '';
+      render();
+    }
+
     function draftAction(act) {
+      if (act === 'optimize') { draftOptimize(); return; }
+      if (act === 'opt-undo') { draftOptUndo(); return; }
+      optNote = ''; optUndo = null;
       if (act === 'edit') {
         draft = draft || { on: true, order: calRows.map((r) => r.id), locks: [] };
         draft.on = true;
@@ -294,6 +410,7 @@
 
     function draftMove(id, dir) {
       if (!draft || !draft.on) return;
+      optNote = ''; optUndo = null;
       draft.order = move(rows.map((r) => r.id), draft.locks, id, dir);
       draftWrite(year, draft);
       focusAfter = [id, `[data-route-move="${dir}"]`];
@@ -302,6 +419,7 @@
 
     function draftLock(id) {
       if (!draft || !draft.on) return;
+      optNote = ''; optUndo = null;
       draft.locks = draft.locks.includes(id) ? draft.locks.filter((x) => x !== id) : draft.locks.concat(id);
       draftWrite(year, draft);
       focusAfter = [id, '[data-route-lock]'];
@@ -527,7 +645,7 @@
       select_.innerHTML = years.map((y) => `<option value="${y}" ${y === year ? 'selected' : ''}>${esc(App.utils.serviceYearLabel(y))}</option>`).join('');
       const stats = App.data.getServiceYearStats(year);
       calRows = collect(stats.visitEntries, (id) => App.data.getEventById(id));
-      if (draftYear !== year) { draftYear = year; draft = draftRead(year); }
+      if (draftYear !== year) { draftYear = year; draft = draftRead(year); optNote = ''; optUndo = null; }
       if (draft) {
         // Черновик сверяется с календарём: выпавшие id убираются из порядка
         // и замков, новые записи дописываются в конец.

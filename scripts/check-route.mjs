@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта + R3 дорожные км
- * + R4 черновик порядка + R5 сравнение (календарь не меняется).
+ * + R4 черновик порядка + R5 сравнение + R6 предложение порядка (календарь не меняется).
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -113,6 +113,30 @@ ok(G.runsMany([A, A], () => false).length === 1, 'одинаковые поря�
 ok(/fetchMissing\(lists, memo/.test(lsrc) && /runsMany\(lists/.test(lsrc), 'fetchMissing принимает несколько порядков');
 ok(/dashArray/.test(src) && src.includes('function renderCompare'), 'пунктир календаря на карте и блок сравнения');
 for (const k of ['route_cmp_title', 'route_cmp_cal', 'route_cmp_draft', 'route_cmp_diff', 'route_cmp_straight', 'route_cmp_road', 'route_cmp_moved', 'route_cmp_same', 'route_cmp_legend', 'route_cmp_partial', 'route_km']) {
+  ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
+}
+
+console.log('R6: предложение порядка');
+const eu = (a, b) => Math.hypot(a.lat - b.lat, a.lng - b.lng);
+const pt = (id, lat, extra) => ({ id, hasCoords: true, lat, lng: 0, ...extra });
+const zig = [pt('a', 3), pt('b', 1), pt('c', 4), pt('d', 2)];
+const o1 = R.optimize(zig, [], { lat: 0, lng: 0 }, eu);
+ok(o1.changed && o1.order.join('') === 'bdac' && Math.abs(o1.after - 4) < 1e-9 && Math.abs(o1.before - 10) < 1e-9, 'зигзаг от дома → монотонный порядок, км 10 → 4');
+const o2 = R.optimize(zig, ['a'], { lat: 0, lng: 0 }, eu);
+ok(o2.order[0] === 'a', 'закреплённая строка остаётся в своём слоте');
+const withNo = [pt('a', 3), { id: 'x', hasCoords: false }, pt('b', 1), pt('c', 2)];
+const o3 = R.optimize(withNo, [], { lat: 0, lng: 0 }, eu);
+ok(o3.order[1] === 'x' && o3.order.join('') === 'bxca', 'запись без координат остаётся в своём слоте');
+const sorted = [pt('a', 1), pt('b', 2), pt('c', 3)];
+const o4 = R.optimize(sorted, [], { lat: 0, lng: 0 }, eu);
+ok(!o4.changed && o4.order.join('') === 'abc', 'оптимальный порядок не меняется');
+ok(!R.optimize([pt('a', 1)], [], null, eu).changed && !R.optimize([pt('a', 1), pt('b', 2)], ['a'], null, eu).changed, 'меньше двух свободных — без изменений');
+const many30 = Array.from({ length: 30 }, (_, i) => pt('p' + i, ((i * 7919) % 31) + 1));
+const t0 = Date.now(); const o5 = R.optimize(many30, [], { lat: 0, lng: 0 }, eu);
+ok(o5.after <= o5.before && Math.abs(o5.after - 31) < 1e-9 && Date.now() - t0 < 3000, '30 точек на прямой: оптимум найден быстро');
+ok(new Set(o5.order).size === 30, 'перестановка без потерь и повторов');
+ok(src.includes('function slotOf') && src.includes("t('route_was'"), 'в черновике — даты слота, свои даты — «в календаре»');
+for (const k of ['route_opt_btn', 'route_opt_undo', 'route_opt_same', 'route_opt_done', 'route_was']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
 
