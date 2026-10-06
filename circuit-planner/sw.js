@@ -1,6 +1,8 @@
 // Клиндарий — service worker модуля.
-// index.html / app.js / manifest / sw.js -> offline-first с фоновой ревалидацией
-// images/fonts -> cache-first
+// навигация и index.html / скрипты / стили / manifest -> offline-first БЕЗ
+//   фоновой ревалидации: набор релиза неизменяем, новый приходит только с
+//   новым worker'ом (аудит 03, P1-1)
+// images/fonts -> cache-first с фоновой ревалидацией
 // everything else -> stale-while-revalidate
 //
 // ВЕРСИОНИРОВАНИЕ КЭША — не украшение, а единственное, что делает выпуск
@@ -110,18 +112,17 @@ const APP_SHELL_URLS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
+    /* Установка атомарна (аудит 03, P1-2): addAll() либо кладёт ВЕСЬ
+       прекэш, либо отклоняется и не пишет ничего — тогда install
+       проваливается, новый worker отбрасывается, а пользователь остаётся на
+       прежней целой версии; браузер повторит попытку при следующей проверке
+       обновления. Прежде каждый файл грузился в своём try/catch, и обрыв
+       сети (или заливка несколькими коммитами) давал активную версию с
+       неполным кэшем: онлайн незаметно, офлайн — нет файлов.
+       cache: 'reload' — мимо HTTP-кэша браузера: иначе в новый кэш мог лечь
+       файл прошлого выпуска (GitHub Pages отдаёт max-age=600). */
     const cache = await caches.open(CACHE_STATIC);
-    for (const url of APP_SHELL_URLS) {
-      try {
-        const req = new Request(url, { cache: 'reload' });
-        const res = await fetch(req);
-        if (res && res.ok) {
-          await cache.put(url, res.clone());
-        }
-      } catch (_) {
-        // Ignore missing assets to keep install robust.
-      }
-    }
+    await cache.addAll(APP_SHELL_URLS.map((url) => new Request(url, { cache: 'reload' })));
     // skipWaiting() здесь больше нет: новый worker останавливается в
     // состоянии waiting, и открытая страница продолжает жить на том наборе
     // файлов, с которым запустилась. Активацию запрашивает пользователь
@@ -153,9 +154,13 @@ self.addEventListener('activate', (event) => {
         .map((key) => caches.delete(key))
     );
 
+    /* Navigation preload выключается, а не просто не включается: флаг
+       хранится в регистрации и пережил бы смену worker'а. Ответ preload
+       использовался только при пустом кэше, а запрос уходил при КАЖДОЙ
+       навигации — лишний сетевой запрос документа (аудит 03). */
     if ('navigationPreload' in self.registration) {
       try {
-        await self.registration.navigationPreload.enable();
+        await self.registration.navigationPreload.disable();
       } catch (_) {}
     }
 
@@ -326,15 +331,14 @@ self.addEventListener('fetch', (event) => {
 
   if (isNavigationRequest(request)) {
     event.respondWith((async () => {
+      /* Документ — релизный файл, как скрипты и стили в offlineFirst: из
+         кэша без фоновой ревалидации (аудит 03, P1-1). Прежде свежий
+         index.html клался в CACHE_RUNTIME текущей версии, matchOwn() читал
+         его раньше static, и со второго открытия новый документ работал со
+         старыми скриптами — та же смесь поколений, только через разметку.
+         Новый документ приходит вместе со своим worker'ом и его кэшем. */
       const cached = (await matchOwn(request)) || (await matchOwn('./index.html')) || (await matchOwn('./'));
-      if (cached) {
-        fetch(request, { cache: 'no-cache' })
-          .then(async (res) => { if (res && res.ok) { const cache = await caches.open(CACHE_RUNTIME); try { await cache.put(request, res.clone()); } catch (_) {} } })
-          .catch(() => {});
-        return cached;
-      }
-      const preload = await event.preloadResponse;
-      if (preload) return preload;
+      if (cached) return cached;
       return networkFirst(request, './index.html');
     })());
     return;
