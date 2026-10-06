@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * scripts/check-route.mjs — «Маршрут посещений», R1 список + R2 карта + R3 дорожные км
- * + R4 черновик порядка (календарь не меняется).
+ * + R4 черновик порядка + R5 сравнение (календарь не меняется).
  * Гоняет чистую логику `CPRoute` из circuit-planner/ui/route.js и проверяет
  * подключение экрана (меню, разметка, SW, ключи словаря на 5 языках).
  */
@@ -99,6 +99,20 @@ ok(R.move(O, ['b'], 'b', 1).join('') === 'abcd' && R.move(O, ['a'], 'b', -1).joi
 ok(O.join('') === 'abcd', 'move не мутирует вход');
 ok(src.includes("'cp.route.draft.' + y"), 'ключ черновика — по служебному году');
 for (const k of ['route_draft_edit', 'route_draft_open', 'route_draft_view', 'route_draft_reset', 'route_draft_note', 'route_up', 'route_down', 'route_lock', 'route_unlock']) {
+  ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
+}
+
+console.log('R5: сравнение «Календарь ↔ Черновик»');
+ok(R.moved(base, R.applyOrder(base, ['c', 'a', 'b', 'd'])) === 3 && R.moved(base, R.applyOrder(base, [])) === 0, 'перемещено: позиции, отличные от календарных');
+const A = [P(50, 14), P(51, 14), P(52, 14)], B = [P(50, 14), P(52, 14), P(51, 14)];
+const many = G.runsMany([A, B], () => false);
+const keysOf = (rs) => rs.flatMap((run) => run.slice(1).map((p, i) => G.legKey(run[i], p)));
+const mk = keysOf(many);
+ok(new Set(mk).size === mk.length && mk.length === 4, 'отрезки обоих порядков без повторов');
+ok(G.runsMany([A, A], () => false).length === 1, 'одинаковые порядки — один проход');
+ok(/fetchMissing\(lists, memo/.test(lsrc) && /runsMany\(lists/.test(lsrc), 'fetchMissing принимает несколько порядков');
+ok(/dashArray/.test(src) && src.includes('function renderCompare'), 'пунктир календаря на карте и блок сравнения');
+for (const k of ['route_cmp_title', 'route_cmp_cal', 'route_cmp_draft', 'route_cmp_diff', 'route_cmp_straight', 'route_cmp_road', 'route_cmp_moved', 'route_cmp_same', 'route_cmp_legend', 'route_cmp_partial', 'route_km']) {
   ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 }
 

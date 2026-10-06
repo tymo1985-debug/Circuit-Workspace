@@ -1,7 +1,8 @@
 // circuit-planner/ui/route.js
 //
 // «Маршрут посещений» — R1 (06.10.2026) список, R2 (06.10.2026) карта,
-// R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка.
+// R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка,
+// R5 (06.10.2026) сравнение «Календарь ↔ Черновик».
 // Календарь не меняется никогда: ТОЛЬКО ПРОСМОТР и черновик сессии. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
 // планирует и не пишет: он показывает уже назначенные посещения служебного
@@ -41,6 +42,11 @@
 //    Записи календаря, которых нет в черновике, дописываются в конец в
 //    календарном порядке; исчезнувшие — молча выпадают. Номера, линия на
 //    карте и километры идут по порядку черновика, пока он показан.
+//  • R5: пока черновик существует — блок сравнения: км по прямой и по
+//    дорогам для обоих порядков, разница, сколько посещений перемещено.
+//    В режиме черновика на карте под его линией — пунктир календарного
+//    порядка. Кнопка «по дорогам» дозапрашивает отрезки обоих порядков
+//    одним проходом (общие отрезки — один раз). Ничего нового не пишется.
 (function (root) {
   'use strict';
 
@@ -137,7 +143,13 @@
     return a;
   }
 
-  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move };
+  /** R5: сколько строк черновика стоит не на своей календарной позиции. */
+  function moved(calRows, draftRows) {
+    const pos = new Map((calRows || []).map((r, i) => [r.id, i]));
+    return (draftRows || []).reduce((n, r, i) => n + (pos.has(r.id) && pos.get(r.id) !== i ? 1 : 0), 0);
+  }
+
+  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move, moved };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -158,6 +170,7 @@
     let roadProgress = [0, 0], loadedSig = '';
     const Legs = () => root.CPRouteLegs;
     let calRows = [];          // строки в календарном порядке
+    let calPts = [], draftPts = null; // R5: точки обоих порядков (draftPts — если черновик есть)
     let draft = null, draftYear = null; // R4: { on, order, locks } | null
     let focusAfter = null;     // [id, селектор] — вернуть фокус после перерисовки
 
@@ -313,6 +326,7 @@
         <div class="small route-summary" id="routeSummary"></div>
         <div class="route-road"><span class="small" id="routeRoad"></span>
           <button type="button" class="md-btn md-btn-outlined md-state-layer route-road-btn" id="routeRoadBtn" hidden title="${esc(t('route_road_privacy'))}">${esc(t('route_road_btn'))}</button></div>
+        <div class="route-compare" id="routeCompare" hidden></div>
         <div class="route-layout">
           <div class="route-list" id="routeList"></div>
           <div class="route-map-pane" id="routeMapPane"><div class="route-map" id="routeMap"></div>
@@ -332,12 +346,15 @@
 
     function drawMap() {
       if (!map) return;
-      const sig = year + '|' + pts.map((r) => [r.id, r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId;
+      const ghost = draft && draft.on && moved(calRows, rows) ? calPts : null;
+      const sig = year + '|' + pts.map((r) => [r.id, r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId
+        + '|' + (ghost ? ghost.map((r) => r.id).join(',') : '');
       if (sig === drawnSig) return;
       drawnSig = sig;
       pinsLayer.clearLayers(); lineLayer.clearLayers();
       if (!pts.some((r) => !r.home)) { setMapNote(t('map_no_coords')); return; }
       if (!tileError) setMapNote('');
+      if (ghost && ghost.length > 1) L.polyline(ghost.map((r) => [r.lat, r.lng]), { color: '#7a7f8c', weight: 2, opacity: 0.8, dashArray: '6 6', interactive: false }).addTo(lineLayer);
       if (pts.length > 1) L.polyline(pts.map((r) => [r.lat, r.lng]), { color: '#3b6fd8', weight: 3, opacity: 0.85 }).addTo(lineLayer);
       pts.forEach((r) => {
         if (r.home) {
@@ -400,10 +417,19 @@
       return { lat: s.homeLat, lng: s.homeLng, name: typeof s.homeAddress === 'string' ? s.homeAddress : '' };
     }
 
+    const memoGet = (k) => { const r = legMemo.get(k); return r && typeof r.km === 'number' ? r : null; };
+    const totalsOf = (list) => (Legs() && list && list.length > 1 ? Legs().totals(list, memoGet, App.utils.haversineKm) : null);
+    // Порядки для дорожного расчёта и кэша: показанный + (R5) второй, если есть черновик.
+    function orderLists() {
+      const lists = [pts];
+      if (draftPts) lists.push(draft && draft.on ? calPts : draftPts);
+      return lists.filter((l) => l && l.length > 1);
+    }
+
     function computeLegs() {
       legByRow = new Map();
       if (!Legs() || pts.length < 2) return null;
-      const tot = Legs().totals(pts, (k) => { const r = legMemo.get(k); return r && typeof r.km === 'number' ? r : null; }, App.utils.haversineKm);
+      const tot = totalsOf(pts);
       tot.legs.forEach((leg, i) => { if (!pts[i + 1].home) legByRow.set(pts[i + 1].id, leg); });
       return tot;
     }
@@ -427,15 +453,44 @@
       else if (roadState === 'offline') road = [road, t('route_road_offline')].filter(Boolean).join(' · ');
       else if (roadState === 'failed') road = [road, t('route_road_failed')].filter(Boolean).join(' · ');
       roadEl.textContent = road;
-      btn.hidden = !tot || tot.complete;
+      const lists = orderLists();
+      btn.hidden = !lists.length || lists.every((l) => totalsOf(l).complete);
       btn.disabled = roadState === 'busy';
+      renderCompare();
+    }
+
+    // R5: таблица «Календарь ↔ Черновик». Только чтение, считает из памяти.
+    function renderCompare() {
+      const box = $('routeCompare');
+      if (!box) return;
+      if (!draftPts || !rows.length) { box.hidden = true; box.innerHTML = ''; return; }
+      const draftRows = draft.on ? rows : applyOrder(calRows, draft.order);
+      const n = moved(calRows, draftRows);
+      const sA = pathLength(calPts, App.utils.haversineKm), sB = pathLength(draftPts, App.utils.haversineKm);
+      const rA = totalsOf(calPts), rB = totalsOf(draftPts);
+      const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±');
+      const dKm = (v) => sign(Math.round(v)) + t('route_km', { km: fmtKm(Math.abs(v)) });
+      const dMin = (v) => `${sign(Math.round(v))}${fmtDur(Math.abs(v))}`;
+      const road = (r) => (!r || !r.roadLegs ? '—'
+        : r.complete ? t('route_leg_road', { km: fmtKm(r.km), time: fmtDur(r.min) })
+          : `≈ ${t('route_km', { km: fmtKm(r.km) })} · ${t('route_cmp_partial', { done: r.roadLegs, legs: r.count })}`);
+      const roadDiff = rA && rB && rA.complete && rB.complete ? `${dKm(rB.km - rA.km)} · ${dMin(rB.min - rA.min)}` : '—';
+      const cls = (v) => (Math.round(v) < 0 ? ' is-better' : Math.round(v) > 0 ? ' is-worse' : '');
+      box.hidden = false;
+      box.innerHTML = `<table class="route-cmp small"><caption>${esc(t('route_cmp_title'))}</caption>`
+        + `<thead><tr><th scope="col"></th><th scope="col">${esc(t('route_cmp_cal'))}</th><th scope="col">${esc(t('route_cmp_draft'))}</th><th scope="col">${esc(t('route_cmp_diff'))}</th></tr></thead><tbody>`
+        + `<tr><th scope="row">${esc(t('route_cmp_straight'))}</th><td>${esc(t('route_km', { km: fmtKm(sA.km) }))}</td><td>${esc(t('route_km', { km: fmtKm(sB.km) }))}</td><td class="route-cmp-d${cls(sB.km - sA.km)}">${esc(dKm(sB.km - sA.km))}</td></tr>`
+        + `<tr><th scope="row">${esc(t('route_cmp_road'))}</th><td>${esc(road(rA))}</td><td>${esc(road(rB))}</td><td class="route-cmp-d${roadDiff === '—' ? '' : cls(rB.km - rA.km)}">${esc(roadDiff)}</td></tr>`
+        + `</tbody></table><div class="small route-cmp-foot">${esc(n ? t('route_cmp_moved', { n }) : t('route_cmp_same'))}`
+        + (draft.on && n ? ` · ${esc(t('route_cmp_legend'))}` : '') + `</div>`;
     }
 
     // Подтянуть сохранённые отрезки для текущих точек (без сети).
     function loadCachedLegs() {
-      if (!Legs() || pts.length < 2) return;
+      if (!Legs()) return;
       const keys = [];
-      for (let i = 1; i < pts.length; i++) keys.push(Legs().legKey(pts[i - 1], pts[i]));
+      orderLists().forEach((l) => { for (let i = 1; i < l.length; i++) keys.push(Legs().legKey(l[i - 1], l[i])); });
+      if (!keys.length) return;
       const sig = keys.join('|');
       if (sig === loadedSig) return;
       loadedSig = sig;
@@ -453,7 +508,7 @@
       if (navigator.onLine === false) { roadState = 'offline'; renderSummary(); return; }
       roadState = 'busy'; roadProgress = [0, 0];
       renderSummary();
-      const snapshot = pts.slice();
+      const snapshot = orderLists().map((l) => l.slice());
       Legs().fetchMissing(snapshot, legMemo, (done, total) => {
         roadProgress = [done, total]; renderSummary(); renderList();
       }).then((res) => {
@@ -481,6 +536,8 @@
         draft.order = applyOrder(calRows, draft.order).map((r) => r.id);
       }
       rows = draft && draft.on ? applyOrder(calRows, draft.order) : calRows;
+      calPts = points(calRows, home());
+      draftPts = draft ? points(applyOrder(calRows, draft.order), home()) : null;
       if (selectedId && !rows.some((r) => r.id === selectedId)) selectedId = null;
       pts = points(rows, home());
       if (roadState !== 'busy') roadState = '';

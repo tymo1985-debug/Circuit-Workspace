@@ -128,12 +128,30 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   /**
-   * Запросить недостающие отрезки. memo — Map(key → rec), пополняется на
+   * R5: участки для нескольких порядков сразу (календарь + черновик) —
+   * отрезок, уже вошедший в план по одному порядку, по другому не
+   * запрашивается повторно.
+   */
+  function runsMany(lists, known) {
+    const planned = new Set();
+    const out = [];
+    (lists || []).forEach((points) => {
+      runs(points, (k) => known(k) || planned.has(k)).forEach((run) => {
+        for (let i = 1; i < run.length; i++) planned.add(legKey(run[i - 1], run[i]));
+        out.push(run);
+      });
+    });
+    return out;
+  }
+
+  /**
+   * Запросить недостающие отрезки. lists — массив порядков точек (R5: до
+   * двух — календарь и черновик). memo — Map(key → rec), пополняется на
    * месте; onProgress(done, total) после каждого запроса.
    * → { ok: число успешных запросов, failed: число неудачных, offline }.
    */
-  async function fetchMissing(points, memo, onProgress) {
-    const list = runs(points, (k) => isFresh(memo.get(k)));
+  async function fetchMissing(lists, memo, onProgress) {
+    const list = runsMany(lists, (k) => isFresh(memo.get(k)));
     const total = list.length;
     const res = { ok: 0, failed: 0, total, offline: root.navigator && root.navigator.onLine === false };
     if (!total || res.offline) return res;
@@ -160,5 +178,5 @@
     return res;
   }
 
-  root.CPRouteLegs = { legKey, buildUrl, parse, runs, totals, loadMany, fetchMissing, isFresh, MAX_PTS };
+  root.CPRouteLegs = { legKey, buildUrl, parse, runs, runsMany, totals, loadMany, fetchMissing, isFresh, MAX_PTS };
 })(window);

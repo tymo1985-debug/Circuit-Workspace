@@ -126,6 +126,17 @@
   .route-mv{min-width:40px;width:40px;height:40px;padding:0;justify-content:center}
   .route-mv[disabled]{opacity:.35;cursor:default}
   .route-lock.is-locked{background:var(--md-secondary-container,#e8def8)}
+  /* R5: сравнение «Календарь ↔ Черновик» */
+  .route-compare{margin-bottom:12px;overflow-x:auto}
+  .route-cmp{border-collapse:collapse;width:100%;max-width:640px}
+  .route-cmp caption{text-align:left;font-weight:600;padding-bottom:4px}
+  .route-cmp th,.route-cmp td{text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid var(--md-outline-variant);white-space:nowrap}
+  .route-cmp thead th{font-weight:600}
+  .route-cmp tbody th{font-weight:500}
+  .route-cmp-d.is-better{color:#1e7b45;font-weight:600}
+  .route-cmp-d.is-worse{color:var(--md-error,#b3261e);font-weight:600}
+  .route-cmp-foot{margin-top:6px;color:var(--md-on-surface-variant,#555)}
+  @media (max-width:600px){.route-cmp th,.route-cmp td{white-space:normal;padding-right:6px}}
   .route-pin{background:none;border:0}
   .route-pin span{display:flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#3b6fd8;color:#fff;font-weight:700;font-size:13px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
   .route-pin.is-active span{background:#d8592f;transform:scale(1.15)}
