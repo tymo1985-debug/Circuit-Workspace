@@ -59,6 +59,7 @@ const KNOWN_LARGE = new Set([
   'circuit-planner/i18n/dict.js',
   'pioneer-school/i18n/dict.js',
   'congress-project/i18n/dict.js',
+  'journal/i18n/dict.js',
   'shared/backup.js',
   'shared/db.js',
 ]);

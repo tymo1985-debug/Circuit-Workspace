@@ -151,8 +151,17 @@ try {
 
   // 5. Применение обновления — новый документ и новые скрипты вместе
   await page.evaluate(async () => { const reg = await navigator.serviceWorker.getRegistration('./'); reg.waiting.postMessage({ type: 'SKIP_WAITING' }); });
-  await page.waitForFunction(async (v) => { const reg = await navigator.serviceWorker.getRegistration('./'); return reg.active && !reg.waiting; }, v2);
-  await page.goto(base + 'index.html', { waitUntil: 'networkidle' });
+  /* waitForFunction не ждёт промис (async-предикат всегда «истинен») — опрашиваем со стороны Node. */
+  for (let i = 0; i < 60; i++) {
+    const sw = await swInfo().catch(() => null);
+    if (sw && sw.active === v2 && !sw.waiting) break;
+    await page.waitForTimeout(250);
+  }
+  /* Активация может перезагрузить страницу сама — тогда наш goto обрывается (ERR_ABORTED). Повторяем: это гонка харнесса, не поведение worker'а. */
+  for (let attempt = 0; ; attempt++) {
+    try { await page.goto(base + 'index.html', { waitUntil: 'networkidle' }); break; }
+    catch (e) { if (attempt >= 3 || !/ERR_ABORTED/.test(String(e))) throw e; await page.waitForTimeout(500); }
+  }
   out.afterApply = { ...(await markers()), sw: await swInfo() };
   if (!out.afterApply.html || !out.afterApply.js || out.afterApply.sw.active !== v2) fail('after apply: generation not switched as a whole');
   out.cachesAfterApply = await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('syp-')));

@@ -30,8 +30,8 @@ export function installBatchPdfActions(){
   let add=(sourceId,id,labelKey,titleKey)=>{
     let source=document.getElementById(sourceId);if(!source||document.getElementById(id))return;
     let button=source.cloneNode(true);button.id=id;button.removeAttribute("data-i18n");
-    button.setAttribute("data-i18n-title",titleKey);button.title="Все письма — отдельные PDF";
-    let label=button.querySelector("span");if(label){label.setAttribute("data-i18n",labelKey);label.textContent="Все письма — отдельные PDF"}
+    button.setAttribute("data-i18n-title",titleKey);button.title=t(titleKey);
+    let label=button.querySelector("span");if(label){label.setAttribute("data-i18n",labelKey);label.textContent=t(labelKey)}
     source.insertAdjacentElement("afterend",button);
   };
   add("allLettersBtn","separatePdfsBtn","cong.btn.separate_pdfs","cong.title.separate_pdfs");

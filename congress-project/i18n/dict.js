@@ -347,6 +347,9 @@
     'cong.ph.type_example': 'например: Промова',
     'cong.ph.participant_name': 'Имя докладчика / участника',
     'cong.ph.participant_phone': 'Мобильный номер',
+    'cong.ph.participant_congregation': 'Собрание / группа',
+    'cong.title.delete_participant': 'Удалить участника',
+    'cong.err.js': 'Ошибка JavaScript',
 
     'cong.status.unassigned': 'Не назначено',
     'cong.status.assigned': 'Назначено',

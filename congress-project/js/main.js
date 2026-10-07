@@ -22,7 +22,7 @@ import { addMin, clean, clone, id, isLetterable, isSection, today, tv } from "./
    Заведено под перенос шаблонов: до 26.08.2026 его отказ уходил только в
    консоль, то есть не существовал для пользователя вовсе. */
 export function showStartupNotice(text){let b=$("#errorBox");if(!b)return;b.textContent=text;b.classList.remove("hidden")}
-window.onerror=(m,u,l,c,e)=>{let b=$("#errorBox");if(b){b.textContent="Ошибка JavaScript: "+m+"\nСтрока: "+l+"\n"+(e&&e.stack?e.stack:"");b.classList.remove("hidden")}};
+window.onerror=(m,u,l,c,e)=>{let b=$("#errorBox");if(b){b.textContent=t("cong.err.js")+": "+m+"\n"+t("cong.msg.row_label",{n:l})+"\n"+(e&&e.stack?e.stack:"");b.classList.remove("hidden")}};
 export function clearSelectionIfOutside(e){if(!store.sel)return;if(e.target.closest('dialog,.program-table,.sidebar,button,input,select,textarea,label,.md-topbar-v2,.md-menu'))return;store.sel=null;renderTasks()}
 export function bind(){initTopbarMenu();initMenu("#congressMoreBtn","#congressMoreMenu");initMenu("#printMenuBtn","#printMenu");initMenu("#duplicateMenuBtn","#duplicateMenu");
 // Дублирующее меню — первый .md-menu внутри native <dialog>. Escape на

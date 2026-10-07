@@ -17,7 +17,7 @@ const server = http.createServer((req,res) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const BASE = `http://127.0.0.1:${server.address().port}`;
-const PAGES = ['', 'circuit-planner/', 'congress-project/', 'pioneer-school/', 'appointments/', 'documents/', 'journal/'];
+const PAGES = ['', 'circuit-planner/', 'congress-project/', 'pioneer-school/', 'appointments/', 'documents/', 'journal/', 'archive/'];
 const VIEWPORTS = [[320,800,'phone-compact'],[390,844,'phone'],[430,932,'phone-large'],[844,390,'landscape']];
 const LANGS = ['ru','uk','en','pl','de'];
 const browser = await chromium.launch({ executablePath: CHROME, args:['--no-sandbox'] });

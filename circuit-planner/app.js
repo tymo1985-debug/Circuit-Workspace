@@ -507,6 +507,8 @@
         const selected = String(selectedColor || '').toLowerCase();
         return colors.map((color) => `<option value="${color}" ${selected === color ? 'selected' : ''}>${icons[color]} ${this.escapeHtml(this.colorName(color))}</option>`).join('');
       },
+      /* H-1 (аудит 03): ссылка OWA — только https:; иначе (в т.ч. javascript: из импортированной копии) — адрес по умолчанию. */
+      owaBase(v) { try { const u = new URL(String(v || '').trim()); if (u.protocol === 'https:') return u.href; } catch (e) { /* не ссылка */ } return 'https://outlook.office.com/mail/deeplink/compose'; },
       slug(value) { return String(value || '').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9\-а-яёіїєґ]/gi,''); },
       /* Делегирование в общий слой (28.08.2026), см. shared/escape.js. */
       escapeHtml(str) { return self.CWEscape.html(str); },
@@ -615,7 +617,7 @@
         });
         if (!out.letterPages || typeof out.letterPages !== 'object') out.letterPages = {};
 
-        if (typeof out.senderName !== 'string') out.senderName = ''; if (typeof out.senderAddress !== 'string') out.senderAddress = ''; if (typeof out.senderPhone !== 'string') out.senderPhone = ''; if (typeof out.senderEmail !== 'string') out.senderEmail = ''; if (!out.emailMethod || !['mailto','owa'].includes(out.emailMethod)) out.emailMethod = 'mailto'; if (typeof out.owaUrl !== 'string' || !out.owaUrl) out.owaUrl = 'https://outlook.office.com/mail/deeplink/compose'; if (typeof out.homeAddress !== 'string') out.homeAddress = 'Praha, Česká republika'; if (typeof out.homeLat !== 'number') out.homeLat = null; if (typeof out.homeLng !== 'number') out.homeLng = null; if (typeof out.autoShowReminders !== 'boolean') out.autoShowReminders = true;
+        if (typeof out.senderName !== 'string') out.senderName = ''; if (typeof out.senderAddress !== 'string') out.senderAddress = ''; if (typeof out.senderPhone !== 'string') out.senderPhone = ''; if (typeof out.senderEmail !== 'string') out.senderEmail = ''; if (!out.emailMethod || !['mailto','owa'].includes(out.emailMethod)) out.emailMethod = 'mailto'; out.owaUrl = App.utils.owaBase(out.owaUrl); if (typeof out.homeAddress !== 'string') out.homeAddress = 'Praha, Česká republika'; if (typeof out.homeLat !== 'number') out.homeLat = null; if (typeof out.homeLng !== 'number') out.homeLng = null; if (typeof out.autoShowReminders !== 'boolean') out.autoShowReminders = true;
         return out;
       },
       createDefaultData() {
@@ -4107,9 +4109,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const mailto = () => {
           const subject = App.els.letterSubjectInput?.value || entry.subject || this.buildLetterSubject(entry, event);
           if (App.state.app.settings.emailMethod === 'owa') {
-            const base = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose';
+            const base = App.utils.owaBase(App.state.app.settings.owaUrl);
             const url = `${base}?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-            window.open(url, '_blank');
+            window.open(url, '_blank', 'noopener');
           } else {
             window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
           }

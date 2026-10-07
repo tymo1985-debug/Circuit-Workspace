@@ -17,6 +17,8 @@
 shared/vendor/**
 *.min.js
 *.min.css
+# Leaflet без суффикса .min (G-1, аудит 03)
+circuit-planner/vendor/leaflet.*
 
 # --- Встроенные шрифты в base64 ---
 # Клиндарий: 4 × ~290 КБ. Пересобираются scripts/build-pdf-font-subset.mjs

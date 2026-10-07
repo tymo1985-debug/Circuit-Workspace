@@ -31,7 +31,7 @@
  *   node scripts/check-i18n-dupes.mjs
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const ROOT = '.';
 let pass = 0, fail = 0;
@@ -40,16 +40,14 @@ const ok = (name, cond, extra = '') => {
   else { fail++; console.log('  ✗ ' + name + (extra ? ' → ' + extra : '')); }
 };
 
-const DICTS = [
-  'shared/i18n/common.js',
-  'appointments/i18n/dict.js',
-  'archive/i18n/dict.js',
-  'circuit-planner/i18n/dict.js',
-  'congress-project/i18n/dict.js',
-  'documents/i18n/dict.js',
-  'pioneer-school/i18n/dict.js',
-  'pioneer-school/i18n/doc.js',
-];
+/* G-1 (аудит 03): список строится по файловой системе — новый модуль со словарём
+   не выпадает из проверки молча. */
+const DICTS = ['shared/i18n/common.js'].concat(
+  readdirSync(ROOT, { withFileTypes: true }).filter((d) => d.isDirectory())
+    .flatMap((d) => existsSync(`${ROOT}/${d.name}/i18n`)
+      ? readdirSync(`${ROOT}/${d.name}/i18n`).filter((f) => f.endsWith('.js')).sort().map((f) => `${d.name}/i18n/${f}`)
+      : [])
+    .sort());
 
 /** Начало языкового блока: `global.CWI18n.register({ uk: {` (или self./window.). */
 const BLOCK = /^\s*(?:global|self|window)\.CWI18n\.register\(\{\s*([A-Za-z-]+)\s*:/;
