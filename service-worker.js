@@ -8,6 +8,7 @@
 // вручную поднимать "v1"/"v2"/"v3" здесь при каждой правке хаба.
 importScripts('./shared/version.js');
 importScripts('./shared/release-manifest.js');
+importScripts('./shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
 
 // ВАЖНО: Cache Storage — общий на весь origin, а не на область видимости SW.
 // Поэтому очистка «всё, кроме своего кэша» стирала офлайн-кэши модулей
@@ -54,6 +55,8 @@ const SHELL_FILES = [
 // оканчивающийся на «/index.html» или «/manifest.json» (то есть страницы
 // модулей), и любой кросс-доменный запрос.
 const SHELL_URLS = new Set(SHELL_FILES.map((f) => new URL(f, self.registration.scope).href));
+
+self.CWOfflineCheck.listen('hub', self.CW_VERSION, CACHE_NAME, SHELL_FILES);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -146,6 +146,12 @@ const CHECKS = [
     deps: [],
   },
   {
+    file: 'check-offline-ready.mjs',
+    title: 'Офлайн-самопроверка (P1-5)',
+    why: 'хаб сверяет офлайн-кэш каждого worker\'а: listen() обязан указывать на тот же кэш и список, что install, иначе «готово» при пустом кэше',
+    deps: [],
+  },
+  {
     file: 'check-update-orchestration.mjs',
     title: 'Оркестрация обновления (checkAll/applyAll)',
     why: 'хаб решает за все модули, что они обновились, — гонка update()/installing/waiting или пропущенный timedOut даёт ложное "обновлено" без реальной активации',

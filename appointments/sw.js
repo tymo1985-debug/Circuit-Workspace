@@ -14,6 +14,7 @@
    этого модуля. Запасное '0' — на случай, если импорт не удался: имя кэша
    всё равно должно получиться строкой, иначе SW не установится вовсе. */
 importScripts('../shared/version.js');
+importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
 const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['appointments']
   ? self.CW_MODULES['appointments'].version
   : '0');
@@ -52,6 +53,8 @@ const ASSETS = [
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
   '../shared/fonts/roboto-cyrillic-500-normal.woff2',
 ];
+
+self.CWOfflineCheck.listen('appointments', APP_VERSION, CACHE_NAME, ASSETS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

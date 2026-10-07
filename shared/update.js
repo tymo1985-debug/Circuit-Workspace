@@ -1076,6 +1076,31 @@
      * обязан пропускать авто-триггер, пока isBusy() === true.
      */
     isBusy: function () { return !!finalVerificationPromise; },
+
+    /** Самопроверка офлайн-готовности (аудит 03, P1-5): зарегистрировать
+     *  worker'ы модулей, у которых регистрации НЕТ вовсе (модуль ни разу не
+     *  открывали) — тем же versioned URL, что checkAll()/init(). Уже
+     *  существующие регистрации не трогаются: повторная регистрация с другой
+     *  версией в URL была бы проверкой обновлений, а не офлайн-готовностью. */
+    registerMissing: function () {
+      if (unsupported() || uiMode !== 'hub') return Promise.resolve([]);
+      var modules = global.CW_MODULES || {};
+      var base = new URL('./', (doc && doc.baseURI) || global.location.href);
+      return nav.serviceWorker.getRegistrations().then(function (regs) {
+        var have = {};
+        (regs || []).forEach(function (reg) { have[reg.scope] = true; });
+        return Promise.all(Object.keys(modules).map(function (id) {
+          var worker = modules[id] && modules[id].worker;
+          var scope = new URL(id + '/', base).href;
+          if (!worker || have[scope]) return null;
+          var script = versionedWorkerUrl(new URL(worker, base).href, global.CW_VERSION || null);
+          return nav.serviceWorker.register(script, { scope: scope, updateViaCache: 'none' }).then(
+            function () { return id; },
+            function (err) { return scopeFailure(id, scope, 'register', err); }
+          );
+        }));
+      }).then(function (list) { return list.filter(Boolean); });
+    },
   };
 
   global.CWUpdate = CWUpdate;

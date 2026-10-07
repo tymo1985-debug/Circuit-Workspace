@@ -11,6 +11,7 @@
    этого модуля. Запасное '0' — на случай, если импорт не удался: имя кэша
    всё равно должно получиться строкой, иначе SW не установится вовсе. */
 importScripts('../shared/version.js');
+importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
 const APP_VERSION=(self.CW_MODULES&&self.CW_MODULES['congress-project']?self.CW_MODULES['congress-project'].version:'0');
 const CACHE='congress-pwa-v'+APP_VERSION+'-hub-'+self.CW_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
@@ -41,6 +42,8 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
   '../shared/directory.js',
   '../shared/escape.js','../shared/doclang.js','../shared/docsview.js','../shared/i18n/common.js','../shared/version.js',
   '../shared/update.js'];
+
+self.CWOfflineCheck.listen('congress-project',APP_VERSION,CACHE,ASSETS);
 
 self.addEventListener('install',e=>e.waitUntil(
   caches.open(CACHE).then(c=>c.addAll(ASSETS))

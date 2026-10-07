@@ -6,6 +6,7 @@
 // проверке обновления, поэтому подъём версии в реестре сам инвалидирует кэш
 // этого модуля.
 importScripts('../shared/version.js');
+importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
 const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['journal']
   ? self.CW_MODULES['journal'].version
   : '0');
@@ -71,6 +72,8 @@ const ASSETS = [
   '../shared/fonts/roboto-cyrillic-500-normal.woff2',
   '../shared/fonts/material-symbols-outlined-subset.woff2',
 ];
+
+self.CWOfflineCheck.listen('journal', APP_VERSION, CACHE_NAME, ASSETS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

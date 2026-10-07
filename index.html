@@ -454,6 +454,10 @@
   /* --- Резервное копирование -------------------------------------------- */
   .cw-syscard__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 10px 0 0; }
   .cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  /* Кнопка «Подготовить» офлайн-карточки — видна только когда нужна, поэтому
+     не уходит в меню «⋮», как действия копирования на телефоне. */
+  .cw-offline__actions { display: flex; margin-top: 10px; }
+  .cw-offline__actions .cw-btn[hidden] { display: none; }
   /* #backupGuardBtn ("Повернутися до стану перед відновленням") — самый
      длинный из трёх ярлыков в .cw-backup__actions. Базовый .cw-btn ниже
      держит white-space:nowrap и не имеет max-width — на узких экранах это
@@ -1208,6 +1212,29 @@
             </details>
 
           <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
+        </article>
+
+        <!-- Офлайн-готовность (аудит 03, P1-5). Пустой кэш онлайн незаметен —
+             о нём узнают в поле, без сети. Хаб при каждом запуске сверяет
+             кэш каждого модуля и сам докачивает недостающее; карточка
+             показывает итог текстом, а не только цветом. -->
+        <article class="cw-card cw-syscard" id="offlineCard" aria-labelledby="offlineHeading" hidden>
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            </div>
+            <h3 id="offlineHeading" data-i18n="offline.title">Работа без интернета</h3>
+          </div>
+            <p class="cw-syscard__state" role="status" aria-live="polite">
+              <span class="cw-syscard__dot" aria-hidden="true"></span>
+              <span id="offlineState"></span>
+            </p>
+            <div class="cw-offline__actions">
+              <button type="button" class="cw-btn" id="offlineRepairBtn" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                <span data-i18n="offline.repair">Подготовить к работе без интернета</span>
+              </button>
+            </div>
         </article>
 
         <article class="cw-card cw-syscard" id="senderCard" aria-labelledby="senderHeading">
@@ -2018,6 +2045,104 @@
     renderRows();
     renderState();
     CWI18n.onChange(function () { renderRows(); renderState(); renderPersist(); });
+  })();
+
+  // --- Офлайн-готовность (аудит 03, P1-5) ------------------------------
+  // Каждый worker сверяет свой versioned cache со своим прекэшем
+  // (shared/offline-check.js). Онлайн недостающее докачивается сразу (решение
+  // Алекса, 07.10.2026); в режиме экономии трафика и без сети — только
+  // проверка, докачка по кнопке. Модули без регистрации (ни разу не
+  // открывались) регистрируются тем же versioned URL, что и при обновлении.
+  (function () {
+    var card = document.getElementById('offlineCard');
+    var stateSlot = document.getElementById('offlineState');
+    var btn = document.getElementById('offlineRepairBtn');
+    if (!card || !stateSlot || !btn || !('serviceWorker' in navigator) || typeof CWUpdate === 'undefined') return;
+    card.hidden = false;
+
+    var LEVELS = ['cw-syscard--ok', 'cw-syscard--warn', 'cw-syscard--alert'];
+    var last = { key: 'offline.checking', vars: null, level: null };
+    var running = false;
+
+    function show(key, vars, level) {
+      last = { key: key, vars: vars, level: level };
+      stateSlot.textContent = CWI18n.t(key, vars);
+      LEVELS.forEach(function (c) { card.classList.remove(c); });
+      if (level) card.classList.add('cw-syscard--' + level);
+    }
+    function title(id) { return CWI18n.t(id === 'hub' ? 'offline.hub_name' : 'module.' + id + '.title'); }
+
+    function ask(worker, repair) {
+      return new Promise(function (resolve) {
+        var ch = new MessageChannel();
+        var timer = setTimeout(function () { resolve(null); }, repair ? 180000 : 15000);
+        ch.port1.onmessage = function (e) { clearTimeout(timer); resolve(e.data || null); };
+        try { worker.postMessage({ type: 'CW_OFFLINE', repair: !!repair }, [ch.port2]); }
+        catch (e) { clearTimeout(timer); resolve(null); }
+      });
+    }
+    function waitActive(reg, ms) {
+      return new Promise(function (resolve) {
+        var until = Date.now() + ms;
+        (function poll() {
+          if (reg.active || Date.now() >= until) { resolve(reg.active || null); return; }
+          setTimeout(poll, 250);
+        })();
+      });
+    }
+
+    function run(forceRepair) {
+      if (running) return;
+      if (CWUpdate.isBusy && CWUpdate.isBusy()) { setTimeout(function () { run(forceRepair); }, 3000); return; }
+      running = true;
+      btn.hidden = true;
+      var online = navigator.onLine !== false;
+      var saveData = !!(navigator.connection && navigator.connection.saveData);
+      var repair = online && (forceRepair || !saveData);
+      show('offline.checking', null, null);
+
+      var base = new URL('./', document.baseURI).href;
+      var ids = ['hub'].concat(Object.keys(self.CW_MODULES || {}));
+      var done = 0;
+      (repair ? CWUpdate.registerMissing().catch(function () { return []; }) : Promise.resolve([]))
+        .then(function () { return navigator.serviceWorker.getRegistrations(); })
+        .then(function (regs) {
+          var byScope = {};
+          regs.forEach(function (r) { byScope[r.scope] = r; });
+          if (repair) show('offline.preparing', { done: 0, total: ids.length }, 'warn');
+          return Promise.all(ids.map(function (id) {
+            var reg = byScope[id === 'hub' ? base : base + id + '/'];
+            var step = reg ? waitActive(reg, repair ? 120000 : 0).then(function (w) {
+              return w ? ask(w, repair) : null;
+            }) : Promise.resolve(null);
+            return step.then(function (res) {
+              done++;
+              if (repair && done < ids.length) show('offline.preparing', { done: done, total: ids.length }, 'warn');
+              return { id: id, ok: !!(res && !res.error && res.missing && res.missing.length === 0) };
+            });
+          }));
+        })
+        .then(function (results) {
+          var bad = results.filter(function (r) { return !r.ok; }).map(function (r) { return title(r.id); });
+          if (!bad.length) { show('offline.ready', null, 'ok'); return; }
+          show(online ? 'offline.not_ready' : 'offline.not_ready_offline', { list: bad.join(', ') }, 'alert');
+          btn.hidden = !online;
+        })
+        .catch(function (e) {
+          console.error(e);
+          show('offline.failed', null, 'alert');
+          btn.hidden = !online;
+        })
+        .then(function () { running = false; });
+    }
+
+    btn.addEventListener('click', function () { run(true); });
+    CWI18n.onChange(function () { show(last.key, last.vars, last.level); });
+    show('offline.checking', null, null);
+    // После load и паузы: первая отрисовка и проверка обновлений идут первыми.
+    var start = function () { setTimeout(function () { run(false); }, 3000); };
+    if (document.readyState === 'complete') start(); else window.addEventListener('load', start, { once: true });
+    window.addEventListener('online', function () { run(false); });
   })();
 
   // --- Отправитель ------------------------------------------------------

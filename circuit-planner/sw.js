@@ -19,6 +19,7 @@
 // только сам sw.js, но и импортированные им скрипты — значит любой выпуск,
 // поднимающий версию модуля в CW_MODULES, сам инвалидирует этот кэш.
 importScripts('../shared/version.js');
+importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
 
 const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['circuit-planner']
   ? self.CW_MODULES['circuit-planner'].version
@@ -109,6 +110,8 @@ const APP_SHELL_URLS = [
   '../shared/vendor/pdf-lib.min.js',
   '../shared/vendor/fontkit.umd.min.js'
 ];
+
+self.CWOfflineCheck.listen('circuit-planner', APP_VERSION, CACHE_STATIC, APP_SHELL_URLS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
