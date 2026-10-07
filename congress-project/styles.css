@@ -1654,8 +1654,16 @@ dialog {
   dialog[open] {
     display: none !important
   }
-  body {
-    background: #fff
+  /* Лиловая полоса внизу листа: общий слой красит `html` и `body.cw-root` в
+     цвет оболочки (shared/style.css, `html:has(body > .md-shell)`), а прежнее
+     `body{background:#fff}` специфичностью проигрывало — фон html проступал
+     под короткой последней страницей. Гасим оба, с !important. */
+  html,
+  body,
+  body.cw-root,
+  body.cw-root:has(> .md-shell),
+  html:has(body > .md-shell) {
+    background: #fff !important
   }
   #printArea {
     display: block !important
