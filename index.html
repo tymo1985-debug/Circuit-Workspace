@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ru">
 <head>
+  <script src="shared/errors.js"></script>
   <script src="shared/escape.js"></script>
   <script src="shared/theme.js"></script>
 <meta charset="utf-8">
@@ -459,6 +460,9 @@
      не уходит в меню «⋮», как действия копирования на телефоне. */
   .cw-offline__actions { display: flex; margin-top: 10px; }
   .cw-offline__actions .cw-btn[hidden] { display: none; }
+  /* Кнопки карточки «Диагностика»: копирование всегда, очистка — когда есть что чистить. */
+  .cw-errors__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .cw-errors__actions .cw-btn[hidden] { display: none; }
   /* #backupGuardBtn ("Повернутися до стану перед відновленням") — самый
      длинный из трёх ярлыков в .cw-backup__actions. Базовый .cw-btn ниже
      держит white-space:nowrap и не имеет max-width — на узких экранах это
@@ -1236,6 +1240,28 @@
                 <span data-i18n="offline.repair">Подготовить к работе без интернета</span>
               </button>
             </div>
+        </article>
+
+        <!-- Диагностика (аудит 03, P2-6). Работа идёт с телефона без DevTools:
+             ошибки страниц (shared/errors.js) складываются в общее кольцо, а
+             «кнопка ничего не сделала» диагностируется копированием отчёта.
+             Копируется только по нажатию, ничего не отправляется. -->
+        <article class="cw-card cw-syscard" id="errorsCard" aria-labelledby="errorsHeading">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v3H9z"/><path d="M7 5H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+            </div>
+            <h3 id="errorsHeading" data-i18n="errors.title">Диагностика</h3>
+          </div>
+          <p class="cw-syscard__state" role="status" aria-live="polite">
+            <span class="cw-syscard__dot" aria-hidden="true"></span>
+            <span id="errorsState"></span>
+          </p>
+          <p class="cw-syscard__hint" data-i18n="errors.hint">Копируется только по нажатию и никуда не отправляется: версии модулей, браузер и последние ошибки.</p>
+          <div class="cw-errors__actions">
+            <button type="button" class="cw-btn" id="errorsCopyBtn" data-i18n="errors.copy">Скопировать диагностику</button>
+            <button type="button" class="cw-btn" id="errorsClearBtn" data-i18n="errors.clear" hidden>Очистить список ошибок</button>
+          </div>
         </article>
 
         <article class="cw-card cw-syscard" id="senderCard" aria-labelledby="senderHeading">
@@ -2144,6 +2170,54 @@
     var start = function () { setTimeout(function () { run(false); }, 3000); };
     if (document.readyState === 'complete') start(); else window.addEventListener('load', start, { once: true });
     window.addEventListener('online', function () { run(false); });
+  })();
+
+  // --- Диагностика (аудит 03, P2-6) -------------------------------------
+  // Кольцо ошибок общее для хаба и модулей (shared/errors.js, localStorage), а
+  // модуль — отдельная страница: сюда ошибка попадает через общий ключ, поэтому
+  // состояние перечитывается при возврате на страницу и по событию storage.
+  (function () {
+    var card = document.getElementById('errorsCard');
+    var stateSlot = document.getElementById('errorsState');
+    var copyBtn = document.getElementById('errorsCopyBtn');
+    var clearBtn = document.getElementById('errorsClearBtn');
+    if (!card || !stateSlot || !copyBtn || !clearBtn || typeof CWErrors === 'undefined') return;
+
+    var LEVELS = ['cw-syscard--ok', 'cw-syscard--warn', 'cw-syscard--alert'];
+    var flashTimer = null;
+
+    function level(name) {
+      LEVELS.forEach(function (c) { card.classList.remove(c); });
+      if (name) card.classList.add('cw-syscard--' + name);
+    }
+    function render() {
+      clearTimeout(flashTimer);
+      var items = CWErrors.list();
+      var last = items[items.length - 1];
+      clearBtn.hidden = !items.length;
+      if (!last) { stateSlot.textContent = CWI18n.t('errors.none'); level('ok'); return; }
+      var text = last.m + ': ' + last.msg;
+      stateSlot.textContent = CWI18n.t('errors.some', {
+        count: items.length,
+        last: text.length > 80 ? text.slice(0, 79) + '…' : text,
+      });
+      level('warn');
+    }
+    function flash(key) {
+      stateSlot.textContent = CWI18n.t(key);
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(render, 2500);
+    }
+
+    copyBtn.addEventListener('click', function () {
+      CWErrors.copy().then(function (ok) { flash(ok ? 'errors.copied' : 'errors.copy_failed'); });
+    });
+    clearBtn.addEventListener('click', function () { CWErrors.clear(); });
+    CWErrors.onChange(render);
+    CWI18n.onChange(render);
+    window.addEventListener('storage', function (e) { if (e.key === null || e.key === CWErrors.KEY) render(); });
+    window.addEventListener('pageshow', render);
+    render();
   })();
 
   // --- Отправитель ------------------------------------------------------

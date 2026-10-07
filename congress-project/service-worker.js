@@ -41,7 +41,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
   '../shared/archive.js',
   '../shared/serviceyear.js',
   '../shared/directory.js',
-  '../shared/escape.js','../shared/dates.js','../shared/doclang.js','../shared/docsview.js','../shared/i18n/common.js','../shared/version.js',
+  '../shared/escape.js','../shared/dates.js','../shared/doclang.js','../shared/docsview.js','../shared/i18n/common.js','../shared/version.js','../shared/errors.js',
   '../shared/update.js'];
 
 self.CWOfflineCheck.listen('congress-project',APP_VERSION,CACHE,ASSETS);

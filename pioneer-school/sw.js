@@ -35,6 +35,7 @@ const ASSETS = [
   // Локализация: общий слой + словарь модуля. Без них офлайн-запуск падал бы
   // на T is not defined — T() зовут ещё на этапе объявления констант.
   '../shared/version.js',
+  '../shared/errors.js',
   '../shared/update.js',
   '../shared/i18n.js',
   '../shared/docsview.js',

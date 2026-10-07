@@ -24,6 +24,7 @@ const SHELL_FILES = [
   './shared/style.css',
   './shared/db.js',
   './shared/escape.js',
+  './shared/errors.js',
   './shared/nav.js',
   './shared/theme.js',
   './shared/backup.js',

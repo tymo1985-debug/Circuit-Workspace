@@ -62,6 +62,7 @@ const ASSETS = [
   // Общий To Do (J9c): граница только для чтения.
   '../shared/todo.js',
   '../shared/version.js',
+  '../shared/errors.js',
   '../shared/update.js',
   '../shared/i18n.js',
   '../shared/escape.js',
