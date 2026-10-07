@@ -104,7 +104,8 @@ ok('открытие Журнала сейф не заводит', (await ev(() 
 
 const ids = await ev(async (C) => {
   const J = CWJournal;
-  const today = new Date().toISOString().slice(0, 10);
+  const n = new Date(), p2 = (v) => String(v).padStart(2, '0');
+  const today = n.getFullYear() + '-' + p2(n.getMonth() + 1) + '-' + p2(n.getDate());
   const c = await J.nodes.add({ kind: 'circuit', parentId: J.ROOT_PARENT, label: 'EU-LIVE' });
   const cong = await J.nodes.add({ kind: 'congregation', parentId: c, label: 'Живое' });
   const v = await J.visits.add({ nodeId: cong, dateFrom: today, dateTo: today });

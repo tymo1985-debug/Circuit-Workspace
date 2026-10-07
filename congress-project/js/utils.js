@@ -6,7 +6,7 @@ export const id=()=>crypto?.randomUUID?crypto.randomUUID():String(Date.now())+Ma
 export const esc=s=>self.CWEscape.html(s);
 export const clone=o=>JSON.parse(JSON.stringify(o));
 export function fmt(d){return d?new Date(d+"T00:00:00").toLocaleDateString("uk-UA"):""}
-export function today(){return new Date().toISOString().slice(0,10)}
+export function today(){return self.CWDates.today()}
 export function tv(v){let m=String(v||"").trim().match(/^(\d{1,2}):(\d{2})$/);return m?String(m[1]).padStart(2,"0")+":"+m[2]:""}
 export function dt(v){v=tv(v);return v?v.replace(/^0/,""):""}
 export function addMin(v,n){v=tv(v)||"09:00";let p=v.split(":"),t=(+p[0]*60+ +p[1]+n+1440)%1440;return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}

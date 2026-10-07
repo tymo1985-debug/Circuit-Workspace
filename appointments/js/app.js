@@ -147,7 +147,7 @@
 
   function defaults() {
     return {
-      date: new Date().toISOString().slice(0, 10),
+      date: window.CWDates.today(),
       congregation: '',
       coordinator: '',
       coordinatorAddress: '',
@@ -705,7 +705,7 @@
     if (newLetterBtn) {
       newLetterBtn.addEventListener('click', function () {
         if (!window.confirm(t('ap.confirm.new_letter'))) return;
-        state.date = new Date().toISOString().slice(0, 10);
+        state.date = window.CWDates.today();
         state.congregation = '';
         state.coordinator = '';
         state.coordinatorAddress = '';

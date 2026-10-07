@@ -37,7 +37,7 @@ makeBackup("cong.msg.before_restore");store.st=data;save();render();$("#backupDi
 $$("[data-download]").forEach(b=>b.onclick=()=>{let x=by[b.dataset.download];b.disabled=true;
 getBackup(b.dataset.download).then(data=>{b.disabled=false;
 if(!data){alert(t("cong.alert.backup_unreadable"));return}
-downloadJSON(data,"congress-backup-"+new Date(x?x.at:Date.now()).toISOString().slice(0,10)+".json")})});
+downloadJSON(data,"congress-backup-"+self.CWDates.fromDate(new Date(x?x.at:Date.now()))+".json")})});
 $("#backupDialog").showModal()}
 export function downloadJSON(data,name){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 export function exportAllData(){downloadJSON(store.st,"congress-data-"+today()+".json")}

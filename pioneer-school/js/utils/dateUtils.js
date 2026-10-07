@@ -12,7 +12,7 @@ const DateUtils = {
     return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
   },
   todayIso() {
-    return new Date().toISOString().slice(0, 10);
+    return window.CWDates.today();
   }
 };
 

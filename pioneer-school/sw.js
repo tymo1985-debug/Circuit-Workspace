@@ -40,6 +40,7 @@ const ASSETS = [
   '../shared/docsview.js',
   '../shared/i18n/common.js',
   '../shared/escape.js',
+  '../shared/dates.js',
   '../shared/pdfstack.js',
   '../shared/doclang.js',
   // Общий слой документов (фаза 6): письмо учащемуся собирается из общего

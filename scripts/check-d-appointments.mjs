@@ -28,6 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const DB_SRC = read('shared/db.js');
 const STATE_SRC = read('shared/state.js');
+const DATES_SRC = read('shared/dates.js');
 const APP_SRC = read('appointments/js/app.js');
 
 let failed = 0;
@@ -139,6 +140,7 @@ function makeTab(name, backend, opts = {}) {
   const run = (src) => vm.runInContext(src, ctx);
   if (!opts.noDb) run(DB_SRC);
   run(STATE_SRC);
+  run(DATES_SRC);
   run(APP_SRC);
   // app.js вешает старт на DOMContentLoaded — jsdom документ уже 'complete'
   // к этому моменту, поэтому app.js сам вызвал start() синхронно при eval.
