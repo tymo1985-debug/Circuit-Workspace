@@ -37,6 +37,7 @@
   function todayIso() { return A.todayIso.apply(this, arguments); }
   function uiLang() { return A.uiLang.apply(this, arguments); }
   function wireMenuToggle() { return A.wireMenuToggle.apply(this, arguments); }
+  function revealActiveTab() { return A.revealActiveTab.apply(this, arguments); }
 
 
   function openNodeDialog(opts) {
@@ -234,6 +235,7 @@
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', String(on));
     });
+    revealActiveTab($('#districtTabs'));
     $all('#districtDetailView [data-district-panel]').forEach(function (p) {
       p.hidden = p.getAttribute('data-district-panel').split(' ').indexOf(tab) === -1;
     });
@@ -488,6 +490,8 @@
         location.hash = hashFor[btnTab] ? hashFor[btnTab](node.circuitId, node.id) : CWJournalRoute.build.congregation(node.circuitId, node.id);
       };
     });
+    var congTabBtn = $('#congregationDetailView [data-cong-tab]');
+    if (congTabBtn) revealActiveTab(congTabBtn.parentNode);
     $('#congOverviewPanel').hidden = tab !== 'overview';
     $('#congVisitsPanel').hidden = tab !== 'visits';
     $('#congEntriesPanel').hidden = tab !== 'entries';

@@ -143,9 +143,11 @@ const jGroups = await cards();
 ok('фильтр архива «Журнал»', jGroups.length === 1 && jGroups[0].startsWith('Живой проект'), JSON.stringify(jGroups));
 await pd.goto('about:blank');
 await pd.goto(D_URL, { waitUntil: 'load' });
-await pd.waitForSelector('#filters [data-filter="journal"]');
-await pd.click('#filters [data-filter="journal"]'); await settle(pd);
-ok('фильтр библиотеки «Журнал»: один шаблон', (await pd.locator('#list .doc-row').count()) === 1 && /проекту района/i.test(await pd.innerText('#list')));
+/* С Документов 1.12.0 библиотека сгруппирована по модулям, чипов модулей нет
+   (аудит 06, JF-5): проверяем группу «Журнал». */
+await pd.waitForSelector('#list .doc-group[data-group="journal"]');
+const jLib = await pd.evaluate(() => { const g = document.querySelector('#list .doc-group[data-group="journal"]'); return { rows: g.querySelectorAll('.doc-row').length, text: g.textContent }; });
+ok('библиотека: группа «Журнал» — один шаблон', jLib.rows === 1 && /проекту района/i.test(jLib.text), JSON.stringify(jLib));
 for (const bad of ['#template/nope.tpl', '#template/%3Cimg%20src%3Dx%3E', '#archive/../x', '#garbage']) {
   await pd.goto('about:blank');
   await pd.goto(D_URL + bad, { waitUntil: 'load' });

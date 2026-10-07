@@ -148,8 +148,20 @@
     applyBtn.disabled = n === 0;
   }
 
-  /** Запись. Граф читается заново: повторное нажатие/вторая вкладка не создаёт дублей. */
-  async function apply(model) {
+  /** Запись под замком на все вкладки origin: чтение графа и запись идут
+   *  целиком внутри него, поэтому две вкладки, нажавшие «Импортировать» в одну
+   *  миллисекунду, не создадут по узлу на одну карточку (аудит 06, JF-2,
+   *  решение A). Без Web Locks (старый браузер) — прежний путь без замка. */
+  function apply(model) {
+    var locks = self.navigator && self.navigator.locks;
+    if (locks && typeof locks.request === 'function') {
+      return locks.request('cw-journal-import', function () { return applyUnlocked(model); });
+    }
+    return applyUnlocked(model);
+  }
+
+  /** Граф читается заново: повторное нажатие/вторая вкладка не создаёт дублей. */
+  async function applyUnlocked(model) {
     var have = {};
     (await CWJournal.nodes.getAll()).forEach(function (n) { if (n.communityId) have[n.communityId] = true; });
     var done = 0, failed = 0, created = {};

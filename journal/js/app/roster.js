@@ -22,6 +22,7 @@
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
+  function revealActiveTab() { return A.revealActiveTab.apply(this, arguments); }
 
   var TAB_KEY = { congregations: 'congregations', groups: 'groups', pregroups: 'pregroups' };
   var rosterRenderSeq = 0;
@@ -99,6 +100,7 @@
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    revealActiveTab($('#rosterTabs'));
     var data = rosterUi.data;
     setCounts(data);
     box.replaceChildren();

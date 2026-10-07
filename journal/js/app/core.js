@@ -90,6 +90,22 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeAllMenus(null);
   });
+  /** JF-4: полоса вкладок шире экрана телефона прокручивается сама по себе,
+   *  но выбранная вкладка (в том числе пришедшая по ссылке) должна быть в
+   *  поле зрения. Только горизонтальная прокрутка самой полосы — страница не
+   *  двигается. Скрытая полоса (нулевые размеры) пропускается. */
+  function revealActiveTab(bar) {
+    if (!bar) return;
+    var run = function () {
+      var b = bar.querySelector('.active');
+      if (!b || !bar.clientWidth) return;
+      var br = bar.getBoundingClientRect(), r = b.getBoundingClientRect();
+      if (r.left < br.left) bar.scrollLeft += r.left - br.left - 8;
+      else if (r.right > br.right) bar.scrollLeft += r.right - br.right + 8;
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else run();
+  }
+
   function wireMenuToggle(btn, panel) {
     if (!btn.hasAttribute('aria-expanded')) btn.setAttribute('aria-expanded', 'false');
     btn.addEventListener('click', function (e) {
@@ -384,6 +400,7 @@
   A.refreshCurrentView = refreshCurrentView;
   A.resetMoreMenu = resetMoreMenu;
   A.resolveCommunity = resolveCommunity;
+  A.revealActiveTab = revealActiveTab;
   A.seasonLabel = seasonLabel;
   A.setDirectoryReady = setDirectoryReady;
   A.svg = svg;

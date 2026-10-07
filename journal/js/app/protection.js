@@ -36,13 +36,18 @@
   /* Диалоги, где может стоять расшифрованный текст: при блокировке — закрыть. */
   var TEXT_DIALOGS = ['taskDialog', 'noteDialog', 'carrySheet', 'projectDialog', 'pickDialog'];
   var SECRET_FIELDS = ['protectOld', 'protectPass', 'protectConfirm'];
+  /* Каждый динамический контейнер разметки классифицирован: либо он здесь,
+     либо в NOT_PLAIN scripts/check-journal-plain-containers.mjs с причиной.
+     Новый контейнер без решения гейт не пропустит (J-Final 07.10.2026:
+     вкладка «Задачи» собрания и история проекта держали текст после lock). */
   var PLAIN_CONTAINERS = [
     'overviewCarry', 'overviewTasks', 'overviewProjects',
     'tasksList', 'districtProjectsList', 'congProjectsList',
     'districtNotesList', 'congNotesList', 'districtTasksList', 'districtArchiveList',
+    'congTasksList', 'congArchiveList',
     'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry', 'visitSummaryTasksList', 'visitSummaryCarryList',
-    'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems',
-    'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist',
+    'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems', 'projectHistory',
+    'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist', 'pickDialogList',
   ];
 
   var MODE_TEXT = {

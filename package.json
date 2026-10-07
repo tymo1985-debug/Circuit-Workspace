@@ -8,6 +8,7 @@
     "test:smoke": "node scripts/live-run.mjs",
     "test:update": "node scripts/live-update-pipeline.mjs",
     "test:device": "node scripts/live-device-matrix.mjs",
+    "test:journal": "node scripts/live-journal-all.mjs",
     "test:release": "npm test && npm run test:smoke && npm run test:update && npm run test:device"
   },
   "devDependencies": {

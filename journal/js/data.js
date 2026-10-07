@@ -205,6 +205,66 @@
   }
 
   var nodesBase = rowsApi('journalNodes');
+
+  /* ─── communityId (R2; аудит 06, JF-3, решение A) ──────────────────────
+   * Связь со справочником бывает только у собрания, группы и предгруппы.
+   * Одна карточка — не более одного узла группы/предгруппы (собрание может
+   * делить карточку с группой, как и раньше). Правило держит слой данных, а
+   * не экран: проверка и запись идут под замком Web Locks на все вкладки
+   * origin, поэтому две вкладки не займут одну карточку дважды. Без Web Locks
+   * (старый браузер, jsdom) — та же проверка без замка. Значения null,
+   * undefined и '' не проверяются: это не связь (так связь и снимают). */
+  var COMMUNITY_KINDS = ['congregation', 'group', 'pregroup'];
+  var UNIQUE_COMMUNITY_KINDS = ['group', 'pregroup'];
+  function hasCommunity(rec) { return !!rec && 'communityId' in rec && rec.communityId !== null && rec.communityId !== undefined && rec.communityId !== ''; }
+  function withCommunityLock(fn) {
+    var locks = global.navigator && global.navigator.locks;
+    return locks && typeof locks.request === 'function' ? locks.request('cw-journal-community', fn) : fn();
+  }
+  async function assertCommunityAllowed(kind, communityId, selfId) {
+    if (COMMUNITY_KINDS.indexOf(kind) < 0) throw new Error('journal-node-community-kind');
+    if (typeof communityId !== 'string') throw new Error('journal-node-community-invalid');
+    if (UNIQUE_COMMUNITY_KINDS.indexOf(kind) < 0) return;
+    var taken = (await nodesBase.getAll()).some(function (n) {
+      return n.id !== selfId && n.communityId === communityId && UNIQUE_COMMUNITY_KINDS.indexOf(n.kind) >= 0;
+    });
+    if (taken) throw new Error('journal-node-community-taken');
+  }
+
+  async function addNode(record) {
+    var parent = await assertValidParent(record.kind, record.parentId);
+    var payload = Object.assign({ status: 'active' }, record);
+    if (parent) payload.circuitId = parent.circuitId;
+    if (payload.sort === undefined || payload.sort === null) {
+      var siblings = await nodesBase.by('parentId', record.parentId);
+      payload.sort = siblings.reduce(function (max, r) {
+        return Math.max(max, typeof r.sort === 'number' ? r.sort : 0);
+      }, -1) + 1;
+    }
+    var id = await nodesBase.add(payload);
+    if (record.kind === 'circuit') await nodesBase.update(id, { circuitId: id });
+    return id;
+  }
+
+  async function updateNode(id, patch) {
+    patch = patch || {};
+    if ('kind' in patch || 'parentId' in patch) {
+      var current = await nodesBase.get(id);
+      if (!current) throw new Error('journal-node-not-found');
+      if ('kind' in patch && patch.kind !== current.kind) throw new Error('journal-immutable-kind');
+      if ('parentId' in patch && patch.parentId !== current.parentId) throw new Error('journal-immutable-parent');
+    }
+    /* J6: архив узла — только archive()/unarchive(). Патч со статусом,
+       отличным от текущего, или с archivedAt — отказ, а не молчаливая
+       переадресация (тот же класс защиты, что у посещений). */
+    if ('status' in patch || 'archivedAt' in patch) {
+      var cur = await nodesBase.get(id);
+      if (!cur) throw new Error('journal-node-not-found');
+      if ('archivedAt' in patch || patch.status !== cur.status) throw new Error('journal-node-use-lifecycle');
+    }
+    return nodesBase.update(id, patch);
+  }
+
   var nodes = {
     get: nodesBase.get,
     getAll: nodesBase.getAll,
@@ -221,20 +281,13 @@
      * текущих братьев» (max(sort) + 1 среди узлов с тем же parentId).
      * Оба поведения — только если вызывающий их не задал сам.
      */
-    add: async function (record) {
+    add: function (record) {
       record = record || {};
-      var parent = await assertValidParent(record.kind, record.parentId);
-      var payload = Object.assign({ status: 'active' }, record);
-      if (parent) payload.circuitId = parent.circuitId;
-      if (payload.sort === undefined || payload.sort === null) {
-        var siblings = await nodesBase.by('parentId', record.parentId);
-        payload.sort = siblings.reduce(function (max, r) {
-          return Math.max(max, typeof r.sort === 'number' ? r.sort : 0);
-        }, -1) + 1;
-      }
-      var id = await nodesBase.add(payload);
-      if (record.kind === 'circuit') await nodesBase.update(id, { circuitId: id });
-      return id;
+      if (!hasCommunity(record)) return addNode(record);
+      return withCommunityLock(async function () {
+        await assertCommunityAllowed(record.kind, record.communityId, null);
+        return addNode(record);
+      });
     },
 
     /** Обновление. `kind`/`parentId` неизменяемы после создания (J3a не
@@ -243,26 +296,19 @@
      *  родителем через одновременную смену kind+parentId, а перенос между
      *  районами оставлял бы устаревший circuitId у всех потомков).
      *  Патч с тем же значением, что уже стоит, — не ошибка, просто ничего
-     *  не меняет. Перенос подцеревьев — отдельная будущая фаза. */
-    update: async function (id, patch) {
+     *  не меняет. Перенос подцеревьев — отдельная будущая фаза.
+     *  `communityId` — только у собрания/группы/предгруппы, у группы и
+     *  предгруппы карточка уникальна (JF-3). */
+    update: function (id, patch) {
       patch = patch || {};
-      if ('kind' in patch || 'parentId' in patch) {
-        var current = await nodesBase.get(id);
-        if (!current) throw new Error('journal-node-not-found');
-        if ('kind' in patch && patch.kind !== current.kind) throw new Error('journal-immutable-kind');
-        if ('parentId' in patch && patch.parentId !== current.parentId) throw new Error('journal-immutable-parent');
-      }
-      /* J6: архив узла — только archive()/unarchive(). Патч со статусом,
-         отличным от текущего, или с archivedAt — отказ, а не молчаливая
-         переадресация (тот же класс защиты, что у посещений). */
-      if ('status' in patch || 'archivedAt' in patch) {
+      if (!hasCommunity(patch)) return updateNode(id, patch);
+      return withCommunityLock(async function () {
         var cur = await nodesBase.get(id);
         if (!cur) throw new Error('journal-node-not-found');
-        if ('archivedAt' in patch || patch.status !== cur.status) throw new Error('journal-node-use-lifecycle');
-      }
-      return nodesBase.update(id, patch);
+        if (cur.communityId !== patch.communityId) await assertCommunityAllowed(cur.kind, patch.communityId, id);
+        return updateNode(id, patch);
+      });
     },
-
     /** J6: в архив — status 'archived' + archivedAt. Каскада нет: дети
      *  не меняются, «архивность в контексте» вычисляется при чтении
      *  (search.effectiveArchived), не записывается. */
