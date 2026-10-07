@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import { chromium } from 'playwright-core';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -32,6 +33,28 @@ const cur = fs.readFileSync(path.join(ROOT, 'shared/version.js'), 'utf8').match(
 const state = { htmlNew: false, jsNew: false, ver: cur, broken: null };
 const docHits = [];
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+/* Что сервер отдаёт по пути — с подменами текущего шага сценария. */
+const TRANSFORMED = ['shared/version.js', 'circuit-planner/index.html', 'circuit-planner/app.js'];
+function served(rel) {
+  const raw = fs.readFileSync(path.join(ROOT, rel));
+  if (rel === 'shared/precache-manifest.js') {
+    /* Аудит 04, вариант A: worker сверяет скачанное с манифестом. Сценарий
+       подменяет три файла — манифест обязан описывать то, что реально
+       отдаётся, как сделал бы build-precache-manifest.mjs при выпуске. */
+    let text = raw.toString('utf8');
+    for (const f of TRANSFORMED) {
+      const sum = crypto.createHash('sha256').update(served(f)).digest('hex').slice(0, 16);
+      text = text.replace(new RegExp('("' + f.replace(/[.]/g, '\\.') + '": )"[0-9a-f]+"'), '$1"' + sum + '"');
+    }
+    return Buffer.from(text);
+  }
+  if (!TRANSFORMED.includes(rel)) return raw;
+  let body = raw.toString('utf8');
+  if (rel === 'shared/version.js') body = body.replace(`version: '${cur}'`, `version: '${state.ver}'`);
+  if (rel === 'circuit-planner/index.html' && state.htmlNew) body = body.replace('<head>', '<head><meta name="x-marker" content="new">');
+  if (rel === 'circuit-planner/app.js' && state.jsNew) body += '\nwindow.__jsMarker = "new";\n';
+  return Buffer.from(body);
+}
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   let rel = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html';
@@ -40,16 +63,31 @@ const server = http.createServer((req, res) => {
   if (state.broken && rel === state.broken) { res.writeHead(404); res.end(); return; }
   const file = path.resolve(ROOT, rel);
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
-  let body = fs.readFileSync(file, 'utf8');
-  if (rel === 'shared/version.js') body = body.replace(`version: '${cur}'`, `version: '${state.ver}'`);
-  if (rel === 'circuit-planner/index.html' && state.htmlNew) body = body.replace('<head>', '<head><meta name="x-marker" content="new">');
-  if (rel === 'circuit-planner/app.js' && state.jsNew) body += '\nwindow.__jsMarker = "new";\n';
-  const isText = /\.(html|js|css|webmanifest)$/.test(rel);
   res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-  res.end(isText ? body : fs.readFileSync(file));
+  res.end(served(rel));
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/circuit-planner/`;
+/* waitForFunction() не ждёт промис из предиката — промис сам по себе
+   «истинен», и ожидание проходило мгновенно. Поэтому опрос из Node: каждая
+   проба — отдельный evaluate, а страница модуля после первой активации может
+   сама перезагрузиться (смена controller) — такая проба просто повторяется. */
+const settled = async (p, all) => {
+  const until = Date.now() + 60000;
+  for (;;) {
+    const ok = await p.evaluate(async (everyScope) => {
+      const regs = (await navigator.serviceWorker.getRegistrations()).filter((r) => everyScope
+        ? !r.scope.endsWith('/Weather-App-Claude/')
+        /* Регистрация ИМЕННО этой области: getRegistration() без своей
+           регистрации вернёт регистрацию хаба (область «/» шире). */
+        : r.scope === new URL('./', location.href).href);
+      return regs.length > 0 && regs.every((r) => r.active && !r.installing && !r.waiting);
+    }, !!all).catch(() => false);
+    if (ok) { await p.waitForLoadState('load').catch(() => {}); await p.waitForTimeout(300); return; }
+    if (Date.now() > until) throw new Error('service worker install did not settle');
+    await p.waitForTimeout(250);
+  }
+};
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cp-sw-'));
 const ctx = await chromium.launchPersistentContext(profile, { executablePath: process.env.CHROME_PATH || undefined, headless: true });
 const page = ctx.pages()[0];
@@ -74,7 +112,7 @@ const waitInstallSettled = () => page.evaluate(async () => {
 try {
   // 1. Прогрев
   await page.goto(base + 'index.html', { waitUntil: 'networkidle' });
-  await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration('./'))?.active);
+  await settled(page);
   await page.reload({ waitUntil: 'networkidle' });
   out.warm = await swInfo();
   if (out.warm.active !== cur) fail('warm: active not ' + cur);
@@ -89,9 +127,11 @@ try {
   if ((out.p11_noBump.html || out.p11_noBump.js)) fail('P1-1: mixed/new generation served without new worker');
   if (docHits.length) fail('P1-1: cached navigation still hits network (revalidation/preload)');
 
-  // 3. P1-2: новая версия, один файл прекэша недоставлен
+  // 3. P1-2: новая версия, один ИЗМЕНЁННЫЙ файл прекэша недоставлен.
+  //    Неизменённый файл с 07.10.2026 (аудит 04, A) переносится из прежнего кэша
+  //    без сети — его недоступность установке не мешает, и это верно.
   const v2 = cur.replace(/\d+$/, (n) => +n + 1);
-  state.ver = v2; state.broken = 'circuit-planner/ui/route.js';
+  state.ver = v2; state.broken = 'circuit-planner/app.js';
   out.p12_brokenInstall = await waitInstallSettled();
   out.p12_afterBroken = await swInfo();
   if (out.p12_brokenInstall !== 'redundant') fail('P1-2: install with missing precache file did not fail');

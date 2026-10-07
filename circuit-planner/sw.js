@@ -20,6 +20,7 @@
 // поднимающий версию модуля в CW_MODULES, сам инвалидирует этот кэш.
 importScripts('../shared/version.js');
 importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
+importScripts('../shared/precache-manifest.js', '../shared/precache.js'); // перенос неизменённых файлов при установке (аудит 04, вариант A)
 
 const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['circuit-planner']
   ? self.CW_MODULES['circuit-planner'].version
@@ -117,17 +118,14 @@ self.CWOfflineCheck.listen('circuit-planner', APP_VERSION, CACHE_STATIC, APP_SHE
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    /* Установка атомарна (аудит 03, P1-2): addAll() либо кладёт ВЕСЬ
-       прекэш, либо отклоняется и не пишет ничего — тогда install
-       проваливается, новый worker отбрасывается, а пользователь остаётся на
-       прежней целой версии; браузер повторит попытку при следующей проверке
-       обновления. Прежде каждый файл грузился в своём try/catch, и обрыв
-       сети (или заливка несколькими коммитами) давал активную версию с
-       неполным кэшем: онлайн незаметно, офлайн — нет файлов.
-       cache: 'reload' — мимо HTTP-кэша браузера: иначе в новый кэш мог лечь
-       файл прошлого выпуска (GitHub Pages отдаёт max-age=600). */
-    const cache = await caches.open(CACHE_STATIC);
-    await cache.addAll(APP_SHELL_URLS.map((url) => new Request(url, { cache: 'reload' })));
+    /* Установка атомарна (аудит 03, P1-2): прекэш кладётся целиком или не
+       кладётся вовсе — тогда install проваливается, новый worker
+       отбрасывается, пользователь остаётся на прежней целой версии, а браузер
+       повторит попытку при следующей проверке. Неизменённые файлы переносятся
+       из прежнего своего кэша по хешу, скачанные идут мимо HTTP-кэша
+       (`cache: 'reload'`) и сверяются с манифестом (shared/precache.js,
+       аудит 04). Runtime-кэш (stale-while-revalidate) источником не служит. */
+    await self.CWPrecache.install({ cacheName: CACHE_STATIC, urls: APP_SHELL_URLS, prefix: STATIC_PREFIX, root: '../' });
     // skipWaiting() здесь больше нет: новый worker останавливается в
     // состоянии waiting, и открытая страница продолжает жить на том наборе
     // файлов, с которым запустилась. Активацию запрашивает пользователь

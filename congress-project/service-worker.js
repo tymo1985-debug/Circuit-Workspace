@@ -12,6 +12,7 @@
    всё равно должно получиться строкой, иначе SW не установится вовсе. */
 importScripts('../shared/version.js');
 importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
+importScripts('../shared/precache-manifest.js', '../shared/precache.js'); // перенос неизменённых файлов при установке (аудит 04, вариант A)
 const APP_VERSION=(self.CW_MODULES&&self.CW_MODULES['congress-project']?self.CW_MODULES['congress-project'].version:'0');
 const CACHE='congress-pwa-v'+APP_VERSION+'-hub-'+self.CW_VERSION;
 // Cache Storage общий на origin: удаляем только СВОИ кэши по префиксу, иначе
@@ -47,7 +48,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
 self.CWOfflineCheck.listen('congress-project',APP_VERSION,CACHE,ASSETS);
 
 self.addEventListener('install',e=>e.waitUntil(
-  caches.open(CACHE).then(c=>c.addAll(ASSETS))
+  self.CWPrecache.install({cacheName:CACHE,urls:ASSETS,prefix:CACHE_PREFIX,root:'../'})
 ));
 
 // Досрочная активация — только по явной просьбе пользователя (кнопка

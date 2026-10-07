@@ -15,6 +15,7 @@
    всё равно должно получиться строкой, иначе SW не установится вовсе. */
 importScripts('../shared/version.js');
 importScripts('../shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
+importScripts('../shared/precache-manifest.js', '../shared/precache.js'); // перенос неизменённых файлов при установке (аудит 04, вариант A)
 const APP_VERSION = (self.CW_MODULES && self.CW_MODULES['appointments']
   ? self.CW_MODULES['appointments'].version
   : '0');
@@ -61,8 +62,7 @@ self.CWOfflineCheck.listen('appointments', APP_VERSION, CACHE_NAME, ASSETS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(ASSETS);
+    await self.CWPrecache.install({ cacheName: CACHE_NAME, urls: ASSETS, prefix: CACHE_PREFIX, root: '../' });
   })());
 });
 

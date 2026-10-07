@@ -9,6 +9,7 @@
 importScripts('./shared/version.js');
 importScripts('./shared/release-manifest.js');
 importScripts('./shared/offline-check.js'); // самопроверка офлайн-готовности (аудит 03, P1-5)
+importScripts('./shared/precache-manifest.js', './shared/precache.js'); // перенос неизменённых файлов при установке (аудит 04, вариант A)
 
 // ВАЖНО: Cache Storage — общий на весь origin, а не на область видимости SW.
 // Поэтому очистка «всё, кроме своего кэша» стирала офлайн-кэши модулей
@@ -62,8 +63,7 @@ self.CWOfflineCheck.listen('hub', self.CW_VERSION, CACHE_NAME, SHELL_FILES);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL_FILES))
+    self.CWPrecache.install({ cacheName: CACHE_NAME, urls: SHELL_FILES, prefix: CACHE_PREFIX, root: './' })
   );
 });
 

@@ -49,3 +49,6 @@ node_modules/**
 # pioneer-school/i18n/dict.js     141 КБ — только grep по ключу
 # circuit-planner/index.html      104 КБ — по секции
 # shared/style.css                74 КБ  — по секции
+
+# Генерируемый манифест хешей прекэша (scripts/build-precache-manifest.mjs) — данные, не код.
+shared/precache-manifest.js

@@ -43,9 +43,9 @@ for (const [id, file] of workers) {
   const [, listenId, cacheVar, listVar] = m;
   ok(id + ': id в listen() совпадает с реестром', listenId === id, listenId);
   ok(id + ': кэш listen() — тот же, что открывает install',
-    new RegExp("caches\\.open\\(\\s*" + cacheVar + "\\s*\\)").test(src), cacheVar);
+    new RegExp("caches\\.open\\(\\s*" + cacheVar + "\\s*\\)|CWPrecache\\.install\\(\\s*\\{[^}]*cacheName\\s*:\\s*" + cacheVar + "\\b").test(src), cacheVar);
   ok(id + ': список listen() — тот же, что кладёт install',
-    new RegExp("addAll\\(\\s*" + listVar + "\\b").test(src), listVar);
+    new RegExp("addAll\\(\\s*" + listVar + "\\b|CWPrecache\\.install\\(\\s*\\{[^}]*urls\\s*:\\s*" + listVar + "\\b").test(src), listVar);
 }
 
 console.log('\nПротокол на имитации Cache Storage');

@@ -51,6 +51,9 @@
 - Экранирование сведено в один слой: не добавлять второй
   (`docs/journal/security.md`).
 - Клиндарий обязан открыться, даже если общий слой сорвался.
+- Прекэш ставится только через `CWPrecache.install()` (`shared/precache.js`),
+  не `addAll()`; манифест `shared/precache-manifest.js` — генерируемый,
+  пересобирается последним шагом выпуска (`docs/rules/release.md`, п. 7).
 - «Сегодня» — только `CWDates.today()` (`shared/dates.js`), не `toISOString()`
   с обрезкой: гейт `check-local-today.mjs`. Перехватчик ошибок
   `shared/errors.js` — первым скриптом каждой страницы, он сам не бросает.

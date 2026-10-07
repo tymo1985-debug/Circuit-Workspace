@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import crypto from 'node:crypto';
 import { chromium } from 'playwright-core';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,6 +23,12 @@ const NEXT = {
 };
 for (const [id, meta] of Object.entries(current.CW_MODULES || {})) NEXT[id] = [meta.version, bumpPatch(meta.version)];
 let phase = 1;
+const synthetic = (rel, buf) => {
+  let text = buf.toString('utf8');
+  for (const [, versions] of Object.entries(NEXT)) text = text.replaceAll(versions[0], versions[1]);
+  if (rel === 'shared/release-manifest.js') text = text.replace(/note: '[^']*'/g, "note: 'Synthetic live upgrade: verified changelog' ");
+  return Buffer.from(text);
+};
 let foreignFetches = 0;
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
@@ -40,10 +47,16 @@ const server = http.createServer((req, res) => {
   const file = path.resolve(ROOT, rel);
   if (!file.startsWith(ROOT + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end('not found'); return; }
   let body = fs.readFileSync(file);
-  if (phase === 2 && (rel === 'shared/version.js' || rel === 'shared/release-manifest.js')) {
+  if (phase === 2 && (rel === 'shared/version.js' || rel === 'shared/release-manifest.js')) body = synthetic(rel, body);
+  /* Синтетический выпуск меняет два файла — значит, и их хеши в манифесте,
+     как сделал бы build-precache-manifest.mjs при настоящем выпуске. */
+  if (phase === 2 && rel === 'shared/precache-manifest.js') {
     let text = body.toString('utf8');
-    for (const [id, versions] of Object.entries(NEXT)) text = text.replaceAll(versions[0], versions[1]);
-    if (rel === 'shared/release-manifest.js') text = text.replace(/note: '[^']*'/g, "note: 'Synthetic live upgrade: verified changelog' ");
+    for (const f of ['shared/version.js', 'shared/release-manifest.js']) {
+      const served = synthetic(f, fs.readFileSync(path.join(ROOT, f)));
+      const sum = crypto.createHash('sha256').update(served).digest('hex').slice(0, 16);
+      text = text.replace(new RegExp('("' + f.replace(/[.]/g, '\\.') + '": )"[0-9a-f]+"'), '$1"' + sum + '"');
+    }
     body = Buffer.from(text);
   }
   res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
@@ -51,6 +64,26 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}/`;
+/* waitForFunction() не ждёт промис из предиката — промис сам по себе
+   «истинен», и ожидание проходило мгновенно. Поэтому опрос из Node: каждая
+   проба — отдельный evaluate, а страница модуля после первой активации может
+   сама перезагрузиться (смена controller) — такая проба просто повторяется. */
+const settled = async (p, all) => {
+  const until = Date.now() + 60000;
+  for (;;) {
+    const ok = await p.evaluate(async (everyScope) => {
+      const regs = (await navigator.serviceWorker.getRegistrations()).filter((r) => everyScope
+        ? !r.scope.endsWith('/Weather-App-Claude/')
+        /* Регистрация ИМЕННО этой области: getRegistration() без своей
+           регистрации вернёт регистрацию хаба (область «/» шире). */
+        : r.scope === new URL('./', location.href).href);
+      return regs.length > 0 && regs.every((r) => r.active && !r.installing && !r.waiting);
+    }, !!all).catch(() => false);
+    if (ok) { await p.waitForLoadState('load').catch(() => {}); await p.waitForTimeout(300); return; }
+    if (Date.now() > until) throw new Error('service worker install did not settle');
+    await p.waitForTimeout(250);
+  }
+};
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cw-update-live-'));
 const context = await chromium.launchPersistentContext(profile, { executablePath: CHROME, headless: true });
 const page = context.pages()[0];
@@ -66,11 +99,21 @@ try {
   await foreignPage.goto(base + 'Weather-App-Claude/index.html', { waitUntil: 'domcontentloaded' });
   await foreignPage.reload({ waitUntil: 'domcontentloaded' });
   await foreignPage.waitForFunction(() => !!navigator.serviceWorker.controller);
+  /* Версия A прогрета, только если установка каждого модуля дошла до конца
+     до ухода со страницы: регистрацию, чья первая установка ещё идёт,
+     Chromium при уходе клиента может снять, и тогда модуль ставится с нуля
+     уже в фазе B — замер обновления (аудит 04) мерил бы первую установку. */
   for (const id of Object.keys(NEXT).filter((id) => id !== 'hub')) {
     await page.goto(base + id + '/index.html', { waitUntil: 'domcontentloaded' });
+    await settled(page);
   }
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => navigator.serviceWorker.getRegistrations().then((r) => r.length === 8));
+  /* Базовая версия A считается прогретой, только когда все восемь установок
+     завершились: иначе хвост первой установки попадает в замер обновления. */
+  await settled(page, true);
+  const primed = await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).filter((r) => !r.scope.endsWith('/Weather-App-Claude/') && r.active).length);
+  if (primed !== Object.keys(NEXT).length) throw new Error('baseline: ' + primed + ' of ' + Object.keys(NEXT).length + ' workers active');
   const before = await page.locator('#hubVersion').textContent();
   if (before !== 'v' + NEXT.hub[0]) throw new Error('unexpected baseline ' + before);
 
@@ -137,6 +180,26 @@ try {
     const found = versions.find((v) => v.module === id);
     if (!found || found.version !== pair[1]) throw new Error(`${id}: active=${JSON.stringify(found)}, expected=${pair[1]}`);
   }
+  /* Аудит 04, вариант A: каждая установка пишет в свой кэш итог — что
+     перенесено, что скачано. Синтетический выпуск меняет два файла, значит
+     скачаны могут быть только они; всё остальное обязано переехать из
+     прежнего кэша. Сетевой лог для этого не годится: хаб ревалидирует свою
+     оболочку в фоне при каждом открытии, и это не установка. */
+  const installs = await page.evaluate(async (release) => {
+    const out = [];
+    for (const name of await caches.keys()) {
+      if (!name.includes(release)) continue;
+      const cache = await caches.open(name);
+      const key = (await cache.keys()).find((k) => k.url.endsWith('/__cw-precache-revs.json'));
+      out.push(key ? { name, ...(await (await cache.match(key)).json()), revs: undefined } : { name, missing: true });
+    }
+    return out;
+  }, NEXT.hub[1]);
+  const precacheReport = installs.map((i) => ({ cache: i.name, copied: i.copied, fetched: i.fetched }));
+  if (installs.length < 8 || installs.some((i) => i.missing)) throw new Error('precache install record missing: ' + JSON.stringify(precacheReport));
+  const extra = installs.flatMap((i) => (i.fetched || []).filter((f) => f !== 'shared/version.js' && f !== 'shared/release-manifest.js').map((f) => i.name + ': ' + f));
+  if (extra.length) throw new Error('update re-downloaded unchanged precached files (audit 04, A): ' + extra.join(', '));
+  if (installs.reduce((n, i) => n + (i.copied || 0), 0) < 300) throw new Error('copy-forward did not happen: ' + JSON.stringify(precacheReport));
 
   /* Каждая регистрация обязана держать ОДИН script URL с `?cw-release=<новый>`
      и не иметь лишнего installing/waiting. Иной URL у той же регистрации —
@@ -164,7 +227,7 @@ try {
   await page.waitForTimeout(2000);
   await assertSingleWorker('after module returns');
   if (await page.locator('#cwUpdateBar').count()) throw new Error('Hub: update banner again after a completed update');
-  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, technicalChangesHidden: true, mobileBannerViewport: '430x900', foreignScopeIgnored: true, foreignSkipWaitingBlocked: true, hardRefreshUsed: false, moduleReturnChecks: 6, singleWorkerPerScope: true }, null, 2));
+  console.log(JSON.stringify({ pass: true, baseline: NEXT.hub[0], upgraded: NEXT.hub[1], registrations: versions, changelogShown: true, precache: precacheReport, technicalChangesHidden: true, mobileBannerViewport: '430x900', foreignScopeIgnored: true, foreignSkipWaitingBlocked: true, hardRefreshUsed: false, moduleReturnChecks: 6, singleWorkerPerScope: true }, null, 2));
 } finally {
   await context.close();
   await new Promise((resolve) => server.close(resolve));
