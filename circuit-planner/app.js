@@ -5199,7 +5199,17 @@ if (self.CWState && self.CWDB) {
     App.store.remote.init(),
     App.store.history ? App.store.history.init() : Promise.resolve(false),
     self.CWDirectory ? self.CWDirectory.init() : Promise.resolve(false),
-  ]).then(() => App.init(), (e) => {
+  ]).then(() => {
+    /* Аудит 03, P2-1: неприменимая правка из закрытой вкладки отложена в
+       `snapshots`. История читала хранилище параллельно и могла её не
+       увидеть — добавляем шапку и один раз говорим, где её искать. */
+    const rec = App.store.remote.recovery();
+    if (rec && rec.parkedId && App.store.history) {
+      App.store.history.include({ id: rec.parkedId, at: rec.at, labelKey: self.CWState.PARKED_LABEL_KEY });
+    }
+    App.init();
+    if (self.CWParked) self.CWParked.announceHistory('circuit-planner');
+  }, (e) => {
     /* МОДУЛЬ ОБЯЗАН ОТКРЫТЬСЯ В ЛЮБОМ СЛУЧАЕ (28.08.2026).
        Сегодня все три init() ловят свои отказы и не отклоняются — но это
        дисциплина трёх файлов общего слоя, а не гарантия. Один будущий throw

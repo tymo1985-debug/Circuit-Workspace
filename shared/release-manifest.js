@@ -1,12 +1,13 @@
 self.CW_RELEASE = {
-  version: '0.42.40',
+  version: '0.42.41',
   changes: [
-    { module: 'hub', version: '0.42.40', note: 'Служебный подъём версии: доставка исправления печати Конгрессов', technical: true },
-    { module: 'congress-project', version: '4.48.18', note: 'PDF-печать: убрана лиловая полоса внизу листа' },
-    { module: 'pioneer-school', version: '1.14.123', note: 'Служебный подъём версии', technical: true },
-    { module: 'appointments', version: '5.5.162', note: 'Служебный подъём версии', technical: true },
-    { module: 'documents', version: '1.12.34', note: 'Служебный подъём версии', technical: true },
-    { module: 'journal', version: '0.22.13', note: 'Служебный подъём версии', technical: true },
-    { module: 'archive', version: '0.2.18', note: 'Служебный подъём версии', technical: true },
+    { module: 'hub', version: '0.42.41', note: 'Несохранённые данные отправителя из другой вкладки больше не теряются: «Восстановить» или «Отбросить»' },
+    { module: 'circuit-planner', version: '9.106.0', note: '«Применить к календарю» не трогает даты без контрольной точки «Истории изменений»; несохранённые изменения из другой вкладки сохраняются в «Истории изменений»' },
+    { module: 'congress-project', version: '4.48.19', note: 'Несохранённые изменения из другой вкладки сохраняются среди резервных копий, а не теряются' },
+    { module: 'pioneer-school', version: '1.14.124', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'appointments', version: '5.5.163', note: 'Несохранённые изменения из другой вкладки больше не теряются: «Восстановить» или «Отбросить»' },
+    { module: 'documents', version: '1.12.35', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'journal', version: '0.22.14', note: 'Версия поднята вместе с хабом', technical: true },
+    { module: 'archive', version: '0.2.19', note: 'Версия поднята вместе с хабом', technical: true },
   ],
 };

@@ -84,9 +84,13 @@
     App.els.historyList.innerHTML = history.map((snap) => {
       const date = new Date(snap.at);
       const label = date.toLocaleString(App.utils.lang(), { dateStyle: 'medium', timeStyle: 'short' });
-      const summary = snap.meta
-        ? App.utils.tEsc('history_summary', { events: snap.meta.events, entries: snap.meta.entries })
-        : '';
+      /* P2-1: отложенная правка из другой вкладки — без сводки (meta нет),
+         но с подписью, чтобы её было видно среди контрольных точек. */
+      const summary = snap.labelKey === 'conflict' && self.CWI18n
+        ? App.utils.escapeHtml(self.CWI18n.t('parked.label'))
+        : snap.meta
+          ? App.utils.tEsc('history_summary', { events: snap.meta.events, entries: snap.meta.entries })
+          : '';
       return `<div class="md-card" style="padding:12px;box-shadow:none;border:1px solid var(--md-outline-variant)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <div><strong>${App.utils.escapeHtml(label)}</strong><div class="small" style="color:var(--md-on-surface-variant)">${App.utils.escapeHtml(summary)}</div></div>

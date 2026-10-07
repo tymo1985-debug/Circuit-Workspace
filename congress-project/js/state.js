@@ -180,6 +180,9 @@ let backups=null;
 /** Прочитать состояние из общей базы ДО первого `load()`.
  *  Промис не отклоняется: недоступная база означает работу на прежнем ключе,
  *  а не отказ запуска. */
+/** P2-1: один раз сказать, что правка из другой вкладки лежит в копиях. */
+export function announceParked(){if(remote&&self.CWParked)self.CWParked.announceHistory("congress-project")}
+
 export function initState(){
   if(!self.CWState||!self.CWDB)return Promise.resolve(false);
   remote=self.CWState.create("congress-project");
@@ -193,7 +196,13 @@ export function initState(){
   /* Состояние и копии поднимаются вместе: `load()` может тут же снять копию
      перед переносом в базу. Ни один из промисов не отклоняется. */
   return Promise.all([remote.init(),backups?backups.init():Promise.resolve(false)])
-    .then(()=>remote.available()).catch(e=>{
+    .then(()=>{
+      /* Аудит 03, P2-1: неприменимая правка из закрытой вкладки отложена в
+         `snapshots`; список копий читал хранилище параллельно — добавляем
+         её шапку, чтобы она была видна среди резервных копий. */
+      let rec=remote.recovery();
+      if(rec&&rec.parkedId&&backups)backups.include({id:rec.parkedId,at:rec.at,labelKey:self.CWState.PARKED_LABEL_KEY});
+      return remote.available()}).catch(e=>{
     console.error("Конгрессы: общая база недоступна, работаем на прежнем ключе",e);
     return false})}
 

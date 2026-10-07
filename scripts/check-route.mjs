@@ -56,6 +56,8 @@ const outside = code.replace(applyFn, '');
 ok(applyFn && (code.match(/App\.store\.save\(/g) || []).length === 1 && applyFn.includes('App.store.save('), 'R7: запись в блоб — только App.store.save() в applyDraft');
 ok(!/App\.store\.(save|checkpointNow|flushNow|writeNow)\(|App\.state\.app\.entries/.test(outside), 'R7: вне applyDraft нет записи и доступа к entries');
 ok(/checkpointNow\('route-apply'\)[\s\S]*App\.store\.save\(/.test(applyFn), 'R7: контрольная точка истории до записи');
+ok(/checkpointNow\('route-apply'\)[\s\S]*\.then\(\(snapshotId\) => \{\s*if \(!snapshotId\) \{[^}]*route_apply_no_backup[^}]*return; \}/.test(applyFn), 'P2-3: без снятой контрольной точки даты не трогаются');
+for (const k of ['route_apply_no_backup']) ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 ok(/window\.confirm\(msg\)/.test(applyFn) && applyFn.indexOf('window.confirm') < applyFn.indexOf('checkpointNow'), 'R7: подтверждение до любой записи');
 ok(/App\.store\.degraded \|\| App\.store\.conflict/.test(applyFn), 'R7: режим только для чтения/конфликт — запрет');
 ok(/stale/.test(applyFn) && /e\.start !== c\.from\.start/.test(applyFn), 'R7: проверка «календарь не изменился» перед записью');

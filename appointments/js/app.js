@@ -229,6 +229,30 @@
     });
   }
 
+  /** P2-1: заменить текущие данные отложенной правкой. Пишем сразу и
+   *  считаем восстановленным ТОЛЬКО подтверждённую запись — иначе отложенная
+   *  копия удалилась бы, а канон остался прежним. */
+  function restoreParked(payload) {
+    if (source !== 'db' || degraded || conflict) return false;
+    var parsed;
+    try { parsed = JSON.parse(payload); } catch (e) { return false; }
+    if (!parsed || typeof parsed !== 'object') return false;
+    var before = JSON.stringify(state);
+    applyLoadedState(parsed);
+    var next = JSON.stringify(state);
+    return remote.writeOutcome(next).then(function (outcome) {
+      if (outcome === 'written') {
+        markConfirmed(next); markSaved();
+        syncBasicFields(); fillCongregations(); LISTS.forEach(renderList);
+        renderSignaturePanel(); renderLetter();
+        return true;
+      }
+      applyLoadedState(JSON.parse(before));
+      if (outcome === 'refused') enterConflict(); else enterDegraded();
+      return false;
+    }, function () { applyLoadedState(JSON.parse(before)); enterDegraded(); return false; });
+  }
+
   var saveTimer = null;
   function save() {
     clearTimeout(saveTimer);
@@ -867,6 +891,10 @@
       renderSenderPanel();
       renderSignaturePanel();
       renderLetter();
+      /* Аудит 03, P2-1: правка из закрытой вкладки, которую нельзя было
+         применить автоматически, отложена общим слоем. Истории у модуля нет —
+         решение «восстановить / отбросить» за пользователем. */
+      if (source === 'db' && self.CWParked) self.CWParked.offerChoice(MODULE_ID, restoreParked);
     });
 
     // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).

@@ -117,11 +117,19 @@
 
       req.onupgradeneeded = (event) => {
         const db = event.target.result;
+        const upgrade = event.target.transaction;
         Object.keys(STORES).forEach((storeName) => {
-          if (db.objectStoreNames.contains(storeName)) return;
           const { keyPath, indexes } = STORES[storeName];
-          const store = db.createObjectStore(storeName, { keyPath });
+          /* Аудит 03, P2-5: индекс, добавленный в STORES к УЖЕ существующему
+             хранилищу, прежде появлялся только у новых установок — у
+             вернувшегося пользователя byIndex() падал бы NotFoundError.
+             Существующему хранилищу дозаводим недостающие индексы через
+             транзакцию апгрейда; данные не трогаются, индекс строится сам. */
+          const store = db.objectStoreNames.contains(storeName)
+            ? upgrade.objectStore(storeName)
+            : db.createObjectStore(storeName, { keyPath });
           (indexes || []).forEach((idx) => {
+            if (store.indexNames.contains(idx)) return;
             try { store.createIndex(idx, idx, { unique: false }); } catch (e) { /* index exists */ }
           });
         });

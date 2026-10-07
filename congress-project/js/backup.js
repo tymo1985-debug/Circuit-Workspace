@@ -16,6 +16,8 @@ import { t } from "./i18n.js";
    в списке хуже устаревшей подписи. */
 function backupLabel(x){
   if(!x||!x.labelKey)return (x&&x.label)||"";
+  /* P2-1: правка из другой вкладки, отложенная общим слоем (shared/state.js). */
+  if(x.labelKey==="conflict"&&self.CWI18n)return self.CWI18n.t("parked.label");
   let text=t(x.labelKey);
   return text&&text!==x.labelKey?text:(x.label||"")}
 

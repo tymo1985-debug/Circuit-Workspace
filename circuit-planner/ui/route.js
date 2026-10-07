@@ -453,7 +453,11 @@
       if (!window.confirm(msg)) return;
       const applyYear = year;
       try { App.store.flushNow('snapshot'); } catch (_) { /* не фатально */ }
-      App.store.checkpointNow('route-apply').catch(() => null).then(() => {
+      /* Аудит 03, P2-3 — тот же контракт, что у A5 (archive-year.js,
+         backupFirst): подтверждение обещает откат через «Историю изменений»,
+         значит без снятой контрольной точки даты не трогаем вовсе. */
+      App.store.checkpointNow('route-apply').catch(() => null).then((snapshotId) => {
+        if (!snapshotId) { App.utils.toast(t('route_apply_no_backup')); return; }
         const entries = App.state.app.entries || [];
         const byId = new Map(entries.map((e) => [e.id, e]));
         // Календарь мог измениться, пока ждали снимок, — тогда не пишем ничего.

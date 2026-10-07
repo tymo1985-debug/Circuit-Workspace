@@ -120,6 +120,44 @@
     try { global.localStorage.removeItem(key); } catch (e) { /* приватный режим */ }
   }
 
+  /* ─── ОТЛОЖЕННЫЕ КОНФЛИКТНЫЕ ЗЕРКАЛА (аудит 03, P2-1) ─────────────────────
+     Зеркало, которое нельзя применить (stale-mirror / lineage-conflict /
+     legacy-mirror), прежде оставалось в localStorage до первой успешной
+     записи и стиралось ею — правка из закрытой вкладки пропадала без следа.
+     Теперь при старте оно откладывается записью в хранилище `snapshots`
+     общей базы (тот же формат, что у CWSnapshots: id `<module>:…`, поле
+     module, at, payload) с labelKey 'conflict'. У Клиндария и Конгрессов
+     запись видна в их «Истории изменений» и восстанавливается оттуда; для
+     модулей без истории (Назначения, Отправитель) есть parked()/readParked()/
+     discardParked() — решение «восстановить / отбросить» за пользователем.
+     Зеркало стирается ТОЛЬКО после подтверждённой записи отложенной копии. */
+  var PARKED_LABEL_KEY = 'conflict';
+  function snapshotsStore() {
+    return global.CWDB && global.CWDB.snapshots ? global.CWDB.snapshots : null;
+  }
+  function parkedFor(moduleId) {
+    var snaps = snapshotsStore();
+    if (!snaps || typeof snaps.eachByIndex !== 'function') return Promise.resolve([]);
+    return snaps.eachByIndex('module', moduleId, function (rec) {
+      if (!rec || rec.labelKey !== PARKED_LABEL_KEY) return undefined;
+      return { id: rec.id, at: Number(rec.at) || 0, reason: (rec.conflict && rec.conflict.reason) || '' };
+    }).then(function (list) {
+      return list.sort(function (a, b) { return b.at - a.at; });
+    }, function (e) { console.error('CWState: отложенные изменения не прочитаны', e); return []; });
+  }
+  function readParked(id) {
+    var snaps = snapshotsStore();
+    if (!snaps) return Promise.resolve(null);
+    return snaps.get(id).then(function (rec) {
+      return rec && rec.labelKey === PARKED_LABEL_KEY && typeof rec.payload === 'string' ? rec.payload : null;
+    }, function () { return null; });
+  }
+  function discardParked(id) {
+    var snaps = snapshotsStore();
+    if (!snaps) return Promise.resolve(false);
+    return snaps.remove(id).then(function () { return true; }, function () { return false; });
+  }
+
   function create(moduleId) {
     var mirrorKey = MIRROR_PREFIX + moduleId;
     var revKey = REV_PREFIX + moduleId;
@@ -246,7 +284,9 @@
           bumpRev();
           /* Зеркало сыграло свою роль: то, что оно везло, теперь в базе. */
           lsDel(mirrorKey);
-          recoveryState = null;
+          /* Отложенная конфликтная правка (P2-1) уже в безопасности — её
+             отметку не стираем: модуль показывает сообщение по ней. */
+          if (!(recoveryState && recoveryState.parkedId)) recoveryState = null;
           return WRITTEN;
         })
         .catch(function (error) {
@@ -329,6 +369,29 @@
        работает. `rev` здесь — номер, НА КОТОРОМ основан блоб; сравнение при
        загрузке в этой фазе по-прежнему идёт по времени, менять правило
        разрешения конфликтов — задача следующих фаз. */
+    /** Отложить конфликтное зеркало в `snapshots`. Итог — id записи либо
+     *  null; при null зеркало НЕ стирается. Ожидание ограничено тем же
+     *  сроком, что и открытие базы: старт модуля не должен повиснуть. */
+    function parkMirror(mirror, info) {
+      var snaps = snapshotsStore();
+      if (!snaps || typeof snaps.put !== 'function' || typeof mirror.payload !== 'string') return Promise.resolve(null);
+      var id = moduleId + ':conflict-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      var record = {
+        id: id, module: moduleId, at: Number(mirror.at) || Date.now(),
+        label: '', labelKey: PARKED_LABEL_KEY, meta: null,
+        payload: mirror.payload, conflict: info,
+      };
+      var timeout = new Promise(function (resolve) {
+        global.setTimeout(function () { resolve('timeout'); }, OPEN_TIMEOUT_MS);
+      });
+      return Promise.race([snaps.put(record).then(function () { return 'ok'; }, function (e) { return e; }), timeout])
+        .then(function (r) {
+          if (r !== 'ok') { console.error('CWState: конфликтное зеркало не отложено — оставляем его на месте', r); return null; }
+          lsDel(mirrorKey);
+          return id;
+        });
+    }
+
     function writeMirror(payload) {
       cache = payload;
       return lsSet(mirrorKey, JSON.stringify({
@@ -435,9 +498,15 @@
                 console.warn('CWState: зеркало из другой линии данных — не применяем');
               }
             }
-            cache = fromDb;
-            ready = true;
-            return cache;
+            var finish = function () { cache = fromDb; ready = true; return cache; };
+            if (!recoveryState || !mirror) return finish();
+            var info = recoveryState;
+            return parkMirror(mirror, info).then(function (parkedId) {
+              if (parkedId && recoveryState === info) {
+                recoveryState = { reason: info.reason, mirrorBaseRev: info.mirrorBaseRev, canonicalRev: info.canonicalRev, parkedId: parkedId, at: Number(mirror.at) || 0 };
+              }
+              return finish();
+            });
           });
       },
 
@@ -598,8 +667,12 @@
       /** Локальное состояние основано на версии, которой на диске уже нет. */
       conflicted: function () { return baseRev < seenRev; },
 
-      /** Нерешённая ситуация со стартовым зеркалом, либо null. */
+      /** Нерешённая ситуация со стартовым зеркалом, либо null. С P2-1 при
+       *  удачном откладывании несёт `parkedId` и `at` (время правки). */
       recovery: function () { return recoveryState; },
+
+      /** Отложенные конфликтные правки этого модуля, НОВЫЕ вперёд. */
+      parked: function () { return parkedFor(moduleId); },
 
       /** Прежнее имя. Оставлено ради совместимости: это baseRev. */
       currentRev: function () { return baseRev; },
@@ -612,5 +685,9 @@
     };
   }
 
-  global.CWState = { create: create, STORE: STORE, MIRROR_PREFIX: MIRROR_PREFIX, REV_PREFIX: REV_PREFIX };
+  global.CWState = {
+    create: create, STORE: STORE, MIRROR_PREFIX: MIRROR_PREFIX, REV_PREFIX: REV_PREFIX,
+    PARKED_LABEL_KEY: PARKED_LABEL_KEY,
+    parkedFor: parkedFor, readParked: readParked, discardParked: discardParked,
+  };
 })(typeof self !== 'undefined' ? self : this);

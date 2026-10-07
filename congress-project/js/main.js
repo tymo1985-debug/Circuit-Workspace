@@ -9,7 +9,7 @@ import { openPrintColumns, planFitReduce, planFitRotate, planFitTwoPages, planFi
 import { exportSeparatePdfs, installBatchPdfActions } from "./batch-pdf.js";
 import { printWithOrientation } from "./printing.js";
 import { render, renderLists, renderSettings, renderTasks } from "./render.js";
-import { A, KEY, S, adoptTemplates, baseSettings, demo, flushNow, initState, isValidState, load, makeBackup, migrate, subscribeForeign, newC, save, store } from "./state.js";
+import { A, KEY, S, adoptTemplates, announceParked, baseSettings, demo, flushNow, initState, isValidState, load, makeBackup, migrate, subscribeForeign, newC, save, store } from "./state.js";
 import { addTask, checkProgram, drawParts, duplicateCurrent, getParts, initEtToggles, saveEdit } from "./tasks.js";
 import { openMatchReport } from "./matching.js";
 import { initMobile } from "./mobile.js";
@@ -62,7 +62,7 @@ let templatesReady=self.CWTemplates?.init?.()||Promise.resolve();
 /* ЗАЩИТА ОБНОВЛЕНИЯ: `?.ready?.()` уже безопасен к отсутствию метода, но
    оставляем явную форму — старый sender без ready() считается готовым. */
 let senderReady=(self.CWSender&&typeof self.CWSender.ready==="function")?self.CWSender.ready():Promise.resolve();
-Promise.all([initState(),senderReady]).then(()=>{load();initMobile();subscribeForeign();
+Promise.all([initState(),senderReady]).then(()=>{load();announceParked();initMobile();subscribeForeign();
 // ⚠️ Перенос идёт ПОСЛЕ load(), а не по готовности хранилища. Раньше это были
 // две несвязанные цепочки, и цепочка шаблонов стабильно приходила первой:
 // adoptTemplates() читал ещё дефолтное store.st, не находил правленых

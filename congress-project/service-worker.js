@@ -33,6 +33,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
   '../shared/sender.js',
   '../shared/persist.js',
   '../shared/state.js',
+  '../shared/parked.js',
   '../shared/snapshots.js',
   '../shared/templates.js','../shared/templates/namespaces.js','../shared/templates/builtin.js',
   '../shared/documents.js','../shared/print.js','../shared/pdfstack.js','../shared/vendor/jspdf.umd.min.js','../shared/vendor/html2canvas.min.js',

@@ -481,6 +481,18 @@ async function run() {
     ok('L: зеркало с совпадающей базовой ревизией принято', got === '{"v":"mirror"}');
   }
 
+  /* P2-1 (аудит 03): неприменимое зеркало не остаётся в localStorage до
+     первой записи (которая его стирала), а откладывается в `snapshots` с
+     labelKey 'conflict' — содержимое цело и доступно parked()/readParked(). */
+  const parkedOk = async (st, id, payload) => {
+    const r = st.recovery();
+    if (!r || !r.parkedId) return false;
+    const list = await st.parked();
+    const body = await CWState.readParked(r.parkedId);
+    return globalThis.localStorage.getItem('cw-state-mirror:' + id) === null
+      && list.some((x) => x.id === r.parkedId) && body === payload;
+  };
+
   /* M. mirror baseRev = N, canonical = N+1 → не применяется. */
   {
     await CWDB.state.mutate('rec-stale', () => ({ payload: '{"v":"canon-newer"}', rev: 5, writerId: 'w' }));
@@ -491,8 +503,13 @@ async function run() {
     const disk = await raw('rec-stale');
     ok('M: устаревшее зеркало не применяется, канон не тронут',
       got === '{"v":"canon-newer"}' && disk.rev === 5);
-    ok('M: устаревшее зеркало не удалено молча',
-      globalThis.localStorage.getItem('cw-state-mirror:rec-stale') !== null);
+    ok('M: устаревшее зеркало не удалено молча — отложено целиком',
+      await parkedOk(st, 'rec-stale', '{"v":"mirror-stale"}'));
+    await st.write('{"v":"after-write"}');
+    ok('M: первая запись не стирает отложенную правку',
+      (await CWState.readParked(st.recovery().parkedId)) === '{"v":"mirror-stale"}' && st.recovery().parkedId);
+    const pid = st.recovery().parkedId;
+    ok('M: отброшенная правка удаляется', (await CWState.discardParked(pid)) && (await CWState.readParked(pid)) === null);
   }
 
   /* N/R. mirror baseRev > canonical → смена линии данных (restore/rollback). */
@@ -504,9 +521,9 @@ async function run() {
     const got = await st.init();
     ok('N/R: зеркало с более высокой базой не отменяет восстановленный канон',
       got === '{"v":"restored"}');
-    ok('N/R: конфликт линии зафиксирован, зеркало сохранено',
-      globalThis.localStorage.getItem('cw-state-mirror:rec-lineage') !== null
-      && !!st.recovery() && st.recovery().reason === 'lineage-conflict');
+    ok('N/R: конфликт линии зафиксирован, зеркало отложено',
+      await parkedOk(st, 'rec-lineage', '{"v":"pre-restore"}')
+      && st.recovery().reason === 'lineage-conflict');
   }
 
   /* O. legacy зеркало + legacy канон → прежняя логика по времени. */
@@ -529,8 +546,8 @@ async function run() {
     const got = await st.init();
     ok('P: зеркало без ревизии не побеждает версионированный канон',
       got === '{"v":"versioned"}');
-    ok('P: такое зеркало не удалено автоматически',
-      globalThis.localStorage.getItem('cw-state-mirror:rec-mixed') !== null);
+    ok('P: такое зеркало не удалено автоматически — отложено',
+      await parkedOk(st, 'rec-mixed', '{"v":"legacy-mirror"}'));
   }
 
 

@@ -37,6 +37,7 @@
      порядок гарантирован спецификацией, а не сетевым таймингом. -->
 <script src="shared/db.js"></script>
 <script src="shared/state.js"></script>
+<script src="shared/parked.js"></script>
 <style>
   /* Шапка (вариант C, 28.09.2026): логотип и три круглые иконки. Заголовок
      и подзаголовок остаются в DOM для скринридера, визуально их заменяет
@@ -2233,6 +2234,34 @@
       });
     });
 
+    function offerParkedSender() {
+      if (!self.CWParked) return;
+      /* Аудит 03, P2-1: правка отправителя из закрытой вкладки (любого
+         модуля), которую нельзя было применить автоматически, отложена
+         общим слоем. Истории у отправителя нет — решает пользователь.
+         Восстановленной считается только подтверждённая запись: пока
+         CWSender.dirty(), отложенная копия не удаляется. */
+      self.CWParked.offerChoice('shared:sender', function (payload) {
+        if (typeof CWSender.status === 'function' && CWSender.status() === 'degraded') return false;
+        var parsed;
+        try { parsed = JSON.parse(payload); } catch (e) { return false; }
+        if (!parsed || typeof parsed !== 'object') return false;
+        var patch = {};
+        CWSender.FIELDS.forEach(function (f) { patch[f] = typeof parsed[f] === 'string' ? parsed[f] : ''; });
+        renderState(CWSender.set(patch));
+        fill();
+        return new Promise(function (resolve) {
+          var until = Date.now() + 8000;
+          (function poll() {
+            var dirty = typeof CWSender.dirty === 'function' && CWSender.dirty();
+            if (!dirty) { resolve(true); return; }
+            if (Date.now() > until) { resolve(false); return; }
+            setTimeout(poll, 200);
+          })();
+        });
+      });
+    }
+
     CWSender.onChange(fill);
     if (typeof CWSender.onStatusChange === 'function') CWSender.onStatusChange(applySenderLock);
     CWI18n.onChange(function () { renderState(CWSender.get()); });
@@ -2245,7 +2274,7 @@
        аддитивный API: нет ready() — значит sender синхронный и уже готов. */
     (self.CWSender && typeof self.CWSender.ready === 'function'
       ? self.CWSender.ready()
-      : Promise.resolve()).then(function () { fill(); applySenderLock(); });
+      : Promise.resolve()).then(function () { fill(); applySenderLock(); }).then(offerParkedSender);
   })();
 
   // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js).

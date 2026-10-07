@@ -257,6 +257,16 @@
         return chain;
       },
 
+      /** Добавить в индекс шапку записи, которую положил в базу другой слой
+       *  (CWState откладывает конфликтное зеркало, аудит 03 P2-1), — если
+       *  init() прочитал хранилище раньше, чем она туда легла. Базу не
+       *  трогает; повторный вызов с тем же id ничего не меняет. */
+      include: function (head) {
+        if (!usable || !head || !head.id || index.some(function (item) { return item.id === head.id; })) return;
+        index.push({ id: head.id, at: Number(head.at) || 0, label: head.label || '', labelKey: head.labelKey || '', meta: head.meta || null });
+        sortIndex();
+      },
+
       /** Полная запись со снимком состояния. `null` = записи нет. */
       get: function (id) {
         var db = store();

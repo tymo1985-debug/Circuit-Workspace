@@ -78,6 +78,7 @@ const APP_SHELL_URLS = [
   '../shared/i18n.js','../shared/sender.js',
   '../shared/persist.js',
   '../shared/state.js',
+  '../shared/parked.js',
   '../shared/snapshots.js',
   '../shared/templates.js','../shared/templates/namespaces.js','../shared/templates/builtin.js',
   '../shared/documents.js',
