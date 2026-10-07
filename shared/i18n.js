@@ -35,6 +35,13 @@
  * ДОБАВЛЕНИЕ ЯЗЫКА: добавить код в LANGS ниже и переводы в словари.
  * Логику трогать не нужно — ни здесь, ни в модулях.
  *
+ * ВКЛЮЧЕНИЕ/ОТКЛЮЧЕНИЕ ЯЗЫКА ИНТЕРФЕЙСА: флаг `ui` в LANGS (решение Алекса
+ * 07.10.2026). `ui: false` прячет язык из переключателей интерфейса и
+ * откатывает сохранённый выбор на запасной язык, но словари и языки
+ * документов не трогает: LANGS остаётся полным реестром эндонимов,
+ * а явный язык в t()/apply() по-прежнему работает для всех кодов.
+ * Вернуть язык — поставить `ui: true`.
+ *
  * `self` вместо `window` — чтобы файл можно было безопасно подключить и
  * через importScripts() в service worker'е (как shared/version.js).
  */
@@ -55,12 +62,15 @@
   var LANGS = [
     { code: 'ru', label: 'Русский' },
     { code: 'uk', label: 'Українська' },
-    { code: 'en', label: 'English' },
-    { code: 'pl', label: 'Polski' },
+    { code: 'en', label: 'English', ui: false },
+    { code: 'pl', label: 'Polski', ui: false },
     { code: 'de', label: 'Deutsch' },
   ];
 
   var CODES = LANGS.map(function (l) { return l.code; });
+  /* Языки, доступные для выбора интерфейса. Отсутствие флага = включён. */
+  var UI_LANGS = LANGS.filter(function (l) { return l.ui !== false; });
+  var UI_CODES = UI_LANGS.map(function (l) { return l.code; });
 
   var dicts = {};        // { ru: { 'hub.title': '…' }, uk: { … } }
   var listeners = [];
@@ -90,6 +100,14 @@
     return CODES.indexOf(code) >= 0 ? code : null;
   }
 
+  /* Как normalize(), но только среди включённых языков интерфейса:
+     сохранённый в хранилище отключённый язык не выбирается, а значение
+     в хранилище остаётся нетронутым — включение языка вернёт его само. */
+  function normalizeUi(value) {
+    var code = normalize(value);
+    return code && UI_CODES.indexOf(code) >= 0 ? code : null;
+  }
+
   function moduleKey() {
     return moduleId ? MODULE_KEY_PREFIX + moduleId : null;
   }
@@ -97,7 +115,7 @@
   function fromBrowser() {
     var list = (global.navigator && (global.navigator.languages || [global.navigator.language])) || [];
     for (var i = 0; i < list.length; i++) {
-      var code = normalize(list[i]);
+      var code = normalizeUi(list[i]);
       if (code) return code;
     }
     return null;
@@ -105,8 +123,8 @@
 
   function resolve() {
     var key = moduleKey();
-    return (key && normalize(read(key)))
-      || normalize(read(HUB_KEY))
+    return (key && normalizeUi(read(key)))
+      || normalizeUi(read(HUB_KEY))
       || fromBrowser()
       || FALLBACK;
   }
@@ -198,6 +216,7 @@
   /* --- Публичный API -------------------------------------------------- */
   var CWI18n = {
     LANGS: LANGS,
+    UI_LANGS: UI_LANGS,
     FALLBACK: FALLBACK,
 
     /**
@@ -319,7 +338,7 @@
         var select = el();
         if (!select) return;
         var options = [{ code: HUB_VALUE, label: CWI18n.t('common.language_inherit') }]
-          .concat(CWI18n.LANGS.map(function (l) { return { code: l.code, label: l.label }; }));
+          .concat(CWI18n.UI_LANGS.map(function (l) { return { code: l.code, label: l.label }; }));
         select.innerHTML = options.map(function (item) {
           /* Значения — коды языков из реестра, но экранирование ставится по
              правилу, а не по разбору: подписи приходят из словарей, а словарь
@@ -371,10 +390,10 @@
     getLang: function () { return current || (current = resolve()); },
 
     /** Язык, выбранный в хабе (без учёта локального переопределения). */
-    getHubLang: function () { return normalize(read(HUB_KEY)) || fromBrowser() || FALLBACK; },
+    getHubLang: function () { return normalizeUi(read(HUB_KEY)) || fromBrowser() || FALLBACK; },
 
     /** true — модуль следует за хабом (своего выбора нет). */
-    isInherited: function () { return !moduleId || !normalize(read(moduleKey())); },
+    isInherited: function () { return !moduleId || !normalizeUi(read(moduleKey())); },
 
     /**
      * @param {string} lang
@@ -384,7 +403,7 @@
      *   экосистемы — использовать осознанно.
      */
     setLang: function (lang, options) {
-      var code = normalize(lang);
+      var code = normalizeUi(lang);
       if (!code) return CWI18n.getLang();
       var scope = (options && options.scope) || (moduleId ? 'module' : 'hub');
 

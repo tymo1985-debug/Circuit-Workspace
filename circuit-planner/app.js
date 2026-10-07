@@ -1939,7 +1939,11 @@
           // опции «Как в Circuit Workspace» сдвинуло бы их все. Теперь
           // сопоставление идёт по value и от порядка не зависит.
           const NATIVE = { ru: 'Русский', en: 'English', uk: 'Українська', pl: 'Polski', de: 'Deutsch' };
+          // Отключённые языки интерфейса (флаг `ui` в shared/i18n.js) убираются
+          // из списка: `hidden` на <option> iOS Safari не соблюдает.
+          const uiCodes = (typeof CWI18n !== 'undefined' && CWI18n.UI_LANGS) ? CWI18n.UI_LANGS.map((l) => l.code) : null;
           Array.from(App.els.languageSelect.options).forEach((opt) => {
+            if (uiCodes && NATIVE[opt.value] && uiCodes.indexOf(opt.value) < 0) { opt.remove(); return; }
             if (opt.value === App.i18nBridge.HUB_VALUE) {
               opt.textContent = App.i18nBridge.ready() ? CWI18n.t('common.language_inherit') : 'Как в Circuit Workspace';
             } else if (NATIVE[opt.value]) {
@@ -4949,6 +4953,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
 
       toSupported(lang) {
         const code = this.NEAREST[lang] || lang;
+        // Отключённый язык интерфейса (флаг `ui` в shared/i18n.js) — к 'ru'.
+        const ui = (this.ready() && CWI18n.UI_LANGS) ? CWI18n.UI_LANGS.map((l) => l.code) : null;
+        if (ui && !ui.includes(code)) return 'ru';
         return this.SUPPORTED.includes(code) ? code : 'ru';
       },
 
@@ -4963,7 +4970,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!CWI18n.isInherited()) {
           settings.language = this.toSupported(CWI18n.getLang());
         } else if (hadSavedData) {
-          CWI18n.setLang(settings.language || 'ru', { scope: 'module' });
+          settings.language = this.toSupported(settings.language || 'ru');
+          CWI18n.setLang(settings.language, { scope: 'module' });
         } else {
           settings.language = this.toSupported(CWI18n.getHubLang());
         }

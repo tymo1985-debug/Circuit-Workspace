@@ -1690,7 +1690,8 @@
 
     // Опции строим из реестра языков, а не из разметки: добавление языка =
     // одна строка в shared/i18n.js + переводы, без правки HTML.
-    CWI18n.LANGS.forEach(function (lang) {
+    // Только включённые языки интерфейса (флаг `ui` в реестре).
+    CWI18n.UI_LANGS.forEach(function (lang) {
       var option = document.createElement('option');
       option.value = lang.code;
       option.textContent = lang.label;
