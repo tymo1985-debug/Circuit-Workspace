@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.42.49';
+self.CW_VERSION = '0.42.50';
 
 /**
  * Реестр модулей хаба.
@@ -35,7 +35,7 @@ self.CW_VERSION = '0.42.49';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы', version: '4.48.27', worker: 'congress-project/service-worker.js' },
+  'congress-project': { title: 'Конгрессы', version: '4.48.28', worker: 'congress-project/service-worker.js' },
   'circuit-planner':  { title: 'Клиндарий', version: '9.106.5', worker: 'circuit-planner/sw.js' },
   'pioneer-school':   { title: 'Школа пионеров', version: '1.14.132', worker: 'pioneer-school/sw.js' },
   'appointments':     { title: 'Назначения', version: '5.5.171', worker: 'appointments/sw.js' },
