@@ -3284,7 +3284,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
 
         const drawHeader = () => {
           doc.setFont(FONT, 'normal'); doc.setFontSize(9.5); doc.setTextColor(60, 64, 74);
-          const sndr = App.shared.sender(); const lines = [sndr.name, sndr.address, [sndr.phone1].filter(Boolean).join(' '), sndr.email].filter(Boolean);
+          const sndr = App.shared.sender(); const lines = [sndr.name, sndr.address, [sndr.phone1].filter(Boolean).join(' '), sndr.email].filter(Boolean)
+            .flatMap((v) => String(v).split(/\r?\n/)).map((v) => v.trim()).filter(Boolean);
           let hy = margin;
           lines.forEach((line) => { doc.text(line, pageW - margin, hy, { align: 'right' }); hy += 13; });
           doc.setTextColor(30, 34, 44);
