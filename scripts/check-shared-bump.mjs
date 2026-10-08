@@ -103,6 +103,14 @@ try {
   console.log('  · не git-репозиторий — проверить нечем');
   process.exit(2);
 }
+/* Незакоммиченная правка shared/* — это и есть будущий выпуск: база — HEAD.
+   Работает и в `--depth 1`, где HEAD~1 нет. Без этого локальный гейт
+   ПРОПУСКАЛ проверку, а CI (fetch-depth: 2) её проваливал уже после push. */
+if (!base) {
+  let dirty = '';
+  try { dirty = git(['status', '--porcelain', '--', 'shared/']); } catch { dirty = ''; }
+  if (dirty) base = git(['rev-parse', 'HEAD']);
+}
 if (!base) {
   try { base = git(['rev-parse', 'HEAD~1']); } catch { base = ''; }
 }
