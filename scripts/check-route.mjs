@@ -178,5 +178,33 @@ ok(/function setView[\s\S]*invalidateSize\(\)[\s\S]*fittedYear = null/.test(src)
 ok(!/sessionStorage\.setItem\([^)]*mobileView|localStorage/.test(code), 'выбор вкладки только в памяти');
 for (const k of ['route_tab_list', 'route_tab_map']) ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
 
+console.log('R9: полугодия служебного года');
+const hb1 = R.halfBounds(2026, 1), hb2 = R.halfBounds(2026, 2);
+ok(hb1.from === '2026-09-01' && hb1.to === '2027-03-01' && hb2.from === '2027-03-01' && hb2.to === '2027-09-01', 'границы: сент–февр и март–авг, «до» не входит');
+ok(hb1.to === hb2.from, 'полугодия смыкаются без разрыва и пересечения');
+const hm = R.halfMonths(2026, 1), hm2 = R.halfMonths(2026, 2);
+ok(hm.map((m) => m.m + 1).join() === '9,10,11,12,1,2' && hm[0].y === 2026 && hm[5].y === 2027 && hm2.map((m) => m.m + 1).join() === '3,4,5,6,7,8' && hm2[0].y === 2027, 'месяцы полугодий и их календарные годы');
+const ho = (d) => R.halfOf(d);
+ok(ho('2026-09-01').year === 2026 && ho('2026-09-01').half === 1 && ho('2027-02-28').year === 2026 && ho('2027-02-28').half === 1, 'halfOf: 1 сент и 28 февр — первое полугодие');
+ok(ho('2027-03-01').year === 2026 && ho('2027-03-01').half === 2 && ho('2027-08-31').half === 2 && ho('2027-09-01').year === 2027 && ho('2027-09-01').half === 1, 'halfOf: 1 март и 31 авг — второе; 1 сент следующего года — новый год');
+ok(R.monthSlot('2026-09-15') === 0 && R.monthSlot('2027-02-01') === 5 && R.monthSlot('2027-03-10') === 0 && R.monthSlot('2027-08-10') === 5, 'номер месяца в полугодии 0…5 (цвет)');
+const ev9 = { a: { name: 'A', lat: 1, lng: 1 } };
+const ents = [
+  { id: 'h1a', eventId: 'a', start: '2026-09-07', end: '2026-09-13' },
+  { id: 'h1b', eventId: 'a', start: '2027-02-22', end: '2027-02-28' },
+  { id: 'h2a', eventId: 'a', start: '2027-03-01', end: '2027-03-07' },
+  { id: 'h2b', eventId: 'a', start: '2027-08-23', end: '2027-08-29' },
+];
+const c1 = R.collect(ents, (id) => ev9[id], hb1), c2 = R.collect(ents, (id) => ev9[id], hb2);
+ok(c1.map((r) => r.id).join() === 'h1a,h1b' && c2.map((r) => r.id).join() === 'h2a,h2b', 'collect с range: запись попадает ровно в одно полугодие');
+ok(c2[0].n === 1 && c2[1].n === 2, 'номера 1…N считаются внутри полугодия');
+ok(R.collect(ents, (id) => ev9[id]).length === 4, 'без range collect работает как раньше');
+ok(R.collect([{ id: 'x', eventId: 'a', start: '2027-02-27', end: '2027-03-05' }], (id) => ev9[id], hb1).length === 1, 'визит на стыке февраль/март относится к полугодию по дате НАЧАЛА');
+ok(/function scope\(\)|const scope = \(\) => year \+ '\.' \+ half/.test(src) && !/draftWrite\(year|draftRead\(year/.test(src), 'черновик хранится по ключу «год.полугодие»');
+ok(/halfBounds\(year, half\)/.test(src) && /renderHalfButtons/.test(src) && /renderLegend/.test(src), 'экран: срез по полугодию, переключатель, легенда');
+ok(/function drawArrows[\s\S]*map\.project/.test(src) && /zoomend/.test(src), 'стрелки направления считаются в проекции карты и обновляются при масштабировании');
+ok(!/sessionStorage\.setItem\([^)]*half/.test(code) && !/localStorage/.test(code), 'выбор полугодия только в памяти');
+for (const k of ['route_half', 'route_half_1', 'route_half_2', 'route_none_half', 'route_leg_avg']) ok(dict.split(`'cp.${k}':`).length - 1 === 5, `ключ cp.${k} во всех 5 языках`);
+
 if (failed) { console.error(`\nПровалено: ${failed}`); process.exit(1); }
 console.log('\nOK');

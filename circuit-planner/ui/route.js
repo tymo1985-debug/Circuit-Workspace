@@ -77,6 +77,15 @@
 //    в памяти. Карта, созданная в скрытом блоке, не знает своего размера:
 //    при первом показе вкладки — invalidateSize и перепривязка к точкам.
 //    Шире 900px вкладки скрыты, оба блока видны рядом, как раньше.
+//  • R9: решения Алекса 08.10.2026. Экран показывает ОДНО ПОЛУГОДИЕ служебного
+//    года (сент–февр / март–авг), режима «весь год» нет. Полугодие — срез
+//    `calRows` по дате НАЧАЛА записи; всё ниже по течению (номера 1…N, дом как
+//    точка 0, черновик, оптимизация, сравнение, применение, прошедшие записи)
+//    работает по этому срезу и отдельно кода не требует. Черновик хранится
+//    по ключу «год.полугодие» (sessionStorage, как и раньше). Выбор полугодия —
+//    только в памяти. Цвет точек и отрезков — по месяцу (для черновика — по
+//    месяцу СЛОТА), стрелки направления — на серединах отрезков, легенда —
+//    под картой. Данные, схема и расчёт OSRM не затронуты.
 (function (root) {
   'use strict';
 
@@ -87,11 +96,13 @@
    * entries — записи календаря; getEvent(id) → событие | null.
    * Возвращает строки в календарном порядке (start, end, id) с номерами 1…N.
    * Запись с невалидной датой начала пропускается — её нечем упорядочить.
+   * range ({from,to}, R9) — только записи, чей start в [from, to).
    */
-  function collect(entries, getEvent) {
+  function collect(entries, getEvent, range) {
     const rows = [];
     (Array.isArray(entries) ? entries : []).forEach((entry) => {
       if (!entry || typeof entry !== 'object' || !ISO.test(String(entry.start || ''))) return;
+      if (range && !inRange(entry.start, range)) return;
       const ev = (typeof getEvent === 'function' ? getEvent(entry.eventId) : null) || {};
       rows.push({
         id: String(entry.id || ''),
@@ -112,6 +123,36 @@
     rows.forEach((row, i) => { row.n = i + 1; });
     return rows;
   }
+
+  /* R9: полугодия. Месяц начала служебного года — из общего слоя
+     (CWServiceYear.START_MONTH), второго определения здесь нет. */
+  function startMonth() {
+    const s = root.CWServiceYear && root.CWServiceYear.START_MONTH;
+    return Number.isInteger(s) ? s : 8;
+  }
+  function isoMonth(y, m0) {
+    return (y + Math.floor(m0 / 12)) + '-' + String(((m0 % 12) + 12) % 12 + 1).padStart(2, '0') + '-01';
+  }
+  /** { from, to } — ISO-даты, to не входит. half: 1 (сент–февр) | 2 (март–авг). */
+  function halfBounds(year, half) {
+    const base = startMonth() + (half === 2 ? 6 : 0);
+    return { from: isoMonth(year, base), to: isoMonth(year, base + 6) };
+  }
+  /** Шесть месяцев полугодия: [{ y, m }] (m — 0…11). */
+  function halfMonths(year, half) {
+    const base = startMonth() + (half === 2 ? 6 : 0);
+    return [0, 1, 2, 3, 4, 5].map((i) => ({ y: year + Math.floor((base + i) / 12), m: (base + i) % 12 }));
+  }
+  /** Служебный год и полугодие, к которым относится ISO-дата. */
+  function halfOf(iso) {
+    const y = Number(String(iso).slice(0, 4)), m = Number(String(iso).slice(5, 7)) - 1, sm = startMonth();
+    return { year: m >= sm ? y : y - 1, half: (m - sm + 12) % 12 < 6 ? 1 : 2 };
+  }
+  /** Номер месяца ISO-даты внутри полугодия, 0…5 (для цвета). */
+  function monthSlot(iso) {
+    return ((Number(String(iso).slice(5, 7)) - 1 - startMonth() + 12) % 12) % 6;
+  }
+  function inRange(iso, range) { return !range || (iso >= range.from && iso < range.to); }
 
   function summarize(rows) {
     const missing = rows.filter((r) => !r.hasCoords).length;
@@ -280,7 +321,7 @@
     return out;
   }
 
-  root.CPRoute = { collect, summarize, pathLength, points, applyOrder, move, moved, optimize, pinPast, applyPlan };
+  root.CPRoute = { collect, halfBounds, halfMonths, halfOf, monthSlot, inRange, summarize, pathLength, points, applyOrder, move, moved, optimize, pinPast, applyPlan };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -292,7 +333,10 @@
     let year = null;           // выбранный служебный год; только в памяти вкладки
     let rows = [];
     let selectedId = null;     // подсветка строки/точки; только в памяти
-    let map = null, pinsLayer = null, lineLayer = null, tileLayer = null;
+    let half = null;           // R9: 1 (сент–февр) | 2 (март–авг); только в памяти вкладки
+    let halfCounts = [0, 0];   // R9: посещений в каждом полугодии выбранного года
+    let map = null, pinsLayer = null, lineLayer = null, arrowLayer = null, tileLayer = null;
+    let legSegs = [];          // R9: отрезки текущей линии для стрелок направления
     let drawnSig = '', fittedYear = null, tileError = false, leafletPromise = null;
     let pts = [];              // точки маршрута (дом + строки с координатами)
     const legMemo = new Map(); // кэш дорожных отрезков в памяти вкладки
@@ -302,7 +346,7 @@
     const Legs = () => root.CPRouteLegs;
     let calRows = [];          // строки в календарном порядке
     let calPts = [], draftPts = null; // R5: точки обоих порядков (draftPts — если черновик есть)
-    let draft = null, draftYear = null; // R4: { on, order, locks } | null
+    let draft = null, draftScope = null; // R4: { on, order, locks } | null
     let focusAfter = null;     // [id, селектор] — вернуть фокус после перерисовки
     let optNote = '', optUndo = null; // R6: итог последнего предложения; откат (только в памяти)
     let mobileView = 'list';   // R8: 'list' | 'map' (≤900px); только в памяти
@@ -310,7 +354,11 @@
     let pastIds = new Set();   // R7: прошедшие записи — всегда на месте
     const effLocks = () => (draft ? draft.locks : []).concat(Array.from(pastIds).filter((id) => !(draft && draft.locks.includes(id))));
 
+    // R9: цвета месяцев полугодия (6 шт.), легенда — под картой. Дом — зелёный отдельно.
+    const MONTH_COLORS = ['#1f5fbf', '#d55e00', '#7b3fa0', '#b07d00', '#c2185b', '#546e7a'];
+    const scope = () => year + '.' + half;
     // R4: черновик — ЕДИНСТВЕННАЯ запись экрана, только sessionStorage.
+    // R9: ключ — «год.полугодие» (черновик живёт на срезе полугодия).
     const draftKey = (y) => 'cp.route.draft.' + y;
     function draftRead(y) {
       try {
@@ -380,9 +428,14 @@
       return slot && slot.id !== row.id ? slot : row;
     }
 
+    // R9: цвет — по месяцу даты слота (в черновике слот ≠ собственная дата).
+    const colorOf = (row) => MONTH_COLORS[monthSlot(slotOf(row).start)];
+    const monthName = (mo) => new Date(mo.y, mo.m, 1).toLocaleDateString(App.utils.lang(), { month: 'short' });
+    const monthYear = (mo) => `${monthName(mo)} ${mo.y}`;
+
     function rowHtml(row) {
       const badge = row.hasCoords
-        ? `<span class="route-n">${row.n}</span>`
+        ? `<span class="route-n" style="background:${colorOf(row)}">${row.n}</span>`
         : `<span class="route-n route-n-off" aria-hidden="true">–</span>`;
       const typeLabel = row.visitType ? App.utils.visitTypeLabel(row.visitType) : '';
       const leg = legByRow.get(row.id);
@@ -451,7 +504,7 @@
         .concat(sent.length ? ['', t('route_apply_warn'), ...sent] : [])
         .concat(['', t('route_apply_restore')]).join('\n');
       if (!window.confirm(msg)) return;
-      const applyYear = year;
+      const applyScope = scope();
       try { App.store.flushNow('snapshot'); } catch (_) { /* не фатально */ }
       /* Аудит 03, P2-3 — тот же контракт, что у A5 (archive-year.js,
          backupFirst): подтверждение обещает откат через «Историю изменений»,
@@ -470,7 +523,7 @@
         });
         App.store.save();
         draft = null; optNote = ''; optUndo = null;
-        draftWrite(applyYear, null);
+        draftWrite(applyScope, null);
         App.utils.toast(t('route_apply_done', { n: plan.length }));
         App.ui.renderAll();
       });
@@ -484,14 +537,14 @@
       draft = draft || { on: true, order: [], locks: [] };
       draft.on = true; draft.order = res.order;
       optNote = t('route_opt_done', { before: fmtKm(res.before), after: fmtKm(res.after), diff: fmtKm(res.before - res.after) });
-      draftWrite(year, draft);
+      draftWrite(scope(), draft);
       render();
     }
 
     function draftOptUndo() {
       if (!optUndo) return;
-      if (optUndo.existed) { draft.order = optUndo.order; draft.on = optUndo.on; draftWrite(year, draft); }
-      else { draft = null; draftWrite(year, null); }
+      if (optUndo.existed) { draft.order = optUndo.order; draft.on = optUndo.on; draftWrite(scope(), draft); }
+      else { draft = null; draftWrite(scope(), null); }
       optUndo = null; optNote = '';
       render();
     }
@@ -509,7 +562,7 @@
       } else if (act === 'reset') {
         draft = null;
       }
-      draftWrite(year, draft);
+      draftWrite(scope(), draft);
       render();
     }
 
@@ -517,7 +570,7 @@
       if (!draft || !draft.on) return;
       optNote = ''; optUndo = null;
       draft.order = move(rows.map((r) => r.id), effLocks(), id, dir);
-      draftWrite(year, draft);
+      draftWrite(scope(), draft);
       focusAfter = [id, `[data-route-move="${dir}"]`];
       render();
     }
@@ -526,7 +579,7 @@
       if (!draft || !draft.on || pastIds.has(id)) return;
       optNote = ''; optUndo = null;
       draft.locks = draft.locks.includes(id) ? draft.locks.filter((x) => x !== id) : draft.locks.concat(id);
-      draftWrite(year, draft);
+      draftWrite(scope(), draft);
       focusAfter = [id, '[data-route-lock]'];
       render();
     }
@@ -544,7 +597,11 @@
     function skeleton(host) {
       host.innerHTML = `<div class="md-card route-card">
         <div class="small route-sub">${esc(t('route_sub'))}</div>
-        <label class="small route-year">${esc(t('route_year'))} <select id="routeYearSelect"></select></label>
+        <div class="route-period">
+          <label class="small route-year">${esc(t('route_year'))} <select id="routeYearSelect"></select></label>
+          <div class="route-halves" role="group" aria-label="${esc(t('route_half'))}">
+            <button type="button" class="md-btn md-btn-outlined md-state-layer route-half" data-route-half="1" id="routeHalf1"></button>
+            <button type="button" class="md-btn md-btn-outlined md-state-layer route-half" data-route-half="2" id="routeHalf2"></button></div></div>
         <div class="route-draft-bar" id="routeDraftBar"></div>
         <div class="small route-summary" id="routeSummary"></div>
         <div class="route-road"><span class="small" id="routeRoad"></span>
@@ -556,7 +613,8 @@
         <div class="route-layout" id="routeLayout" data-view="list">
           <div class="route-list" id="routeList"></div>
           <div class="route-map-pane" id="routeMapPane"><div class="route-map" id="routeMap"></div>
-            <div class="small route-map-note" id="routeMapNote" hidden></div></div>
+            <div class="small route-map-note" id="routeMapNote" hidden></div>
+            <div class="small route-legend" id="routeLegend"></div></div>
         </div></div>`;
     }
 
@@ -591,21 +649,43 @@
     }
 
     function pinIcon(row, active) {
-      return L.divIcon({ className: 'route-pin' + (active ? ' is-active' : ''), html: `<span>${row.n}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+      return L.divIcon({ className: 'route-pin' + (active ? ' is-active' : ''), html: `<span style="background:${colorOf(row)}">${row.n}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+    }
+
+    // R9: стрелка на середине отрезка; угол — в проекции карты, поэтому от масштаба
+    // не зависит. Короткие (на экране) отрезки без стрелки — иначе она лежит на точках.
+    function drawArrows() {
+      if (!map || !arrowLayer) return;
+      arrowLayer.clearLayers();
+      const z = map.getZoom();
+      legSegs.forEach((s) => {
+        const p = map.project([s.a.lat, s.a.lng], z), q = map.project([s.b.lat, s.b.lng], z);
+        const dx = q.x - p.x, dy = q.y - p.y;
+        if (Math.hypot(dx, dy) < 56) return;
+        const mid = map.unproject(L.point(p.x + dx / 2, p.y + dy / 2), z);
+        const deg = (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1);
+        L.marker(mid, { icon: L.divIcon({ className: 'route-arrow', html: `<span style="color:${s.color};transform:rotate(${deg}deg)">▶</span>`, iconSize: [16, 16], iconAnchor: [8, 8] }), interactive: false, keyboard: false }).addTo(arrowLayer);
+      });
     }
 
     function drawMap() {
       if (!map) return;
       const ghost = draft && draft.on && moved(calRows, rows) ? calPts : null;
-      const sig = year + '|' + pts.map((r) => [r.id, r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId
+      const sig = scope() + '|' + pts.map((r) => [r.id, r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId
         + '|' + (ghost ? ghost.map((r) => r.id).join(',') : '');
       if (sig === drawnSig) return;
       drawnSig = sig;
-      pinsLayer.clearLayers(); lineLayer.clearLayers();
+      pinsLayer.clearLayers(); lineLayer.clearLayers(); arrowLayer.clearLayers(); legSegs = [];
       if (!pts.some((r) => !r.home)) { setMapNote(t('map_no_coords')); return; }
       if (!tileError) setMapNote('');
       if (ghost && ghost.length > 1) L.polyline(ghost.map((r) => [r.lat, r.lng]), { color: '#7a7f8c', weight: 2, opacity: 0.8, dashArray: '6 6', interactive: false }).addTo(lineLayer);
-      if (pts.length > 1) L.polyline(pts.map((r) => [r.lat, r.lng]), { color: '#3b6fd8', weight: 3, opacity: 0.85 }).addTo(lineLayer);
+      // R9: каждый отрезок — цвета месяца посещения, куда он ведёт; направление — стрелкой.
+      for (let i = 1; i < pts.length; i++) {
+        const seg = { a: pts[i - 1], b: pts[i], color: colorOf(pts[i]) };
+        legSegs.push(seg);
+        L.polyline([[seg.a.lat, seg.a.lng], [seg.b.lat, seg.b.lng]], { color: seg.color, weight: 3, opacity: 0.9 }).addTo(lineLayer);
+      }
+      drawArrows();
       pts.forEach((r) => {
         if (r.home) {
           L.marker([r.lat, r.lng], { icon: L.divIcon({ className: 'route-pin is-home', html: '<span>⌂</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), keyboard: false, title: t('route_home') })
@@ -617,8 +697,8 @@
         m.on('click', () => select(r.id, false));
         m.addTo(pinsLayer);
       });
-      if (fittedYear !== year) {
-        fittedYear = year;
+      if (fittedYear !== scope()) {
+        fittedYear = scope();
         if (pts.length === 1) map.setView([pts[0].lat, pts[0].lng], 10);
         else map.fitBounds(pts.map((r) => [r.lat, r.lng]), { padding: [28, 28] });
       }
@@ -636,7 +716,9 @@
           tileLayer.on('load', () => { if (tileError) { tileError = false; setMapNote(''); drawnSig = ''; drawMap(); } });
           tileLayer.addTo(map);
           lineLayer = L.layerGroup().addTo(map);
+          arrowLayer = L.layerGroup().addTo(map);
           pinsLayer = L.layerGroup().addTo(map);
+          map.on('zoomend', drawArrows);
         }
         map.invalidateSize();
         drawMap();
@@ -659,7 +741,7 @@
       const list = $('routeList');
       if (!list) return;
       const h = pts.length && pts[0].home ? pts[0] : null;
-      list.innerHTML = rows.length ? (h ? homeRowHtml(h) : '') + rows.map(rowHtml).join('') : `<div class="md-empty">${esc(t('route_none'))}</div>`;
+      list.innerHTML = rows.length ? (h ? homeRowHtml(h) : '') + rows.map(rowHtml).join('') : `<div class="md-empty">${esc(t('route_none_half'))}</div>`;
     }
 
     function home() {
@@ -691,7 +773,7 @@
       const sum = summarize(rows);
       const path = pathLength(pts, App.utils.haversineKm);
       sumEl.textContent = rows.length
-        ? [t('route_summary', { count: sum.count, missing: sum.missing }), path.legs ? t('route_km_straight', { km: fmtKm(path.km), legs: path.legs }) : ''].filter(Boolean).join(' · ')
+        ? [t('route_summary', { count: sum.count, missing: sum.missing }), path.legs ? t('route_km_straight', { km: fmtKm(path.km), legs: path.legs }) : '', path.legs > 1 ? t('route_leg_avg', { km: fmtKm(path.km / path.legs) }) : ''].filter(Boolean).join(' · ')
         : '';
       let road = '';
       if (tot && tot.roadLegs) {
@@ -767,17 +849,46 @@
       }, () => { roadState = 'failed'; renderSummary(); });
     }
 
+    // R9: переключатель полугодий (подпись — месяцы и число посещений) и легенда цветов.
+    function renderHalfButtons() {
+      [1, 2].forEach((h) => {
+        const b = $('routeHalf' + h);
+        if (!b) return;
+        const ms = halfMonths(year, h);
+        const on = h === half;
+        b.setAttribute('aria-pressed', String(on));
+        b.classList.toggle('is-active', on);
+        b.innerHTML = `<span class="route-half-t">${esc(t('route_half_' + h))} · ${halfCounts[h - 1]}</span>`
+          + `<span class="small route-half-r">${esc(monthYear(ms[0]))} – ${esc(monthYear(ms[5]))}</span>`;
+      });
+    }
+
+    function renderLegend() {
+      const el = $('routeLegend');
+      if (!el) return;
+      const used = new Set(rows.filter((r) => r.hasCoords).map((r) => monthSlot(slotOf(r).start)));
+      el.innerHTML = halfMonths(year, half).map((mo, i) => (used.has(i)
+        ? `<span class="route-legend-i"><i style="background:${MONTH_COLORS[i]}"></i>${esc(monthName(mo))}</span>` : '')).join('');
+    }
+
     function render() {
       const host = $('routeRoot');
       if (!host || App.state.selectedScreen !== 'route') return;
       if (!$('routeList')) skeleton(host);
       const years = yearsList();
-      if (!years.includes(year)) year = years.includes(App.state.selectedYear) ? App.state.selectedYear : currentYear();
+      if (!years.includes(year)) { year = years.includes(App.state.selectedYear) ? App.state.selectedYear : currentYear(); half = null; }
+      if (half !== 1 && half !== 2) {
+        const nowHalf = halfOf(App.utils.iso(new Date()));
+        half = nowHalf.year === year ? nowHalf.half : 1;
+      }
       const select_ = $('routeYearSelect');
       select_.innerHTML = years.map((y) => `<option value="${y}" ${y === year ? 'selected' : ''}>${esc(App.utils.serviceYearLabel(y))}</option>`).join('');
       const stats = App.data.getServiceYearStats(year);
-      calRows = collect(stats.visitEntries, (id) => App.data.getEventById(id));
-      if (draftYear !== year) { draftYear = year; draft = draftRead(year); optNote = ''; optUndo = null; }
+      const getEv = (id) => App.data.getEventById(id);
+      calRows = collect(stats.visitEntries, getEv, halfBounds(year, half));
+      halfCounts = [1, 2].map((h) => collect(stats.visitEntries, getEv, halfBounds(year, h)).length);
+      renderHalfButtons();
+      if (draftScope !== scope()) { draftScope = scope(); draft = draftRead(scope()); optNote = ''; optUndo = null; }
       const todayIso = App.utils.iso(new Date());
       pastIds = new Set(calRows.filter((r) => r.end < todayIso).map((r) => r.id));
       if (draft) {
@@ -797,6 +908,7 @@
       renderDraftBar();
       renderSummary();
       renderList();
+      renderLegend();
       restoreFocus();
       loadCachedLegs();
       ensureMap();
@@ -808,7 +920,7 @@
       if (!host) return;
       bound = true;
       host.addEventListener('change', (e) => {
-        if (e.target && e.target.id === 'routeYearSelect') { year = Number(e.target.value); selectedId = null; render(); }
+        if (e.target && e.target.id === 'routeYearSelect') { year = Number(e.target.value); half = null; selectedId = null; render(); }
       });
       host.addEventListener('keydown', (e) => {
         const tab = e.target && e.target.closest && e.target.closest('[data-route-tab]');
@@ -822,6 +934,8 @@
         window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (map && App.state.selectedScreen === 'route') map.invalidateSize(); }, 150); });
       }
       host.addEventListener('click', (e) => {
+        const halfBtn = e.target.closest && e.target.closest('[data-route-half]');
+        if (halfBtn) { half = Number(halfBtn.dataset.routeHalf) === 2 ? 2 : 1; selectedId = null; render(); return; }
         const tabBtn = e.target.closest && e.target.closest('[data-route-tab]');
         if (tabBtn) { setView(tabBtn.dataset.routeTab, false); return; }
         if (e.target && e.target.closest && e.target.closest('#routeRoadBtn')) { fetchRoads(); return; }
