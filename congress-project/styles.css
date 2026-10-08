@@ -1633,18 +1633,28 @@ dialog {
   .program-table tbody tr:not(.section-title) td.status-cell .status-cell__row {
     width: auto
   }
-  /* Статус — тот же <select>, но визуально чип, а не 44px-кнопка во всю
-     ширину. Цель касания 32px (WCAG 2.5.8 требует 24px): общий слой
-     форсирует 44px через !important, поэтому и здесь !important. */
+  /* Статус — тот же <select>, но визуально чип по ширине текста, а не 44px-
+     плашка. Цель касания остаётся 44px (инвариант, live-device-matrix):
+     прозрачные 6px-рамки сверху/снизу входят в зону касания, а фон обрезан
+     по padding-box — видимая высота 32px. */
   .program-table tbody tr:not(.section-title) td.status-cell .status-sel {
     width: auto;
     field-sizing: content;
-    min-width: 0 !important;
-    min-height: 32px !important;
-    height: 32px;
+    box-sizing: border-box;
+    height: 44px;
     padding: 0 12px;
+    border-block: 6px solid transparent;
+    background-clip: padding-box;
     line-height: 32px
   }
+  .program-table tbody tr:not(.section-title) td.status-cell {
+    margin-top: 0
+  }
+  .program-table tbody tr:not(.section-title) td.kind,
+  .program-table tbody tr:not(.section-title) td.reh {
+    margin-block: 4px
+  }
+
   .program-table tbody tr:not(.section-title) td.actions-cell {
     position: absolute;
     top: 4px;
