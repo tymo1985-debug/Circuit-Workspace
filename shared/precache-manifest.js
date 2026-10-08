@@ -188,7 +188,7 @@ self.CW_PRECACHE = {
   "shared/persist.js": "555c8ca4edb030ed",
   "shared/planner.js": "599c4dab94eafb15",
   "shared/print.js": "6c920ec929975a9f",
-  "shared/release-manifest.js": "6ce755db1e742c41",
+  "shared/release-manifest.js": "a6343e10894899c8",
   "shared/sender.js": "e18fede720fcd5f8",
   "shared/serviceyear.js": "2412113b8ab97c74",
   "shared/snapshots.js": "d9a07c9a97b6dedf",
@@ -208,5 +208,5 @@ self.CW_PRECACHE = {
   "shared/vendor/pdf.min.js": "1fc294eefda602e5",
   "shared/vendor/pdf.worker.min.js": "99732130603cd498",
   "shared/vendor/xlsx.full.min.js": "c9506197caf809a0",
-  "shared/version.js": "07248a04b3e6a8a3",
+  "shared/version.js": "62da6b603faa4c36",
 };
