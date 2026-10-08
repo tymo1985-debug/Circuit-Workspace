@@ -341,6 +341,7 @@
   @media (pointer:coarse){.day-cell[role="button"]{min-height:44px!important}}
   /* Плашка события — исключение из общего touch-target 44px (shared/style.css): иначе на телефоне она всегда 44px высотой. Клик по плашке сохраняется. */
   @media (pointer:coarse){.event-bar{min-height:16px!important;min-width:0!important}}
+  @media (pointer:coarse){.sy-period-bar,.sy-bar-more{min-height:0!important;min-width:0!important}}
   #calendarLayoutPresetSelect{display:none !important}
   @media (max-width:767px){body::before{display:none!important}}
  @media (max-width:1200px){body::before{display:none!important}}
