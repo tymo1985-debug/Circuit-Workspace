@@ -298,7 +298,7 @@ console.log('\n3. Пусто / наполнено');
   /* ═══ 8. Повторные обновления и подписки ═══════════════════════════════ */
   console.log('\n8. Повторные обновления');
   for (let i = 0; i < 4; i++) { await page.evaluate(() => { location.hash = '#tasks'; }); await settle(page, 150); await page.evaluate(() => { location.hash = '#overview'; }); await settle(page, 150); }
-  for (const l of ['en', 'de', 'ru']) { await page.selectOption('#uiLanguage', l); await settle(page, 200); }
+  for (const l of ['uk', 'de', 'ru']) { await page.selectOption('#uiLanguage', l); await settle(page, 200); }
   await page.evaluate(() => { CWJournalApp.wireOverviewChrome(); CWJournalApp.wireOverviewChrome(); });
   await settle(page);
   const reads = await page.evaluate(async (n) => {
