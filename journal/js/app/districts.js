@@ -1209,9 +1209,23 @@
       var vs = parseHash();
       if (!vs.congregationId) return;
       var today = todayIso();
+      var vNode = await CWJournal.nodes.get(vs.congregationId);
       openVisitDialog({
         title: t('j.dialog.new_visit'), from: today, to: today,
-        onSave: function (f, tt) { return CWJournal.visits.add({ nodeId: vs.congregationId, dateFrom: f, dateTo: tt }); },
+        planner: vNode ? { node: vNode } : null,
+        /* Связь с Клиндарием — тот же слот J9a, что и кнопка на экране
+         * посещения. Не записалась — свежее (пустое) посещение убирается,
+         * чтобы не осталось «полусозданного» состояния. */
+        onSave: async function (f, tt, entryId) {
+          var id = await CWJournal.visits.add({ nodeId: vs.congregationId, dateFrom: f, dateTo: tt });
+          if (!entryId) return id;
+          try { await CWJournal.planner.set(id, entryId); }
+          catch (err) {
+            try { await CWJournal.visits.remove(id); } catch (_) { /* остаётся без связи */ }
+            throw err;
+          }
+          return id;
+        },
         onDone: function (id) { location.hash = CWJournalRoute.build.visit(vs.circuitId, vs.congregationId, id); },
       });
       return;

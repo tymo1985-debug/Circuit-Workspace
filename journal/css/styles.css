@@ -551,6 +551,8 @@ a.j-planner__chip { color: var(--cw-module); border-color: var(--cw-module); }
 span.j-planner__chip--broken { cursor: default; }
 .j-planner__txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .j-planner__edit { width: 32px; height: 32px; }
+/* Выбор записи Клиндария в диалоге посещения (J9a): кнопка ручного ввода под списком. */
+.j-visit-src__manual { margin: -4px 0 8px; align-self: flex-start; }
 .j-planner__current { margin: var(--cw-space-2) 0 0; font: 500 13px/18px var(--md-font-family); color: var(--md-on-surface); }
 .j-planner__all { display: flex; align-items: center; gap: var(--cw-space-2); margin-top: var(--cw-space-3); font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface-variant); cursor: pointer; }
 .j-planner__radio { border-radius: 50%; }

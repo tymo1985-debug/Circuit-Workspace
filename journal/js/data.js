@@ -1550,6 +1550,19 @@
       return l ? { linkId: l.id, entryId: parseUrn(l.to).id } : null;
     },
     slotId: plannerSlotId,
+    /** Только чтение: id посещений, уже связанных с записью Клиндария
+     *  (индекс `to`). Нужен экрану, чтобы пометить занятую запись. */
+    visitsOf: async function (entryId) {
+      var to = plannerUrn(entryId);
+      var rows = await db().journalLinks.byIndex('to', to);
+      var out = [];
+      rows.forEach(function (l) {
+        if (l.rel !== PLANNER_REL) return;
+        var p = parseUrn(l.from);
+        if (p && p.scope === 'journal' && p.kind === 'entry' && out.indexOf(p.id) < 0) out.push(p.id);
+      });
+      return out;
+    },
     /** Все прямые связи посещения с Клиндарием (штатно — не больше одной). */
     list: async function (visitId) { await plannerVisit(visitId); return plannerLinksOf(visitId); },
     /** Связать/перевязать: put в слот посещения. Та же запись — без записи. */

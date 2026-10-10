@@ -691,6 +691,14 @@
         <form method="dialog" id="visitDialogForm">
           <div class="md-dialog-head"><h3 class="md-title-medium" id="visitDialogTitle"></h3></div>
           <div class="md-dialog-body">
+            <!-- Выбор записи Клиндария при создании (J9a): заполняет и блокирует даты. -->
+            <div class="j-visit-src" id="visitDialogPlanner" hidden>
+              <div class="md-field md-field-select">
+                <select id="visitDialogEntry"></select>
+                <label for="visitDialogEntry" data-i18n="j.visit.from_planner">Из календаря Клиндария</label>
+              </div>
+              <button type="button" class="md-btn md-btn-text j-visit-src__manual" id="visitDialogManual" data-i18n="j.visit.manual" hidden>Отвязать и ввести вручную</button>
+            </div>
             <div class="md-field">
               <input type="date" id="visitDialogFrom" required placeholder=" ">
               <label for="visitDialogFrom" data-i18n="j.field.date_from">Начало</label>
