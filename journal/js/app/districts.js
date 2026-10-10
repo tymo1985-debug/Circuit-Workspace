@@ -155,6 +155,52 @@
     });
   }
 
+  /* ═══ Удаление узла (0.24.0) ═══════════════════════════════════════════
+   * Пустой узел — прежний путь (nodes.remove). Узел с собственными записями
+   * или связями — только явно: счётчики в подтверждении, затем копия в файл
+   * JSON, и только потом удаление (nodes.removeWithContents). Не удалось
+   * собрать файл — удаление не начинается. Что браузер сохранил файл, из
+   * страницы увидеть нельзя: поэтому в тексте подтверждения сказано, куда
+   * смотреть. Строки в копии — сырые (защищённый текст — шифротекст). */
+  function fillText(template, values) {
+    var i = 0;
+    return String(template).replace(/%s/g, function () { return String(values[i++]); });
+  }
+  function downloadNodeExport(plan) {
+    var payload = {
+      format: 'cw-journal-node-export', version: 1, exportedAt: new Date().toISOString(),
+      node: plan.node, entries: plan.entries, links: plan.links,
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var slug = String(plan.node.label || 'node').replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 40) || 'node';
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'journal-' + slug + '-' + todayIso() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+  /** → true, если узел удалён. Отказ слоя данных — исключение. */
+  async function deleteNode(node) {
+    var plan = await CWJournal.nodes.inspectRemoval(node.id);
+    if (plan.blockers.length) { alert(errorMessage(new Error(plan.blockers[0]))); return false; }
+    if (!plan.entries.length && !plan.links.length) {
+      if (!confirm(t('j.confirm.delete').replace('%s', node.label))) return false;
+      await CWJournal.nodes.remove(node.id);
+    } else {
+      var c = plan.counts;
+      if (!confirm(fillText(t('j.confirm.delete_contents'), [node.label, c.notes, c.questions, c.todos, c.links, c.protectedCount]))) return false;
+      downloadNodeExport(plan);
+      await CWJournal.nodes.removeWithContents(node.id, { expect: plan.signature });
+    }
+    // Слой данных удалил первым (иначе исключение выше); только ПОТОМ судьба
+    // общей записи справочника — спецификация п.1D.
+    if (node.communityId) await releaseSourceIfUnused(node.communityId, node.id);
+    return true;
+  }
+
   /* ═══ Действия над узлом (общие для района/собрания/группы) ═══════════ */
   async function handleRowAction(action, node) {
     try {
@@ -173,11 +219,7 @@
         return;
       }
       if (action === 'delete') {
-        if (!confirm(t('j.confirm.delete').replace('%s', node.label))) return;
-        await CWJournal.nodes.remove(node.id);
-        // J3a safe-delete прошёл первым (throw выше отменил бы это); только
-        // ПОТОМ решаем судьбу общей записи справочника — спецификация п.1D.
-        if (node.communityId) await releaseSourceIfUnused(node.communityId, node.id);
+        if (!(await deleteNode(node))) return;
         refreshCurrentView();
         return;
       }
@@ -624,15 +666,10 @@
     };
     panel.querySelector('[data-action="delete"]').onclick = function () {
       panel.hidden = true;
-      if (!confirm(t('j.confirm.delete').replace('%s', node.label))) return;
       var circuitId = node.circuitId;
-      CWJournal.nodes.remove(node.id).then(function () {
-        // Тот же порядок и та же семантика, что у district-row delete
-        // (handleRowAction): J3a safe-delete сначала, освобождение общей
-        // записи справочника — только после его успеха.
-        return node.communityId ? releaseSourceIfUnused(node.communityId, node.id) : null;
-      }).then(function () {
-        location.hash = '#districts/' + encodeURIComponent(circuitId);
+      // Тот же путь, что у district-row delete (handleRowAction).
+      deleteNode(node).then(function (done) {
+        if (done) location.hash = '#districts/' + encodeURIComponent(circuitId);
       }).catch(function (err) { alert(errorMessage(err)); });
     };
   }

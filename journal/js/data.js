@@ -25,6 +25,7 @@
  *    обход интерфейса;
  *  - nodes.remove отказывает, если у узла есть дети, собственные записи
  *    или связи (as from/to) — каскадного удаления в J3a нет.
+ *    Явное удаление с содержимым — отдельный путь (0.24.0), см. ниже.
  *
  * Бизнес-логики визитов/задач/переноса здесь нет — только доступ к строкам.
  * J6: CWJournal.search (только чтение, в памяти, без индекса) и
@@ -349,6 +350,105 @@
     if (asFrom.length || asTo.length) throw new Error('journal-node-has-links');
     return nodesBase.remove(id);
   }
+
+  /* ─── Удаление узла вместе с его содержимым (0.24.0, решение Алекса
+   * 10.10.2026) ────────────────────────────────────────────────────────────
+   * Нужно для узла, заведённого ошибочно (например, импорт положил группу как
+   * собрание, а `kind` неизменяем — J3a). guardedRemove по-прежнему отказывает
+   * при любом содержимом; этот путь — отдельный и явный, без тихого каскада:
+   *   inspectRemoval(id) — только чтение: что будет удалено и что мешает;
+   *   removeWithContents(id, { expect }) — удаляет одним пакетом (CWDB.batch).
+   * Удаляется ТОЛЬКО: сам узел, его собственные записи note|question|todo
+   * (без fields.visitId и полей переноса) и связи, где узел или такая запись —
+   * любой конец. Отказ (без записи), если у узла есть дети, посещения, записи
+   * посещений, любая иная запись (проект и т.п.) или связь с проектом,
+   * посещением либо записью посещения (их правила «только в открытом
+   * посещении»/«архивный проект — только чтение» этим путём не обходятся).
+   * Защищённые записи удаляются без ключа (как и везде в J8) — в счётчиках
+   * они отдельно. `expect` — подпись плана, который человек подтвердил и
+   * скачал: если за это время состав изменился, отказ journal-node-changed.
+   * Пакет атомарный: записи узла сверяются с прочитанным снимком, а в конце
+   * по индексам проверяется, что ничего нового не появилось. Замок — тот же
+   * cw-journal-import, что и у импорта: удаление и импорт не идут вместе. */
+  var REMOVABLE_OWN_TYPES = ['note', 'question', 'todo'];
+  async function planNodeRemoval(id) {
+    var node = await nodesBase.get(id);
+    if (!node) throw new Error('journal-node-not-found');
+    var blockers = [];
+    function block(code) { if (blockers.indexOf(code) < 0) blockers.push(code); }
+    if ((await nodesBase.by('parentId', id)).length) block('journal-node-has-children');
+    var removable = [];
+    (await entriesBase.by('nodeId', id)).forEach(function (e) {
+      if (e.type === 'visit') block('journal-node-has-visits');
+      else if (hasVisitRef(e)) block('journal-node-has-visit-records');
+      else if (REMOVABLE_OWN_TYPES.indexOf(e.type) < 0 || hasCarryFields(e)) block('journal-node-has-other-entries');
+      else removable.push(e);
+    });
+    removable.sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
+    var own = {};
+    var refs = ['journal:node/' + id];
+    removable.forEach(function (e) { refs.push('journal:entry/' + e.id); });
+    refs.forEach(function (r) { own[r] = true; });
+    var byId = {};
+    for (var i = 0; i < refs.length; i++) {
+      var rows = (await db().journalLinks.byIndex('from', refs[i])).concat(await db().journalLinks.byIndex('to', refs[i]));
+      rows.forEach(function (l) { byId[l.id] = l; });
+    }
+    var linkRows = Object.keys(byId).sort().map(function (k) { return byId[k]; });
+    for (var j = 0; j < linkRows.length; j++) {
+      var ends = [linkRows[j].from, linkRows[j].to];
+      for (var k = 0; k < ends.length; k++) {
+        if (own[ends[k]]) continue;
+        var p = parseUrn(ends[k]);
+        if (!p || p.scope !== 'journal' || p.kind !== 'entry') continue;
+        var far = await entriesBase.get(p.id);
+        if (far && (far.type === 'project' || far.type === 'visit' || hasVisitRef(far))) block('journal-node-has-foreign-links');
+      }
+    }
+    var counts = { notes: 0, questions: 0, todos: 0, links: linkRows.length, protectedCount: 0 };
+    removable.forEach(function (e) {
+      if (e.type === 'note') counts.notes++;
+      else if (e.type === 'question') counts.questions++;
+      else counts.todos++;
+      if (e.sec) counts.protectedCount++;
+    });
+    var signature = [id + '@' + (node.updatedAt || '')]
+      .concat(removable.map(function (e) { return e.id + '@' + (e.updatedAt || ''); }))
+      .concat(linkRows.map(function (l) { return l.id; })).join('|');
+    return { node: node, entries: removable, links: linkRows, counts: counts, blockers: blockers, signature: signature };
+  }
+  function withRemovalLock(fn) {
+    var locks = global.navigator && global.navigator.locks;
+    return locks && typeof locks.request === 'function' ? locks.request('cw-journal-import', fn) : fn();
+  }
+  async function removeNodeWithContents(id, opts) {
+    opts = opts || {};
+    return withRemovalLock(async function () {
+      var plan = await planNodeRemoval(id);
+      if (plan.blockers.length) throw new Error(plan.blockers[0]);
+      if (opts.expect !== undefined && opts.expect !== plan.signature) throw new Error('journal-node-changed');
+      var ops = [{ store: 'journalNodes', type: 'expect', key: id, match: plan.node, exact: true }];
+      plan.links.forEach(function (l) { ops.push({ store: 'journalLinks', type: 'delete', key: l.id }); });
+      plan.entries.forEach(function (e) {
+        ops.push({ store: 'journalEntries', type: 'delete', key: e.id, match: e, exact: true });
+      });
+      ops.push({ store: 'journalEntries', type: 'expectNone', index: 'nodeId', value: id });
+      ['journal:node/' + id].concat(plan.entries.map(function (e) { return 'journal:entry/' + e.id; })).forEach(function (ref) {
+        ops.push({ store: 'journalLinks', type: 'expectNone', index: 'from', value: ref });
+        ops.push({ store: 'journalLinks', type: 'expectNone', index: 'to', value: ref });
+      });
+      ops.push({ store: 'journalNodes', type: 'expectNone', index: 'parentId', value: id });
+      ops.push({ store: 'journalNodes', type: 'delete', key: id });
+      try { await db().batch(ops); }
+      catch (e) {
+        if (e && e.message === 'cwdb-batch-precondition') throw new Error('journal-node-changed');
+        throw e;
+      }
+      return plan.counts;
+    });
+  }
+  nodes.inspectRemoval = planNodeRemoval;
+  nodes.removeWithContents = removeNodeWithContents;
 
   /* J8: единственная дорога записи в journalEntries — через этот набор и
      replaceEntry()/пакеты защиты; каждая итоговая строка проходит
