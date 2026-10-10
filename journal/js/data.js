@@ -456,6 +456,39 @@
       return plan.counts;
     });
   }
+  /* ─── Собрание → самостоятельная группа (0.26.0, решение Алекса 10.10.2026) ──
+   * Для узла, заведённого как собрание, хотя это группа (kind неизменяем —
+   * J3a, поэтому отдельный явный путь, а не update). Меняется ТОЛЬКО `kind`
+   * (congregation → group); родитель — район — остаётся, поэтому узел сразу
+   * самостоятельный. Посещения, их записи, задачи, заметки, связи и
+   * communityId остаются как есть: на узел они ссылаются по id.
+   * Отказ: не собрание (journal-node-convert-kind), есть дочерние
+   * группы/предгруппы (journal-node-has-children), карточка справочника уже
+   * занята другой группой/предгруппой (journal-node-community-taken — правило
+   * R2: одна карточка на одну группу). Замок — тот же cw-journal-community, что
+   * и у communityId. Пакет атомарный: узел в базе = снимку, детей нет. */
+  async function convertToStandalone(id) {
+    return withCommunityLock(async function () {
+      var node = await nodesBase.get(id);
+      if (!node) throw new Error('journal-node-not-found');
+      if (node.kind !== 'congregation') throw new Error('journal-node-convert-kind');
+      if ((await nodesBase.by('parentId', id)).length) throw new Error('journal-node-has-children');
+      if (node.communityId) await assertCommunityAllowed('group', node.communityId, id);
+      var next = Object.assign({}, node, { kind: 'group', updatedAt: now() });
+      try {
+        await db().batch([
+          { store: 'journalNodes', type: 'expect', key: id, match: node, exact: true },
+          { store: 'journalNodes', type: 'expectNone', index: 'parentId', value: id },
+          { store: 'journalNodes', type: 'put', value: next },
+        ]);
+      } catch (e) {
+        if (e && e.message === 'cwdb-batch-precondition') throw new Error('journal-node-changed');
+        throw e;
+      }
+      return next;
+    });
+  }
+  nodes.convertToStandalone = convertToStandalone;
   nodes.inspectRemoval = planNodeRemoval;
   nodes.removeWithContents = removeNodeWithContents;
 
@@ -2122,12 +2155,17 @@
   }
   /** kind — вид узла-владельца; prefix — префикс кодов ошибок фасада. */
   function makeNodeNotes(kind, prefix) {
+    /* 0.26.0: записи собрания ведут и самостоятельные группы/предгруппы
+       (после «Преобразовать в самостоятельную группу» у узла уже могут быть
+       заметки собрания — прятать их было бы потерей). Вложенные группы по-
+       прежнему не владеют записями. */
+    function owns(n) { return !!n && (n.kind === kind || (kind === 'congregation' && isStandaloneNode(n))); }
     async function ownerOf(r) {
       if (!isNodeNoteRow(r)) return null;
       if (kind === 'circuit') return r.nodeId === r.circuitId ? r : null;
       if (r.nodeId === r.circuitId) return null;
       var n = await nodesBase.get(r.nodeId);
-      return n && n.kind === kind ? r : null;
+      return owns(n) ? r : null;
     }
     async function noteOrThrow(id) {
       var r = await ownerOf(await entriesBase.get(id));
@@ -2142,7 +2180,7 @@
       list: async function (ownerId) {
         if (!ownerId) return [];
         var node = await nodesBase.get(ownerId);
-        if (!node || node.kind !== kind) return [];
+        if (!owns(node)) return [];
         var rows = (await entriesBase.by('nodeId', ownerId)).filter(function (r) {
           return isNodeNoteRow(r) && (kind === 'circuit' ? r.nodeId === r.circuitId : r.nodeId !== r.circuitId);
         });
@@ -2152,7 +2190,7 @@
         record = record || {};
         if (NODE_NOTE_TYPES.indexOf(record.type) === -1) throw new Error(prefix + '-invalid-type');
         var node = ownerId ? await nodesBase.get(ownerId) : null;
-        if (!node || node.kind !== kind || !node.circuitId) throw new Error('journal-node-not-found');
+        if (!owns(node) || !node.circuitId) throw new Error('journal-node-not-found');
         if (node.status === 'archived') throw new Error(prefix + '-readonly');
         if (node.circuitId !== node.id) {
           var circuit = await nodesBase.get(node.circuitId);

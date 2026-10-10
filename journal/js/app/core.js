@@ -167,6 +167,8 @@
       'journal-node-has-other-entries': 'j.error.node_has_other',
       'journal-node-has-foreign-links': 'j.error.node_foreign_links',
       'journal-node-changed': 'j.error.node_changed',
+      'journal-node-convert-kind': 'j.error.convert_kind',
+      'journal-node-community-taken': 'j.error.convert_card_taken',
       'journal-invalid-hierarchy': 'j.error.invalid_hierarchy',
       'journal-immutable-kind': 'j.error.immutable_kind',
       'journal-immutable-parent': 'j.error.immutable_parent',

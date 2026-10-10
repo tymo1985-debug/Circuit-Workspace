@@ -93,7 +93,7 @@ ok('destFor ведёт на страницу самостоятельной гр
 const districts = read('journal/js/app/districts.js');
 ok('список района и страница — по isHostNode', districts.includes('.filter(isHostNode)') && districts.includes('!isHostNode(node) || node.circuitId !== circuitId'));
 ok('блоки собрания прячутся у группы', districts.includes("$('#congIdentityCard').hidden = !isCong") && districts.includes("$('#congChildrenSec').hidden = !isCong"));
-ok('«Записи» у группы сводятся к «Обзору»', districts.includes("tab === 'entries' && node.kind !== 'congregation'"));
+ok('«Записи» у самостоятельной группы доступны (0.26.0)', !districts.includes("tab === 'entries' && node.kind !== 'congregation'") && districts.includes('congEntriesTitle'));
 ok('страница посещения принимает самостоятельную группу', read('journal/js/app/visits.js').includes('!isHostNode(node) || node.circuitId !== circuitId'));
 ok('разметка: id секции дочерних групп', read('journal/index.html').includes('id="congChildrenSec"'));
 const imp = read('journal/js/app/import.js');

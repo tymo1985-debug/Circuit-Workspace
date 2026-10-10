@@ -124,7 +124,7 @@ ok('страница открыта по маршруту собрания', pj.
 ok('заголовок — название группы', (await pj.locator('#congTitle').textContent()).trim() === 'Group (Ukrainian) Leipzig-Russian');
 ok('подпись «группа · отдельная, без собрания»', (await pj.locator('#congMeta').textContent()).includes('отдельная, без собрания'), await pj.locator('#congMeta').textContent());
 ok('карточка собрания и блок дочерних групп скрыты', await pj.locator('#congIdentityCard').isHidden() && await pj.locator('#congChildrenSec').isHidden());
-ok('вкладки: «Записи» скрыта, «Посещения» есть', await pj.locator('[data-cong-tab="entries"]').isHidden() && await pj.locator('[data-cong-tab="visits"]').isVisible());
+ok('вкладки: «Записи» и «Посещения» есть', await pj.locator('[data-cong-tab="entries"]').isVisible() && await pj.locator('[data-cong-tab="visits"]').isVisible());
 const menu = await pj.evaluate(() => [...document.querySelectorAll('#moreMenuPanel [data-action]')].map((b) => b.dataset.action));
 ok('меню без «добавить группу/предгруппу»', !menu.includes('add-group') && !menu.includes('add-pregroup') && menu.includes('delete') && menu.includes('rename'), JSON.stringify(menu));
 
@@ -151,14 +151,41 @@ await pj.locator('#rosterList a', { hasText: 'Leipzig-Russian' }).first().click(
 await settle(pj, 800);
 ok('ссылка из «Состава» ведёт на страницу группы', pj.url().includes('/congregation/' + encodeURIComponent(gl.id)), pj.url());
 
-console.log('\n5. Вкладка «Записи» по прямой ссылке на группу — «Обзор»');
+console.log('\n5. Вкладка «Записи» по прямой ссылке на группу — открывается');
 await pj.goto(J_URL + '#districts/' + encodeURIComponent(seed.c) + '/congregation/' + encodeURIComponent(gl.id) + '/entries'); await pj.reload(); await settle(pj, 1000);
 const panels = await pj.evaluate(() => ({ e: document.getElementById('congEntriesPanel').hidden, o: document.getElementById('congOverviewPanel').hidden, url: location.hash, view: document.getElementById('congregationDetailView').hidden }));
-ok('панель «Записи» скрыта, «Обзор» показан', panels.e === true && panels.o === false, JSON.stringify(panels));
+ok('панель «Записи» показана, «Обзор» скрыт', panels.e === false && panels.o === true, JSON.stringify(panels));
 
 console.log('\n6. Собрание не пострадало');
 await pj.goto(J_URL + '#districts/' + encodeURIComponent(seed.c) + '/congregation/' + encodeURIComponent(seed.hh)); await pj.reload(); await settle(pj, 1000);
 ok('у собрания блоки на месте, вкладка «Записи» есть', await pj.locator('#congIdentityCard').isVisible() && await pj.locator('#congChildrenSec').isVisible() && await pj.locator('[data-cong-tab="entries"]').isVisible());
+
+console.log('\n7. «Преобразовать в самостоятельную группу» (0.26.0)');
+const cv = await pj.evaluate(async (c) => {
+  const id = await CWJournal.nodes.add({ kind: 'congregation', parentId: c, label: 'Group (Ukrainian) Test-Convert' });
+  await CWJournal.congregationNotes.add(id, { type: 'note', body: 'Заметка до преобразования' });
+  await CWJournal.visits.add({ nodeId: id, dateFrom: '2027-05-02', dateTo: '2027-05-07' });
+  return id;
+}, seed.c);
+await pj.goto(J_URL + '#districts/' + encodeURIComponent(seed.c) + '/congregation/' + encodeURIComponent(cv)); await pj.reload(); await settle(pj, 1000);
+await pj.click('#moreBtn'); await settle(pj, 200);
+const menu7 = await pj.evaluate(() => [...document.querySelectorAll('#moreMenuPanel [data-action]')].map((b) => b.dataset.action));
+ok('в меню собрания есть «Преобразовать»', menu7.includes('to-standalone'), JSON.stringify(menu7));
+const nConf = confirms.length;
+await pj.locator('#moreMenuPanel [data-action="to-standalone"]').click();
+await settle(pj, 1000);
+ok('подтверждение показано с названием узла', confirms.length === nConf + 1 && confirms[nConf].includes('Test-Convert'), confirms[nConf]);
+const cvNode = await pj.evaluate((id) => CWJournal.nodes.get(id), cv);
+ok('узел стал группой, остался под районом', cvNode.kind === 'group' && cvNode.parentId === seed.c);
+ok('страница перерисована как у группы: карточка собрания скрыта', await pj.locator('#congIdentityCard').isHidden());
+ok('вкладка «Записи» есть, заголовок — «Записи группы»', await pj.locator('[data-cong-tab="entries"]').isVisible() && (await pj.locator('#congEntriesTitle').textContent()).trim() === 'Записи группы');
+await pj.locator('[data-cong-tab="entries"]').click(); await settle(pj, 600);
+ok('заметка, созданная до преобразования, видна', (await pj.locator('#congEntriesPanel').textContent()).includes('Заметка до преобразования'));
+await pj.locator('[data-cong-tab="visits"]').click(); await settle(pj, 600);
+ok('посещение сохранилось', (await pj.evaluate((id) => CWJournal.visits.byNode(id), cv)).length === 1);
+const menu7b = await pj.evaluate(() => { document.getElementById('moreBtn').click(); return [...document.querySelectorAll('#moreMenuPanel [data-action]')].map((b) => b.dataset.action); });
+ok('после преобразования пункта «Преобразовать» нет', !menu7b.includes('to-standalone'), JSON.stringify(menu7b));
+await pj.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/sg-converted.png' });
 
 ok('в консоли нет ошибок', errors.length === 0, errors.join(' | '));
 await browser.close();

@@ -130,6 +130,9 @@
       items += '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>'
         + '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>';
     }
+    if (kind === 'congregation') {
+      items += '<button type="button" class="md-menu__item" role="menuitem" data-action="to-standalone">' + esc(t('j.action.to_standalone')) + '</button>';
+    }
     if (kind === 'group' || kind === 'pregroup') {
       items += '<button type="button" class="md-menu__item" role="menuitem" data-action="link-directory">' + esc(t('j.identity.link_action')) + '</button>';
     }
@@ -155,6 +158,21 @@
         handleRowAction(el.dataset.action, node);
       });
     });
+  }
+
+  /* ═══ Собрание → самостоятельная группа (0.26.0) ═══════════════════════
+   * Меняется только вид узла; посещения, записи, задачи и связи остаются.
+   * Обратного действия нет — об этом сказано в подтверждении. → true, если
+   * преобразован. */
+  async function convertNode(node) {
+    if (!confirm(t('j.confirm.to_standalone').replace('%s', nodeName(node)))) return false;
+    try {
+      await CWJournal.nodes.convertToStandalone(node.id);
+    } catch (err) {
+      alert(err && err.message === 'journal-node-has-children' ? t('j.error.convert_children') : errorMessage(err));
+      return false;
+    }
+    return true;
   }
 
   /* ═══ Удаление узла (0.24.0) ═══════════════════════════════════════════
@@ -218,6 +236,10 @@
       if (action === 'toggle-archive') {
         await (node.status === 'archived' ? CWJournal.nodes.unarchive(node.id) : CWJournal.nodes.archive(node.id));
         refreshCurrentView();
+        return;
+      }
+      if (action === 'to-standalone') {
+        if (await convertNode(node)) refreshCurrentView();
         return;
       }
       if (action === 'delete') {
@@ -470,13 +492,13 @@
     var circuit = await CWJournal.nodes.get(circuitId);
     if (!circuit) { location.hash = '#districts'; return; }
     /* 0.25.0: самостоятельная группа открывается на той же странице, но без
-       блоков собрания — идентичность, дочерние группы и «Записи» (записей у
-       групп пока нет). Блоки прячутся, а не удаляются из разметки. */
+       блоков собрания — идентичность и дочерние группы. «Записи» у неё есть
+       (0.26.0: после преобразования из собрания заметки сохраняются).
+       Блоки прячутся, а не удаляются из разметки. */
     var isCong = node.kind === 'congregation';
     $('#congIdentityCard').hidden = !isCong;
     $('#congChildrenSec').hidden = !isCong;
-    var entriesTabBtn = $('#congregationDetailView [data-cong-tab="entries"]');
-    if (entriesTabBtn) entriesTabBtn.hidden = !isCong;
+    $('#congEntriesTitle').textContent = t(isCong ? 'j.card.cong_entries_title' : 'j.card.group_entries_title');
 
     $('#congCrumbCircuit').textContent = circuit.label;
     $('#congCrumbCircuit').onclick = function (e) {
@@ -538,7 +560,6 @@
   function applyCongregationTab(node) {
     var state = parseHash();
     var tab = CWJournalRoute.CONG_TABS.indexOf(state.congTab) >= 0 ? state.congTab : 'overview';
-    if (tab === 'entries' && node.kind !== 'congregation') tab = 'overview';
     var hashFor = {
       visits: CWJournalRoute.build.visits,
       entries: CWJournalRoute.build.congEntries,
@@ -658,6 +679,7 @@
       (isCongNode ? '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>' : '') +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="rename">' + esc(t('j.action.rename')) + '</button>' +
+      (isCongNode ? '<button type="button" class="md-menu__item" role="menuitem" data-action="to-standalone">' + esc(t('j.action.to_standalone')) + '</button>' : '') +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="toggle-archive">' + esc(node.status === 'archived' ? t('j.action.unarchive') : t('j.action.archive')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
     var freshBtn = btn.cloneNode(true);
@@ -669,6 +691,12 @@
     // корректно перерисовывает именно congregation-detail. Второй CRUD
     // здесь не заводится — только доступ к существующему.
     if (isCongNode) {
+      panel.querySelector('[data-action="to-standalone"]').onclick = function () {
+        panel.hidden = true;
+        convertNode(node).then(function (done) {
+          if (done) renderCongregationDetail(node.circuitId, node.id);
+        }).catch(function (err) { alert(errorMessage(err)); });
+      };
       panel.querySelector('[data-action="add-group"]').onclick = function () {
         panel.hidden = true;
         handleRowAction('add-group', node);
@@ -1259,7 +1287,7 @@
     if (action === 'new-congregation-note' || action === 'new-congregation-question') {
       var cs = parseHash();
       var cong = cs.congregationId ? await CWJournal.nodes.get(cs.congregationId) : null;
-      if (!cong || cong.kind !== 'congregation') return;
+      if (!cong || !isHostNode(cong)) return;
       var cScope = await noteScope(cong);
       if (cScope.readonly) { alert(t(cScope.readonlyKey)); return; }
       openNoteDialog(cScope, null, action === 'new-congregation-question' ? 'question' : 'note');
