@@ -29,6 +29,7 @@
   function setTaskTab() { return A.setTaskTab.apply(this, arguments); }
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
+  function todayIso() { return A.todayIso.apply(this, arguments); }
   function textOr() { return A.textOr.apply(this, arguments); }
   function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function visitStatusView() { return A.visitStatusView.apply(this, arguments); }
@@ -175,6 +176,23 @@
         edit.addEventListener('click', openPlannerDialog);
         frag.appendChild(edit);
       }
+    }
+    if (entry && (entry.start !== visit.dateFrom || entry.end !== visit.dateTo)) {
+      /* Календарь — источник актуальных дат: расхождение показывается,
+       * но ничего не перезаписывается без явного нажатия. */
+      var range = formatRange(entry.start, entry.end, true);
+      var diff = plannerChip(editable ? 'button' : 'span', 'j-planner__chip--broken',
+        (editable ? t('j.planner.dates_differ') : t('j.planner.dates_differ_ro')).replace('%s', range));
+      diff.id = 'visitPlannerDates';
+      if (editable) {
+        diff.type = 'button';
+        diff.title = t('j.planner.dates_update');
+        diff.addEventListener('click', function () {
+          CWJournal.visits.update(visit.id, { dateFrom: entry.start, dateTo: entry.end })
+            .then(refreshCurrentView, function (err) { alert(errorMessage(err)); });
+        });
+      }
+      frag.appendChild(diff);
     }
     var slot = $('#visitPlannerSlot');
     if (slot) slot.replaceChildren(frag);
@@ -909,25 +927,90 @@
     var to = $('#visitDialogTo');
     var errEl = $('#visitDialogError');
     var form = $('#visitDialogForm');
-    var busy = false;
+    var src = $('#visitDialogPlanner');
+    var sel = $('#visitDialogEntry');
+    var manual = $('#visitDialogManual');
+    var busy = false, alive = true, touched = false;
     $('#visitDialogTitle').textContent = opts.title;
     from.value = opts.from || '';
     to.value = opts.to || '';
     errEl.hidden = true; errEl.textContent = '';
+    src.hidden = true;
+    sel.replaceChildren();
+    setLinked(null);
     dlg.showModal();
     from.focus();
+
+    /* Выбор записи Клиндария (только при создании, opts.planner = { node }).
+     * Список — предстоящие визиты этого собрания из CWPlanner (только
+     * чтение). Выбранная запись заполняет и блокирует даты; связь пишется
+     * после создания посещения через CWJournal.planner.set. */
+    function setLinked(entry) {
+      from.disabled = !!entry;
+      to.disabled = !!entry;
+      manual.hidden = !entry;
+      if (entry) { from.value = entry.start; to.value = entry.end; }
+    }
+    function selectedEntry() {
+      var api = self.CWPlanner;
+      return !src.hidden && sel.value && api ? api.getEntry(sel.value) : null;
+    }
+    async function loadPlanner() {
+      var api = self.CWPlanner;
+      var node = opts.planner && opts.planner.node;
+      if (!api || !node || !node.communityId) return;
+      await api.init();
+      if (!alive) return;
+      var today = todayIso();
+      var list = api.listEntries().filter(function (e) {
+        return e.visitType && e.communityId === node.communityId && e.end >= today;
+      });
+      if (!list.length) return;
+      var taken = await Promise.all(list.map(function (e) {
+        return CWJournal.planner.visitsOf(e.id).catch(function () { return []; });
+      }));
+      if (!alive) return;
+      var frag = document.createDocumentFragment();
+      var none = el('option', '', t('j.visit.manual_option'));
+      none.value = '';
+      frag.appendChild(none);
+      var pick = '';
+      list.forEach(function (e, i) {
+        var label = formatRange(e.start, e.end, true) + (e.title ? ' · ' + e.title : '');
+        if (taken[i].length) label += ' · ' + t('j.visit.planner_taken');
+        var o = el('option', '', label);
+        o.value = e.id;
+        frag.appendChild(o);
+        if (!pick && !taken[i].length) pick = e.id;
+      });
+      sel.replaceChildren(frag);
+      src.hidden = false;
+      if (!touched && pick) { sel.value = pick; setLinked(selectedEntry()); }
+      else sel.value = '';
+    }
+    function onSelect() { setLinked(selectedEntry()); }
+    function onManual() { sel.value = ''; setLinked(null); from.focus(); }
+    function onTouch() { touched = true; }
+    if (opts.planner) loadPlanner().catch(function () { /* календарь недоступен — ручной ввод */ });
 
     function showError(msg) { errEl.textContent = msg; errEl.hidden = false; }
     function onSubmit(e) {
       e.preventDefault();
       if (busy) return;
+      var entry = selectedEntry();
+      if (!src.hidden && sel.value && !entry) {
+        /* Запись исчезла из календаря, пока диалог был открыт. */
+        showError(t('j.planner.missing'));
+        return;
+      }
+      if (entry) setLinked(entry);
       var f = from.value, tt = to.value;
       if (!CWJournal.visits.isIsoDate(f) || !CWJournal.visits.isIsoDate(tt) || tt < f) {
         showError(t('j.error.visit_dates'));
         return;
       }
       busy = true;
-      Promise.resolve(opts.onSave(f, tt)).then(function (result) {
+      Promise.resolve(opts.onSave(f, tt, entry ? entry.id : null)).then(function (result) {
         busy = false;
         cleanup();
         dlg.close();
@@ -940,12 +1023,23 @@
     function onCancel() { cleanup(); dlg.close(); }
     var unbindClose;
     function cleanup() {
+      alive = false;
       form.removeEventListener('submit', onSubmit);
       $('#visitDialogCancel').removeEventListener('click', onCancel);
+      sel.removeEventListener('change', onSelect);
+      manual.removeEventListener('click', onManual);
+      from.removeEventListener('input', onTouch);
+      to.removeEventListener('input', onTouch);
+      from.disabled = false;
+      to.disabled = false;
       if (unbindClose) unbindClose();
     }
     form.addEventListener('submit', onSubmit);
     $('#visitDialogCancel').addEventListener('click', onCancel);
+    sel.addEventListener('change', onSelect);
+    manual.addEventListener('click', onManual);
+    from.addEventListener('input', onTouch);
+    to.addEventListener('input', onTouch);
     unbindClose = bindDialogCleanup(dlg, cleanup);
   }
 
