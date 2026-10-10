@@ -175,10 +175,18 @@
     var parent = await db().journalNodes.get(parentId);
     if (!parent) throw new Error('journal-invalid-hierarchy');
     if (kind === 'congregation' && parent.kind !== 'circuit') throw new Error('journal-invalid-hierarchy');
-    if ((kind === 'group' || kind === 'pregroup') && parent.kind !== 'congregation') {
+    /* 0.25.0 (решение Алекса 10.10.2026): группа/предгруппа бывает и
+       самостоятельной — прямо под районом (собрание-родитель, которое человек
+       не посещает, в Журнале не нужно). `parentId === circuitId` и есть
+       признак самостоятельной — отдельного поля нет (isStandaloneNode). */
+    if ((kind === 'group' || kind === 'pregroup') && parent.kind !== 'congregation' && parent.kind !== 'circuit') {
       throw new Error('journal-invalid-hierarchy');
     }
     return parent;
+  }
+  /** Группа/предгруппа прямо под районом (без собрания-родителя). */
+  function isStandaloneNode(n) {
+    return !!n && (n.kind === 'group' || n.kind === 'pregroup') && !!n.circuitId && n.parentId === n.circuitId;
   }
 
   /** Сортировка одноуровневых узлов: по `sort`, затем по label, затем по id —
@@ -270,6 +278,7 @@
     get: nodesBase.get,
     getAll: nodesBase.getAll,
     remove: guardedRemove,
+    isStandalone: isStandaloneNode,
     byParent: function (parentId) { return nodesBase.by('parentId', parentId); },
     byCircuit: function (circuitId) { return nodesBase.by('circuitId', circuitId); },
     byKind: function (kind) { return nodesBase.by('kind', kind); },
@@ -2592,7 +2601,9 @@
       });
       var visitsOut = sortVisits(visitRows).map(function (v) {
         var node = snap.nodeById[v.nodeId] || null;
-        var cong = node && node.kind === 'congregation' ? node
+        /* «Хозяин» посещения: собрание, либо сама самостоятельная группа (у неё
+           своя страница), либо собрание-родитель вложенной группы. */
+        var cong = node && (node.kind === 'congregation' || isStandaloneNode(node)) ? node
           : node && snap.nodeById[node.parentId] && snap.nodeById[node.parentId].kind === 'congregation' ? snap.nodeById[node.parentId] : null;
         return { visit: v, nodeId: v.nodeId, nodeKind: node ? node.kind : null,
           circuitId: v.circuitId || (node && node.circuitId) || null, congregationId: cong ? cong.id : null };
@@ -2625,7 +2636,8 @@
         var bucket = byKind[n.kind];
         if (!bucket) return;
         var parent = n.parentId && n.parentId !== ROOT_PARENT ? snap.nodeById[n.parentId] || null : null;
-        bucket.push({ node: n, circuitId: n.circuitId || null, parent: n.kind === 'congregation' ? null : parent });
+        var alone = isStandaloneNode(n);
+        bucket.push({ node: n, circuitId: n.circuitId || null, standalone: alone, parent: n.kind === 'congregation' || alone ? null : parent });
       });
       return out;
     },

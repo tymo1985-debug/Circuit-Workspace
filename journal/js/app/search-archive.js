@@ -18,6 +18,7 @@
   function formatRange() { return A.formatRange.apply(this, arguments); }
   function labelVisit() { return A.labelVisit.apply(this, arguments); }
   function nodeName() { return A.nodeName.apply(this, arguments); }
+  function isHostNode() { return A.isHostNode.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function resolveCommunity() { return A.resolveCommunity.apply(this, arguments); }
   function seasonLabel() { return A.seasonLabel.apply(this, arguments); }
@@ -382,7 +383,7 @@
     if (mine !== districtArchiveSeq) return;
     var nodes = await CWJournal.nodes.byCircuit(circuitId);
     var congIds = {};
-    nodes.forEach(function (n) { if (n.kind === 'congregation') congIds[n.id] = true; });
+    nodes.forEach(function (n) { if (isHostNode(n)) congIds[n.id] = true; });
     var ownedByCongregation = function (it) {
       if (it.kind === 'visit') return !!congIds[it.row.nodeId];
       if (it.kind === 'node') return !!congIds[it.row.parentId];

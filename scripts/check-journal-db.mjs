@@ -322,8 +322,21 @@ ok('у собрания оба ребёнка', (await J.nodes.byParent(t3cong))
 
 // 7.4 Недопустимая иерархия отклоняется НА СЛОЕ ДАННЫХ, а не только в UI.
 async function rejects(fn) { try { await fn(); return null; } catch (e) { return e.message; } }
-ok('группа НЕ может быть прямо под районом',
-  (await rejects(() => J.nodes.add({ kind: 'group', parentId: t3circuit, label: 'x' }))) === 'journal-invalid-hierarchy');
+/* 0.25.0 (решение Алекса 10.10.2026): группа/предгруппа может быть самостоятельной —
+   прямо под районом; вложенной под группу или в корень — по-прежнему нельзя. */
+const t3alone = await J.nodes.add({ kind: 'group', parentId: t3circuit, label: 'Самостоятельная' });
+const t3alonePre = await J.nodes.add({ kind: 'pregroup', parentId: t3circuit, label: 'Самостоятельная предгруппа' });
+ok('самостоятельная группа: circuitId = район, isStandalone',
+  (await J.nodes.get(t3alone)).circuitId === t3circuit && J.nodes.isStandalone(await J.nodes.get(t3alone)) === true);
+ok('самостоятельная предгруппа допустима', J.nodes.isStandalone(await J.nodes.get(t3alonePre)) === true);
+ok('вложенная группа — не самостоятельная', J.nodes.isStandalone(await J.nodes.get(t3group)) === false);
+ok('собрание — не самостоятельное', J.nodes.isStandalone(await J.nodes.get(t3cong)) === false);
+await J.nodes.remove(t3alone);
+await J.nodes.remove(t3alonePre);
+ok('группа НЕ может быть под группой',
+  (await rejects(() => J.nodes.add({ kind: 'group', parentId: t3group, label: 'x' }))) === 'journal-invalid-hierarchy');
+ok('группа НЕ может быть в корне',
+  (await rejects(() => J.nodes.add({ kind: 'group', parentId: CWJournal.ROOT_PARENT, label: 'x' }))) === 'journal-invalid-hierarchy');
 ok('собрание НЕ может быть под собранием',
   (await rejects(() => J.nodes.add({ kind: 'congregation', parentId: t3cong, label: 'x' }))) === 'journal-invalid-hierarchy');
 ok('район НЕ может иметь родителя кроме ROOT_PARENT',

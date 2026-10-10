@@ -41,7 +41,7 @@
 
   function hrefFor(item) {
     var R = CWJournalRoute.build;
-    if (item.node.kind === 'congregation') return R.congregation(item.circuitId, item.node.id);
+    if (item.node.kind === 'congregation' || item.standalone) return R.congregation(item.circuitId, item.node.id);
     if (item.parent && item.parent.kind === 'congregation') return R.congregation(item.circuitId, item.parent.id);
     return item.circuitId ? R.circuit(item.circuitId) : '#districts';
   }
@@ -70,7 +70,8 @@
     var num = numberOf(item.node);
     if (num) parts.push(t('j.roster.number').replace('%s', num));
     if (item.node.kind !== 'congregation') {
-      parts.push(item.parent ? t('j.roster.parent').replace('%s', nodeName(item.parent)) : t('j.roster.no_parent'));
+      parts.push(item.standalone ? t('j.roster.standalone')
+        : item.parent ? t('j.roster.parent').replace('%s', nodeName(item.parent)) : t('j.roster.no_parent'));
     }
     if (multi) parts.push(circuitLabel(data, item.circuitId));
     parts.filter(Boolean).forEach(function (p, i) {

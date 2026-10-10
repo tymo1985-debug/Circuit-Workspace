@@ -15,6 +15,8 @@
   function errorMessage() { return A.errorMessage.apply(this, arguments); }
   function esc() { return A.esc.apply(this, arguments); }
   function isDirectoryReady() { return A.isDirectoryReady.apply(this, arguments); }
+  function isHostNode() { return A.isHostNode.apply(this, arguments); }
+  function nodeName() { return A.nodeName.apply(this, arguments); }
   function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
   function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
   function lockMark() { return A.lockMark.apply(this, arguments); }
@@ -283,10 +285,12 @@
     });
 
     var congregations = CWJournal.sortNodes(
-      (await CWJournal.nodes.byParent(circuitId)).filter(function (n) { return n.kind === 'congregation'; })
+      (await CWJournal.nodes.byParent(circuitId)).filter(isHostNode)
     );
-    var activeCount = congregations.filter(function (n) { return n.status !== 'archived'; }).length;
-    $('#districtCounts').textContent = ' + ' + activeCount + ' ' + t('j.unit.congregations');
+    var activeCount = congregations.filter(function (n) { return n.kind === 'congregation' && n.status !== 'archived'; }).length;
+    var aloneCount = congregations.filter(function (n) { return n.kind !== 'congregation' && n.status !== 'archived'; }).length;
+    $('#districtCounts').textContent = ' + ' + activeCount + ' ' + t('j.unit.congregations')
+      + (aloneCount ? ' + ' + aloneCount + ' ' + t('j.unit.standalone_groups') : '');
 
     // Карточка «Записи уровня района» — честные реальные счётчики; проекты
     // района (J7) — отдельной секцией ниже.
@@ -348,16 +352,16 @@
 
   async function renderCongregationRow(container, node, index, siblingCount) {
     var archived = node.status === 'archived';
-    var displayLabel = canonicalName(node);
+    var displayLabel = nodeName(node);
     var row = document.createElement('div');
     row.className = 'j-row';
     row.innerHTML =
-      '<div class="j-row__ico">' + svg(ICON.congregation) + '</div>' +
+      '<div class="j-row__ico">' + svg(ICON[node.kind] || ICON.congregation) + '</div>' +
       '<div class="j-row__body">' +
       '<p class="j-row__title">' + (archived ? '<span class="u-muted">' + esc(displayLabel) + '</span>' : '<b>' + esc(displayLabel) + '</b>') + '</p>' +
-      '<p class="j-row__meta">' + (archived ? esc(t('j.badge.archive')) : esc(t('j.state.no_visit_yet'))) + '</p>' +
+      '<p class="j-row__meta">' + (archived ? esc(t('j.badge.archive')) : esc(node.kind === 'congregation' ? t('j.state.no_visit_yet') : t('j.search.kind.' + node.kind))) + '</p>' +
       '</div>' +
-      '<div class="j-row__end">' + rowMenuMarkup('congregation', node, index, siblingCount) + '</div>';
+      '<div class="j-row__end">' + rowMenuMarkup(node.kind, node, index, siblingCount) + '</div>';
     container.appendChild(row);
     wireRowMenu(row, node);
     row.querySelector('.j-row__body').addEventListener('click', function () {
@@ -459,24 +463,39 @@
 
   async function renderCongregationDetail(circuitId, nodeId) {
     var node = await CWJournal.nodes.get(nodeId);
-    if (!node || node.kind !== 'congregation' || node.circuitId !== circuitId) {
+    if (!node || !isHostNode(node) || node.circuitId !== circuitId) {
       location.hash = '#districts/' + encodeURIComponent(circuitId);
       return;
     }
     var circuit = await CWJournal.nodes.get(circuitId);
     if (!circuit) { location.hash = '#districts'; return; }
+    /* 0.25.0: самостоятельная группа открывается на той же странице, но без
+       блоков собрания — идентичность, дочерние группы и «Записи» (записей у
+       групп пока нет). Блоки прячутся, а не удаляются из разметки. */
+    var isCong = node.kind === 'congregation';
+    $('#congIdentityCard').hidden = !isCong;
+    $('#congChildrenSec').hidden = !isCong;
+    var entriesTabBtn = $('#congregationDetailView [data-cong-tab="entries"]');
+    if (entriesTabBtn) entriesTabBtn.hidden = !isCong;
 
     $('#congCrumbCircuit').textContent = circuit.label;
     $('#congCrumbCircuit').onclick = function (e) {
       e.preventDefault();
       location.hash = '#districts/' + encodeURIComponent(circuitId);
     };
-    var displayName = canonicalName(node);
+    var displayName = nodeName(node);
     $('#congCrumbLabel').textContent = displayName;
 
     var directoryRecord = (isDirectoryReady() && node.communityId) ? CWDirectory.get(node.communityId) : null;
     $('#congTitle').textContent = displayName;
 
+    if (!isCong) {
+      $('#congMeta').textContent = t('j.standalone.meta').replace('%s', t('j.search.kind.' + node.kind));
+      await renderCongregationProjects(node);
+      wireCongregationMenu(node);
+      applyCongregationTab(node);
+      return;
+    }
     var childCount = (await CWJournal.nodes.byParent(node.id)).filter(function (n) { return n.status !== 'archived'; }).length;
     $('#congMeta').textContent = t('j.identity.title') + ' · ' + t('j.unit.groups_count').replace('%d', childCount);
 
@@ -519,6 +538,7 @@
   function applyCongregationTab(node) {
     var state = parseHash();
     var tab = CWJournalRoute.CONG_TABS.indexOf(state.congTab) >= 0 ? state.congTab : 'overview';
+    if (tab === 'entries' && node.kind !== 'congregation') tab = 'overview';
     var hashFor = {
       visits: CWJournalRoute.build.visits,
       entries: CWJournalRoute.build.congEntries,
@@ -633,9 +653,10 @@
   function wireCongregationMenu(node) {
     var btn = $('#moreBtn');
     var panel = $('#moreMenuPanel');
+    var isCongNode = node.kind === 'congregation';
     panel.innerHTML =
-      '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>' +
-      '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>' +
+      (isCongNode ? '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>' +
+      '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>' : '') +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="rename">' + esc(t('j.action.rename')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="toggle-archive">' + esc(node.status === 'archived' ? t('j.action.unarchive') : t('j.action.archive')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
@@ -647,14 +668,16 @@
     // refreshCurrentView(), который теперь (см. п.3 прошлой правки)
     // корректно перерисовывает именно congregation-detail. Второй CRUD
     // здесь не заводится — только доступ к существующему.
-    panel.querySelector('[data-action="add-group"]').onclick = function () {
-      panel.hidden = true;
-      handleRowAction('add-group', node);
-    };
-    panel.querySelector('[data-action="add-pregroup"]').onclick = function () {
-      panel.hidden = true;
-      handleRowAction('add-pregroup', node);
-    };
+    if (isCongNode) {
+      panel.querySelector('[data-action="add-group"]').onclick = function () {
+        panel.hidden = true;
+        handleRowAction('add-group', node);
+      };
+      panel.querySelector('[data-action="add-pregroup"]').onclick = function () {
+        panel.hidden = true;
+        handleRowAction('add-pregroup', node);
+      };
+    }
     panel.querySelector('[data-action="rename"]').onclick = function () {
       panel.hidden = true;
       renameNode(node);

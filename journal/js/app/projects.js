@@ -25,6 +25,7 @@
   function lockMark() { return A.lockMark.apply(this, arguments); }
   function lockedLabel() { return A.lockedLabel.apply(this, arguments); }
   function nodeName() { return A.nodeName.apply(this, arguments); }
+  function isHostNode() { return A.isHostNode.apply(this, arguments); }
   function openTaskDialog() { return A.openTaskDialog.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
@@ -419,9 +420,9 @@
       chip.type = 'button';
       chip.innerHTML = svg(ICON[n.kind] || ICON.group, 'width="16" height="16"');
       chip.appendChild(el('span', '', nodeName(n)));
-      var cong = n.kind === 'congregation' ? n : byId[n.parentId];
+      var cong = isHostNode(n) ? n : byId[n.parentId];
       chip.addEventListener('click', function () {
-        if (cong && cong.kind === 'congregation') location.hash = CWJournalRoute.build.congregation(circuitId, cong.id);
+        if (cong && isHostNode(cong)) location.hash = CWJournalRoute.build.congregation(circuitId, cong.id);
       });
       nbox.appendChild(chip);
     });
@@ -790,7 +791,7 @@
           if (n.status === 'archived' && !linked[ref]) return;
           var parent = byId[n.parentId];
           secNodes.items.push({ ref: ref, label: nodeName(n),
-            meta: t('j.search.kind.' + n.kind) + (n.kind !== 'congregation' && parent ? ' · ' + nodeName(parent) : ''), checked: !!linked[ref] });
+            meta: t('j.search.kind.' + n.kind) + (n.kind !== 'congregation' && parent && parent.kind === 'congregation' ? ' · ' + nodeName(parent) : ''), checked: !!linked[ref] });
         });
         secNodes.items.sort(function (a, b) { return a.label.localeCompare(b.label); });
         if (mode === 'nodes') return [secNodes];

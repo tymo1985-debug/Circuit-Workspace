@@ -127,7 +127,7 @@
    *  собрания-родителя. Нет контекста — null (строка не показывается). */
   function visitDest(item) {
     if (!item || !item.circuitId || !item.congregationId) return null;
-    if (item.nodeKind === 'congregation') return CWJournalRoute.build.visit(item.circuitId, item.congregationId, item.visit.id);
+    if (item.nodeKind === 'congregation' || item.congregationId === item.nodeId) return CWJournalRoute.build.visit(item.circuitId, item.congregationId, item.visit.id);
     if (item.nodeKind === 'group' || item.nodeKind === 'pregroup') return CWJournalRoute.build.visits(item.circuitId, item.congregationId);
     return null;
   }

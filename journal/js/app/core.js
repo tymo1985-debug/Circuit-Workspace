@@ -335,6 +335,10 @@
   function resolveCommunity(id) { return isDirectoryReady() && id ? CWDirectory.get(id) : null; }
   function labelVisit(v) { return v && v.dateFrom ? seasonLabel(v.dateFrom) : ''; }
   function nodeName(n) { return n.kind === 'congregation' ? canonicalName(n) : n.label; }
+  /* «Хозяин» страницы и посещений: собрание или самостоятельная группа
+     (группа/предгруппа прямо под районом, 0.25.0). Вложенная группа своей
+     страницы не имеет — её посещения живут на странице собрания. */
+  function isHostNode(n) { return !!n && (n.kind === 'congregation' || CWJournal.nodes.isStandalone(n)); }
 
   /** Куда ведёт результат — только существующие маршруты. Узла больше нет
    *  (устаревшая ссылка) — ближайший безопасный экран, а не ошибка. */
@@ -343,15 +347,15 @@
     var node = chain.length ? chain[chain.length - 1] : null;
     if (kind === 'node') node = row;
     if (!node) return '#districts';
-    var cong = node.kind === 'congregation' ? node
-      : chain.filter(function (n) { return n.kind === 'congregation'; })[0] || null;
+    var cong = isHostNode(node) ? node
+      : chain.filter(isHostNode)[0] || null;
     var circuitId = node.circuitId;
     if (!circuitId) return '#districts';
     if (kind === 'task' && !visit) return '#tasks';
     if (kind === 'visit' || kind === 'record' || kind === 'task') {
       var v = kind === 'visit' ? row : visit;
       if (!cong) return CWJournalRoute.build.circuit(circuitId);
-      if (v && node.kind === 'congregation') return CWJournalRoute.build.visit(circuitId, node.id, v.id);
+      if (v && isHostNode(node)) return CWJournalRoute.build.visit(circuitId, node.id, v.id);
       return CWJournalRoute.build.visits(circuitId, cong.id);
     }
     if (node.kind === 'circuit') return kind === 'entry' ? CWJournalRoute.build.circuitTab(node.id, 'entries') : CWJournalRoute.build.circuit(node.id);
@@ -411,6 +415,7 @@
   A.svg = svg;
   A.t = t;
   A.todayIso = todayIso;
+  A.isHostNode = isHostNode;
   A.uiLang = uiLang;
   A.visitStatusView = visitStatusView;
   A.wireMenuToggle = wireMenuToggle;

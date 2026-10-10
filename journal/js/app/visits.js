@@ -11,7 +11,8 @@
   function $() { return A.$.apply(this, arguments); }
   function $all() { return A.$all.apply(this, arguments); }
   function bindDialogCleanup() { return A.bindDialogCleanup.apply(this, arguments); }
-  function canonicalName() { return A.canonicalName.apply(this, arguments); }
+  function isHostNode() { return A.isHostNode.apply(this, arguments); }
+  function nodeName() { return A.nodeName.apply(this, arguments); }
   function capitalize() { return A.capitalize.apply(this, arguments); }
   function el() { return A.el.apply(this, arguments); }
   function errorMessage() { return A.errorMessage.apply(this, arguments); }
@@ -73,7 +74,7 @@
   /* ═══ Экран посещения (J4a) ═════════════════════════════════════════════ */
   async function renderVisitDetail(circuitId, nodeId, visitId) {
     var node = await CWJournal.nodes.get(nodeId);
-    if (!node || node.kind !== 'congregation' || node.circuitId !== circuitId) {
+    if (!node || !isHostNode(node) || node.circuitId !== circuitId) {
       location.replace(CWJournalRoute.build.circuit(circuitId));
       return;
     }
@@ -86,7 +87,7 @@
     var circuit = await CWJournal.nodes.get(circuitId);
     if (!circuit) { location.replace('#districts'); return; }
 
-    var congName = canonicalName(node);
+    var congName = nodeName(node);
     var season = seasonLabel(visit.dateFrom);
     $('#visitCrumbCircuit').textContent = circuit.label;
     $('#visitCrumbCircuit').setAttribute('href', CWJournalRoute.build.circuit(circuitId));
@@ -735,7 +736,7 @@
       .replace('%d', String(idx + 1)).replace('%d', String(carryView.items.length));
     $('#carrySheetTitle').textContent = textOr(r, 'body');
     var node = await CWJournal.nodes.get(r.nodeId);
-    var meta = (node ? canonicalName(node) : '') + ' · ' + t('j.carry.open_visits').replace('%d', String(it.openVisits));
+    var meta = (node ? nodeName(node) : '') + ' · ' + t('j.carry.open_visits').replace('%d', String(it.openVisits));
     if (r.type === 'todo') meta += ' · ' + t('j.record.type.todo') + ': ' + t(r.status === 'done' ? 'j.task.status_done' : 'j.task.status_open');
     var metaEl = $('#carrySheetMeta');
     metaEl.textContent = meta;

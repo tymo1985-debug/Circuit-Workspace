@@ -19,6 +19,7 @@
   function isLockedRow() { return A.isLockedRow.apply(this, arguments); }
   function isProtectedRow() { return A.isProtectedRow.apply(this, arguments); }
   function lockMark() { return A.lockMark.apply(this, arguments); }
+  function isHostNode() { return A.isHostNode.apply(this, arguments); }
   function parseHash() { return A.parseHash.apply(this, arguments); }
   function requestUnlock() { return A.requestUnlock.apply(this, arguments); }
   function textOr() { return A.textOr.apply(this, arguments); }
@@ -151,7 +152,7 @@
     var mine = ++districtTasksSeq;
     var nodes = await CWJournal.nodes.byCircuit(circuitId);
     var congIds = {};
-    nodes.forEach(function (n) { if (n.kind === 'congregation') congIds[n.id] = true; });
+    nodes.forEach(function (n) { if (isHostNode(n)) congIds[n.id] = true; });
     var all = (await CWJournal.tasks.list()).filter(function (r) { return r.circuitId === circuitId && !congIds[r.nodeId]; });
     var byId = {};
     nodes.forEach(function (n) { byId[n.id] = n; });

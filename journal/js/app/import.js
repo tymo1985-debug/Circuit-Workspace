@@ -59,9 +59,14 @@
     return { state: 'ok', circuits: circuits, circuitId: circuits.length ? circuits[0].id : '', roster: roster, rows: rows, existing: existing };
   }
 
-  /** Возможные родители: собрания Журнала + выбранные к импорту собрания. */
+  /** Значение «отдельная группа»: родитель — сам район (0.25.0). Выбирает
+   *  человек, как и любого родителя; автоматически не подставляется. */
+  var STANDALONE = 'circuit';
+
+  /** Возможные родители: «отдельная группа», собрания Журнала + выбранные к
+   *  импорту собрания. */
   function parentOptions(model) {
-    var opts = [];
+    var opts = [{ value: STANDALONE, label: t('j.import.standalone') }];
     var multi = model.circuits.length > 1;
     model.roster.congregations.forEach(function (it) {
       var label = nodeName(it.node);
@@ -89,7 +94,7 @@
   function selected(model) {
     return model.rows.filter(function (r) {
       if (!r.checked) return false;
-      return r.kind === 'congregation' ? !!model.circuitId : !!r.parent;
+      return r.kind === 'congregation' || r.parent === STANDALONE ? !!model.circuitId : !!r.parent;
     });
   }
 
@@ -188,7 +193,7 @@
     var rest = sel.filter(function (r) { return r.kind !== 'congregation'; });
     for (var j = 0; j < rest.length; j++) {
       var p = rest[j].parent;
-      var parentId = p.indexOf('new:') === 0 ? created[p.slice(4)] : p;
+      var parentId = p === STANDALONE ? model.circuitId : p.indexOf('new:') === 0 ? created[p.slice(4)] : p;
       var gid = parentId ? await addLinked(rest[j].kind, parentId, rest[j]) : null;
       if (gid) done++; else failed++;
     }
