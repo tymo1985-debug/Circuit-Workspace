@@ -1187,7 +1187,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"/><path d="M7 14l5-5 5 5"/><path d="M12 9v12"/></svg>
                 <span data-i18n="backup.restore">Восстановить из файла</span>
               </button>
-              <input type="file" id="backupFile" accept=".json,application/json" hidden />
+              <input type="file" id="backupFile" accept=".json,application/json,.txt,text/plain" hidden />
               <!-- Откат к состоянию перед последним восстановлением. Кнопки нет,
                    пока снимка нет: показывать неработающее действие хуже, чем
                    не показывать никакого. -->
@@ -1883,6 +1883,22 @@
         }
       });
     }
+    // Отказ готового файла (13.10.2026). Готовый файл уходит в share() сразу,
+    // внутри жеста, — значит, NotAllowedError на нём уже не «жест истёк», а
+    // отказ самого браузера. Раньше это крутило ту же надпись по кругу
+    // («ничего не происходит»). Теперь: отказ пишется в «Диагностику»,
+    // кнопка отправки прячется до перезагрузки, главной снова становится
+    // «Сохранить всё», и возраст копии считается по скачанной — иначе
+    // предупреждение горело бы без способа его погасить.
+    function disableShare(e) {
+      setPending(null);
+      SHARE = false;
+      shareBtn.hidden = true;
+      document.getElementById('backupSaveAll').classList.add('cw-btn--primary');
+      if (typeof CWErrors !== 'undefined' && CWErrors.note) CWErrors.note(e, 'hub:backup.share');
+      renderState();
+      say('backup.share_unavailable');
+    }
     if (shareBtn && SHARE) {
       shareBtn.hidden = false;
       document.getElementById('backupSaveAll').classList.remove('cw-btn--primary');
@@ -1897,9 +1913,14 @@
           });
         })();
         flow.catch(function (e) {
-          if (e && e.name === 'NotAllowedError' && pending) { say('backup.share_again'); return; }
+          if (e && e.name === 'NotAllowedError' && pending) {
+            if (ready) { disableShare(e); return; }
+            say('backup.share_again');
+            return;
+          }
           setPending(null);
           console.error(e);
+          if (typeof CWErrors !== 'undefined' && CWErrors.note) CWErrors.note(e, 'hub:backup.share');
           say('backup.failed');
         });
       });

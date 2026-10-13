@@ -265,6 +265,15 @@
     list: load,
     count: function () { return load().length; },
     report: report,
+    /** Записать ПОЙМАННУЮ ошибку: перехват видит только непойманные, а
+     *  обработанный отказ (например, share() → NotAllowedError) иначе не
+     *  оставляет следа в «Диагностике». `where` — короткая метка места. */
+    note: function (err, where) {
+      try {
+        var msg = (err && err.name ? err.name + ': ' : '') + (err && err.message ? err.message : String(err));
+        record('handled', msg, where || '', err && err.stack);
+      } catch (e) { /* см. «Отказоустойчивость» */ }
+    },
     copy: copy,
     clear: clear,
     /** Подписка на запись/очистку на ЭТОЙ странице; чужие вкладки — через `storage`. */

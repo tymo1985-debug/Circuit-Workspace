@@ -1323,16 +1323,26 @@
      Скачанный файл лежит в «Загрузках» того же телефона: потеря устройства
      уносит и данные, и копию. Отправка (Диск, почта, мессенджер) — то, что
      действительно переживает потерю, поэтому только она гасит предупреждение
-     о возрасте копии там, где браузер её умеет. */
+     о возрасте копии там, где браузер её умеет.
+
+     ОТПРАВЛЯЕТСЯ .txt, НЕ .json (13.10.2026). Chrome пускает в «Поделиться»
+     только файлы из своего списка типов (картинки, аудио, видео, pdf, txt,
+     csv, html); .json в нём нет. canShare() тип не проверяет и отвечает «да»,
+     а share() каждый раз отказывает NotAllowedError — кнопка выглядела
+     мёртвой. Содержимое то же самое — JSON; восстановление принимает и .txt.
+     Скачивание («Сохранить всё») по-прежнему даёт .json. */
+  var SHARE_TYPE = 'text/plain';
+
   function makeFile(snap, name) {
-    return new File([JSON.stringify(snap, null, 2)], name || filename(snap), { type: 'application/json' });
+    var n = (name || filename(snap)).replace(/\.json$/i, '.txt');
+    return new File([JSON.stringify(snap, null, 2)], n, { type: SHARE_TYPE });
   }
 
   function canShareFiles() {
     try {
       var nav = global.navigator;
       if (!nav || typeof nav.share !== 'function' || typeof nav.canShare !== 'function' || typeof File !== 'function') return false;
-      return !!nav.canShare({ files: [new File(['{}'], 'probe.json', { type: 'application/json' })] });
+      return !!nav.canShare({ files: [new File(['{}'], 'probe.txt', { type: SHARE_TYPE })] });
     } catch (e) { return false; }
   }
 
