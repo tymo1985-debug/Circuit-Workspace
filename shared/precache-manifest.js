@@ -4,7 +4,7 @@
  * Пересобирать последним шагом выпуска; свежесть держит check-precache-manifest.mjs. */
 self.CW_PRECACHE = {
   "apple-touch-icon.png": "eab69ba8eca69af7",
-  "appointments/css/styles.css": "47b85a31f6752381",
+  "appointments/css/styles.css": "5f1396d4f163b42d",
   "appointments/i18n/dict.js": "07f2eec8f32b58d6",
   "appointments/icons/apple-touch-icon.png": "3cbe6ced12d8447e",
   "appointments/icons/favicon-32.png": "c1d0efe0670293f6",
@@ -188,7 +188,7 @@ self.CW_PRECACHE = {
   "shared/persist.js": "555c8ca4edb030ed",
   "shared/planner.js": "599c4dab94eafb15",
   "shared/print.js": "6c920ec929975a9f",
-  "shared/release-manifest.js": "2a4609c2ada0b330",
+  "shared/release-manifest.js": "75edabe402e21866",
   "shared/sender.js": "e18fede720fcd5f8",
   "shared/serviceyear.js": "2412113b8ab97c74",
   "shared/snapshots.js": "d9a07c9a97b6dedf",
@@ -208,5 +208,5 @@ self.CW_PRECACHE = {
   "shared/vendor/pdf.min.js": "1fc294eefda602e5",
   "shared/vendor/pdf.worker.min.js": "99732130603cd498",
   "shared/vendor/xlsx.full.min.js": "c9506197caf809a0",
-  "shared/version.js": "fd277f70882674b0",
+  "shared/version.js": "fc6dd229ffa1dd96",
 };
