@@ -1,12 +1,12 @@
 self.CW_RELEASE = {
-  version: '0.42.67',
+  version: '0.42.68',
   changes: [
-    { module: 'congress-project', version: '4.48.45', note: 'Печать всех писем: у каждого письма свои данные конгресса; в таблице программы у разделов нет статуса и кнопки письма' },
-    { module: 'circuit-planner', version: '9.111.1', note: 'PDF письма: нумерация страниц без немецкого «von»; на печатных листах — название «Клиндарий»' },
-    { module: 'pioneer-school', version: '1.14.149', note: 'Пустой бланк регистрации: длинный заголовок больше не наезжает на подзаголовок' },
-    { module: 'appointments', version: '5.5.188', technical: true },
-    { module: 'documents', version: '1.12.60', technical: true },
-    { module: 'journal', version: '0.27.5', technical: true },
-    { module: 'archive', version: '0.2.44', technical: true },
+    { module: 'appointments', version: '5.5.189', note: 'Печать экрана (Ctrl+P, «Сохранить как PDF») всегда светлая, даже при тёмной теме' },
+    { module: 'congress-project', version: '4.48.46', technical: true },
+    { module: 'circuit-planner', version: '9.111.1', technical: true },
+    { module: 'pioneer-school', version: '1.14.150', technical: true },
+    { module: 'documents', version: '1.12.61', technical: true },
+    { module: 'journal', version: '0.27.6', technical: true },
+    { module: 'archive', version: '0.2.45', technical: true },
   ],
 };

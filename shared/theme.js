@@ -119,6 +119,31 @@
   }
 
   /**
+   * Печать экрана (Ctrl+P, «Сохранить как PDF», window.print()) всегда светлая.
+   * Тёмная схема на бумаге даёт либо светлый текст на белом (фон не печатается),
+   * либо целиком тёмные листы (печатается). Выбор пользователя и localStorage
+   * не трогаются: на время печати меняется только атрибут на <html>, после
+   * печати он возвращается к разрешённому значению. Окна печати документов
+   * (CWPrint.document) со своим CSS этим не затронуты.
+   */
+  function watchPrint() {
+    var root = global.document && global.document.documentElement;
+    if (!root) return;
+    var toLight = function () { if (resolved === 'dark') root.setAttribute('data-theme', 'light'); };
+    var back = function () { if (resolved) root.setAttribute('data-theme', resolved); };
+    global.addEventListener('beforeprint', toLight);
+    global.addEventListener('afterprint', back);
+    try {
+      var pq = global.matchMedia && global.matchMedia('print');
+      if (pq) {
+        var onPq = function (e) { (e.matches ? toLight : back)(); };
+        if (pq.addEventListener) pq.addEventListener('change', onPq);
+        else if (pq.addListener) pq.addListener(onPq);
+      }
+    } catch (e) { /* без matchMedia остаются beforeprint/afterprint */ }
+  }
+
+  /**
    * Применяет тему как можно раньше. Вызывается автоматически при загрузке
    * файла — ждать DOMContentLoaded нельзя, иначе будет вспышка чужой темы.
    */
@@ -129,6 +154,7 @@
     paint();
     watchSystem();
     watchStorage();
+    watchPrint();
   }
 
   var CWTheme = {
