@@ -1689,6 +1689,25 @@
       resetApp() { App.state.app = App.store.createDefaultData(); const sy = App.utils.getServiceYearForDate(new Date()); App.data.addServiceYear(sy); App.store.save(); App.ui.renderAll(); App.utils.toast(App.utils.t('app_reset')); },
       openPdf() { if (App.els.pdfModal) App.els.pdfModal.hidden = false; },
       closePdf() { if (App.els.pdfModal) App.els.pdfModal.hidden = true; },
+      /* Фильтр «Что печатать» (фаза 2, решение Алекса 20.10.2026). Читается из
+         окна печати в момент печати и нигде не сохраняется — в данных и
+         бэкапе его нет. Нет флажков в разметке — печатается всё, как раньше. */
+      getPrintFilter() {
+        const root = App.els.pdfModal || document;
+        const kinds = ['congregation','group','pregroup','other'];
+        const read = (attr, fallback) => { const boxes = Array.from(root.querySelectorAll(`[${attr}]`)); return boxes.length ? new Set(boxes.filter((b) => b.checked).map((b) => b.getAttribute(attr))) : new Set(fallback); };
+        const types = read('data-print-type', kinds);
+        const fields = read('data-print-field', ['type','schedule','address','note','flags']);
+        const mark = root.querySelector('input[name="printMarks"]:checked')?.value || 'all';
+        return { kinds, types, fields, mark, allTypes: kinds.every((k) => types.has(k)) };
+      },
+      printItemPasses(filter, visitType, flags = {}) {
+        if (!filter.types.has(visitType || 'other')) return false;
+        if (filter.mark === 'all') return true;
+        if (!visitType) return false; // письмо и S-302 бывают только у посещений
+        const sent = !!flags.letter && !!flags.f302;
+        return filter.mark === 'sent' ? sent : !sent;
+      },
       getPdfRange(type) {
         const monthStart = new Date(App.state.calendarYear, App.state.calendarMonth, 1);
         const monthEnd = new Date(App.state.calendarYear, App.state.calendarMonth + 1, 0);
@@ -1721,7 +1740,9 @@
       buildPrintHtml(type) {
         const range = this.getPdfRange(type);
         if (range.start > range.end) { App.utils.toast(App.utils.t('wrong_end_date')); return ''; }
-        const items = this.collectPrintItems(range.start, range.end);
+        const filter = this.getPrintFilter();
+        if (!filter.types.size) { App.utils.toast(App.utils.t('print_f_none')); return ''; }
+        const items = this.collectPrintItems(range.start, range.end).filter((it) => this.printItemPasses(filter, it.visitType, it.flags));
         const esc = (v) => App.utils.escapeHtml(v);
         const titles = { 'month-grid':App.utils.t('month_grid'), 'custom-range-calendar':App.utils.t('period_calendar'), 'month-agenda':App.utils.t('month_list'), 'half-year-agenda':App.utils.t('half_year'), 'year-agenda':App.utils.t('year_events'), 'custom-range':App.utils.t('list_period'), 'year-overview':App.utils.t('year_overview'), 'visits-schedule':App.utils.t('visits_schedule') };
         const title = titles[type] || App.utils.t('pdf_print');
@@ -1794,8 +1815,8 @@
             const key = `${it.startDate.getFullYear()}-${it.startDate.getMonth()}`;
             const head = key !== lastKey ? `<div class="ls-month">${esc(App.utils.monthName(it.startDate.getMonth()))} ${it.startDate.getFullYear()}</div>` : '';
             lastKey = key;
-            const sub = [it.visitType ? App.utils.visitTypeLabel(it.visitType) : '', it.schedule, it.address, it.note].filter(Boolean).map((x) => esc(x)).join(' · ');
-            return `${head}<div class="ls-row"><div class="ls-date">${esc(shortRange(it.startDate, it.endDate))}</div><div class="ls-main"><div class="ls-title"><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)}</div>${sub ? `<div class="ls-sub">${sub}</div>` : ''}</div><div class="ls-flags">${flags(it.flags)}</div></div>`;
+            const sub = [filter.fields.has('type') && it.visitType ? App.utils.visitTypeLabel(it.visitType) : '', filter.fields.has('schedule') ? it.schedule : '', filter.fields.has('address') ? it.address : '', filter.fields.has('note') ? it.note : ''].filter(Boolean).map((x) => esc(x)).join(' · ');
+            return `${head}<div class="ls-row"><div class="ls-date">${esc(shortRange(it.startDate, it.endDate))}</div><div class="ls-main"><div class="ls-title"><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)}</div>${sub ? `<div class="ls-sub">${sub}</div>` : ''}</div><div class="ls-flags">${filter.fields.has('flags') ? flags(it.flags) : ''}</div></div>`;
           }).join('')}</div>`;
         };
         /* Вид 3 — год на одном листе: 12 мини-месяцев, название прямо на
@@ -1814,6 +1835,7 @@
           const rows = (App.state.app.entries || []).map((entry) => ({ entry, event: App.data.getEventById(entry.eventId) }))
             .filter(({ entry, event }) => {
               if (!event?.visitType) return false;
+              if (!this.printItemPasses(filter, event.visitType, entry.flags)) return false;
               const es = App.utils.parseLocalDate(entry.start), ee = App.utils.parseLocalDate(entry.end);
               return es && ee && App.utils.overlaps(es, ee, App.utils.parseLocalDate(range.start), App.utils.parseLocalDate(range.end));
             })
@@ -1821,7 +1843,9 @@
           return rows.length ? `<table><thead><tr><th>№</th><th>${esc(App.utils.t('range_start'))}</th><th>${esc(App.utils.t('range_end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('visit_type'))}</th><th>S-302</th><th>${esc(App.utils.t('letter_short'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${rows.map(({ entry, event }, i) => `<tr><td>${i + 1}</td><td>${esc(App.utils.prettyDateLong(entry.start))}</td><td>${esc(App.utils.prettyDateLong(entry.end))}</td><td><span class="dot" style="background:${App.utils.clampColor(event.color)}"></span>${esc(entry.title || event.name)}</td><td>${esc(App.utils.visitTypeLabel(event.visitType))}</td><td>${entry.flags?.f302 ? '✓' : '—'}</td><td>${entry.flags?.letter ? '✓' : '—'}</td><td>${esc(entry.note || '')}</td></tr>`).join('')}</tbody></table>` : `<div class="md-empty">${esc(App.utils.t('no_events_month'))}</div>`;
         };
         const body = (type === 'month-grid' || type === 'custom-range-calendar') ? calendar() : type === 'year-overview' ? overview() : type === 'visits-schedule' ? visitsSchedule() : agenda();
-        const label = `${App.utils.prettyDateLong(App.utils.parseLocalDate(range.start))} — ${App.utils.prettyDateLong(App.utils.parseLocalDate(range.end))}`;
+        // Лист говорит сам, что на нём отфильтровано: «только группы», «нужно отправить».
+        const filterParts = [filter.allTypes ? '' : filter.kinds.filter((k) => filter.types.has(k)).map((k) => (k === 'other' ? App.utils.t('print_f_other') : App.utils.visitTypeLabel(k))).join(', '), filter.mark === 'todo' ? App.utils.t('print_f_todo') : filter.mark === 'sent' ? App.utils.t('print_f_sent') : ''].filter(Boolean);
+        const label = `${App.utils.prettyDateLong(App.utils.parseLocalDate(range.start))} — ${App.utils.prettyDateLong(App.utils.parseLocalDate(range.end))}${filterParts.length ? ' · ' + filterParts.join(' · ') : ''}`;
         /* Возвращается НЕ готовый документ, а его части: окно, <head> и
            отправку на печать собирает CWPrint.document(). Раньше здесь
            склеивался весь HTML целиком, вместе с копией того же каркаса,
