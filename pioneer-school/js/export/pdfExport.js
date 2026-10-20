@@ -421,12 +421,16 @@ const PdfExport = {
     doc.setFont('DejaVuSans');
     doc.setFontSize(18);
     doc.setTextColor(20);
-    doc.text(this._sanitizeForFont(config.title || D('doc.ps.reg.title')), 40, y, { maxWidth: pageWidth - 80 });
-    y += 22;
+    /* Перенос по maxWidth занимает несколько строк: сдвиг считаем по их числу,
+       иначе длинный заголовок наезжает на подзаголовок. */
+    const titleLines = doc.splitTextToSize(this._sanitizeForFont(config.title || D('doc.ps.reg.title')), pageWidth - 80);
+    doc.text(titleLines, 40, y);
+    y += 4 + titleLines.length * 21;
     doc.setFontSize(11);
     doc.setTextColor(90);
-    doc.text(this._sanitizeForFont(D('doc.ps.blank.lead')), 40, y, { maxWidth: pageWidth - 80 });
-    y += 26;
+    const leadLines = doc.splitTextToSize(this._sanitizeForFont(D('doc.ps.blank.lead')), pageWidth - 80);
+    doc.text(leadLines, 40, y);
+    y += 12 + leadLines.length * 13;
 
     // 1. Личные данные
     y = this._sectionTitle(doc, y, this._sectionHeading('personal'));

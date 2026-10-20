@@ -1949,7 +1949,7 @@
             + '.empty{border:1px dashed #ccd8d0;border-radius:10px;padding:20px;text-align:center;color:#667}'
             + '@media print{body{padding:0}}',
 
-          body: `<h1>${esc(title)}</h1><div class="meta">${esc(label)} · Service Year Planner</div>${body}`,
+          body: `<h1>${esc(title)}</h1><div class="meta">${esc(label)} · Клиндарий</div>${body}`,
           /* Список читается в книжной; календарю, году и графику КС нужна ширина. */
           page: ['month-agenda','half-year-agenda','year-agenda','custom-range'].includes(type) ? 'A4' : 'A4 landscape',
         };
@@ -3498,7 +3498,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         };
         const drawFooter = (pageNum, totalPages) => {
           doc.setFont(FONT, 'normal'); doc.setFontSize(8.5); doc.setTextColor(140, 146, 158);
-          doc.text(`${pageNum} von ${totalPages}`, margin, pageH - 24);
+          doc.text(`${pageNum} / ${totalPages}`, margin, pageH - 24);
           doc.setTextColor(30, 34, 44);
         };
         const ensureSpace = (y, needed) => {

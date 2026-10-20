@@ -207,7 +207,7 @@ export function printLetter(){
   let html=store.previewEdited?$("#letterPreview").innerHTML:letterHTML(target.task,target.congress);
   snapshotLetter(target.task,"print",target.congress);
   askOrientation("Печать письма","portrait",html,printFilename(letterFileTitle(target.task)))}
-export function allLetters(){let tasks=A().tasks.filter(isLetterable);snapshotLetters(tasks,"print");askOrientation("Печать всех писем","portrait",tasks.map(letterHTML).join(""),printFilename("Все письма"))}
+export function allLetters(){let tasks=A().tasks.filter(isLetterable);snapshotLetters(tasks,"print");askOrientation("Печать всех писем","portrait",tasks.map(task=>letterHTML(task)).join(""),printFilename("Все письма"))}
 /**
  * Список писем.
  *
