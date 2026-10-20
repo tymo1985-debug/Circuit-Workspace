@@ -287,6 +287,15 @@ unlock); проект со снимками не защищается (`journal-
   (записи и узлы), `CWDirectory.onChange` (app.js) и смена блокировки
   (protection.js) — все в один `renderOverview`.
 
+## Обзор узла (0.27.0)
+
+- Вкладка «Обзор» собрания/самостоятельной группы — `renderNodeOverview`
+  (`overview.js`), контейнер `#congNodeOverview`. Чтение — `visits.byNode`,
+  `carry.openForNode/markedIn`, `tasks.list`, `congregationNotes.list`;
+  календарь не читается. Единственная запись — `visits.complete` по нажатию
+  в подсказке о прошедшем посещении (без автозавершения). Поколение
+  `nodeOvSeq`; раскрытый текст в заблокированной сессии не вставляется.
+
 ## Состав района (R1)
 
 - Экран `js/app/roster.js`, маршрут `#roster[/groups|/pregroups]`

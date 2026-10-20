@@ -48,6 +48,11 @@
   function textOr() { return A.textOr.apply(this, arguments); }
   function todayIso() { return A.todayIso.apply(this, arguments); }
   function visitStatusView() { return A.visitStatusView.apply(this, arguments); }
+  function errorMessage() { return A.errorMessage.apply(this, arguments); }
+  function noteScope() { return A.noteScope.apply(this, arguments); }
+  function openNoteDialog() { return A.openNoteDialog.apply(this, arguments); }
+  function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
+  function runAction() { return A.runAction.apply(this, arguments); }
 
   var PREVIEW = 3;
   var OV_ICON = {
@@ -299,6 +304,183 @@
     commit(view, failed, data, roster);
   }
 
+  /* ═══ Обзор узла (0.27.0): вкладка «Обзор» собрания и группы ════════════
+   * Только чтение через публичные фасады CWJournal: visits.byNode,
+   * carry.openForNode/markedIn, tasks.list, congregationNotes.list.
+   * Единственная запись — visits.complete по явному нажатию в подсказке
+   * «Посещение закончилось…» (решение Алекса 20.10.2026: подсказка с
+   * подтверждением, без автозавершения). Календарь не читается.
+   * J8: строки берутся из раскрывающих фасадов; собранное с раскрытым
+   * текстом не вставляется, если к моменту вставки сессия заблокирована. */
+  var NODE_PREVIEW = 5;
+  var nodeOvSeq = 0;
+
+  function nodeOvCurrent(gen, nodeId) {
+    var st = parseHash();
+    return gen === nodeOvSeq && st.congregationId === nodeId && !st.visitId && (st.congTab || 'overview') === 'overview';
+  }
+  function secHead(titleText, count, moreHref) {
+    var head = el('div', 'j-sec__head');
+    head.appendChild(el('span', 'j-sec__title', titleText));
+    if (count != null) head.appendChild(el('span', 'j-sec__count', String(count)));
+    if (moreHref) {
+      var a = el('a', 'j-sec__more', t('j.link.all'));
+      a.href = moreHref;
+      head.appendChild(a);
+    }
+    return head;
+  }
+  function pickVisit(list, today) {
+    var live = list.filter(function (v) { return v.status !== 'archived'; });
+    var current = live.filter(function (v) { return v.status === 'open' && v.dateFrom <= today && v.dateTo >= today; })[0];
+    if (current) return { visit: current, key: 'j.nov.current' };
+    var upcoming = live.filter(function (v) { return v.status === 'open' && v.dateFrom > today; });
+    if (upcoming.length) return { visit: upcoming[upcoming.length - 1], key: 'j.nov.upcoming' };
+    var past = live.filter(function (v) { return v.dateFrom <= today; })[0];
+    return past ? { visit: past, key: 'j.nov.last' } : null;
+  }
+  function endedHint(visit, node) {
+    var box = el('div', 'md-banner md-banner--warn j-nov__hint');
+    box.innerHTML = '<span class="md-banner__icon">' + svg(OV_ICON.visit, 'width="20" height="20"') + '</span>';
+    var body = el('div', 'md-banner__body');
+    body.appendChild(el('p', 'md-banner__title', t('j.nov.ended_title').replace('%s', formatRange(visit.dateTo, visit.dateTo, false))));
+    body.appendChild(el('p', 'j-banner__text', capitalize(seasonLabel(visit.dateFrom)) + ' · ' + t('j.nov.ended_text')));
+    box.appendChild(body);
+    var actions = el('div', 'md-banner__actions');
+    var btn = el('button', 'md-btn md-btn-tonal', t('j.action.complete'));
+    btn.type = 'button';
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      try { await CWJournal.visits.complete(visit.id); }
+      catch (err) { btn.disabled = false; alert(errorMessage(err)); return; }
+      refreshCurrentView();
+    });
+    actions.appendChild(btn);
+    box.appendChild(actions);
+    return box;
+  }
+
+  async function renderNodeOverview(node) {
+    var gen = ++nodeOvSeq;
+    var box = $('#congNodeOverview');
+    if (!box) return;
+    if (!unlocked() && box.querySelector('[data-plain]')) box.replaceChildren();
+    var today = todayIso();
+    var visits, carry, tasks, notes, scope;
+    try {
+      visits = await CWJournal.visits.byNode(node.id);
+      carry = await CWJournal.carry.openForNode(node.id);
+      tasks = (await CWJournal.tasks.list()).filter(function (r) { return r.nodeId === node.id; });
+      notes = await CWJournal.congregationNotes.list(node.id);
+      scope = await noteScope(node);
+    } catch (err) {
+      if (nodeOvCurrent(gen, node.id)) box.replaceChildren(hint('j.overview.unavailable'));
+      return;
+    }
+    var visitById = {};
+    visits.forEach(function (v) { visitById[v.id] = v; });
+    carry = carry.filter(function (r) { var o = visitById[r.fields.visitId]; return o && o.status !== 'archived'; });
+    var openTasks = tasks.filter(function (r) { return r.status !== 'done'; });
+    var picked = pickVisit(visits, today);
+    var marked = picked ? await CWJournal.carry.markedIn(picked.visit.id) : [];
+    var plain = plainIn(carry) || plainIn(openTasks.slice(0, NODE_PREVIEW)) || plainIn(notes.slice(0, 3));
+    if (!nodeOvCurrent(gen, node.id)) return;
+    if (plain && !unlocked()) return;
+
+    var f = document.createDocumentFragment();
+    var circuitId = node.circuitId;
+
+    /* Быстрые действия. */
+    var quick = el('div', 'j-chip-row j-nov__quick');
+    [['j.dnote.new_note', function () { openNoteDialog(scope, null, 'note'); }],
+     ['j.dnote.new_question', function () { openNoteDialog(scope, null, 'question'); }],
+     ['j.task.new', function () { runAction('new-congregation-task'); }]].forEach(function (q) {
+      var b = el('button', 'md-btn md-btn-tonal', t(q[0]));
+      b.type = 'button';
+      b.disabled = !!scope.readonly && q[0] !== 'j.task.new';
+      b.addEventListener('click', q[1]);
+      quick.appendChild(b);
+    });
+    f.appendChild(quick);
+
+    /* Подсказки о завершении: открытые посещения, чьи даты прошли. */
+    visits.filter(function (v) { return v.status === 'open' && v.dateTo < today; })
+      .forEach(function (v) { f.appendChild(endedHint(v, node)); });
+
+    /* Текущее / ближайшее / последнее посещение + итоги. */
+    var vsec = el('div', 'j-sec');
+    if (picked) {
+      var v = picked.visit;
+      vsec.appendChild(secHead(t(picked.key), null, null));
+      var row = linkRow(CWJournalRoute.build.visit(circuitId, node.id, v.id), OV_ICON.visit, true);
+      var body = el('div', 'j-row__body');
+      var title = el('p', 'j-row__title');
+      title.appendChild(el('b', '', capitalize(seasonLabel(v.dateFrom))));
+      body.appendChild(title);
+      var status = el('span', '');
+      status.innerHTML = visitStatusView(v).html;
+      body.appendChild(meta([formatRange(v.dateFrom, v.dateTo, true), status]));
+      var fromVisit = tasks.filter(function (r) { return r.fields && r.fields.visitId === v.id; }).length;
+      body.appendChild(meta([t('j.nov.summary_line').replace('%d', String(fromVisit)).replace('%d', String(marked.length))]));
+      vsec.appendChild(finishRow(row, body));
+      var last = visits.filter(function (x) { return x.status !== 'archived' && x.dateFrom <= today; })[0];
+      vsec.appendChild(el('p', 'j-sec__hint', t('j.nov.facts').replace('%d', String(visits.length))
+        .replace('%s', last ? formatRange(last.dateFrom, last.dateTo, true) : '—')));
+    } else {
+      vsec.appendChild(secHead(t('j.tab.visits'), 0, null));
+      vsec.appendChild(hint('j.nov.no_visits'));
+      var add = el('button', 'md-btn md-btn-filled', t('j.fab.new_visit'));
+      add.type = 'button';
+      add.addEventListener('click', function () { runAction('new-visit'); });
+      vsec.appendChild(add);
+    }
+    f.appendChild(vsec);
+
+    /* На следующее посещение — всегда виден. */
+    var csec = el('div', 'j-sec');
+    csec.appendChild(secHead(t('j.nov.carry_title'), carry.length, null));
+    if (!carry.length) csec.appendChild(hint('j.nov.carry_empty'));
+    carry.forEach(function (r) {
+      var o = visitById[r.fields.visitId];
+      var crow = linkRow(CWJournalRoute.build.visit(circuitId, node.id, o.id), OV_ICON.carry, true);
+      var cb = el('div', 'j-row__body');
+      cb.appendChild(textTitle(r));
+      cb.appendChild(meta([capitalize(seasonLabel(o.dateFrom))]));
+      csec.appendChild(finishRow(crow, cb));
+    });
+    if (plainIn(carry)) csec.setAttribute('data-plain', '');
+    f.appendChild(csec);
+
+    /* Открытые задачи. */
+    if (openTasks.length) {
+      var tsec = el('div', 'j-sec');
+      tsec.appendChild(secHead(t('j.section.tasks_open'), openTasks.length, CWJournalRoute.build.congTasks(circuitId, node.id)));
+      var nodesMap = {}; nodesMap[node.id] = null;
+      openTasks.slice(0, NODE_PREVIEW).forEach(function (r) { tsec.appendChild(taskRow(r, nodesMap, today)); });
+      if (plainIn(openTasks.slice(0, NODE_PREVIEW))) tsec.setAttribute('data-plain', '');
+      f.appendChild(tsec);
+    }
+
+    /* Последние записи узла. */
+    if (notes.length) {
+      var nsec = el('div', 'j-sec');
+      var entriesHref = CWJournalRoute.build.congEntries(circuitId, node.id);
+      nsec.appendChild(secHead(t('j.nov.notes_title'), notes.length, entriesHref));
+      notes.slice(0, 3).forEach(function (r) {
+        var nrow = linkRow(entriesHref, OV_ICON.task, false);
+        nrow.querySelector('.j-row__ico').innerHTML = svg('<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>');
+        var nb = el('div', 'j-row__body');
+        nb.appendChild(textTitle(r));
+        nb.appendChild(meta([t(r.type === 'question' ? 'j.dnote.type_question' : 'j.dnote.type_note')]));
+        nsec.appendChild(finishRow(nrow, nb));
+      });
+      if (plainIn(notes.slice(0, 3))) nsec.setAttribute('data-plain', '');
+      f.appendChild(nsec);
+    }
+
+    box.replaceChildren(f);
+  }
+
   function onSourceChange() { if (parseHash().route === 'overview') renderOverview(); }
 
   /** Подписки — один раз, до первой отрисовки маршрута (app.js). */
@@ -311,5 +493,6 @@
   /* Публикация для других файлов Журнала. */
   A.dropPlain = dropPlain;
   A.renderOverview = renderOverview;
+  A.renderNodeOverview = renderNodeOverview;
   A.wireOverviewChrome = wireOverviewChrome;
 })();

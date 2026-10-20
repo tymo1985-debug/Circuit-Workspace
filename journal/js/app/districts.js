@@ -39,6 +39,7 @@
   function todayIso() { return A.todayIso.apply(this, arguments); }
   function uiLang() { return A.uiLang.apply(this, arguments); }
   function wireMenuToggle() { return A.wireMenuToggle.apply(this, arguments); }
+  function renderNodeOverview() { return A.renderNodeOverview.apply(this, arguments); }
   function revealActiveTab() { return A.revealActiveTab.apply(this, arguments); }
 
 
@@ -548,12 +549,23 @@
           '<div class="j-row__end">' + rowMenuMarkup(child.kind, child, ci, children.length) + '</div>';
         childrenWrap.appendChild(crow);
         wireRowMenu(crow, child);
+        if (!cArchived) fillChildCounts(crow.querySelector('.j-row__meta'), child);
       });
     }
 
     await renderCongregationProjects(node);
     wireCongregationMenu(node);
     applyCongregationTab(node);
+  }
+
+  /** 0.27.0: счётчики дочерней группы — открытые пункты «на след. визит» и
+   *  открытые задачи узла; только чтение, пусто — подпись прежняя. */
+  async function fillChildCounts(metaEl, child) {
+    try {
+      var carryN = (await CWJournal.carry.openForNode(child.id)).length;
+      var taskN = (await CWJournal.tasks.list()).filter(function (r) { return r.nodeId === child.id && r.status !== 'done'; }).length;
+      if (carryN || taskN) metaEl.textContent = t('j.nov.child_counts').replace('%d', String(carryN)).replace('%d', String(taskN));
+    } catch (_) { /* подпись по умолчанию */ }
   }
 
   /* ═══ Вкладки собрания: «Обзор» (J3b), «Посещения» (J4a), «Записи» ═══════ */
@@ -580,6 +592,7 @@
     $('#congEntriesPanel').hidden = tab !== 'entries';
     $('#congTasksPanel').hidden = tab !== 'tasks';
     $('#congArchivePanel').hidden = tab !== 'archive';
+    if (tab === 'overview') renderNodeOverview(node);
     if (tab === 'visits') renderCongregationVisits(node);
     if (tab === 'entries') renderCongregationNotes(node);
     if (tab === 'tasks') renderCongregationTasks(node);
@@ -1350,5 +1363,7 @@
   A.renderCircuitsList = renderCircuitsList;
   A.renderCongregationDetail = renderCongregationDetail;
   A.renderDistrictDetail = renderDistrictDetail;
+  A.noteScope = noteScope;
+  A.openNoteDialog = openNoteDialog;
   A.runAction = runAction;
 })();

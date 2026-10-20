@@ -1,11 +1,11 @@
 self.CW_RELEASE = {
-  version: '0.42.61',
+  version: '0.42.62',
   changes: [
-    { module: 'appointments', version: '5.5.182', note: 'При печати письма под подписью больше не появляется лиловая полоса' },
-    { module: 'congress-project', version: '4.48.39', technical: true },
-    { module: 'pioneer-school', version: '1.14.143', technical: true },
-    { module: 'documents', version: '1.12.54', technical: true },
-    { module: 'journal', version: '0.26.2', technical: true },
-    { module: 'archive', version: '0.2.38', technical: true },
+    { module: 'journal', version: '0.27.0', note: 'Вкладка «Обзор» собрания и группы показывает текущее посещение, «на следующее посещение», задачи и записи' },
+    { module: 'appointments', version: '5.5.183', technical: true },
+    { module: 'congress-project', version: '4.48.40', technical: true },
+    { module: 'pioneer-school', version: '1.14.144', technical: true },
+    { module: 'documents', version: '1.12.55', technical: true },
+    { module: 'archive', version: '0.2.39', technical: true },
   ],
 };

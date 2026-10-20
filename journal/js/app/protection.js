@@ -44,7 +44,7 @@
     'overviewCarry', 'overviewTasks', 'overviewProjects',
     'tasksList', 'districtProjectsList', 'congProjectsList',
     'districtNotesList', 'congNotesList', 'districtTasksList', 'districtArchiveList',
-    'congTasksList', 'congArchiveList',
+    'congTasksList', 'congArchiveList', 'congNodeOverview',
     'visitRecords', 'carryList', 'visitSummaryTasks', 'visitSummaryCarry', 'visitSummaryTasksList', 'visitSummaryCarryList',
     'projectTitle', 'projectBody', 'projectTasks', 'projectNodes', 'projectItems', 'projectHistory',
     'searchResults', 'archiveList', 'carrySheetTitle', 'carrySheetHist', 'pickDialogList',
