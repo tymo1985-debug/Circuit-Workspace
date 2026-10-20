@@ -1708,13 +1708,13 @@
           const ws = App.utils.parseLocalDate(week.start), we = App.utils.parseLocalDate(week.end);
           if (!ws || !we || !App.utils.overlaps(ws, we, start, end)) return;
           const event = App.data.getEventById(week.eventId);
-          items.push({ source:'week', id:`week:${week.weekId}`, title:event?.name || App.utils.t('event'), start:week.start, end:week.end, startDate:ws, endDate:we, note:week.note || '', color:event?.color || '#1f7a45', address:event?.address || '', schedule:event?.schedule || '', flags:{ f302:!!week.flagS302, letter:!!week.flagLetter } });
+          items.push({ source:'week', id:`week:${week.weekId}`, title:event?.name || App.utils.t('event'), start:week.start, end:week.end, startDate:ws, endDate:we, note:week.note || '', color:event?.color || '#1f7a45', address:event?.address || '', schedule:event?.schedule || '', visitType:event?.visitType || '', flags:{ f302:!!week.flagS302, letter:!!week.flagLetter } });
         }));
         (App.state.app.entries || []).forEach((entry) => {
           const es = App.utils.parseLocalDate(entry.start), ee = App.utils.parseLocalDate(entry.end);
           if (!es || !ee || !App.utils.overlaps(es, ee, start, end)) return;
           const event = App.data.getEventById(entry.eventId);
-          items.push({ source:'entry', id:`entry:${entry.id}`, title:entry.title || event?.name || App.utils.t('event'), start:entry.start, end:entry.end, startDate:es, endDate:ee, note:entry.note || '', color:event?.color || '#1f7a45', address:event?.address || '', schedule:event?.schedule || '', flags:{ f302:!!entry?.flags?.f302, letter:!!entry?.flags?.letter } });
+          items.push({ source:'entry', id:`entry:${entry.id}`, title:entry.title || event?.name || App.utils.t('event'), start:entry.start, end:entry.end, startDate:es, endDate:ee, note:entry.note || '', color:event?.color || '#1f7a45', address:event?.address || '', schedule:event?.schedule || '', visitType:event?.visitType || '', flags:{ f302:!!entry?.flags?.f302, letter:!!entry?.flags?.letter } });
         });
         return App.utils.uniqueBy(items, (item) => [item.source,item.title,item.start,item.end,item.note,item.address].join('|')).sort((a,b) => a.startDate - b.startDate || a.endDate - b.endDate || String(a.title).localeCompare(String(b.title)));
       },
@@ -1726,19 +1726,90 @@
         const titles = { 'month-grid':App.utils.t('month_grid'), 'custom-range-calendar':App.utils.t('period_calendar'), 'month-agenda':App.utils.t('month_list'), 'half-year-agenda':App.utils.t('half_year'), 'year-agenda':App.utils.t('year_events'), 'custom-range':App.utils.t('list_period'), 'year-overview':App.utils.t('year_overview'), 'visits-schedule':App.utils.t('visits_schedule') };
         const title = titles[type] || App.utils.t('pdf_print');
         const flags = (f={}) => [f.letter ? App.utils.t('letter_short') : '', f.f302 ? App.utils.t('s302_short') : ''].filter(Boolean).map((x)=>`<span class="flag">${esc(x)}</span>`).join(' ');
-        const agenda = () => items.length ? `<table><thead><tr><th>${esc(App.utils.t('start'))}</th><th>${esc(App.utils.t('end'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('schedule'))}</th><th>${esc(App.utils.t('address'))}</th><th>${esc(App.utils.t('note'))}</th></tr></thead><tbody>${items.map((it)=>`<tr><td>${esc(App.utils.prettyDateLong(it.startDate))}</td><td>${esc(App.utils.prettyDateLong(it.endDate))}</td><td><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)} ${flags(it.flags)}</td><td>${esc(it.schedule || App.utils.t('no_schedule'))}</td><td>${esc(it.address || App.utils.t('no_address'))}</td><td>${esc(it.note || App.utils.t('no_note'))}</td></tr>`).join('')}</tbody></table>` : `<div class="md-empty">${esc(App.utils.t('no_events_month'))}</div>`;
-        const calendar = () => {
+        /* Печать «линиями» (решение Алекса 20.10.2026). Событие — одна цветная
+           полоса через свои дни, а не название, повторённое в каждой клетке.
+           Три вида: календарь (month-grid, custom-range-calendar), список без
+           таблицы (agenda-типы) и год на одном листе (year-overview).
+           Даты сравниваются номером суток (UTC от локальной даты) — так
+           разница дат не плывёт на переходе на летнее время. */
+        const dayNo = (d) => Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+        const spans = items.map((it) => ({ it, s: dayNo(it.startDate), e: dayNo(it.endDate), num: 0 }));
+        const shortFmt = (() => { try { return new Intl.DateTimeFormat(App.utils.lang(), { day:'numeric', month:'short' }); } catch (_) { return new Intl.DateTimeFormat('ru', { day:'numeric', month:'short' }); } })();
+        const shortRange = (a, b) => {
+          if (dayNo(a) === dayNo(b)) return shortFmt.format(a);
+          try { if (typeof shortFmt.formatRange === 'function') return shortFmt.formatRange(a, b); } catch (_) {}
+          return `${shortFmt.format(a)} – ${shortFmt.format(b)}`;
+        };
+        /* Цвет надписи на полосе: цвет события выбирает пользователь, светлый
+           фон с белым текстом не читается. */
+        const inkOn = (color) => {
+          const c = App.utils.clampColor(color);
+          const lum = (0.2126 * parseInt(c.slice(1, 3), 16) + 0.7152 * parseInt(c.slice(3, 5), 16) + 0.0722 * parseInt(c.slice(5, 7), 16)) / 255;
+          return lum > 0.6 ? '#16251d' : '#ffffff';
+        };
+        /* Недели месяца: номера дней (0 — вне месяца) и куски полос. Куски
+           раскладываются по дорожкам, чтобы пересекающиеся события не
+           наезжали друг на друга. spans уже отсортированы по началу. */
+        const monthWeeks = (year, month) => {
+          const first = dayNo(new Date(year, month, 1));
+          const dim = new Date(year, month + 1, 0).getDate();
+          const lead = (new Date(year, month, 1).getDay() + 6) % 7;
+          const weeks = [];
+          for (let day = 1 - lead; day <= dim; day += 7) {
+            const lo = first + Math.max(1, day) - 1, hi = first + Math.min(dim, day + 6) - 1, w0 = first + day - 1;
+            const days = Array.from({ length: 7 }, (_, i) => (day + i >= 1 && day + i <= dim ? day + i : 0));
+            const lanes = [], segs = [];
+            spans.forEach((sp) => {
+              const s = Math.max(sp.s, lo), e = Math.min(sp.e, hi);
+              if (s > e) return;
+              const c0 = s - w0, c1 = e - w0;
+              let lane = lanes.findIndex((busyTo) => busyTo < c0);
+              if (lane < 0) { lane = lanes.length; lanes.push(c1); } else lanes[lane] = c1;
+              segs.push({ sp, c0, len: c1 - c0 + 1, lane });
+            });
+            weeks.push({ days, segs, laneCount: Math.max(1, lanes.length) });
+          }
+          return weeks;
+        };
+        const bar = (seg, dayH, laneH, text, cls = '') => {
+          const c = App.utils.clampColor(seg.sp.it.color);
+          return `<div class="bar${cls}" style="left:calc(${(seg.c0 / 7 * 100).toFixed(4)}% + 2px);width:calc(${(seg.len / 7 * 100).toFixed(4)}% - 4px);top:${dayH + seg.lane * laneH}px;background:${c};color:${inkOn(c)}">${text}</div>`;
+        };
+        const dowRow = (cls) => `<div class="${cls}">${App.utils.dayNames().map((d) => `<span>${esc(d)}</span>`).join('')}</div>`;
+        const weekDays = (w) => w.days.map((n) => `<span>${n || ''}</span>`).join('');
+        const rangeMonths = () => {
           const start = App.utils.parseLocalDate(range.start), end = App.utils.parseLocalDate(range.end), months = [];
-          let cur = new Date(start.getFullYear(), start.getMonth(), 1), last = new Date(end.getFullYear(), end.getMonth(), 1);
-          while (cur <= last) { months.push({ month:cur.getMonth(), year:cur.getFullYear() }); cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); }
-          return `<div class="print-months">${months.map(({month,year})=>{
-            const mStart = new Date(year, month, 1), mEnd = new Date(year, month+1, 0), days=[];
-            for (let i=0; i<((mStart.getDay()+6)%7); i++) days.push('<div class="cal-empty"></div>');
-            for (let d=1; d<=mEnd.getDate(); d++) { const date = new Date(year,month,d); const dayItems = items.filter((it)=>App.utils.overlaps(it.startDate,it.endDate,date,date)); days.push(`<div class="cal-day"><strong>${d}</strong>${dayItems.map((it)=>`<div class="cal-event"><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)}</div>`).join('')}</div>`); }
-            return `<section class="print-month"><h2>${esc(App.utils.monthName(month))} ${year}</h2><div class="cal-dow">${App.utils.dayNames().map((d)=>`<span>${esc(d)}</span>`).join('')}</div><div class="cal-grid">${days.join('')}</div></section>`;
+          let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+          const last = new Date(end.getFullYear(), end.getMonth(), 1);
+          while (cur <= last) { months.push({ month:cur.getMonth(), year:cur.getFullYear() }); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
+          return months;
+        };
+        // Вид 1 — календарь: месяц на всю ширину листа, событие одной полосой.
+        const calendar = () => rangeMonths().map(({ month, year }) => `<section class="lc-month"><h2>${esc(App.utils.monthName(month))} ${year}</h2>${dowRow('lc-dow')}${monthWeeks(year, month).map((w) => `<div class="lc-week" style="height:${22 + w.laneCount * 21}px">${weekDays(w)}${w.segs.map((sg) => bar(sg, 22, 21, esc(sg.sp.it.title))).join('')}</div>`).join('')}</section>`).join('');
+        // Вид 2 — список: две строки на событие, пустые поля не печатаются.
+        const agenda = () => {
+          if (!items.length) return `<div class="empty">${esc(App.utils.t('no_events_month'))}</div>`;
+          let lastKey = '';
+          return `<div class="ls">${items.map((it) => {
+            const key = `${it.startDate.getFullYear()}-${it.startDate.getMonth()}`;
+            const head = key !== lastKey ? `<div class="ls-month">${esc(App.utils.monthName(it.startDate.getMonth()))} ${it.startDate.getFullYear()}</div>` : '';
+            lastKey = key;
+            const sub = [it.visitType ? App.utils.visitTypeLabel(it.visitType) : '', it.schedule, it.address, it.note].filter(Boolean).map((x) => esc(x)).join(' · ');
+            return `${head}<div class="ls-row"><div class="ls-date">${esc(shortRange(it.startDate, it.endDate))}</div><div class="ls-main"><div class="ls-title"><span class="dot" style="background:${App.utils.clampColor(it.color)}"></span>${esc(it.title)}</div>${sub ? `<div class="ls-sub">${sub}</div>` : ''}</div><div class="ls-flags">${flags(it.flags)}</div></div>`;
           }).join('')}</div>`;
         };
-        const overview = () => { const byMonth = new Map(); items.forEach((it)=>{ const k=`${it.startDate.getFullYear()}-${String(it.startDate.getMonth()+1).padStart(2,'0')}`; if(!byMonth.has(k)) byMonth.set(k,[]); byMonth.get(k).push(it); }); return `<table><thead><tr><th>${esc(App.utils.t('service_year'))}</th><th>${esc(App.utils.t('event'))}</th><th>${esc(App.utils.t('notes_count'))}</th></tr></thead><tbody>${Array.from(byMonth.entries()).map(([k,list])=>{ const [y,m]=k.split('-').map(Number); return `<tr><td>${esc(App.utils.monthName(m-1))} ${y}</td><td>${list.length}</td><td>${list.filter((x)=>x.note).length}</td></tr>`; }).join('')}</tbody></table>${agenda()}`; };
+        /* Вид 3 — год на одном листе: 12 мини-месяцев, название прямо на
+           полосе. Событие короче 3 дней на мини-месяце не подписать: на
+           полосе номер, под календарём — «Расшифровка» только для них. */
+        const overview = () => {
+          const start = App.utils.parseLocalDate(range.start);
+          spans.forEach((sp) => { sp.num = 0; });
+          const notes = spans.filter((sp) => sp.e - sp.s + 1 < 3);
+          notes.forEach((sp, i) => { sp.num = i + 1; });
+          const grid = Array.from({ length: 12 }, (_, k) => new Date(start.getFullYear(), start.getMonth() + k, 1)).map((m) => `<section class="yr-month"><h2>${esc(App.utils.monthName(m.getMonth()))} ${m.getFullYear()}</h2>${dowRow('yr-dow')}${monthWeeks(m.getFullYear(), m.getMonth()).map((w) => `<div class="yr-week" style="height:${12 + w.laneCount * 13}px">${weekDays(w)}${w.segs.map((sg) => (sg.sp.num ? bar(sg, 12, 13, String(sg.sp.num), ' num') : bar(sg, 12, 13, sg.len >= 3 ? esc(sg.sp.it.title) : ''))).join('')}</div>`).join('')}</section>`).join('');
+          const key = notes.length ? `<div class="yr-key"><h3>${esc(App.utils.t('print_breakdown'))}</h3><div class="yr-key-list">${notes.map((sp) => { const c = App.utils.clampColor(sp.it.color); return `<span class="yr-key-item"><span class="yr-num" style="background:${c};color:${inkOn(c)}">${sp.num}</span><strong>${esc(shortRange(sp.it.startDate, sp.it.endDate))}</strong> ${esc(sp.it.title)}</span>`; }).join('')}</div></div>` : '';
+          return `<div class="yr-grid">${grid}</div>${key}`;
+        };
         const visitsSchedule = () => {
           const rows = (App.state.app.entries || []).map((entry) => ({ entry, event: App.data.getEventById(entry.eventId) }))
             .filter(({ entry, event }) => {
@@ -1767,23 +1838,54 @@
                сбрасывает оба свойства заодно. Без явного сброса в календарь
                протекала письмовая интерлиньяж 1.62 — поймано сравнением бумаги. */
             'body{font-family:Segoe UI,Arial,sans-serif;color:#16251d;margin:0;padding:22px;background:#fff;font-size:12px;font-weight:400;line-height:normal}'
+            /* Без exact браузер по умолчанию не печатает фон — полосы и точки
+               пропали бы с бумаги, если в диалоге выключена «Фоновая графика». */
+            + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
             + 'h1{font-size:22px;margin:0 0 6px}h2{font-size:16px;margin:0 0 10px}'
             + '.meta{color:#566;margin-bottom:18px}'
-            + '.print-months{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}'
-            + '.print-month{break-inside:avoid;border:1px solid #ccd8d0;border-radius:12px;padding:12px}'
-            + '.cal-dow,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}'
-            + '.cal-dow span{text-align:center;color:#667;font-weight:600}'
-            + '.cal-day,.cal-empty{min-height:78px;border:1px solid #dde6e0;border-radius:8px;padding:5px}'
-            + '.cal-day strong{display:block;margin-bottom:3px}'
-            + '.cal-event{font-size:10px;margin:2px 0;padding:2px 4px;border-radius:6px;background:#f1f5f2;overflow:hidden;text-overflow:ellipsis}'
             + '.dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:5px}'
             + '.flag{display:inline-block;border:1px solid #ccd8d0;border-radius:999px;padding:1px 5px;margin-left:3px;font-size:10px}'
+            + '.bar{position:absolute;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}'
+            + '.lc-month{break-inside:avoid;margin-bottom:18px}'
+            + '.lc-month h2{margin-bottom:6px}'
+            + '.lc-dow,.lc-week,.yr-dow,.yr-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}'
+            + '.lc-dow span{padding:0 6px 3px;font-size:10px;font-weight:600;color:#667;text-transform:uppercase}'
+            + '.lc-week{position:relative;border-top:1px solid #c9d4cd}'
+            + '.lc-week:last-child{border-bottom:1px solid #c9d4cd}'
+            + '.lc-week span{padding:4px 6px;border-left:1px solid #dde6e0;font-weight:700;font-size:11px}'
+            + '.lc-week span:nth-of-type(7){border-right:1px solid #dde6e0}'
+            + '.lc-week span:nth-of-type(n+6){background:#f6f8f7}'
+            + '.lc-week .bar{height:18px;line-height:18px;font-size:11px;border-radius:9px;padding:0 9px}'
+            + '.ls-month{margin-top:14px;padding-bottom:4px;border-bottom:1.5px solid #16251d;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;break-after:avoid}'
+            + '.ls-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #e3e9e5;break-inside:avoid}'
+            + '.ls-date{width:110px;flex:none;font-weight:700;font-size:13px}'
+            + '.ls-main{flex:1;min-width:0}'
+            + '.ls-title{font-weight:600;font-size:13px}'
+            + '.ls-sub{padding-left:13px;margin-top:2px;color:#556;font-size:11px}'
+            + '.ls-flags{flex:none;white-space:nowrap}'
+            + '.yr-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:16px;row-gap:10px}'
+            + '.yr-month{break-inside:avoid}'
+            + '.yr-month h2{font-size:11px;margin:0 0 2px}'
+            + '.yr-dow span{padding-left:3px;font-size:8px;font-weight:600;color:#667;text-transform:uppercase}'
+            + '.yr-week{position:relative;border-top:1px solid #dde6e0}'
+            + '.yr-week span{padding-left:3px;font-size:8.5px;line-height:11px}'
+            + '.yr-week span:nth-of-type(n+6){color:#667}'
+            + '.yr-week .bar{height:11px;line-height:11px;font-size:8px;border-radius:6px;padding:0 4px}'
+            + '.yr-week .bar.num{padding:0;text-align:center}'
+            + '.yr-key{margin-top:10px;padding-top:6px;border-top:1.5px solid #16251d;break-inside:avoid}'
+            + '.yr-key h3{margin:0 0 5px;font-size:10px;letter-spacing:.08em;text-transform:uppercase}'
+            + '.yr-key-list{display:flex;flex-wrap:wrap;gap:4px 24px;font-size:11px}'
+            + '.yr-key-item{display:inline-flex;align-items:center;gap:6px}'
+            + '.yr-num{display:inline-block;width:15px;height:15px;border-radius:8px;font-size:9px;font-weight:700;line-height:15px;text-align:center}'
             + 'table{width:100%;border-collapse:collapse}'
             + 'th,td{border:1px solid #ccd8d0;padding:7px;text-align:left;vertical-align:top}'
             + 'th{background:#eef5f0}'
             + '.empty{border:1px dashed #ccd8d0;border-radius:10px;padding:20px;text-align:center;color:#667}'
-            + '@media print{body{padding:0}.print-month{page-break-inside:avoid}}',
+            + '@media print{body{padding:0}}',
+
           body: `<h1>${esc(title)}</h1><div class="meta">${esc(label)} · Service Year Planner</div>${body}`,
+          /* Список читается в книжной; календарю, году и графику КС нужна ширина. */
+          page: ['month-agenda','half-year-agenda','year-agenda','custom-range'].includes(type) ? 'A4' : 'A4 landscape',
         };
       },
       doPrint() {
@@ -1801,10 +1903,10 @@
           title: doc.title,
           lang: App.utils.lang(),
           css: doc.css,
-          /* Альбомная ориентация и узкие поля — свойство именно календаря:
-             сетка на 7 колонок в книжной не читается. Общий слой по умолчанию
-             даёт письмовые 28/20 мм. */
-          page: { size: 'A4 landscape', margin: '10mm' },
+          /* Ориентацию выбирает вид (doc.page): календарю, году и графику КС
+             нужна альбомная, списку — книжная. Узкие поля — свойство печати
+             календаря; общий слой по умолчанию даёт письмовые 28/20 мм. */
+          page: { size: doc.page || 'A4 landscape', margin: '10mm' },
           html: doc.body,
           onBlocked: () => App.utils.toast(App.utils.t('docs_print_blocked')),
         });
