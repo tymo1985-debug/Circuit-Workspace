@@ -4,10 +4,11 @@
 // R3 (06.10.2026) дорожные км/время, R4 (06.10.2026) ручной черновик порядка,
 // R5 (06.10.2026) сравнение «Календарь ↔ Черновик», R6 (06.10.2026)
 // «Предложить оптимальный порядок», R7 (06.10.2026) «Применить к календарю»,
-// R8 (06.10.2026) мобильная раскладка [Список]/[Карта].
+// R8 (06.10.2026) мобильная раскладка [Список]/[Карта], R9 (08.10.2026)
+// полугодия, R10 (20.10.2026) перерывы, остановки и посещения «из дома».
 // Календарь не меняется никогда: ТОЛЬКО ПРОСМОТР и черновик сессии. Идея и фазы
 // R1–R8 — IDEAS.md. Календарь остаётся первичным; этот экран ничего не
-// планирует и не пишет: он показывает уже назначенные посещения служебного
+// планирует и не меняет записи: он показывает уже назначенные посещения служебного
 // года в календарном порядке и отмечает те, у которых нет координат.
 //
 // Файл из двух слоёв (как ui/archive-year.js).
@@ -18,12 +19,14 @@
 //     `App.ui.routeRender()` в конце `renderAll()`.
 //
 // ИНВАРИАНТЫ
-//  • Запись в КАНОНИЧЕСКИЙ блоб — только R7, только функция applyDraft(), только
-//    по явному нажатию и window.confirm, после контрольной точки
-//    истории (`App.store.checkpointNow('route-apply')`). Кроме неё этот файл
-//    пишет лишь черновик R4 в sessionStorage (ключ `cp.route.draft.<год>`,
-//    функции draftRead/draftWrite). localStorage/IndexedDB — нет; кэш
-//    дорожных отрезков R3 — целиком в ui/route-legs.js.
+//  • Запись в КАНОНИЧЕСКИЙ блоб — две функции. applyDraft() (R7) — ЕДИНСТВЕННАЯ,
+//    что меняет даты записей: по явному нажатию и window.confirm, после
+//    контрольной точки истории (`App.store.checkpointNow('route-apply')`).
+//    persistRoute() (R10) — только настройки маршрута (`settings.routeRules`,
+//    `settings.routeGaps`) и поле шаблона `event.route`, записи календаря не
+//    трогает. Кроме них этот файл пишет лишь черновик R4 в sessionStorage
+//    (ключ `cp.route.draft.<год>`, функции draftRead/draftWrite).
+//    localStorage/IndexedDB — нет; кэш дорожных отрезков R3 — в ui/route-legs.js.
 //  • Данные — `App.data.getServiceYearStats(year).visitEntries`: записи
 //    календаря, у которых событие имеет visitType. Координаты — из события
 //    (`getEventById` отдаёт копию, слитую со справочником).
@@ -86,6 +89,28 @@
 //    только в памяти. Цвет точек и отрезков — по месяцу (для черновика — по
 //    месяцу СЛОТА), стрелки направления — на серединах отрезков, легенда —
 //    под картой. Данные, схема и расчёт OSRM не затронуты.
+//  • R10: решения Алекса 20.10.2026. Маршрут — не сплошная цепочка: между
+//    посещениями бывают отпуск, Free week, конгресс, школа и дни дома.
+//    (1) Каждое событие полугодия получает «где я»: посещение (собрание,
+//    группа, предгруппа — одинаково) ближе 12 км — «из дома» (поездка
+//    туда-обратно, ОДНА на посещение), дальше 60 км — в разъезде, между — по
+//    дороге ≤ 30 мин, без дорожных данных — «❓» с кнопками ответа (ответ
+//    пишется в шаблон). Событие без адреса (Urlaub, Free week) — дома; с
+//    адресом в Праге — дома; вне — остановка маршрута ◆.
+//    (2) Перерыв между точками «в разъезде»: ручной выбор (📌) → шаблон
+//    предыдущей точки «после: домой / сразу дальше» → событие «дома» в
+//    перерыве → «остаюсь, где был» → ≤ 2 свободных дней — напрямую → бюджет:
+//    через дом, если крюк ≤ свободные дни × 1 ч. Крюк в 50–150 % бюджета —
+//    «❓ спорный случай». Ручной выбор хранится по ПЕРИОДУ перерыва
+//    («ГГГГ-ММ-ДД..ГГГГ-ММ-ДД» в settings.routeGaps): оптимизация и применение
+//    переставляют посещения по слотам, а даты слотов неизменны. Неактуальные
+//    решения не удаляются молча — только кнопкой в «Правилах маршрута».
+//    (3) Пороги — `settings.routeRules` (правится на экране), шаблон события —
+//    `event.route = { base, after }` (редактор события). Приоритет: ручной
+//    выбор на перерыве → шаблон → правила. Дом берётся через home() — одна
+//    точка смены, если дом станет зависеть от даты (смена района).
+//    (4) Оптимизация (R6) считает км ПЛАНА: цепочка с возвратами домой и
+//    поездки «из дома»; посещения «из дома» стоят на своих местах.
 (function (root) {
   'use strict';
 
@@ -116,6 +141,7 @@
         hasCoords: isNum(ev.lat) && isNum(ev.lng),
         lat: isNum(ev.lat) ? ev.lat : null,
         lng: isNum(ev.lng) ? ev.lng : null,
+        route: normRoute(ev.route),
       });
     });
     rows.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1
@@ -228,12 +254,13 @@
    * закреплённых; home — {lat,lng} | null; dist(a,b) → км по точкам {lat,lng}.
    * Свободные = не закреплены И с координатами; остальные стоят в своих
    * слотах. Переставляются только свободные между свободными слотами.
+   * costFn (R10, необязательно) — цена порядка; иначе сумма от дома по цепочке.
    * Детерминированно: два старта (текущий порядок и жадный «ближайший
    * сосед») + локальный поиск (обмен, разворот отрезка, перенос одного).
    * → { order: [id], before, after, changed } (км, сумма от дома по строкам с
    * координатами в порядке слотов).
    */
-  function optimize(rows, locks, home, dist) {
+  function optimize(rows, locks, home, dist, costFn) {
     const list = Array.isArray(rows) ? rows : [];
     const lk = new Set(locks || []);
     const isFree = (r) => r.hasCoords && !lk.has(r.id);
@@ -241,7 +268,9 @@
     list.forEach((r, i) => { if (isFree(r)) slots.push(i); });
     const ids0 = list.map((r) => r.id);
     const hasHome = home && isNum(home.lat) && isNum(home.lng);
-    const cost = (seq) => {
+    // R10: costFn(seq) — цена полного порядка по слотам (план с перерывами);
+    // без него — прежняя цепочка от дома (R6).
+    const cost = typeof costFn === 'function' ? costFn : (seq) => {
       let km = 0, prev = hasHome ? home : null;
       for (const r of seq) { if (!r.hasCoords) continue; if (prev) km += dist(prev, r); prev = r; }
       return km;
@@ -321,7 +350,255 @@
     return out;
   }
 
-  root.CPRoute = { collect, halfBounds, halfMonths, halfOf, monthSlot, inRange, summarize, pathLength, points, applyOrder, move, moved, optimize, pinPast, applyPlan };
+  /* ═══════ R10 (20.10.2026): перерывы, остановки, посещения «из дома» ═══════
+     Чистая логика: ни DOM, ни App, ни хранилища. Решения — шапка файла, R10. */
+
+  /** Правила по умолчанию; `settings.routeRules` их перекрывает. */
+  const RULES = Object.freeze({ homeKm: 12, awayKm: 60, homeMin: 30, gapDays: 2, hoursPerDay: 1 });
+  const RULE_MAX = Object.freeze({ homeKm: 200, awayKm: 2000, homeMin: 600, gapDays: 60, hoursPerDay: 24 });
+  const BASES = ['auto', 'home', 'away', 'stay', 'ignore'];
+  const AFTERS = ['auto', 'home', 'onward'];
+  const GAP_KEY = /^\d{4}-\d{2}-\d{2}\.\.\d{4}-\d{2}-\d{2}$/;
+  /** Оценка времени без дорожных данных: дорога ≈ прямая × 1,25 при 80 км/ч. */
+  const EST_MIN_PER_KM = 1.25 / 80 * 60;
+  /** «Спорно» — крюк в пределах 50–150 % бюджета: решение за Алексом. */
+  const ASK_LOW = 0.5, ASK_HIGH = 1.5;
+
+  const hasHome = (h) => !!h && isNum(h.lat) && isNum(h.lng);
+  const dayNum = (iso) => { const p = String(iso).split('-').map(Number); return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 86400000); };
+  const shiftIso = (iso, k) => new Date((dayNum(iso) + k) * 86400000).toISOString().slice(0, 10);
+
+  /** Правила маршрута: числа ≥ 0 с потолком, иначе — значение по умолчанию. */
+  function normRules(v) {
+    const src = v && typeof v === 'object' ? v : {};
+    const out = {};
+    Object.keys(RULES).forEach((k) => {
+      const n = src[k] === '' || src[k] == null ? NaN : Number(src[k]);
+      out[k] = Number.isFinite(n) && n >= 0 ? Math.min(n, RULE_MAX[k]) : RULES[k];
+    });
+    out.gapDays = Math.round(out.gapDays);
+    if (out.awayKm < out.homeKm) out.awayKm = out.homeKm;
+    return out;
+  }
+
+  /**
+   * Поле шаблона события `route` = { base, after } (+ будущие ключи сохраняются).
+   * base: auto | home | away | stay | ignore; after: auto | home | onward.
+   * Всё «авто» и ничего больше → null (поле не хранится).
+   */
+  function normRoute(v) {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+    const out = Object.assign({}, v);
+    out.base = BASES.includes(v.base) ? v.base : 'auto';
+    out.after = AFTERS.includes(v.after) ? v.after : 'auto';
+    const more = Object.keys(out).some((k) => k !== 'base' && k !== 'after');
+    return out.base === 'auto' && out.after === 'auto' && !more ? null : out;
+  }
+
+  /** Ручные решения по перерывам: «ГГГГ-ММ-ДД..ГГГГ-ММ-ДД» → home | stay. */
+  function normGaps(v) {
+    const out = {};
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      Object.keys(v).forEach((k) => { if (GAP_KEY.test(k) && (v[k] === 'home' || v[k] === 'stay')) out[k] = v[k]; });
+    }
+    return out;
+  }
+
+  /**
+   * Не-визитные события календаря (отпуск, Free week, конгресс…) → строки.
+   * list — [{ id, eventId, name, start, end, lat, lng, route }]. Невалидная
+   * дата — мимо; то же событие с теми же датами (запись + неделя) — один раз.
+   */
+  function extrasRows(list) {
+    const seen = new Set();
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach((x) => {
+      if (!x || typeof x !== 'object' || !ISO.test(String(x.start || ''))) return;
+      const end = ISO.test(String(x.end || '')) && x.end >= x.start ? x.end : x.start;
+      const sig = [x.eventId || x.id, x.start, end].join('|');
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      out.push({
+        id: String(x.id || sig), eventId: String(x.eventId || ''), name: String(x.name || ''), visitType: '',
+        start: x.start, end,
+        hasCoords: isNum(x.lat) && isNum(x.lng), lat: isNum(x.lat) ? x.lat : null, lng: isNum(x.lng) ? x.lng : null,
+        route: normRoute(x.route),
+      });
+    });
+    out.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.end < b.end ? -1 : a.end > b.end ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    return out;
+  }
+
+  /**
+   * Где я во время события. → { mode, how, km?, min? }
+   *  mode: home (дома; посещение — поездка из дома) | away (точка маршрута) |
+   *        stay (остаюсь, где был) | ignore | off (нет координат — линия мимо).
+   *  how:  manual (шаблон) | km | road | ask (нужна дорога или ответ) | noaddr | nohome.
+   * Посещение: ≤ homeKm — из дома; ≥ awayKm — в разъезде; между — по дороге
+   * (≤ homeMin мин — из дома), без дорожных данных — «ask», считается в разъезде.
+   * Событие без адреса — дома; с адресом — по тем же порогам.
+   */
+  function classify(item, home, rules, dist, roadMin) {
+    const r = item && item.route;
+    const base = r && BASES.includes(r.base) ? r.base : 'auto';
+    if (!item.visitType) {
+      if (base === 'ignore') return { mode: 'ignore', how: 'manual' };
+      if (base === 'stay') return { mode: 'stay', how: 'manual' };
+      if (base === 'home') return { mode: 'home', how: 'manual' };
+      if (!item.hasCoords) return base === 'away' ? { mode: 'off', how: 'noaddr' } : { mode: 'home', how: 'noaddr' };
+    } else {
+      if (base === 'home') return { mode: 'home', how: 'manual' };
+      if (!item.hasCoords) return { mode: 'off', how: 'noaddr' };
+    }
+    if (base === 'away') return { mode: 'away', how: 'manual' };
+    if (!hasHome(home)) return { mode: 'away', how: 'nohome' };
+    const km = dist(home, item);
+    if (km <= rules.homeKm) return { mode: 'home', how: 'km', km };
+    if (km >= rules.awayKm) return { mode: 'away', how: 'km', km };
+    const min = roadMin ? roadMin(home, item) : null;
+    if (isNum(min)) return { mode: min <= rules.homeMin ? 'home' : 'away', how: 'road', km, min };
+    return { mode: 'away', how: 'ask', km };
+  }
+
+  /**
+   * План полугодия: где я в каждый момент и как еду.
+   * opts = { slots: [{start,end}], visits: [строка] (visits[i] стоит в slots[i]),
+   *   extras: extrasRows(…), home, rules, gaps: {ключ → home|stay},
+   *   dist(a,b) → км, roadMin(a,b) → мин | null }.
+   * Перерыв между соседними точками «в разъезде» P → Q решается так:
+   *   ручной выбор → шаблон P (`after`) → событие «дома» в перерыве → событие
+   *   «остаюсь» → свободных дней ≤ gapDays (напрямую) → бюджет: через дом, если
+   *   крюк (P→дом + дом→Q − P→Q) ≤ свободные дни × hoursPerDay.
+   * → { rules, home, items, away, gaps, path, trips, tail }:
+   *   path — точки цепочки (дом повторяется на каждом возврате, tag 'gap:i');
+   *   trips — [дом, посещение, дом] для посещений «из дома»;
+   *   tail — после последней точки есть «домашнее» событие → возврат домой.
+   */
+  function plan(opts) {
+    const o = opts || {};
+    const rules = normRules(o.rules);
+    const home = hasHome(o.home) ? o.home : null;
+    const dist = typeof o.dist === 'function' ? o.dist : () => 0;
+    const roadMin = typeof o.roadMin === 'function' ? o.roadMin : null;
+    const choices = o.gaps && typeof o.gaps === 'object' ? o.gaps : {};
+    const slots = Array.isArray(o.slots) ? o.slots : [];
+    const items = [];
+    let idx = 0;
+    (Array.isArray(o.visits) ? o.visits : []).forEach((v, i) => {
+      if (!v) return;
+      const sl = slots[i] && ISO.test(String(slots[i].start || '')) ? slots[i] : v;
+      if (!ISO.test(String(sl.start || ''))) return;
+      const cls = classify(v, home, rules, dist, roadMin);
+      items.push({ kind: 'visit', id: v.id, row: v, start: sl.start, end: sl.end || sl.start, mode: cls.mode, cls, idx: idx++ });
+    });
+    (Array.isArray(o.extras) ? o.extras : []).forEach((x) => {
+      if (!x) return;
+      const cls = classify(x, home, rules, dist, roadMin);
+      if (cls.mode === 'ignore') return;
+      items.push({ kind: 'stop', id: x.id, row: x, start: x.start, end: x.end || x.start, mode: cls.mode, cls, idx: idx++ });
+    });
+    items.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.end < b.end ? -1 : a.end > b.end ? 1 : a.idx - b.idx));
+    const away = items.filter((it) => it.mode === 'away');
+
+    const tm = (a, b, flag) => {
+      const m = roadMin ? roadMin(a, b) : null;
+      if (isNum(m)) return m;
+      flag.approx = true;
+      return dist(a, b) * EST_MIN_PER_KM;
+    };
+    const gaps = [];
+    for (let i = 1; i < away.length; i++) {
+      const P = away[i - 1], Q = away[i];
+      const from = shiftIso(P.end, 1), to = shiftIso(Q.start, -1);
+      const key = from <= to ? `${from}..${to}` : '';
+      const between = items.filter((it) => it !== P && it !== Q && it.mode !== 'away' && it.end > P.end && it.start < Q.start);
+      const busy = new Set();
+      between.forEach((it) => {
+        if (it.kind !== 'visit' || it.mode !== 'off') return;
+        for (let d = Math.max(dayNum(it.start), dayNum(from)); d <= Math.min(dayNum(it.end), dayNum(to)); d++) busy.add(d);
+      });
+      const free = Math.max(0, dayNum(Q.start) - dayNum(P.end) - 1 - busy.size);
+      const homeIn = between.filter((it) => it.mode === 'home');
+      const stayIn = between.filter((it) => it.mode === 'stay');
+      const g = {
+        key, from, to, free, prevId: P.id, nextId: Q.id,
+        between: homeIn.concat(stayIn).map((it) => ({ id: it.id, name: it.row.name, kind: it.kind, mode: it.mode })),
+        extraMin: null, budgetMin: null, approx: false, ask: false, template: '',
+      };
+      const after = P.row.route && P.row.route.after;
+      let auto, why;
+      if (!home) { auto = 'stay'; why = 'nohome'; }
+      else if (after === 'home' || after === 'onward') { auto = after === 'home' ? 'home' : 'stay'; why = 'template'; g.template = P.row.name; }
+      else if (homeIn.length) { auto = 'home'; why = 'event'; }
+      else if (stayIn.length) { auto = 'stay'; why = 'event'; }
+      else if (free <= rules.gapDays) { auto = 'stay'; why = 'short'; }
+      else {
+        const f = { approx: false };
+        g.extraMin = tm(P.row, home, f) + tm(home, Q.row, f) - tm(P.row, Q.row, f);
+        g.budgetMin = free * rules.hoursPerDay * 60;
+        g.approx = f.approx;
+        auto = g.extraMin <= g.budgetMin ? 'home' : 'stay';
+        why = 'budget';
+        g.ask = g.budgetMin > 0 && g.extraMin >= g.budgetMin * ASK_LOW && g.extraMin <= g.budgetMin * ASK_HIGH;
+      }
+      const manual = home && key && (choices[key] === 'home' || choices[key] === 'stay') ? choices[key] : '';
+      g.auto = auto; g.why = why; g.manual = manual;
+      g.decision = manual || auto;
+      if (manual) g.ask = false;
+      g.show = why !== 'nohome' && (free > rules.gapDays || homeIn.length > 0 || stayIn.length > 0 || !!manual || g.decision === 'home');
+      gaps.push(g);
+    }
+
+    const homePt = (tag) => ({ id: '', n: 0, home: true, hasCoords: true, lat: home.lat, lng: home.lng, name: String(home.name || ''), tag });
+    const ptOf = (it) => Object.assign({}, it.row, { kind: it.kind, start: it.start, end: it.end });
+    const path = [];
+    if (home) path.push(homePt('start'));
+    away.forEach((it, i) => {
+      if (i > 0 && gaps[i - 1].decision === 'home') path.push(homePt('gap:' + (i - 1)));
+      path.push(ptOf(it));
+    });
+    const last = away[away.length - 1];
+    const tail = !!(home && last && items.some((it) => it.mode === 'home' && it.end > last.end));
+    if (tail) path.push(homePt('end'));
+    const trips = [];
+    if (home) {
+      items.forEach((it) => {
+        if (it.kind === 'visit' && it.mode === 'home' && it.row.hasCoords) trips.push([homePt('trip'), ptOf(it), homePt('trip')]);
+      });
+    }
+    return { rules, home, items, away, gaps, path, trips, tail };
+  }
+
+  /** Км плана по прямой: цепочка с возвратами домой + поездки «из дома». dist(a,b) — по точкам. */
+  function planKm(p, dist) {
+    const seq = (pts) => { let km = 0; for (let i = 1; i < pts.length; i++) km += dist(pts[i - 1], pts[i]); return km; };
+    return (p.path.length > 1 ? seq(p.path) : 0) + p.trips.reduce((s, tr) => s + seq(tr), 0);
+  }
+
+  /**
+   * Порядки точек для дорожных данных: цепочка, поездки «из дома», спорные
+   * «из дома?» (дом → точка) и сравнение «через дом / напрямую» для перерывов,
+   * решаемых бюджетом.
+   */
+  function planLists(p) {
+    const lists = [];
+    if (p.path.length > 1) lists.push(p.path);
+    p.trips.forEach((tr) => lists.push(tr));
+    if (p.home) {
+      const hp = { id: '', home: true, hasCoords: true, lat: p.home.lat, lng: p.home.lng };
+      p.items.forEach((it) => { if (it.cls.how === 'ask') lists.push([hp, it.row]); });
+      const byId = new Map(p.away.map((it) => [it.id, it.row]));
+      p.gaps.forEach((g) => {
+        if (g.why !== 'budget') return;
+        const P = byId.get(g.prevId), Q = byId.get(g.nextId);
+        lists.push([P, hp, Q], [P, Q]);
+      });
+    }
+    return lists;
+  }
+
+  root.CPRoute = { collect, halfBounds, halfMonths, halfOf, monthSlot, inRange, summarize, pathLength, points, applyOrder, move, moved, optimize, pinPast, applyPlan,
+    RULES, normRules, normRoute, normGaps, extrasRows, classify, plan, planKm, planLists };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -352,6 +629,9 @@
     let mobileView = 'list';   // R8: 'list' | 'map' (≤900px); только в памяти
     let resizeBound = false;
     let pastIds = new Set();   // R7: прошедшие записи — всегда на месте
+    let extras = [];           // R10: не-визитные события полугодия (extrasRows)
+    let calPlan = null, draftPlan = null, curPlan = null; // R10: планы обоих порядков и показанный
+    let gapLegs = new Map(), tripLegs = new Map(), endLeg = null; // R10: отрезок «→ дом» перерыва, поездки «из дома», возврат в конце
     const effLocks = () => (draft ? draft.locks : []).concat(Array.from(pastIds).filter((id) => !(draft && draft.locks.includes(id))));
 
     // R9: цвета месяцев полугодия (6 шт.), легенда — под картой. Дом — зелёный отдельно.
@@ -439,9 +719,18 @@
         : `<span class="route-n route-n-off" aria-hidden="true">–</span>`;
       const typeLabel = row.visitType ? App.utils.visitTypeLabel(row.visitType) : '';
       const leg = legByRow.get(row.id);
-      const note = row.hasCoords
+      const cls = modeOf(row.id);
+      let note = row.hasCoords
         ? (leg ? `<span class="small route-leg${leg.road ? '' : ' is-straight'}">${esc(legText(leg))}</span>` : '')
         : `<span class="small route-warn">${esc(t('route_no_coords'))}</span>`;
+      // R10: посещение «из дома» — поездка туда-обратно вместо отрезка цепочки.
+      if (cls && cls.mode === 'home' && row.hasCoords && curPlan && curPlan.home) {
+        const tl = tripLegs.get(row.id);
+        const km = tl ? tl.km : distP(curPlan.home, row) * 2;
+        const txt = tl && tl.road ? t('route_leg_road', { km: fmtKm(km), time: fmtDur(tl.min) }) : t('route_leg_straight', { km: fmtKm(km) });
+        note = `<span class="small route-leg route-from-home${tl && tl.road ? '' : ' is-straight'}">${esc(t('route_from_home', { leg: txt }))}</span>`;
+      }
+      if (cls && cls.how === 'ask') note += askHtml(row);
       const id = App.utils.escapeAttr(row.id);
       return `<div class="route-row${row.id === selectedId ? ' is-selected' : ''}" data-route-row="${id}">`
         + `<button type="button" class="route-pick md-state-layer" data-route-pick="${id}" aria-pressed="${row.id === selectedId}">`
@@ -531,7 +820,11 @@
 
     function draftOptimize() {
       const cur = draft ? applyOrder(calRows, draft.order) : calRows;
-      const res = optimize(cur, effLocks(), home(), (a, b) => App.utils.haversineKm(a.lat, a.lng, b.lat, b.lng));
+      // R10: цена — км плана с перерывами и поездками «из дома»; посещения «из дома»
+      // стоят на своих местах (их цена от слота не зависит, а дом между поездками — точка опоры).
+      const rl = rulesNow(), hm = home();
+      const homeIds = cur.filter((r) => classify(r, hm, rl, distP, roadMin).mode === 'home').map((r) => r.id);
+      const res = optimize(cur, effLocks().concat(homeIds), hm, distP, (seq) => planKm(planFor(seq), distP));
       if (!res.changed) { optNote = t('route_opt_same'); optUndo = null; render(); return; }
       optUndo = draft ? { order: draft.order.slice(), on: draft.on, existed: true } : { existed: false };
       draft = draft || { on: true, order: [], locks: [] };
@@ -615,7 +908,8 @@
           <div class="route-map-pane" id="routeMapPane"><div class="route-map" id="routeMap"></div>
             <div class="small route-map-note" id="routeMapNote" hidden></div>
             <div class="small route-legend" id="routeLegend"></div></div>
-        </div></div>`;
+        </div>
+        <details class="route-rules" id="routeRulesBox"><summary>${esc(t('route_rules'))}</summary><div id="routeRules"></div></details></div>`;
     }
 
     // R8: показать вкладку. Карта, жившая в скрытом блоке, пересчитывает размер.
@@ -669,27 +963,41 @@
     }
 
     function drawMap() {
-      if (!map) return;
+      if (!map || !curPlan) return;
       const ghost = draft && draft.on && moved(calRows, rows) ? calPts : null;
-      const sig = scope() + '|' + pts.map((r) => [r.id, r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId
-        + '|' + (ghost ? ghost.map((r) => r.id).join(',') : '');
+      const trips = curPlan.trips;
+      const sig = scope() + '|' + pts.map((r) => [r.id, r.tag || '', r.n, r.lat, r.lng].join(',')).join(';') + '|' + selectedId
+        + '|' + trips.map((tr) => [tr[1].id, tr[1].n].join(',')).join(';')
+        + '|' + (ghost ? ghost.map((r) => r.id || 'H').join(',') : '');
       if (sig === drawnSig) return;
       drawnSig = sig;
       pinsLayer.clearLayers(); lineLayer.clearLayers(); arrowLayer.clearLayers(); legSegs = [];
-      if (!pts.some((r) => !r.home)) { setMapNote(t('map_no_coords')); return; }
+      const visitsOnMap = pts.filter((r) => !r.home).concat(trips.map((tr) => tr[1]));
+      if (!visitsOnMap.length) { setMapNote(t('map_no_coords')); return; }
       if (!tileError) setMapNote('');
       if (ghost && ghost.length > 1) L.polyline(ghost.map((r) => [r.lat, r.lng]), { color: '#7a7f8c', weight: 2, opacity: 0.8, dashArray: '6 6', interactive: false }).addTo(lineLayer);
-      // R9: каждый отрезок — цвета месяца посещения, куда он ведёт; направление — стрелкой.
+      // R9: отрезок — цвета месяца точки, куда он ведёт; R10: путь через дом — пунктиром
+      // цвета месяца точки, откуда уезжаем; поездки «из дома» — тонким пунктиром.
       for (let i = 1; i < pts.length; i++) {
-        const seg = { a: pts[i - 1], b: pts[i], color: colorOf(pts[i]) };
+        const a = pts[i - 1], b = pts[i];
+        const viaHome = b.home || (a.home && a.tag !== 'start');
+        const seg = { a, b, color: b.home ? colorOf(a) : colorOf(b) };
         legSegs.push(seg);
-        L.polyline([[seg.a.lat, seg.a.lng], [seg.b.lat, seg.b.lng]], { color: seg.color, weight: 3, opacity: 0.9 }).addTo(lineLayer);
+        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], viaHome
+          ? { color: seg.color, weight: 3, opacity: 0.75, dashArray: '8 7' }
+          : { color: seg.color, weight: 3, opacity: 0.9 }).addTo(lineLayer);
       }
+      trips.forEach((tr) => L.polyline([[tr[0].lat, tr[0].lng], [tr[1].lat, tr[1].lng]], { color: colorOf(tr[1]), weight: 2, opacity: 0.8, dashArray: '2 6', interactive: false }).addTo(lineLayer));
       drawArrows();
-      pts.forEach((r) => {
-        if (r.home) {
-          L.marker([r.lat, r.lng], { icon: L.divIcon({ className: 'route-pin is-home', html: '<span>⌂</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), keyboard: false, title: t('route_home') })
-            .bindTooltip(esc(t('route_home'))).addTo(pinsLayer);
+      const homePt = pts.find((r) => r.home) || (trips[0] && trips[0][0]);
+      if (homePt) {
+        L.marker([homePt.lat, homePt.lng], { icon: L.divIcon({ className: 'route-pin is-home', html: '<span>⌂</span>', iconSize: [28, 28], iconAnchor: [14, 14] }), keyboard: false, title: t('route_home') })
+          .bindTooltip(esc(t('route_home'))).addTo(pinsLayer);
+      }
+      visitsOnMap.forEach((r) => {
+        if (r.kind === 'stop') {
+          L.marker([r.lat, r.lng], { icon: L.divIcon({ className: 'route-pin is-stop', html: '<span>◆</span>', iconSize: [24, 24], iconAnchor: [12, 12] }), keyboard: false, title: r.name })
+            .bindTooltip(esc(r.name)).addTo(pinsLayer);
           return;
         }
         const m = L.marker([r.lat, r.lng], { icon: pinIcon(r, r.id === selectedId), keyboard: true, title: `${r.n}. ${r.name}`, zIndexOffset: r.id === selectedId ? 1000 : 0 });
@@ -699,8 +1007,9 @@
       });
       if (fittedYear !== scope()) {
         fittedYear = scope();
-        if (pts.length === 1) map.setView([pts[0].lat, pts[0].lng], 10);
-        else map.fitBounds(pts.map((r) => [r.lat, r.lng]), { padding: [28, 28] });
+        const all = visitsOnMap.concat(homePt ? [homePt] : []);
+        if (all.length === 1) map.setView([all[0].lat, all[0].lng], 10);
+        else map.fitBounds(all.map((r) => [r.lat, r.lng]), { padding: [28, 28] });
       }
     }
 
@@ -740,8 +1049,18 @@
     function renderList() {
       const list = $('routeList');
       if (!list) return;
-      const h = pts.length && pts[0].home ? pts[0] : null;
-      list.innerHTML = rows.length ? (h ? homeRowHtml(h) : '') + rows.map(rowHtml).join('') : `<div class="md-empty">${esc(t('route_none_half'))}</div>`;
+      if (!rows.length || !curPlan) { list.innerHTML = `<div class="md-empty">${esc(t('route_none_half'))}</div>`; return; }
+      const p = curPlan;
+      const gapAfter = new Map(p.away.slice(0, -1).map((it, k) => [it, k]));
+      const lastAway = p.away[p.away.length - 1];
+      const out = [p.home ? homeRowHtml(p.home) : ''];
+      p.items.forEach((it) => {
+        if (it.kind === 'visit') out.push(rowHtml(it.row));
+        else if (it.mode === 'away' || it.mode === 'off') out.push(stopRowHtml(it));
+        if (gapAfter.has(it)) { const k = gapAfter.get(it); if (p.gaps[k].show) out.push(gapRowHtml(p.gaps[k], k)); }
+        if (it === lastAway && p.tail) out.push(endRowHtml());
+      });
+      list.innerHTML = out.join('');
     }
 
     function home() {
@@ -751,19 +1070,182 @@
 
     const memoGet = (k) => { const r = legMemo.get(k); return r && typeof r.km === 'number' ? r : null; };
     const totalsOf = (list) => (Legs() && list && list.length > 1 ? Legs().totals(list, memoGet, App.utils.haversineKm) : null);
+
+    /* R10: план полугодия — перерывы, остановки, посещения «из дома». */
+    const distP = (a, b) => App.utils.haversineKm(a.lat, a.lng, b.lat, b.lng);
+    const settingsNow = () => App.state.app.settings || {};
+    const rulesNow = () => normRules(settingsNow().routeRules);
+    const gapsNow = () => normGaps(settingsNow().routeGaps);
+    const roadMin = (a, b) => { if (!Legs()) return null; const r = memoGet(Legs().legKey(a, b)); return r && isNum(r.min) ? r.min : null; };
+    const planFor = (visitRows) => plan({ slots: calRows, visits: visitRows, extras, home: home(), rules: rulesNow(), gaps: gapsNow(), dist: distP, roadMin });
+    const modeOf = (id) => { const it = curPlan && curPlan.items.find((x) => x.id === id); return it ? it.cls : null; };
+    const readOnly = () => !!(App.store.degraded || App.store.conflict);
+
+    function computePlans() {
+      calPlan = planFor(calRows);
+      draftPlan = draft ? planFor(applyOrder(calRows, draft.order)) : null;
+      curPlan = draft && draft.on ? draftPlan : calPlan;
+      calPts = calPlan.path;
+      draftPts = draftPlan ? draftPlan.path : null;
+      pts = curPlan.path;
+    }
+
+    // Дорожная сводка плана: цепочка + поездки «из дома»; недостающее — по прямой.
+    function planRoad(p) {
+      if (!Legs() || !p) return null;
+      const parts = [p.path].concat(p.trips).filter((l) => l.length > 1).map((l) => totalsOf(l));
+      if (!parts.length) return null;
+      const sum = parts.reduce((a, b) => ({ km: a.km + b.km, min: a.min + b.min, roadLegs: a.roadLegs + b.roadLegs, count: a.count + b.count }), { km: 0, min: 0, roadLegs: 0, count: 0 });
+      sum.complete = sum.roadLegs === sum.count;
+      return sum;
+    }
+
+    /* R10: вторая (после applyDraft) и последняя точка записи этого файла в
+       блоб. Пишет ТОЛЬКО настройки маршрута (settings.routeRules,
+       settings.routeGaps) и поле шаблона event.route; записи календаря и их
+       даты не трогает. Режим только для чтения / конфликт вкладок — запрет. */
+    function persistRoute(mutate) {
+      if (readOnly()) { App.utils.toast(t('msg_storage_readonly')); render(); return; }
+      mutate(settingsNow());
+      App.store.save();
+      render();
+    }
+    function setGapChoice(key, choice) {
+      persistRoute((s) => {
+        const g = normGaps(s.routeGaps);
+        if (choice === 'home' || choice === 'stay') g[key] = choice; else delete g[key];
+        s.routeGaps = g;
+      });
+    }
+    function setEventBase(eventId, base) {
+      persistRoute(() => {
+        const ev = App.data.getRawEventById(eventId);
+        if (!ev) return;
+        const r = normRoute(Object.assign({}, ev.route, { base }));
+        if (r) ev.route = r; else delete ev.route;
+      });
+    }
+    function setRule(k, v) {
+      persistRoute((s) => { s.routeRules = normRules(Object.assign({}, rulesNow(), { [k]: v })); });
+    }
+    // Ручные решения этого полугодия, которые не совпадают ни с одним перерывом (даты сдвинулись).
+    function staleGapKeys() {
+      const b = halfBounds(year, half);
+      const live = new Set([calPlan, draftPlan].filter(Boolean).flatMap((p) => p.gaps.map((g) => g.key)));
+      return Object.keys(gapsNow()).filter((k) => { const from = k.slice(0, 10); return from >= b.from && from < b.to && !live.has(k); });
+    }
+
+    function askHtml(row) {
+      if (!row.eventId) return '';
+      const id = App.utils.escapeAttr(row.eventId);
+      const dis = readOnly() ? ' disabled' : '';
+      const b = (base, key) => `<button type="button" class="md-btn md-btn-outlined md-state-layer route-ask-btn" data-route-base="${base}" data-event="${id}"${dis}>${esc(t(key))}</button>`;
+      return `<span class="route-ask"><span class="small route-ask-q">${esc(t('route_ask_base'))}</span>${b('home', 'route_ask_home')}${b('away', 'route_ask_away')}</span>`;
+    }
+
+    function stopRowHtml(it) {
+      const row = it.row;
+      const leg = legByRow.get(row.id);
+      const note = it.mode === 'off'
+        ? `<span class="small route-warn">${esc(t('route_no_coords'))}</span>`
+        : (leg ? `<span class="small route-leg${leg.road ? '' : ' is-straight'}">${esc(legText(leg))}</span>` : '');
+      return `<div class="route-row route-row-stop" data-route-row="${App.utils.escapeAttr(row.id)}"><div class="route-pick route-pick-static">`
+        + `<span class="route-n route-n-stop" aria-hidden="true">◆</span><span class="route-main"><span class="route-name">${esc(row.name)}</span>`
+        + `<span class="small">${esc(t('route_stop'))} · ${esc(range(row))}</span>${note}${it.cls.how === 'ask' ? askHtml(row) : ''}</span></div></div>`;
+    }
+
+    function gapWhy(g) {
+      const lbl = (d) => t(d === 'home' ? 'route_gap_home' : 'route_gap_stay');
+      if (g.manual) return t('route_gap_why_manual', { auto: lbl(g.auto) });
+      if (g.why === 'template') return t('route_gap_why_template', { name: g.template });
+      if (g.why === 'event') return t('route_gap_why_event');
+      if (g.why === 'short') return t('route_gap_why_short', { days: rulesNow().gapDays });
+      if (g.why === 'budget') {
+        return t('route_gap_why_budget', { extra: fmtDur(Math.max(0, g.extraMin)), budget: fmtDur(g.budgetMin) })
+          + (g.approx ? ' · ' + t('route_gap_approx') : '');
+      }
+      return '';
+    }
+
+    function gapRowHtml(g, k) {
+      const home = g.decision === 'home';
+      const d = (iso) => App.utils.prettyDate(App.utils.parseLocalDate(iso));
+      const period = g.key ? (g.from === g.to ? d(g.from) : `${d(g.from)} – ${d(g.to)}`) : '';
+      const leg = gapLegs.get(k);
+      const names = Array.from(new Set(g.between.map((x) => x.name).filter(Boolean)));
+      const dis = readOnly() ? ' disabled' : '';
+      const btn = (choice, key, on) => `<button type="button" class="md-btn md-btn-outlined md-state-layer route-gap-btn${on ? ' is-on' : ''}" data-route-gap="${App.utils.escapeAttr(g.key)}" data-choice="${choice}" aria-pressed="${on}"${dis}>${esc(t(key))}</button>`;
+      return `<div class="route-row route-gap${home ? ' is-home' : ''}${g.ask ? ' is-ask' : ''}" data-route-gap-row="${App.utils.escapeAttr(g.key)}">`
+        + `<div class="route-pick route-pick-static"><span class="route-n route-n-gap" aria-hidden="true">${home ? '⌂' : '·'}</span><span class="route-main">`
+        + `<span class="route-name">${esc(t('route_gap_title', { days: g.free }))}${period ? ` <span class="small route-gap-period">${esc(period)}</span>` : ''}</span>`
+        + (names.length ? `<span class="small">${esc(t('route_gap_events', { names: names.join(', ') }))}</span>` : '')
+        + `<span class="small route-gap-dec"><b>${esc(t(home ? 'route_gap_home' : 'route_gap_stay'))}</b>${gapWhy(g) ? ' · ' + esc(gapWhy(g)) : ''}</span>`
+        + (g.ask ? `<span class="small route-gap-ask">${esc(t('route_gap_ask'))}</span>` : '')
+        + (home && leg ? `<span class="small route-leg${leg.road ? '' : ' is-straight'}">${esc(t('route_gap_to_home', { leg: legText(leg).replace(/^↳ /, '') }))}</span>` : '')
+        + `</span></div>`
+        + (g.key ? `<span class="route-gap-ctl" role="group" aria-label="${esc(t('route_gap_title', { days: g.free }))}">${btn('auto', 'route_gap_btn_auto', !g.manual)}${btn('home', 'route_gap_btn_home', g.manual === 'home')}${btn('stay', 'route_gap_btn_stay', g.manual === 'stay')}</span>` : '')
+        + `</div>`;
+    }
+
+    function endRowHtml() {
+      return `<div class="route-row route-gap is-home route-end"><div class="route-pick route-pick-static"><span class="route-n route-n-gap" aria-hidden="true">⌂</span><span class="route-main">`
+        + `<span class="route-name">${esc(t('route_end_home'))}</span>`
+        + (endLeg ? `<span class="small route-leg${endLeg.road ? '' : ' is-straight'}">${esc(legText(endLeg))}</span>` : '')
+        + `</span></div></div>`;
+    }
+
+    function renderRules() {
+      const box = $('routeRules');
+      if (!box) return;
+      const r = rulesNow();
+      const dis = readOnly() ? ' disabled' : '';
+      const field = (k, step) => {
+        const el = box.querySelector(`[data-route-rule="${k}"]`);
+        if (el && document.activeElement === el) return null;
+        return `<label class="small route-rule"><span>${esc(t('route_rule_' + k))}</span><input type="number" inputmode="decimal" min="0" step="${step}" data-route-rule="${k}" value="${r[k]}"${dis}></label>`;
+      };
+      const parts = [['homeKm', 1], ['awayKm', 1], ['homeMin', 5], ['gapDays', 1], ['hoursPerDay', 0.25]].map(([k, st]) => field(k, st));
+      if (parts.some((x) => x === null)) return; // идёт ввод — не перерисовывать под курсором
+      const manual = Object.keys(gapsNow()).length;
+      const stale = staleGapKeys().length;
+      box.innerHTML = `<div class="small route-rules-hint">${esc(t('route_rules_hint'))}</div><div class="route-rules-grid">${parts.join('')}</div>`
+        + `<div class="route-rules-foot"><span class="small">${esc(t('route_rules_manual', { n: manual }))}</span>`
+        + (stale ? `<button type="button" class="md-btn md-btn-outlined md-state-layer" data-route-rules="stale"${dis}>${esc(t('route_rules_stale', { n: stale }))}</button>` : '')
+        + `<button type="button" class="md-btn md-btn-outlined md-state-layer" data-route-rules="reset"${dis}>${esc(t('route_rules_reset'))}</button></div>`;
+    }
+
+    // Пересчитать план (например, пришли дорожные данные) и перерисовать зависящее от него.
+    function refresh() {
+      if (!calRows) return;
+      computePlans();
+      renderSummary(); renderList(); renderLegend(); renderRules(); drawMap();
+      loadCachedLegs();
+    }
     // Порядки для дорожного расчёта и кэша: показанный + (R5) второй, если есть черновик.
     function orderLists() {
-      const lists = [pts];
-      if (draftPts) lists.push(draft && draft.on ? calPts : draftPts);
+      if (!curPlan) return [];
+      const lists = planLists(curPlan);
+      if (draftPlan) planLists(draft.on ? calPlan : draftPlan).forEach((l) => lists.push(l));
       return lists.filter((l) => l && l.length > 1);
     }
 
     function computeLegs() {
-      legByRow = new Map();
-      if (!Legs() || pts.length < 2) return null;
-      const tot = totalsOf(pts);
-      tot.legs.forEach((leg, i) => { if (!pts[i + 1].home) legByRow.set(pts[i + 1].id, leg); });
-      return tot;
+      legByRow = new Map(); gapLegs = new Map(); tripLegs = new Map(); endLeg = null;
+      if (!Legs() || !curPlan) return null;
+      const path = curPlan.path;
+      if (path.length > 1) {
+        totalsOf(path).legs.forEach((leg, i) => {
+          const b = path[i + 1];
+          if (!b.home) legByRow.set(b.id, leg);
+          else if (String(b.tag).indexOf('gap:') === 0) gapLegs.set(Number(String(b.tag).slice(4)), leg);
+          else if (b.tag === 'end') endLeg = leg;
+        });
+      }
+      curPlan.trips.forEach((tr) => {
+        const tt = totalsOf(tr);
+        tripLegs.set(tr[1].id, { km: tt.km, min: tt.complete ? tt.min : null, road: tt.complete });
+      });
+      return planRoad(curPlan);
     }
 
     function renderSummary() {
@@ -771,9 +1253,14 @@
       if (!sumEl) return;
       const tot = computeLegs();
       const sum = summarize(rows);
-      const path = pathLength(pts, App.utils.haversineKm);
+      const p = curPlan;
+      const legs = p ? Math.max(0, p.path.length - 1) + p.trips.length * 2 : 0;
+      const km = p ? planKm(p, distP) : 0;
+      const tripsKm = p ? p.trips.reduce((a, tr) => a + distP(tr[0], tr[1]) * 2, 0) : 0;
+      const returns = p ? p.gaps.filter((g) => g.decision === 'home').length + (p.tail ? 1 : 0) : 0;
       sumEl.textContent = rows.length
-        ? [t('route_summary', { count: sum.count, missing: sum.missing }), path.legs ? t('route_km_straight', { km: fmtKm(path.km), legs: path.legs }) : '', path.legs > 1 ? t('route_leg_avg', { km: fmtKm(path.km / path.legs) }) : ''].filter(Boolean).join(' · ')
+        ? [t('route_summary', { count: sum.count, missing: sum.missing }), legs ? t('route_km_straight', { km: fmtKm(km), legs }) : '', legs > 1 ? t('route_leg_avg', { km: fmtKm(km / legs) }) : '',
+          returns ? t('route_sum_returns', { n: returns }) : '', p && p.trips.length ? t('route_sum_trips', { n: p.trips.length, km: fmtKm(tripsKm) }) : ''].filter(Boolean).join(' · ')
         : '';
       let road = '';
       if (tot && tot.roadLegs) {
@@ -798,8 +1285,8 @@
       if (!draftPts || !rows.length) { box.hidden = true; box.innerHTML = ''; return; }
       const draftRows = draft.on ? rows : applyOrder(calRows, draft.order);
       const n = moved(calRows, draftRows);
-      const sA = pathLength(calPts, App.utils.haversineKm), sB = pathLength(draftPts, App.utils.haversineKm);
-      const rA = totalsOf(calPts), rB = totalsOf(draftPts);
+      const sA = { km: planKm(calPlan, distP) }, sB = { km: planKm(draftPlan, distP) };
+      const rA = planRoad(calPlan), rB = planRoad(draftPlan);
       const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±');
       const dKm = (v) => sign(Math.round(v)) + t('route_km', { km: fmtKm(Math.abs(v)) });
       const dMin = (v) => `${sign(Math.round(v))}${fmtDur(Math.abs(v))}`;
@@ -831,22 +1318,26 @@
       Legs().loadMany(need).then((found) => {
         if (!found.size) return;
         found.forEach((v, k) => { if (!legMemo.has(k)) legMemo.set(k, v); });
-        renderSummary(); renderList();
+        refresh();
       });
     }
 
-    function fetchRoads() {
-      if (!Legs() || roadState === 'busy' || pts.length < 2) return;
+    // R10: дорожные данные меняют план (спорные «из дома?», перерывы по бюджету) —
+    // после прохода план пересчитывается и недостающее дозапрашивается, не больше 3 раз.
+    function fetchRoads(round) {
+      const n = round || 0;
+      if (!Legs() || (roadState === 'busy' && !n) || !orderLists().length) return;
       if (navigator.onLine === false) { roadState = 'offline'; renderSummary(); return; }
       roadState = 'busy'; roadProgress = [0, 0];
       renderSummary();
       const snapshot = orderLists().map((l) => l.slice());
       Legs().fetchMissing(snapshot, legMemo, (done, total) => {
-        roadProgress = [done, total]; renderSummary(); renderList();
+        roadProgress = [done, total]; renderSummary();
       }).then((res) => {
         roadState = res.offline ? 'offline' : res.failed ? 'failed' : '';
-        renderSummary(); renderList();
-      }, () => { roadState = 'failed'; renderSummary(); });
+        refresh();
+        if (!roadState && res.ok && n < 2 && !orderLists().every((l) => totalsOf(l).complete)) fetchRoads(n + 1);
+      }, () => { roadState = 'failed'; refresh(); });
     }
 
     // R9: переключатель полугодий (подпись — месяцы и число посещений) и легенда цветов.
@@ -867,8 +1358,14 @@
       const el = $('routeLegend');
       if (!el) return;
       const used = new Set(rows.filter((r) => r.hasCoords).map((r) => monthSlot(slotOf(r).start)));
+      const p = curPlan;
+      const extra = p ? [
+        p.gaps.some((g) => g.decision === 'home') || p.tail ? `<span class="route-legend-i"><i class="route-legend-dash"></i>${esc(t('route_legend_via_home'))}</span>` : '',
+        p.trips.length ? `<span class="route-legend-i"><i class="route-legend-dot"></i>${esc(t('route_legend_from_home'))}</span>` : '',
+        p.away.some((it) => it.kind === 'stop') ? `<span class="route-legend-i"><b class="route-legend-stop">◆</b>${esc(t('route_stop'))}</span>` : '',
+      ].join('') : '';
       el.innerHTML = halfMonths(year, half).map((mo, i) => (used.has(i)
-        ? `<span class="route-legend-i"><i style="background:${MONTH_COLORS[i]}"></i>${esc(monthName(mo))}</span>` : '')).join('');
+        ? `<span class="route-legend-i"><i style="background:${MONTH_COLORS[i]}"></i>${esc(monthName(mo))}</span>` : '')).join('') + extra;
     }
 
     function render() {
@@ -899,16 +1396,17 @@
         draft.order = pinPast(applyOrder(calRows, draft.order).map((r) => r.id), calRows, pastIds);
       }
       rows = draft && draft.on ? applyOrder(calRows, draft.order) : calRows;
-      calPts = points(calRows, home());
-      draftPts = draft ? points(applyOrder(calRows, draft.order), home()) : null;
+      const hb = halfBounds(year, half);
+      extras = extrasRows(typeof App.data.getRouteExtras === 'function' ? App.data.getRouteExtras(hb.from, hb.to) : []);
+      computePlans();
       if (selectedId && !rows.some((r) => r.id === selectedId)) selectedId = null;
-      pts = points(rows, home());
       if (roadState !== 'busy') roadState = '';
       setView(mobileView, false);
       renderDraftBar();
       renderSummary();
       renderList();
       renderLegend();
+      renderRules();
       restoreFocus();
       loadCachedLegs();
       ensureMap();
@@ -920,7 +1418,9 @@
       if (!host) return;
       bound = true;
       host.addEventListener('change', (e) => {
-        if (e.target && e.target.id === 'routeYearSelect') { year = Number(e.target.value); half = null; selectedId = null; render(); }
+        if (e.target && e.target.id === 'routeYearSelect') { year = Number(e.target.value); half = null; selectedId = null; render(); return; }
+        const rule = e.target && e.target.closest && e.target.closest('[data-route-rule]');
+        if (rule) { const v = rule.value; rule.blur(); setRule(rule.dataset.routeRule, v); }
       });
       host.addEventListener('keydown', (e) => {
         const tab = e.target && e.target.closest && e.target.closest('[data-route-tab]');
@@ -938,7 +1438,18 @@
         if (halfBtn) { half = Number(halfBtn.dataset.routeHalf) === 2 ? 2 : 1; selectedId = null; render(); return; }
         const tabBtn = e.target.closest && e.target.closest('[data-route-tab]');
         if (tabBtn) { setView(tabBtn.dataset.routeTab, false); return; }
-        if (e.target && e.target.closest && e.target.closest('#routeRoadBtn')) { fetchRoads(); return; }
+        if (e.target && e.target.closest && e.target.closest('#routeRoadBtn')) { fetchRoads(0); return; }
+        const gb = e.target.closest && e.target.closest('[data-route-gap]');
+        if (gb) { if (!gb.disabled && gb.dataset.routeGap) setGapChoice(gb.dataset.routeGap, gb.dataset.choice); return; }
+        const bb = e.target.closest && e.target.closest('[data-route-base]');
+        if (bb) { if (!bb.disabled) setEventBase(bb.dataset.event, bb.dataset.routeBase); return; }
+        const rb = e.target.closest && e.target.closest('[data-route-rules]');
+        if (rb) {
+          if (rb.disabled) return;
+          if (rb.dataset.routeRules === 'reset') persistRoute((s) => { delete s.routeRules; });
+          else if (rb.dataset.routeRules === 'stale') { const st = new Set(staleGapKeys()); persistRoute((s) => { const g = normGaps(s.routeGaps); st.forEach((k) => delete g[k]); s.routeGaps = g; }); }
+          return;
+        }
         const da = e.target.closest && e.target.closest('[data-route-draft]');
         if (da) { draftAction(da.dataset.routeDraft); return; }
         const mv = e.target.closest && e.target.closest('[data-route-move]');

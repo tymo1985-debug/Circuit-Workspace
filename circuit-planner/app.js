@@ -618,6 +618,12 @@
         if (!out.letterPages || typeof out.letterPages !== 'object') out.letterPages = {};
 
         if (typeof out.senderName !== 'string') out.senderName = ''; if (typeof out.senderAddress !== 'string') out.senderAddress = ''; if (typeof out.senderPhone !== 'string') out.senderPhone = ''; if (typeof out.senderEmail !== 'string') out.senderEmail = ''; if (!out.emailMethod || !['mailto','owa'].includes(out.emailMethod)) out.emailMethod = 'mailto'; out.owaUrl = App.utils.owaBase(out.owaUrl); if (typeof out.homeAddress !== 'string') out.homeAddress = 'Praha, Česká republika'; if (typeof out.homeLat !== 'number') out.homeLat = null; if (typeof out.homeLng !== 'number') out.homeLng = null; if (typeof out.autoShowReminders !== 'boolean') out.autoShowReminders = true;
+        /* R10 «Маршрут»: правила и ручные решения по перерывам. Поля
+           необязательны — нет их, значит «всё по умолчанию». Чистит их
+           CPRoute (ui/route.js грузится раньше app.js); без него — как есть. */
+        const CR = window.CPRoute;
+        if (out.routeRules != null) { if (CR && CR.normRules) out.routeRules = CR.normRules(out.routeRules); }
+        if (out.routeGaps != null) { if (CR && CR.normGaps) out.routeGaps = CR.normGaps(out.routeGaps); }
         return out;
       },
       createDefaultData() {
@@ -650,7 +656,7 @@
       normalizeApp(appData) {
         const app = appData && typeof appData === 'object' ? appData : this.createDefaultData();
         app.settings = this.ensureSettingsDefaults(app.settings || {}); if (!Array.isArray(app.events)) app.events = []; if (!Array.isArray(app.entries)) app.entries = []; if (!app.serviceYears || typeof app.serviceYears !== 'object') app.serviceYears = {}; if (!app.meta || typeof app.meta !== 'object') app.meta = { version: App.config.version };
-        app.events = App.utils.uniqueBy(app.events.filter((item) => item && typeof item === 'object').map((item) => ({ id: item.id || App.utils.uid('evt'), name: item.name || 'Без названия', color: App.utils.clampColor(item.color), address: item.address || '', schedule: item.schedule || '', visitType: item.visitType || '', contactName: item.contactName || '', contactPhone: item.contactPhone || '', contactEmail: item.contactEmail || '', contactNote: item.contactNote || '', congNumber: item.congNumber || '', lat: typeof item.lat === 'number' ? item.lat : null, lng: typeof item.lng === 'number' ? item.lng : null, formLanguage: item.formLanguage || '' })), (item) => item.id);
+        app.events = App.utils.uniqueBy(app.events.filter((item) => item && typeof item === 'object').map((item) => ({ id: item.id || App.utils.uid('evt'), name: item.name || 'Без названия', color: App.utils.clampColor(item.color), address: item.address || '', schedule: item.schedule || '', visitType: item.visitType || '', contactName: item.contactName || '', contactPhone: item.contactPhone || '', contactEmail: item.contactEmail || '', contactNote: item.contactNote || '', congNumber: item.congNumber || '', lat: typeof item.lat === 'number' ? item.lat : null, lng: typeof item.lng === 'number' ? item.lng : null, formLanguage: item.formLanguage || '', ...this.routeField(item.route) })), (item) => item.id);
         const eventNameById = {}; app.events.forEach((ev) => { eventNameById[ev.id] = ev.name; });
         app.entries = App.utils.uniqueBy(app.entries.filter((item) => item && item.start && item.end && App.utils.iso(item.start) && App.utils.iso(item.end)).map((item) => ({ id: item.id || App.utils.uid('entry'), eventId: item.eventId || '', start: App.utils.iso(item.start), end: App.utils.iso(item.end), title: eventNameById[item.eventId] || item.title || '', note: item.note || '', resultNote: item.resultNote || '', emailBody: item.emailBody || '', subject: item.subject || '', visitForm: item.visitForm || null, notified60: !!item.notified60, flags: { f302: !!item?.flags?.f302, letter: !!item?.flags?.letter }, source: item.source || 'entry' })), (item) => item.id);
         Object.keys(app.serviceYears).forEach((year) => {
@@ -660,6 +666,12 @@
         });
         app.meta.version = App.config.version;
         return app;
+      },
+      /** R10: поле шаблона `route` ({ base, after }) — только если задано; без CPRoute — как есть. */
+      routeField(route) {
+        const CR = window.CPRoute;
+        const r = CR && CR.normRoute ? CR.normRoute(route) : (route && typeof route === 'object' ? route : null);
+        return r ? { route: r } : {};
       },
       migrate(appData) { return this.normalizeApp(appData && appData.schema === 'sp-backup-v2' ? this.convertLegacyBackup(appData) : appData); },
       /**
@@ -1173,6 +1185,24 @@
         const unvisited = visitEvents.filter((ev) => !visitedEventIds.has(ev.id));
         return { syStart, syEnd, visitEvents, visitEntries, planned: visitEntries.length, done: done.length, s302Sent, letterSent, unvisited };
       },
+      /**
+       * R10 «Маршрут»: не-визитные события календаря (отпуск, Free week,
+       * конгресс, школа…) — записи и недели с шаблоном без visitType,
+       * пересекающие [from, to). Только чтение; координаты и `route` — из шаблона.
+       */
+      getRouteExtras(from, to) {
+        const out = [];
+        const add = (id, eventId, start, end) => {
+          const ev = eventId ? this.getEventById(eventId) : null;
+          if (!ev || ev.visitType || !start || !end || end < from || start >= to) return;
+          out.push({ id, eventId, name: ev.name || '', start, end, lat: ev.lat, lng: ev.lng, route: ev.route || null });
+        };
+        (App.state.app.entries || []).forEach((e) => add('entry:' + e.id, e.eventId, e.start, e.end));
+        Object.values(App.state.app.serviceYears || {}).forEach((sy) => {
+          Object.values((sy && sy.weeks) || {}).forEach((w) => add('week:' + w.weekId, w.eventId, w.start, w.end));
+        });
+        return out;
+      },
       getUpcomingReminders() {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const items = [];
@@ -1328,6 +1358,8 @@
         App.state.editingEventCoords = (typeof event?.lat === 'number' && typeof event?.lng === 'number') ? { lat: event.lat, lng: event.lng } : null;
         App.ui.renderEventDistanceStatus();
         if (App.els.eventFormLanguageSelect) App.els.eventFormLanguageSelect.value = event?.formLanguage || '';
+        if (App.els.eventRouteBaseSelect) App.els.eventRouteBaseSelect.value = event?.route?.base || 'auto';
+        if (App.els.eventRouteAfterSelect) App.els.eventRouteAfterSelect.value = event?.route?.after || 'auto';
         App.ui.openModal(App.els.eventEditorModal);
         if (App.els.deleteEventBtn) App.els.deleteEventBtn.hidden = false;
         App.els.eventNameInput?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1352,6 +1384,8 @@
         App.state.editingEventCoords = null;
         if (App.els.eventDistanceStatus) App.els.eventDistanceStatus.textContent = '';
         if (App.els.eventFormLanguageSelect) App.els.eventFormLanguageSelect.value = '';
+        if (App.els.eventRouteBaseSelect) App.els.eventRouteBaseSelect.value = 'auto';
+        if (App.els.eventRouteAfterSelect) App.els.eventRouteAfterSelect.value = 'auto';
         if (App.els.deleteEventBtn) App.els.deleteEventBtn.hidden = true;
       },
       saveEventTemplate() {
@@ -1359,6 +1393,9 @@
           const name = App.els.eventNameInput?.value.trim(); if (!name) return App.utils.toast(App.utils.t('enter_event_name'));
           const payload = { id: App.state.editingEventId || App.utils.uid('evt'), name, color: App.utils.clampColor(App.els.eventColorInput?.value), address: App.els.eventAddressInput?.value.trim() || '', schedule: App.els.eventScheduleInput?.value.trim() || '', visitType: App.els.eventVisitTypeInput?.value || '', contactName: App.els.eventContactNameInput?.value.trim() || '', contactPhone: App.els.eventContactPhoneInput?.value.trim() || '', contactEmail: App.els.eventContactEmailInput?.value.trim() || '', contactNote: App.els.eventContactNoteInput?.value.trim() || '', congNumber: App.els.eventCongNumberInput?.value.trim() || '', lat: App.state.editingEventCoords?.lat ?? null, lng: App.state.editingEventCoords?.lng ?? null, formLanguage: App.els.eventFormLanguageSelect?.value || '' };
           const index = App.state.app.events.findIndex((event) => event.id === payload.id);
+          /* R10: «Маршрут» шаблона. Будущие ключи `route` и ответы с экрана
+             маршрута не теряются: берём прежний объект и меняем только base/after. */
+          Object.assign(payload, App.store.routeField(Object.assign({}, index >= 0 ? App.state.app.events[index].route : null, { base: App.els.eventRouteBaseSelect?.value || 'auto', after: App.els.eventRouteAfterSelect?.value || 'auto' })));
           const oldName = index >= 0 ? App.state.app.events[index].name : null;
           if (index >= 0) App.state.app.events[index] = payload; else App.state.app.events.push(payload);
           // Dedup by id only — a content-based key here previously risked collapsing two
@@ -1794,7 +1831,7 @@
           'statsModal','statsModalTitle','statsModalSub','statsModalBody','statsModalCloseBtn','statsModalOkBtn','statsBtn','plannerBtn',
           'plannerModal','plannerModalCloseBtn','plannerStartInput','plannerEndInput','plannerEventsList','plannerPreview','plannerCancelBtn','plannerApplyBtn',
           'pinOverlay','pinInput','pinError','pinSubmitBtn','pinSetupBtn','holidaysToggle','autoShowRemindersToggle','editorResultInput','editorResultLabel',
-          'eventCongNumberInput','eventFormLanguageSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
+          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
           'letterModal','letterModalSub','letterEmailLangSelect','letterEmailLangNote','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
