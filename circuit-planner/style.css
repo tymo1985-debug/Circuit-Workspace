@@ -637,6 +637,7 @@ body::before{display:none !important}
 /* Фильтр «Что печатать» в окне печати (фаза 2, 20.10.2026). Чип — label с
    нативным флажком внутри: цель касания даёт label, состояние — :has(). */
 .pdf-filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.pdf-filter-title{margin:14px 0 0;font-size:15px}
 .pdf-filter-label{flex:0 0 132px;font-size:13px;color:var(--md-on-surface-variant)}
 .pdf-filter-chip input{margin:0;accent-color:var(--md-primary)}
 .pdf-filter-chip:has(input:checked){background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}

@@ -584,13 +584,32 @@
         const location = event?.address || '';
         return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${format(item.start)}/${format(endPlus)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
       },
+      /* .ics (фаза 3 «Выдачи календаря», 20.10.2026). UID постоянный — из id
+         записи (`entry:…`) или недели (`week:<дата понедельника>`): календарь
+         узнаёт событие при повторном импорте. Раньше UID был случайным при
+         каждой выгрузке, и повторный импорт давал копии. DTSTAMP — настоящее
+         время в UTC (было: сегодняшняя дата с 00:00). Строки длиннее 75 байт
+         складываются по RFC 5545 — кириллица в UTF-8 занимает 2 байта. */
+      icsEscape(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); },
+      icsUid(key) { return `cp-${String(key || this.uid('ics')).replace(/[^A-Za-z0-9_-]/g, '-')}@circuit-workspace`; },
+      icsStamp(date = new Date()) { return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); },
+      icsFold(line) {
+        const enc = new TextEncoder(); const out = []; let cur = '', bytes = 0, limit = 75;
+        for (const ch of String(line)) {
+          const n = enc.encode(ch).length;
+          if (bytes + n > limit) { out.push(cur); cur = ' '; bytes = 1; limit = 75; }
+          cur += ch; bytes += n;
+        }
+        out.push(cur);
+        return out.join('\r\n');
+      },
       makeSingleIcs(item, event) {
-        const escape = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+        const escape = (s) => this.icsEscape(s);
         const endPlus = this.iso(this.addDays(this.parseLocalDate(item.end), 1));
         const lines = [
           'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Service Year Planner//RU//','BEGIN:VEVENT',
-          `UID:${this.uid('ics')}`,
-          `DTSTAMP:${this.iso(new Date()).replace(/-/g,'')}T000000Z`,
+          `UID:${this.icsUid(item.id)}`,
+          `DTSTAMP:${this.icsStamp()}`,
           `DTSTART;VALUE=DATE:${String(item.start).replace(/-/g,'')}`,
           `DTEND;VALUE=DATE:${String(endPlus).replace(/-/g,'')}`,
           `SUMMARY:${escape(item.title || event?.name || this.t('event'))}`,
@@ -598,7 +617,7 @@
           `LOCATION:${escape(event?.address || '')}`,
           'END:VEVENT','END:VCALENDAR'
         ];
-        return `${lines.join('\r\n')}\r\n`;
+        return `${lines.map((l) => this.icsFold(l)).join('\r\n')}\r\n`;
       }
     },
 
@@ -1258,6 +1277,10 @@
           .map((entry) => {
             const event = this.getEventById(entry.eventId);
             return {
+              uid: `entry:${entry.id || entry.start}`,
+              visitType: event?.visitType || '',
+              flags: { f302: !!entry?.flags?.f302, letter: !!entry?.flags?.letter },
+              schedule: event?.schedule || '',
               title: entry.title || event?.name || App.utils.t('event'),
               description: entry.note || '',
               location: event?.address || '',
@@ -1275,6 +1298,10 @@
             if (!ws || !we || !App.utils.overlaps(ws, we, start, end)) return;
             const event = this.getEventById(week.eventId);
             weekItems.push({
+              uid: `week:${week.weekId || week.start}`,
+              visitType: event?.visitType || '',
+              flags: { f302: !!week.flagS302, letter: !!week.flagLetter },
+              schedule: event?.schedule || '',
               title: event?.name || App.utils.t('event'),
               description: week.note || '',
               location: event?.address || '',
@@ -1666,7 +1693,23 @@
         App.utils.toast(`${entry.title || App.utils.t('event')}: ${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDate(entry.end)}`);
       },
       exportIcs() {
-        let start = App.els.exportRangeStartInput?.value || App.utils.iso(new Date(App.state.calendarYear, App.state.calendarMonth, 1)); let end = App.els.exportRangeEndInput?.value || App.utils.iso(new Date(App.state.calendarYear, App.state.calendarMonth + 1, 0)); if (start > end) return App.utils.toast(App.utils.t('wrong_end_date')); const items = App.data.collectIcsItems(start, end); const escape = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Service Year Planner//RU//']; items.forEach((item) => lines.push('BEGIN:VEVENT',`UID:${App.utils.uid('ics')}`,`DTSTAMP:${App.utils.iso(new Date()).replace(/-/g,'')}T000000Z`,`DTSTART;VALUE=DATE:${item.start.replace(/-/g,'')}`,`DTEND;VALUE=DATE:${item.end.replace(/-/g,'')}`,`SUMMARY:${escape(item.title)}`,`DESCRIPTION:${escape(item.description)}`,`LOCATION:${escape(item.location)}`,'END:VEVENT')); lines.push('END:VCALENDAR'); App.utils.downloadText(`service-year-planner-${start}-${end}.ics`, `${lines.join('\r\n')}\r\n`, 'text/calendar;charset=utf-8');
+        let start = App.els.exportRangeStartInput?.value || App.utils.iso(new Date(App.state.calendarYear, App.state.calendarMonth, 1)); let end = App.els.exportRangeEndInput?.value || App.utils.iso(new Date(App.state.calendarYear, App.state.calendarMonth + 1, 0)); if (start > end) return App.utils.toast(App.utils.t('wrong_end_date'));
+        /* Тот же фильтр, что у печати: тип и письмо/S-302 — из окна экспорта
+           (у радиокнопок своё имя, иначе группа слилась бы с окном печати). */
+        const filter = this.getPrintFilter(App.els.exportModal, 'icsMarks');
+        if (!filter.types.size) return App.utils.toast(App.utils.t('print_f_none'));
+        const items = App.data.collectIcsItems(start, end).filter((item) => this.printItemPasses(filter, item.visitType, item.flags));
+        const esc = (v) => App.utils.icsEscape(v);
+        const stamp = App.utils.icsStamp();
+        const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Service Year Planner//RU//'];
+        items.forEach((item) => {
+          // Описание: тип визита и расписание первой строкой, ниже заметка.
+          const head = [item.visitType ? App.utils.visitTypeLabel(item.visitType) : '', item.schedule].filter(Boolean).join(' · ');
+          const description = [head, item.description].filter(Boolean).join('\n');
+          lines.push('BEGIN:VEVENT', `UID:${App.utils.icsUid(item.uid)}`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${item.start.replace(/-/g,'')}`, `DTEND;VALUE=DATE:${item.end.replace(/-/g,'')}`, `SUMMARY:${esc(item.title)}`, `DESCRIPTION:${esc(description)}`, `LOCATION:${esc(item.location)}`, 'END:VEVENT');
+        });
+        lines.push('END:VCALENDAR');
+        App.utils.downloadText(`service-year-planner-${start}-${end}.ics`, `${lines.map((l) => App.utils.icsFold(l)).join('\r\n')}\r\n`, 'text/calendar;charset=utf-8');
       },
       exportSingleEventIcs(itemId) {
         const item = App.data.getCalendarItemById(itemId); if (!item) return; const event = App.data.getEventById(item.eventId); App.utils.downloadText(`${App.utils.slug(item.title || event?.name || 'event') || 'event'}.ics`, App.utils.makeSingleIcs(item, event), 'text/calendar;charset=utf-8');
@@ -1692,13 +1735,12 @@
       /* Фильтр «Что печатать» (фаза 2, решение Алекса 20.10.2026). Читается из
          окна печати в момент печати и нигде не сохраняется — в данных и
          бэкапе его нет. Нет флажков в разметке — печатается всё, как раньше. */
-      getPrintFilter() {
-        const root = App.els.pdfModal || document;
+      getPrintFilter(root = App.els.pdfModal, marksName = 'printMarks') {
         const kinds = ['congregation','group','pregroup','other'];
-        const read = (attr, fallback) => { const boxes = Array.from(root.querySelectorAll(`[${attr}]`)); return boxes.length ? new Set(boxes.filter((b) => b.checked).map((b) => b.getAttribute(attr))) : new Set(fallback); };
+        const read = (attr, fallback) => { const boxes = root ? Array.from(root.querySelectorAll(`[${attr}]`)) : []; return boxes.length ? new Set(boxes.filter((b) => b.checked).map((b) => b.getAttribute(attr))) : new Set(fallback); };
         const types = read('data-print-type', kinds);
         const fields = read('data-print-field', ['type','schedule','address','note','flags']);
-        const mark = root.querySelector('input[name="printMarks"]:checked')?.value || 'all';
+        const mark = root?.querySelector(`input[name="${marksName}"]:checked`)?.value || 'all';
         return { kinds, types, fields, mark, allTypes: kinds.every((k) => types.has(k)) };
       },
       printItemPasses(filter, visitType, flags = {}) {
