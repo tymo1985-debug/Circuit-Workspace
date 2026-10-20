@@ -310,6 +310,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
     width: 100%;
     height: auto;
     position: relative;
+    top: auto; /* общий `top: var(--cw-topbar-h)` для sticky сдвигал бы relative-меню вниз */
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;

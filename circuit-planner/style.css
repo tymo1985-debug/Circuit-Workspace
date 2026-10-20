@@ -52,8 +52,8 @@
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}.small{font-size:12px;color:var(--md-on-surface-variant)}
   .weeks-toolbar{display:grid;grid-template-columns:1fr 220px 220px;gap:10px}
   @media (max-width:767px){.weeks-toolbar{grid-template-columns:1fr !important}.icon-btn{width:44px !important;height:44px !important;font-size:16px}}
-  .event-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(170px,230px) auto auto auto;gap:10px;align-items:center;margin-bottom:14px}.event-tools .small{justify-self:start}.event-tools .md-btn-danger{white-space:nowrap}@media (max-width:760px){.event-tools{grid-template-columns:1fr}.event-tools .small{justify-self:start}}
-  .events-view-toggle{display:inline-flex;gap:6px}.events-view-btn{white-space:nowrap}
+  .event-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px;align-items:center;margin-bottom:14px}.event-tools .small{justify-self:start}.event-tools .md-btn-danger{white-space:nowrap}@media (max-width:760px){.event-tools{grid-template-columns:1fr}.event-tools .small{justify-self:start}}
+  .events-view-toggle{display:inline-flex;flex-wrap:wrap;gap:6px}.events-view-btn{white-space:nowrap}
   .events-map-toggle-btn{white-space:nowrap}
   /* Карта — desktop-only по ТЗ фазы. Переиспользуем уже одобренный порог
      1181px (см. .nv-row ниже, docs/design-tokens/03-breakpoints.md) вместо
@@ -642,3 +642,11 @@ body::before{display:none !important}
 .pdf-filter-chip input{margin:0;accent-color:var(--md-primary)}
 .pdf-filter-chip:has(input:checked){background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}
 @media (max-width:767px){.pdf-filter-label{flex-basis:100%}}
+/* Ссылки без своего класса (адрес, телефон, e-mail): цвет браузера #0000EE на
+   тёмной теме даёт контраст 1,7–1,9. :where держит специфичность нулевой —
+   кнопки и ссылки с классами не затрагиваются. */
+a:where(:not([class])){color:var(--md-primary)}
+a:where(:not([class])):visited{color:var(--md-primary)}
+/* Тост наверху справа закрывал заголовок и крестик окон (z-index тоста выше,
+   чем у окна). На телефоне он живёт внизу, над нижним меню. */
+@media (max-width:600px){.toast-wrap{top:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));left:12px;right:12px}}
