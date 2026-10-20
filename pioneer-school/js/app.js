@@ -739,7 +739,10 @@ function renderFieldInput(column, value, prefix) {
   const keyAttr = esc(column.key);
   const labelHtml = esc(Students.label(column));
   if (column.type === 'select') {
-    const opts = (column.options || []).map((o) => `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(Students.optionLabel(o))}</option>`).join('');
+    /* Пустой вариант первым: без него у нового учащегося по умолчанию «Да» (автомобиль,
+       ночлег) завышало подсчёты, а у строки без значения таблица показывала «Да» вместо пустоты. */
+    const blank = `<option value="" ${!value || !(column.options || []).some((o) => o.value === value) ? 'selected' : ''}>—</option>`;
+    const opts = blank + (column.options || []).map((o) => `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(Students.optionLabel(o))}</option>`).join('');
     return `<label>${labelHtml}<select id="${idAttr}" data-key="${keyAttr}">${opts}</select></label>`;
   }
   if (column.type === 'textarea') {
@@ -847,7 +850,16 @@ function renderStudentsTable(students, classes, columns) {
         if (!student) return;
         student.values = student.values || {};
         student.values[c.key] = input.value;
-        await Students.save(student);
+        try {
+          await Students.save(student);
+        } catch (e) {
+          /* Проверка (например, пустая фамилия) раньше падала молча: поле выглядело
+             сохранённым, а в базе оставалось старое. Говорим причину и возвращаем значение. */
+          alert(e.message);
+          const stored = await DB.get('students', studentId);
+          input.value = ((stored && stored.values) || {})[c.key] ?? '';
+          return;
+        }
         if (c.key === 'textbookFormat' || c.key === 'status') renderDashboard();
       };
       input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'blur', handler);

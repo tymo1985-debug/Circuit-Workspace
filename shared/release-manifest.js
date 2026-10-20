@@ -1,12 +1,12 @@
 self.CW_RELEASE = {
-  version: '0.42.69',
+  version: '0.42.70',
   changes: [
-    { module: 'congress-project', version: '4.48.47', note: 'Шапка на узком телефоне — в один ряд (было три)' },
-    { module: 'circuit-planner', version: '9.111.2', note: 'Тёмная тема: читаемые ссылки адреса, телефона и e-mail; тосты на телефоне внизу; панель собраний на планшете не сжимает кнопки' },
-    { module: 'pioneer-school', version: '1.14.151', note: 'Телефон и планшет: меню больше не сдвигается вниз и не закрывает заголовок экрана' },
-    { module: 'appointments', version: '5.5.190', technical: true },
-    { module: 'documents', version: '1.12.62', technical: true },
-    { module: 'journal', version: '0.27.7', technical: true },
-    { module: 'archive', version: '0.2.46', technical: true },
+    { module: 'congress-project', version: '4.48.48', note: 'Письма: пустой второй телефон не отрывает e-mail от шапки; «Проверить» смотрит и поля конгресса; «Музыка» и разделы распознаются на всех языках' },
+    { module: 'circuit-planner', version: '9.111.3', note: 'Язык письма определяется по письменности, а не по «München»/«Łódź»; имена PDF сохраняют буквы без диакритики; «1 визит / 2 визита / 5 визитов»' },
+    { module: 'pioneer-school', version: '1.14.152', note: 'Новый учащийся: «Есть автомобиль» и «Нужен ночлег» по умолчанию пусты; ошибка проверки при правке в таблице показывается' },
+    { module: 'journal', version: '0.27.8', note: 'Статус прошедшего незакрытого посещения; подпись «Первое посещение не проводилось» только если посещений нет; числа со склонением' },
+    { module: 'appointments', version: '5.5.191', technical: true },
+    { module: 'documents', version: '1.12.63', technical: true },
+    { module: 'archive', version: '0.2.47', technical: true },
   ],
 };

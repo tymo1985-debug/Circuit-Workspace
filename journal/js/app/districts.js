@@ -4,6 +4,20 @@
 
   var A = self.CWJournalApp;
 
+  /* Подпись под названием узла: «Первое посещение не проводилось» только если посещений
+     правда нет; иначе — статус последнего (byNode: новые сверху). Раньше строка стояла
+     у каждого собрания постоянным текстом. */
+  async function visitMetaText(node) {
+    var list = [];
+    try { list = await CWJournal.visits.byNode(node.id); } catch (_) { list = []; }
+    return list.length ? A.visitStatusView(list[0]).label : t('j.state.no_visit_yet');
+  }
+  async function visitMetaMap(nodes) {
+    var map = {};
+    await Promise.all(nodes.map(async function (n) { map[n.id] = await visitMetaText(n); }));
+    return map;
+  }
+
   /* Общие константы других файлов (объекты неизменяемы по смыслу). */
   var ICON = A.ICON;
 
@@ -104,7 +118,7 @@
         '<div class="j-row__ico">' + svg(ICON.circuit) + '</div>' +
         '<div class="j-row__body">' +
         '<p class="j-row__title">' + (archivedRow ? '<span class="u-muted">' + esc(node.label) + '</span>' : esc(node.label)) + '</p>' +
-        '<p class="j-row__meta">' + (archivedRow ? esc(t('j.badge.archive')) : esc(t('j.state.no_visit_yet'))) + '</p>' +
+        '<p class="j-row__meta">' + (archivedRow ? esc(t('j.badge.archive')) : '') + '</p>' +
         '</div>' +
         '<div class="j-row__end">' + rowMenuMarkup('circuit', node, i, ordered.length) + '</div>';
       row.querySelector('.j-row__body').addEventListener('click', function () {
@@ -312,7 +326,7 @@
     );
     var activeCount = congregations.filter(function (n) { return n.kind === 'congregation' && n.status !== 'archived'; }).length;
     var aloneCount = congregations.filter(function (n) { return n.kind !== 'congregation' && n.status !== 'archived'; }).length;
-    $('#districtCounts').textContent = ' + ' + activeCount + ' ' + t('j.unit.congregations')
+    $('#districtCounts').textContent = ' + ' + activeCount + ' ' + self.CWI18n.tn('j.unit.congregations', activeCount)
       + (aloneCount ? ' + ' + aloneCount + ' ' + t('j.unit.standalone_groups') : '');
 
     // Карточка «Записи уровня района» — честные реальные счётчики; проекты
@@ -322,10 +336,10 @@
       if (e.nodeId === circuitId && entryCounts[e.type] !== undefined) entryCounts[e.type]++;
     });
     $('#districtEntryChips').innerHTML =
-      chip(ICON.circuit, entryCounts.project + ' ' + esc(t('j.unit.projects'))) +
-      chip('<path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/>', entryCounts.note + ' ' + esc(t('j.unit.notes'))) +
-      chip('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', entryCounts.todo + ' ' + esc(t('j.unit.tasks'))) +
-      chip('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>', entryCounts.question + ' ' + esc(t('j.unit.questions')));
+      chip(ICON.circuit, entryCounts.project + ' ' + esc(self.CWI18n.tn('j.unit.projects', entryCounts.project))) +
+      chip('<path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/>', entryCounts.note + ' ' + esc(self.CWI18n.tn('j.unit.notes', entryCounts.note))) +
+      chip('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', entryCounts.todo + ' ' + esc(self.CWI18n.tn('j.unit.tasks', entryCounts.todo))) +
+      chip('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>', entryCounts.question + ' ' + esc(self.CWI18n.tn('j.unit.questions', entryCounts.question)));
 
     $('#congregationsCount').textContent = String(congregations.length);
     if (tab === 'overview') await renderDistrictProjects(circuit);
@@ -377,12 +391,13 @@
     var archived = node.status === 'archived';
     var displayLabel = nodeName(node);
     var row = document.createElement('div');
+    var congMeta = node.kind === 'congregation' && !archived ? await visitMetaText(node) : '';
     row.className = 'j-row';
     row.innerHTML =
       '<div class="j-row__ico">' + svg(ICON[node.kind] || ICON.congregation) + '</div>' +
       '<div class="j-row__body">' +
       '<p class="j-row__title">' + (archived ? '<span class="u-muted">' + esc(displayLabel) + '</span>' : '<b>' + esc(displayLabel) + '</b>') + '</p>' +
-      '<p class="j-row__meta">' + (archived ? esc(t('j.badge.archive')) : esc(node.kind === 'congregation' ? t('j.state.no_visit_yet') : t('j.search.kind.' + node.kind))) + '</p>' +
+      '<p class="j-row__meta">' + (archived ? esc(t('j.badge.archive')) : esc(node.kind === 'congregation' ? congMeta : t('j.search.kind.' + node.kind))) + '</p>' +
       '</div>' +
       '<div class="j-row__end">' + rowMenuMarkup(node.kind, node, index, siblingCount) + '</div>';
     container.appendChild(row);
@@ -392,6 +407,7 @@
     });
 
     var children = CWJournal.sortNodes(await CWJournal.nodes.byParent(node.id));
+    var childMeta = await visitMetaMap(children);
     if (children.length) {
       var wrap = document.createElement('div');
       wrap.className = 'j-tree__child';
@@ -404,7 +420,7 @@
           '<div class="j-row__ico">' + svg(ICON[child.kind] || ICON.group) + '</div>' +
           '<div class="j-row__body">' +
           '<p class="j-row__title">' + (cArchived ? '<span class="u-muted">' + esc(child.label) + '</span>' : esc(child.label)) + '</p>' +
-          '<p class="j-row__meta">' + (cArchived ? esc(t('j.badge.archive')) : esc(t('j.state.no_visit_yet'))) + '</p>' +
+          '<p class="j-row__meta">' + (cArchived ? esc(t('j.badge.archive')) : esc(childMeta[child.id])) + '</p>' +
           '</div>' +
           '<div class="j-row__end">' + rowMenuMarkup(child.kind, child, ci, children.length) + '</div>';
         wrap.appendChild(crow);
@@ -529,6 +545,7 @@
     var childrenWrap = $('#congChildrenTree');
     childrenWrap.innerHTML = '';
     var children = CWJournal.sortNodes(await CWJournal.nodes.byParent(node.id));
+    var childMeta = await visitMetaMap(children);
     $('#congChildrenCount').textContent = String(children.length);
     if (!children.length) {
       childrenWrap.innerHTML =
@@ -544,7 +561,7 @@
           '<div class="j-row__ico">' + svg(ICON[child.kind] || ICON.group) + '</div>' +
           '<div class="j-row__body">' +
           '<p class="j-row__title">' + (cArchived ? '<span class="u-muted">' + esc(child.label) + '</span>' : esc(child.label)) + '</p>' +
-          '<p class="j-row__meta">' + (cArchived ? esc(t('j.badge.archive')) : esc(t('j.state.no_visit_yet'))) + '</p>' +
+          '<p class="j-row__meta">' + (cArchived ? esc(t('j.badge.archive')) : esc(childMeta[child.id])) + '</p>' +
           '</div>' +
           '<div class="j-row__end">' + rowMenuMarkup(child.kind, child, ci, children.length) + '</div>';
         childrenWrap.appendChild(crow);

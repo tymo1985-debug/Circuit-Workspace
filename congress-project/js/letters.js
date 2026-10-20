@@ -40,7 +40,13 @@ export const NAMESPACES=["sender","congress","assignment","doc"];
  * есть: плейсхолдеры останутся видимыми в предпросмотре — это заметно сразу,
  * в отличие от письма с пустыми местами вместо дат.
  */
-function fill(tpl,data){return self.CWTemplates?self.CWTemplates.render(tpl,data):String(tpl==null?"":tpl)}
+function fill(tpl,data){
+  if(!self.CWTemplates)return String(tpl==null?"":tpl);
+  /* Строка шаблона из одного плейсхолдера, который пуст (второй телефон, код), не
+     оставляет пустой строки: иначе renderPlain режет шапку на два блока и e-mail
+     отрывается от неё. */
+  let src=String(tpl==null?"":tpl).split("\n").filter(line=>!/^\s*\{\{[^{}]+\}\}\s*$/.test(line)||self.CWTemplates.render(line,data).trim()!=="").join("\n");
+  return self.CWTemplates.render(src,data)}
 /**
  * Значения для подстановки.
  *

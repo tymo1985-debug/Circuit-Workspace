@@ -198,7 +198,7 @@
       const entry = due[0]; const event = App.data.getEventById(entry.eventId);
       App.utils.toast(App.utils.t('reminder_60days', { title: entry.title || event?.name || '' }));
     } else {
-      App.utils.toast(App.utils.t('reminder_60days_many', { count: due.length }));
+      App.utils.toast(App.utils.tn('reminder_60days_many', due.length));
     }
     due.forEach((entry) => { entry.notified60 = true; });
     App.store.save();

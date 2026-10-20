@@ -180,6 +180,32 @@
     return value;
   }
 
+  /**
+   * Перевод с числом: «1 проект», «2 проекта», «5 проектов».
+   * Форму выбирает Intl.PluralRules текущего (или явного) языка; словарь хранит
+   * формы отдельными ключами `<key>.one|few|many|other`. Нет нужной формы —
+   * берётся `.other`, нет и её — сам `<key>`. В подстановки добавляется {count}.
+   * @param {string} key
+   * @param {number} n
+   * @param {Object} [vars]
+   * @param {string} [lang]
+   */
+  function tn(key, n, vars, lang) {
+    if (!current) current = resolve();
+    var active = normalize(lang) || current;
+    var cat = 'other';
+    try { cat = new Intl.PluralRules(active).select(Number(n)); }
+    catch (e) { cat = Number(n) === 1 ? 'one' : 'other'; }
+    var pick = key + '.' + cat;
+    if (lookup(pick, active) == null && lookup(pick, FALLBACK) == null) {
+      pick = key + '.other';
+      if (lookup(pick, active) == null && lookup(pick, FALLBACK) == null) pick = key;
+    }
+    var merged = { count: n };
+    if (vars) Object.keys(vars).forEach(function (name) { merged[name] = vars[name]; });
+    return t(pick, merged, lang);
+  }
+
   /* --- Применение к DOM ---------------------------------------------
      Поддерживаемые атрибуты:
        data-i18n="ключ"                — textContent
@@ -424,6 +450,7 @@
     },
 
     t: t,
+    tn: tn,
     apply: apply,
 
     /** @returns {Function} отписка */

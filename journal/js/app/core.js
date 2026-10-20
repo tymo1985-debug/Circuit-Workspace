@@ -310,6 +310,8 @@
     var key, cls;
     if (visit.status === 'completed') { key = 'j.visit.status.completed'; cls = 'md-status-success'; }
     else if (todayIso() < visit.dateFrom) { key = 'j.visit.status.planned'; cls = 'md-status-important'; }
+    /* Дата окончания прошла, а посещение не закрыто: «идёт» было бы ложью навсегда. */
+    else if (visit.dateTo && todayIso() > visit.dateTo) { key = 'j.visit.status.unclosed'; cls = 'md-status-important'; }
     else { key = 'j.visit.status.open'; cls = 'md-status-success'; }
     return { label: t(key), html: '<span class="md-status ' + cls + '">' + esc(t(key)) + '</span>' };
   }

@@ -310,6 +310,11 @@
         Object.keys(vars).forEach((k) => { value = value.replace(`{${k}}`, String(vars[k])); });
         return value;
       },
+      /** Перевод с числом («1 визит», «2 визита», «5 визитов»): формы — ключи `cp.<key>.one|few|many|other`. */
+      tn(key, n, vars = {}) {
+        if (typeof CWI18n === 'undefined' || !CWI18n.tn) return key;
+        return CWI18n.tn(`cp.${key}`, n, vars, this.lang());
+      },
       /**
        * Перевод, ГОТОВЫЙ К ВСТАВКЕ В РАЗМЕТКУ (29.08.2026, находка N-7).
        *
@@ -509,6 +514,11 @@
       },
       /* H-1 (аудит 03): ссылка OWA — только https:; иначе (в т.ч. javascript: из импортированной копии) — адрес по умолчанию. */
       owaBase(v) { try { const u = new URL(String(v || '').trim()); if (u.protocol === 'https:') return u.href; } catch (e) { /* не ссылка */ } return 'https://outlook.office.com/mail/deeplink/compose'; },
+      /* Для ИМЁН ФАЙЛОВ. Диакритика раскладывается и теряет надстрочные знаки
+         («München» → munchen, «Žižkov» → zizkov), а не буквы. slug() выше не
+         трогать: из него строятся id событий, и смена результата перепривязала бы
+         сохранённые данные. */
+      fileSlug(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss').replace(/ł/gi,'l').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9\-а-яёіїєґ]/gi,''); },
       slug(value) { return String(value || '').toLowerCase().trim().replace(/\s+/g,'-').replace(/[^a-z0-9\-а-яёіїєґ]/gi,''); },
       /* Делегирование в общий слой (28.08.2026), см. shared/escape.js. */
       escapeHtml(str) { return self.CWEscape.html(str); },
@@ -1712,7 +1722,7 @@
         App.utils.downloadText(`service-year-planner-${start}-${end}.ics`, `${lines.map((l) => App.utils.icsFold(l)).join('\r\n')}\r\n`, 'text/calendar;charset=utf-8');
       },
       exportSingleEventIcs(itemId) {
-        const item = App.data.getCalendarItemById(itemId); if (!item) return; const event = App.data.getEventById(item.eventId); App.utils.downloadText(`${App.utils.slug(item.title || event?.name || 'event') || 'event'}.ics`, App.utils.makeSingleIcs(item, event), 'text/calendar;charset=utf-8');
+        const item = App.data.getCalendarItemById(itemId); if (!item) return; const event = App.data.getEventById(item.eventId); App.utils.downloadText(`${App.utils.fileSlug(item.title || event?.name || 'event') || 'event'}.ics`, App.utils.makeSingleIcs(item, event), 'text/calendar;charset=utf-8');
       },
       importJson(file) {
         if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const parsed = JSON.parse(String(reader.result || '{}')); App.state.app = App.store.migrate(parsed); App.store.save(); const years = Object.keys(App.state.app.serviceYears).map(Number).sort((a,b) => a - b);
@@ -3080,6 +3090,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       detectTextLanguage(text) {
         if (!text) return null;
         const stripped = String(text).replace(/<[^>]+>/g, ' ').replace(/\{[a-z_]+\}/gi, ' ');
+        /* Сначала письменность. Русский текст с «München» или «Łódź» содержит латинские
+           диакритики, но остаётся русским: решает, чего букв больше — кириллицы или латиницы. */
+        const cyrCount = (stripped.match(/[а-яёіїєґ]/gi) || []).length;
+        const latCount = (stripped.match(/[a-zäöüßąćęłńóśźż]/gi) || []).length;
+        if (cyrCount && cyrCount >= latCount) return /[іїєґІЇЄҐ]/.test(stripped) ? 'uk' : 'ru';
         if (/[іїєґІЇЄҐ]/.test(stripped)) return 'uk'; // letters that exist in Ukrainian but not Russian
         if (/[ąćęłńśźżĄĆĘŁŃŚŹŻ]/.test(stripped)) return 'pl'; // Polish-only diacritics
         if (/[äöüßÄÖÜ]/.test(stripped)) return 'de'; // German-only diacritics/ligature
@@ -4159,7 +4174,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         );
         if (!pdf) return;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
-        pdf.save(`${App.utils.slug(entry.title || 'document')}${suffix ? '-' + suffix : ''}-${App.utils.slug(state.item.name) || 'doc'}.pdf`);
+        pdf.save(`${App.utils.fileSlug(entry.title || 'document')}${suffix ? '-' + suffix : ''}-${App.utils.fileSlug(state.item.name) || 'doc'}.pdf`);
         this.snapshotComposerDoc('print');
       },
 
@@ -4267,7 +4282,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.utils.toast(App.utils.t('s302_generating'));
         const bytes = await this.buildS302Pdf(entry, event);
         if (!bytes) return;
-        const file = new File([bytes], `S-302-${App.utils.slug(entry.title || 'congregation')}.pdf`, { type: 'application/pdf' });
+        const file = new File([bytes], `S-302-${App.utils.fileSlug(entry.title || 'congregation')}.pdf`, { type: 'application/pdf' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try { await navigator.share({ files: [file] }); } catch (err) { App.utils.downloadBlob(file, file.name); }
         } else {
@@ -4300,7 +4315,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!(await App.pdf.ensure('visit'))) return;
         try {
           const letterDoc = this.buildLetterPdfDoc(entry, event);
-          if (letterDoc) files.push(new File([letterDoc.output('blob')], `${App.utils.slug(entry.title || 'letter')}${filenameSuffix ? '-' + filenameSuffix : ''}-letter.pdf`, { type: 'application/pdf' }));
+          if (letterDoc) files.push(new File([letterDoc.output('blob')], `${App.utils.fileSlug(entry.title || 'letter')}${filenameSuffix ? '-' + filenameSuffix : ''}-letter.pdf`, { type: 'application/pdf' }));
         } catch (err) {
           // Раньше отказ уходил только в console.error. Дальше files оставался
           // пустым, тост про скачивание не показывался, а mailto: без
@@ -4313,7 +4328,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           try {
             App.state.visitFormData = JSON.parse(JSON.stringify(entry.visitForm));
             const scheduleDoc = this.buildVisitPdfDoc();
-            if (scheduleDoc) files.push(new File([scheduleDoc.output('blob')], `${App.utils.slug(entry.title || 'visit')}${filenameSuffix ? '-' + filenameSuffix : ''}-schedule.pdf`, { type: 'application/pdf' }));
+            if (scheduleDoc) files.push(new File([scheduleDoc.output('blob')], `${App.utils.fileSlug(entry.title || 'visit')}${filenameSuffix ? '-' + filenameSuffix : ''}-schedule.pdf`, { type: 'application/pdf' }));
           } catch (err) { console.error('Schedule PDF build for sharing failed', err); }
         }
         const mailto = () => {
@@ -4574,7 +4589,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const entry = App.state.app.entries.find((e) => e.id === App.state.visitFormEntryId);
         const event = entry ? App.data.getEventById(entry.eventId) : null;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
-        doc.save(`${App.utils.slug(entry?.title || 'visit')}${suffix ? '-' + suffix : ''}.pdf`);
+        doc.save(`${App.utils.fileSlug(entry?.title || 'visit')}${suffix ? '-' + suffix : ''}.pdf`);
         App.utils.toast(App.utils.t('pdf_done'));
       });
       // Letter modal
@@ -4662,7 +4677,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const doc = App.ui.buildLetterPdfDoc(entry, event);
         if (!doc) return;
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
-        doc.save(`${App.utils.slug(entry.title || 'letter')}${suffix ? '-' + suffix : ''}-letter.pdf`);
+        doc.save(`${App.utils.fileSlug(entry.title || 'letter')}${suffix ? '-' + suffix : ''}-letter.pdf`);
         /* Файл сохранён на диск — с этого момента бумага существует вне
            приложения, и её текст обязан остаться неизменным. */
         App.ui.snapshotLetterDoc(entry, event, 'print');
@@ -4708,7 +4723,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!doc) return;
         const event = App.data.getEventById(entry.eventId);
         const suffix = App.utils.pdfFilenameSuffix(entry, event);
-        doc.save(`${App.utils.slug(entry.title || 'visit')}${suffix ? '-' + suffix : ''}-schedule.pdf`);
+        doc.save(`${App.utils.fileSlug(entry.title || 'visit')}${suffix ? '-' + suffix : ''}-schedule.pdf`);
         if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = App.utils.t('plan_downloaded');
       });
       App.els.letterSendBtn?.addEventListener('click', () => App.ui.sendLetterNow());
