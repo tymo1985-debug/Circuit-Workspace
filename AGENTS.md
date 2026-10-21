@@ -173,7 +173,7 @@ ZIP или долгими проверками — короткая оценка
 
 ```
 Complexity:         Low / Medium / High
-Recommended model:  Haiku 4.5 / Sonnet 5 / Opus 5
+Recommended model:  Haiku 5.5 / Sonnet 5.5 / Opus 5.5
 Recommended effort: Low / Medium / High / Extra / Max
 Thinking:           On / Off
 ```
@@ -183,7 +183,7 @@ Thinking:           On / Off
 
 ```
 Recommended switch before execution:
-Sonnet 5 Medium → Opus 5 High
+Sonnet 5.5 Medium → Opus 5.5 High
 Reason: изменение затрагивает схему данных и backup/restore.
 ```
 
@@ -194,9 +194,9 @@ Reason: изменение затрагивает схему данных и bac
 
 | Модель | Когда |
 |---|---|
-| **Haiku 4.5** | тексты, переименования, точечные CSS/HTML без логических зависимостей, простой поиск |
-| **Sonnet 5** — default | обычные багфиксы, UI/CSS, логика одного модуля, локальный рефакторинг, Phase 3 и подобные контролируемые срезы |
-| **Opus 5** | сложная архитектура, тяжёлые cross-module правки, миграции данных, IndexedDB/localStorage со сменой схемы, backup/restore/export, service worker/cache, несколько архитектурных вариантов с серьёзными последствиями |
+| **Haiku 5.5** | тексты, переименования, точечные CSS/HTML без логических зависимостей, простой поиск |
+| **Sonnet 5.5** — default | обычные багфиксы, UI/CSS, логика одного модуля, локальный рефакторинг, Phase 3 и подобные контролируемые срезы |
+| **Opus 5.5** | сложная архитектура, тяжёлые cross-module правки, миграции данных, IndexedDB/localStorage со сменой схемы, backup/restore/export, service worker/cache, несколько архитектурных вариантов с серьёзными последствиями |
 
 ### Effort
 
@@ -207,12 +207,12 @@ Low (механика, тексты, локальный CSS) → **Medium (defau
 
 ### Лестница эскалации
 
-`Sonnet 5 Medium → High → Extra → Opus 5 Medium/High`. На `Opus 5` сразу не
-перескакивать, пока Sonnet 5 не проверен недостаточным. Понадобился один раз —
-не становится default: следующая задача снова с `Sonnet 5 + Medium`.
+`Sonnet 5.5 Medium → High → Extra → Opus 5.5 Medium/High`. На `Opus 5.5` сразу не
+перескакивать, пока Sonnet 5.5 не проверен недостаточным. Понадобился один раз —
+не становится default: следующая задача снова с `Sonnet 5.5 + Medium`.
 
 Оценка оказалась неверной — остановиться перед следующим дорогим шагом:
-`Escalation needed: Sonnet 5 Medium → Sonnet 5 High` + `Reason: …`
+`Escalation needed: Sonnet 5.5 Medium → Sonnet 5.5 High` + `Reason: …`
 (или `De-escalation recommended: …`).
 
 ### Отчёт после задачи
@@ -304,8 +304,9 @@ Thinking:     On / Off
 
 ## Открытые задачи
 
-Живой список — **`TODO.md`** (разделы Inbox / Next / In Progress / Done
-фиксированы; в Done — только текущий месяц, старое — `docs/todo-archive/`). Здесь только то, что не влезает в формат задачи:
+Живой список — **`TODO.md`** (разделы Inbox / Next / In Progress
+фиксированы; раздела Done нет — выполненное идёт в `CHANGELOG.md`, старое
+— в `docs/todo-archive/`). Здесь только то, что не влезает в формат задачи:
 
 - Мёртвые правила общего слоя: 39 в храповике `check-orphan-classes.mjs`,
   76 только в каталоге дизайн-системы. Разбирать по мере касания.
