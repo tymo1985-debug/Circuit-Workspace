@@ -117,6 +117,8 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 
 .route.hidden { display: none; }
+/* «Учащиеся»: широкая таблица занимает всю ширину окна, а не колонку 980px. */
+.content:has(#route-students:not(.hidden)) { max-width: none; }
 
 .route-header { margin-bottom: 24px; }
 
@@ -217,6 +219,20 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   background: var(--md-surface-container-lowest);
   color: var(--md-on-surface);
 }
+
+/* Таблица учащихся (аудит 07): строки были ~145px — три кнопки действий
+   в столбик и textarea на 2 строки, а каждое поле тянулось до ширины по
+   умолчанию (~170px + поля ячейки). Теперь строка в одну линию, колонки уже,
+   фамилия закреплена при горизонтальной прокрутке. */
+#students-table th, #students-table td { padding: 6px 8px; vertical-align: middle; }
+#students-table td input[type=text] { width: 130px; padding: 6px 8px; }
+#students-table td select { width: auto; min-width: 72px; max-width: 150px; padding: 6px 8px; }
+#students-table td textarea { width: 170px; height: 34px; min-height: 34px; padding: 6px 8px; resize: vertical; }
+#students-table td:last-child { white-space: nowrap; }
+#students-table th:first-child, #students-table td:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--md-surface);
+}
+#students-table tr:hover td:first-child { background: var(--md-surface-container); }
 
 .checkbox-label {
   flex-direction: row !important;
@@ -460,6 +476,18 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   height:32px;padding:0 10px;border-radius:var(--md-radius-full);
   border:1px solid var(--md-outline-variant);background:var(--md-surface);
   color:var(--md-on-surface);font:500 12px/16px var(--md-font-family);cursor:pointer;
+}
+
+/* Телефон: селектор языка — иконка-глобус (аудит 07, п.«Заголовки на телефоне»).
+   Полное имя языка («Українська») занимало 120px и вытесняло название модуля
+   из шапки. Это тот же настоящий <select>: нативный список, label и change. */
+@media (max-width: 600px) {
+  #ui-language {
+    width: 40px; min-width: 40px; padding: 0; color: transparent;
+    -webkit-appearance: none; appearance: none;
+    background: var(--md-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") center / 20px no-repeat;
+  }
+  #ui-language option { color: var(--md-on-surface); background: var(--md-surface); }
 }
 
 /* ---------- Документы модуля (фаза 6, 14.08.2026) ----------

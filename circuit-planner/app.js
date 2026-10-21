@@ -1852,7 +1852,7 @@
               if (lane < 0) { lane = lanes.length; lanes.push(c1); } else lanes[lane] = c1;
               segs.push({ sp, c0, len: c1 - c0 + 1, lane });
             });
-            weeks.push({ days, segs, laneCount: Math.max(1, lanes.length) });
+            weeks.push({ days, segs, laneCount: Math.max(1, lanes.length), year, month });
           }
           return weeks;
         };
@@ -1862,6 +1862,27 @@
         };
         const dowRow = (cls) => `<div class="${cls}">${App.utils.dayNames().map((d) => `<span>${esc(d)}</span>`).join('')}</div>`;
         const weekDays = (w) => w.days.map((n) => `<span>${n || ''}</span>`).join('');
+        /* Лист-календарь (виды «месяц» и «период»): номер недели ISO в углу
+           первой клетки и праздники — красным числом (если в настройках
+           включено «Показывать праздники»). Мини-месяцы года остаются
+           без этого: клетка в 8px не вмещает ни то, ни другое. */
+        const richWeekDays = (w) => {
+          const idx = w.days.findIndex((n) => n);
+          const monday = new Date(w.year, w.month, w.days[idx] - idx);
+          return w.days.map((n, i) => {
+            const names = n ? App.utils.getHolidayNames(`${w.year}-${String(w.month + 1).padStart(2, '0')}-${String(n).padStart(2, '0')}`) : null;
+            const wk = i === 0 ? `<i class="wk">${esc(App.utils.t('print_week_short'))} ${App.utils.weekNumber(monday)}</i>` : '';
+            return `<span${names ? ' class="hol"' : ''}>${n || ''}${wk}</span>`;
+          }).join('');
+        };
+        const monthHolidays = (year, month) => {
+          const dim = new Date(year, month + 1, 0).getDate(), out = [];
+          for (let d = 1; d <= dim; d++) {
+            const names = App.utils.getHolidayNames(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+            if (names) out.push(`${d}. ${esc(names.join(' / '))}`);
+          }
+          return out.length ? `<div class="lc-hol">${out.join(' · ')}</div>` : '';
+        };
         const rangeMonths = () => {
           const start = App.utils.parseLocalDate(range.start), end = App.utils.parseLocalDate(range.end), months = [];
           let cur = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -1870,7 +1891,7 @@
           return months;
         };
         // Вид 1 — календарь: месяц на всю ширину листа, событие одной полосой.
-        const calendar = () => rangeMonths().map(({ month, year }) => `<section class="lc-month"><h2>${esc(App.utils.monthName(month))} ${year}</h2>${dowRow('lc-dow')}${monthWeeks(year, month).map((w) => `<div class="lc-week" style="height:${22 + w.laneCount * 21}px">${weekDays(w)}${w.segs.map((sg) => bar(sg, 22, 21, esc(sg.sp.it.title))).join('')}</div>`).join('')}</section>`).join('');
+        const calendar = () => rangeMonths().map(({ month, year }) => `<section class="lc-month"><h2>${esc(App.utils.monthName(month))} ${year}</h2>${dowRow('lc-dow')}${monthWeeks(year, month).map((w) => `<div class="lc-week" style="height:${22 + w.laneCount * 21}px">${richWeekDays(w)}${w.segs.map((sg) => bar(sg, 22, 21, esc(sg.sp.it.title))).join('')}</div>`).join('')}${monthHolidays(year, month)}</section>`).join('');
         // Вид 2 — список: две строки на событие, пустые поля не печатаются.
         const agenda = () => {
           if (!items.length) return `<div class="empty">${esc(App.utils.t('no_events_month'))}</div>`;
@@ -1943,6 +1964,9 @@
             + '.lc-week span{padding:4px 6px;border-left:1px solid #dde6e0;font-weight:700;font-size:11px}'
             + '.lc-week span:nth-of-type(7){border-right:1px solid #dde6e0}'
             + '.lc-week span:nth-of-type(n+6){background:#f6f8f7}'
+            + '.lc-week span{position:relative}.lc-week span.hol{color:#b3261e}'
+            + '.lc-week i.wk{position:absolute;right:4px;top:4px;font-style:normal;font-weight:400;font-size:8px;color:#8a949c}'
+            + '.lc-hol{margin-top:4px;font-size:9.5px;color:#b3261e}'
             + '.lc-week .bar{height:18px;line-height:18px;font-size:11px;border-radius:9px;padding:0 9px}'
             + '.ls-month{margin-top:14px;padding-bottom:4px;border-bottom:1.5px solid #16251d;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;break-after:avoid}'
             + '.ls-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #e3e9e5;break-inside:avoid}'
@@ -2923,7 +2947,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!assignments.length) return App.utils.toast(App.utils.t('planner_no_free_weeks'));
         assignments.sort((a, b) => String(a.start).localeCompare(String(b.start)));
         const summary = assignments.map((a) => `${a.event?.name}: ${App.utils.prettyDate(a.start)} — ${App.utils.prettyDate(a.end)}`).join('\n');
-        const clusterNote = tours.length ? '\n\n' + App.utils.t('tours_grouped', { count: tours.length > clusters.length ? tours.length : clusters.length }) : '';
+        const clusterNote = tours.length ? '\n\n' + App.utils.tn('tours_grouped', Math.max(tours.length, clusters.length), { count: Math.max(tours.length, clusters.length) }) : '';
         const uncodedNote = uncoded ? '\n' + App.utils.t('uncoded_note', { count: uncoded }) : '';
         if (!window.confirm(`${App.utils.t('planner_confirm')} (${assignments.length}):${uncodedNote}\n\n${summary}${clusterNote}`)) return;
         assignments.forEach((a) => App.state.app.entries.push({ id: App.utils.uid('entry'), eventId: a.eventId, start: a.start, end: a.end, title: a.event?.name || '', note: '', flags: { f302: false, letter: false }, resultNote: '', source: 'entry' }));
