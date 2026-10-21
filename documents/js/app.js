@@ -39,6 +39,8 @@
     'sys.visit.congregation.salutation': 'doc.name.visit_salutation_congregation',
     'sys.visit.group.salutation': 'doc.name.visit_salutation_group',
     'sys.visit.pregroup.salutation': 'doc.name.visit_salutation_pregroup',
+    'sys.visit.letter.greeting': 'doc.name.visit_greeting',
+    'sys.visit.letter.closing': 'doc.name.visit_closing',
     'sys.journal.project.letter': 'doc.name.journal_project_letter',
   };
 
@@ -162,7 +164,7 @@
   function kindOf(tpl) {
     var ctx = String(tpl.context || '');
     if (/\.email$/.test(ctx)) return { key: 'doc.kind.email', icon: 'mail' };
-    if (/\.salutation$/.test(ctx)) return { key: 'doc.kind.salutation', icon: 'lines' };
+    if (/\.(salutation|greeting|closing)$/.test(ctx)) return { key: 'doc.kind.salutation', icon: 'lines' };
     return { key: 'doc.kind.letter', icon: 'page' };
   }
 

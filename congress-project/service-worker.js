@@ -37,7 +37,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
   '../shared/parked.js',
   '../shared/snapshots.js',
   '../shared/templates.js','../shared/templates/namespaces.js','../shared/templates/builtin.js',
-  '../shared/documents.js','../shared/print.js','../shared/pdfstack.js','../shared/vendor/jspdf.umd.min.js','../shared/vendor/html2canvas.min.js',
+  '../shared/documents.js','../shared/print.js','../shared/pdfstack.js','../shared/vendor/jspdf.umd.min.js','../shared/fonts/dejavu-sans-subset.js',
   '../shared/db.js',
   '../shared/archive.js',
   '../shared/serviceyear.js',

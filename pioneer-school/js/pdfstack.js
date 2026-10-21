@@ -42,7 +42,7 @@ const PSPdf = {
        обе бумаги собирает один и тот же PdfExport. */
     pdf: [
       '../shared/vendor/jspdf.umd.min.js',
-      'js/export/fonts/dejavu-sans-subset.js',
+      '../shared/fonts/dejavu-sans-subset.js',
       'js/export/pdfExport.js',
     ],
     /* Импорт PDF: pdf.js плюс разборщик таблиц. Воркер здесь НЕ перечислен —

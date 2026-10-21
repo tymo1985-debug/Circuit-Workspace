@@ -3,8 +3,8 @@
  * -----------------------------------------------------------------------
  * Формирование итогового PDF-документа (jsPDF + jspdf-autotable).
  * Документ содержит два раздела, каждый — ровно на одной странице:
- *   1) Формуляр для Алексея — со всеми разделами, включая пастырские посещения.
- *   2) Формуляр для Лидии — то же самое, но без раздела "Пастырские посещения".
+ *   1) Формуляр для районного — со всеми разделами, включая пастырские посещения.
+ *   2) Формуляр для жены — то же самое, но без раздела "Пастырские посещения".
  *
  * Чтобы каждый формуляр гарантированно помещался на одну страницу А4,
  * содержимое сначала "пробно" отрисовывается на черновом документе на
@@ -287,7 +287,7 @@
         const raw = data.cell.raw;
         if (raw === '' || raw === null || raw === undefined) {
           // Columns listed in perPageColumns must NOT be shared between the two form pages —
-          // Alex and Lydia go out with different partners and often a different kind of ministry,
+          // The overseer and his wife go out with different partners and often a different kind of ministry,
           // so those cells get the page key baked into the field name (making them independent
           // AcroForm fields). Everything else stays shared, so the schedule itself (time/place)
           // only has to be filled in once and mirrors onto both pages automatically.
@@ -308,7 +308,7 @@
     return doc.lastAutoTable.finalY + style.tableGap;
   }
 
-  /** Рисует один раздел (для Алексея — includePastoral=true, для Лидии — false). */
+  /** Рисует один раздел (для районного — includePastoral=true, для жены — false). */
   // Каждый визит начинается во ВТОРНИК, служение — со среды. Поэтому дату для дня
   // недели не отсчитываем «первый день визита = среда», а ищем в периоде визита
   // реальную календарную дату с нужным днём недели: это верно и при сдвиге визита,
@@ -348,7 +348,7 @@
     return label;
   }
 
-  // По пятницам с утра напарник фиксирован: у Алексея — Лидия, у Лидии — Алексей.
+  // По пятницам с утра напарник фиксирован: у районного — жена, у жены — районный.
   // Подставляется только если ячейка пуста, чтобы не затирать ручную правку.
   function defaultPartnerFor(state, i18n, day, row, fieldPrefix) {
     if (!fieldPrefix) return '';
@@ -475,7 +475,7 @@
       });
     }
 
-    // Пастырские посещения (только для формуляра Алексея, и не для предгруппы)
+    // Пастырские посещения (только для формуляра районного, и не для предгруппы)
     if (includePastoral && state.visitType !== 'pregroup') {
       y = sectionHeading(doc, y, t('pdfPastoralVisits'), style);
       const pastoralHead = [t('pastoralName'), t('pastoralDay'), t('pastoralTime'), t('serviceTablePartner'), t('pastoralReason')];
@@ -601,7 +601,7 @@
   const PdfGenerator = {
     /**
      * Формирует полный PDF-документ (jsPDF instance) на основе состояния формы.
-     * Каждый из двух формуляров (для Алексея и для Лидии) автоматически
+     * Каждый из двух формуляров (для районного и для жены) автоматически
      * подбирает свою плотность макета так, чтобы уместиться на одной странице.
      * @param {Object} state — состояние формы из app.js
      * @param {Object} i18n — модуль I18N (для переводов и текущего языка)
@@ -620,10 +620,10 @@
       registerFonts(doc);
       doc.setFont(FONT_NAME, 'normal');
 
-      // Страница 1 — формуляр для Алексея (со всеми разделами)
+      // Страница 1 — формуляр для районного (со всеми разделами)
       drawFormPage(doc, state, i18n, alexTitle, true, alexStyle, 'alex', true);
 
-      // Страница 2 — формуляр для Лидии (без пастырских посещений)
+      // Страница 2 — формуляр для жены (без пастырских посещений)
       doc.addPage();
       drawFormPage(doc, state, i18n, lydiaTitle, false, lydiaStyle, 'lydia', true);
 

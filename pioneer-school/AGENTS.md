@@ -8,7 +8,7 @@
 |---|---:|---|
 | `js/app.js` | 67 КБ | целиком допустимо |
 | `i18n/dict.js` | 141 КБ | только `grep` по ключу |
-| `js/export/fonts/dejavu-sans-subset.js` | 70 КБ | **не открывать** — base64 |
+| `../shared/fonts/dejavu-sans-subset.js` | 70 КБ | **не открывать** — base64 |
 | `js/export/fonts/dejavu-form-b64.js` | 93 КБ | **не открывать** — base64 |
 
 ## Особенности модуля

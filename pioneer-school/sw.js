@@ -89,7 +89,7 @@ const ASSETS = [
   './js/modules/registrationForm.js',
   // Шрифты для PDF: встраиваются в сами PDF-файлы (кириллица в бланке и в
   // интерактивной анкете), поэтому нужны офлайн.
-  './js/export/fonts/dejavu-sans-subset.js',
+  '../shared/fonts/dejavu-sans-subset.js',
   './js/export/fonts/dejavu-form-b64.js',
   // ВСЁ НИЖЕ ДОГРУЖАЕТСЯ ПО КНОПКЕ (30.08.2026, находка N-3), но в прекэше
   // обязано лежать: файл, который тянет js/pdfstack.js, невидим для

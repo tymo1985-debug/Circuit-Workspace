@@ -1,2 +1,6 @@
 node_modules/
 shots/
+
+# Артефакты живых прогонов (scripts/live-*.mjs)
+/tmp/
+/live-journal-node-overview.png

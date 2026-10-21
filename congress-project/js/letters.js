@@ -45,7 +45,11 @@ function fill(tpl,data){
   /* Строка шаблона из одного плейсхолдера, который пуст (второй телефон, код), не
      оставляет пустой строки: иначе renderPlain режет шапку на два блока и e-mail
      отрывается от неё. */
-  let src=String(tpl==null?"":tpl).split("\n").filter(line=>!/^\s*\{\{[^{}]+\}\}\s*$/.test(line)||self.CWTemplates.render(line,data).trim()!=="").join("\n");
+  /* По блокам (абзацам): блок, ставший пустым целиком, остаётся пустым блоком —
+     renderPlain по-прежнему отдаёт первую позицию (шапку справа) ему, а не
+     заголовку письма. */
+  let isEmptyPh=line=>/^\s*\{\{[^{}]+\}\}\s*$/.test(line)&&self.CWTemplates.render(line,data).trim()==="";
+  let src=String(tpl==null?"":tpl).replace(/\r\n?/g,"\n").split(/\n\s*\n/).map(block=>block.split("\n").filter(line=>!isEmptyPh(line)).join("\n")).join("\n\n");
   return self.CWTemplates.render(src,data)}
 /**
  * Значения для подстановки.
@@ -211,9 +215,8 @@ export function printLetter(){
   /* На бумагу уходит то, что на экране: при разовой правке — правленый текст,
      иначе печаталось бы одно, а в архив ложилось другое. */
   let html=store.previewEdited?$("#letterPreview").innerHTML:letterHTML(target.task,target.congress);
-  snapshotLetter(target.task,"print",target.congress);
-  askOrientation("Печать письма","portrait",html,printFilename(letterFileTitle(target.task)))}
-export function allLetters(){let tasks=A().tasks.filter(isLetterable);snapshotLetters(tasks,"print");askOrientation("Печать всех писем","portrait",tasks.map(task=>letterHTML(task)).join(""),printFilename("Все письма"))}
+  askOrientation("Печать письма","portrait",html,printFilename(letterFileTitle(target.task)),()=>snapshotLetter(target.task,"print",target.congress))}
+export function allLetters(){let c=A();if(!c)return;let tasks=c.tasks.filter(isLetterable);askOrientation("Печать всех писем","portrait",tasks.map(task=>letterHTML(task)).join(""),printFilename("Все письма"),()=>snapshotLetters(tasks,"print"))}
 /**
  * Список писем.
  *

@@ -145,10 +145,11 @@ console.log('\nПрежние ключи: только чтение');
 /* ── Baseline ставится в правильной точке ─────────────────────────────────── */
 console.log('\nBaseline стартового состояния');
 {
-  /* Конгрессы: после migrate/adoptShared/newC, до пользовательского ввода. */
+  /* Конгрессы: после migrate/adoptShared, до пользовательского ввода.
+     Демо-конгресс на старте больше не создаётся (21.10.2026). */
   const i = congState.indexOf('domainBaselinePayload=JSON.stringify(store.st)');
   ok('Конгрессы: baseline после стартовой нормализации',
-    i > congState.indexOf('migrate();adoptShared();') && i > congState.indexOf('newC(t("cong.msg.first_congress")'));
+    i > congState.indexOf('migrate();adoptShared();') && !congState.includes('cong.msg.first_congress'));
 
   /* Клиндарий: после всех детерминированных стартовых правок, ДО bind(). */
   const b = planner.indexOf('App.store.domainBaselinePayload = JSON.stringify(App.state.app)');

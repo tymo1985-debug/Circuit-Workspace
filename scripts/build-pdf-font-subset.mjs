@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Пересборка субсета DejaVu Sans для ПЛОСКИХ PDF Школы пионеров
- * (`pioneer-school/js/export/fonts/dejavu-sans-subset.js`, глобаль
+ * (`shared/fonts/dejavu-sans-subset.js`, глобаль
  * `window.PDF_FONT_DEJAVU_SANS`, встраивается в jsPDF через addFileToVFS).
  *
  * ЗАЧЕМ ЭТОТ СКРИПТ. Первая сборка субсета покрывала только ASCII + кириллицу
@@ -45,7 +45,7 @@ import { join } from "node:path";
 
 const SRC = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
 const EXPECTED_VERSION = "Version 2.37";
-const OUT = "pioneer-school/js/export/fonts/dejavu-sans-subset.js";
+const OUT = "shared/fonts/dejavu-sans-subset.js";
 const SANITIZER = "pioneer-school/js/export/pdfExport.js";
 
 /**

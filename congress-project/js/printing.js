@@ -1,6 +1,7 @@
 // Auto-generated module: printing.js
 import { $ } from "./dom.js";
 import { store } from "./state.js";
+import { t } from "./i18n.js";
 
 // margin и extraCSS необязательны — письма печатаются как раньше (10мм, без доп. CSS),
 // план передаёт значения, подобранные автоподгонкой.
@@ -10,8 +11,18 @@ export function setPrintStyle(o, margin, extraCSS) {
   stl.textContent = `@media print{@page{size:A4 ${o};margin:${margin == null ? 10 : margin}mm}${extraCSS || ""}}`;
   document.head.appendChild(stl);
 }
-export function printWithOrientation(h, o, filename, margin, extraCSS) {
+export function printWithOrientation(h, o, filename, margin, extraCSS, afterPrint) {
   setPrintStyle(o || "portrait", margin, extraCSS);
+  /* Отметка «напечатано» в архиве — только после диалога печати и только по
+     ответу пользователя (решение Алекса 21.10.2026): браузер не сообщает,
+     нажата ли «Отмена», а запись до печати оставляла ложный след выданной
+     бумаги. Нет события afterprint — нет и записи: молчаливый пропуск лучше
+     ложной отметки. */
+  if (typeof afterPrint === "function") {
+    window.addEventListener("afterprint", () => {
+      setTimeout(() => { if (confirm(t("cong.confirm.letters_printed"))) afterPrint(); }, 50);
+    }, { once: true });
+  }
   $("#printArea").innerHTML = h;
   /* Имя файла — через общий слой (shared/print.js). Прежняя реализация меняла
      document.title прямо здесь и восстанавливала его на afterprint в main.js,
@@ -22,10 +33,11 @@ export function printWithOrientation(h, o, filename, margin, extraCSS) {
   if (filename) CWPrint.filename(filename);
   setTimeout(() => window.print(), 80);
 }
-export function askOrientation(title, def, html, filename) {
+export function askOrientation(title, def, html, filename, afterPrint) {
   $("#orientationTitle").textContent = title;
   $("#printOrientation").value = def || "portrait";
   store.pendingPrintHTML = html;
   store.pendingPrintFilename = filename || "";
+  store.pendingPrintAfter = typeof afterPrint === "function" ? afterPrint : null;
   $("#orientationDialog").showModal();
 }

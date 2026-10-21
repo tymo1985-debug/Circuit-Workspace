@@ -3,8 +3,16 @@ import { isLetterable } from "./utils.js";
 import { letterHTML, snapshotLetter } from "./letters.js";
 import { t } from "./i18n.js";
 
-const STACK={tag:"Конгрессы",FONTS:[],SETS: {batch:['../shared/vendor/jspdf.umd.min.js','../shared/vendor/html2canvas.min.js']},onError(){alert(t("cong.batch.pdf_failed"))}};
-const PAGE={width:794,height:1123};
+/* PDF собирается ТЕКСТОМ (решение Алекса 21.10.2026, п.26 аудита): раньше лист
+   растрировался через html2canvas — текст не выделялся, файлы были тяжёлыми, а
+   граница страницы могла разрезать строку пополам. Шрифт — общий субсет DejaVu
+   (одно начертание; жирный рисуется обводкой контура). */
+const STACK={tag:"Конгрессы",FONTS:[],SETS: {batch:['../shared/vendor/jspdf.umd.min.js','../shared/fonts/dejavu-sans-subset.js']},onError(){alert(t("cong.batch.pdf_failed"))}};
+/* Геометрия .letter-page (794×1123 px, поля 92/100/70) в пунктах A4: 1 px = 0,75 pt. */
+const PT=0.75,PAGE={width:595.28,height:841.89},PAD={top:92*PT,side:100*PT,bottom:70*PT};
+/* Тот же набор глифов, что в субсете шрифта: символ вне набора jsPDF молча
+   обрезает вместе с остатком строки (см. pioneer-school/js/export/pdfExport.js). */
+const FONT_SAFE=/[^\x20-\x7E\u00A0-\u017F\u0400-\u04FF\u2013\u2014\u2018-\u201E\u2026\u2116]/g;
 const ILLEGAL=/[\\/:*?"<>|\u0000-\u001f]/g;
 const RESERVED=/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
 
@@ -38,27 +46,71 @@ export function installBatchPdfActions(){
   add("lettersPrintAllBtn","lettersExportSeparateBtn","cong.btn.separate_pdfs","cong.title.separate_pdfs");
 }
 
+/** Абзацы письма → строки слов с признаком жирного. <br> — принудительный перенос. */
+function letterRuns(article){
+  let paras=[];
+  article.querySelectorAll("p").forEach(p=>{
+    let runs=[];
+    let walk=(node,bold)=>{
+      node.childNodes.forEach(ch=>{
+        if(ch.nodeType===3)runs.push({text:ch.nodeValue,bold});
+        else if(ch.nodeType===1){
+          let tag=ch.tagName;
+          if(tag==="BR")runs.push({br:true});
+          else walk(ch,bold||tag==="STRONG"||tag==="B");
+        }
+      });
+    };
+    walk(p,false);
+    paras.push({runs,header:p.classList.contains("letter-header")});
+  });
+  return paras;
+}
+
 async function renderLetterPdf(html){
-  if(!self.CWPdfStack||!await self.CWPdfStack.ensure(STACK,"batch")||!self.jspdf||!self.html2canvas)throw new Error("PDF stack unavailable");
+  if(!self.CWPdfStack||!await self.CWPdfStack.ensure(STACK,"batch")||!self.jspdf||!self.PDF_FONT_DEJAVU_SANS)throw new Error("PDF stack unavailable");
   let host=document.createElement("div");
-  host.style.cssText="position:fixed;left:-10000px;top:0;width:794px;background:#fff;pointer-events:none";
+  host.style.cssText="position:fixed;left:-10000px;top:0;width:794px;pointer-events:none";
   host.innerHTML=html;document.body.appendChild(host);
-  let article=host.querySelector(".letter-page");
-  if(!article){host.remove();throw new Error("Letter HTML unavailable")}
-  article.style.margin="0";article.style.boxShadow="none";
-  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-  let source=await self.html2canvas(article,{scale:2,backgroundColor:"#fff",logging:false,useCORS:false});
-  let pages=Math.max(1,Math.ceil(Math.max(PAGE.height,article.scrollHeight)/PAGE.height));
-  let doc=new self.jspdf.jsPDF({unit:"px",format:[PAGE.width,PAGE.height],orientation:"portrait",hotfixes:["px_scaling"]});
   try{
-    for(let page=0;page<pages;page++){
-      if(page)doc.addPage([PAGE.width,PAGE.height],"portrait");
-      let canvas=document.createElement("canvas"),scale=2;
-      canvas.width=PAGE.width*scale;canvas.height=PAGE.height*scale;
-      let ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(source,0,page*PAGE.height*scale,PAGE.width*scale,PAGE.height*scale,0,0,PAGE.width*scale,PAGE.height*scale);
-      doc.addImage(canvas.toDataURL("image/jpeg",0.96),"JPEG",0,0,PAGE.width,PAGE.height,undefined,"FAST");
-    }
+    let article=host.querySelector(".letter-page");
+    if(!article)throw new Error("Letter HTML unavailable");
+    let px=parseFloat(article.style.fontSize)||17,size=px*PT,lineH=size*1.32,paraGap=14*PT,headerGap=8*PT;
+    let doc=new self.jspdf.jsPDF({unit:"pt",format:"a4",orientation:"portrait"});
+    doc.addFileToVFS("DejaVuSans.ttf",self.PDF_FONT_DEJAVU_SANS);
+    doc.addFont("DejaVuSans.ttf","DejaVuSans","normal");
+    doc.setFont("DejaVuSans","normal");doc.setFontSize(size);doc.setTextColor(0);doc.setDrawColor(0);doc.setLineWidth(size*0.035);
+    let left=PAD.side,right=PAGE.width-PAD.side,width=right-left,bottom=PAGE.height-PAD.bottom,y=PAD.top;
+    let w=x=>doc.getTextWidth(x);
+    letterRuns(article).forEach(para=>{
+      /* Слова с признаком жирного; пробелы остаются отдельными токенами, чтобы
+         ширина строки совпадала с тем, что рисуется. */
+      let lines=[[]],lineW=0;
+      let push=(tok)=>{
+        let tw=w(tok.text);
+        if(/^\s+$/.test(tok.text)){if(!lines[lines.length-1].length)return;lines[lines.length-1].push(tok);lineW+=tw;return}
+        if(lineW+tw>width&&lines[lines.length-1].length){
+          let cur=lines[lines.length-1];while(cur.length&&/^\s+$/.test(cur[cur.length-1].text))cur.pop();
+          lines.push([]);lineW=0;
+        }
+        lines[lines.length-1].push(tok);lineW+=tw;
+      };
+      para.runs.forEach(run=>{
+        if(run.br){lines.push([]);lineW=0;return}
+        String(run.text||"").replace(/\s+/g," ").replace(FONT_SAFE,"-").split(/( )/).forEach(part=>{if(part)push({text:part,bold:run.bold})});
+      });
+      lines.forEach(line=>{
+        while(line.length&&/^\s+$/.test(line[line.length-1].text))line.pop();
+        if(y+lineH>bottom){doc.addPage("a4","portrait");y=PAD.top}
+        let total=line.reduce((n,tok)=>n+w(tok.text),0),x=para.header?right-total:left;
+        line.forEach(tok=>{
+          if(!/^\s+$/.test(tok.text))doc.text(tok.text,x,y,{baseline:"top",renderingMode:tok.bold?"fillThenStroke":"fill"});
+          x+=w(tok.text);
+        });
+        y+=lineH;
+      });
+      y+=para.header?headerGap:paraGap;
+    });
     return new Uint8Array(doc.output("arraybuffer"));
   }finally{host.remove()}
 }

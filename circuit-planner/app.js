@@ -27,7 +27,7 @@
       serviceTableTime: 'Время', serviceTablePlace: 'Место проведения встречи', serviceTablePartner: 'С кем (имя/тел.)', serviceTableKind: 'Вид служения',
       pastoralName: 'Имя', pastoralDay: 'День', pastoralTime: 'Время', pastoralReason: 'Причина пастырского посещения',
       mealDay: 'День', mealTime: 'Время', mealPlace: 'Место', mealHost: 'Кто принимает', mealPhone: 'Телефон', mealNote: 'Примечание',
-      pdfPageForAlex: 'Формуляр для Алексея', pdfPageForLydia: 'Формуляр для Лидии', partnerNameAlex: 'Алексей', partnerNameLydia: 'Лидия', pdfVisitTypeLabel: 'Тип посещения:',
+      pdfPageForNamed: 'Формуляр: {name}', pdfPageOverseer: 'Формуляр районного надзирателя', pdfPageWife: 'Формуляр жены', partnerWife: 'жена', partnerHusband: 'муж', pdfVisitTypeLabel: 'Тип посещения:',
       pdfMeetingsSchedule: 'Расписание встреч', pdfServicePlan: 'План служения', pdfPastoralVisits: 'Пастырские посещения', pdfMeals: 'Обеды', pdfNotes: 'Дополнительные заметки',
       pdfManualLinesTitle: 'Для заметок вручную', pdfGeneratedOn: 'Документ сформирован',
     },
@@ -39,7 +39,7 @@
       serviceTableTime: 'Час', serviceTablePlace: 'Місце проведення зустрічі', serviceTablePartner: 'З ким (ім\u2019я/тел.)', serviceTableKind: 'Вид служіння',
       pastoralName: "Ім'я", pastoralDay: 'День', pastoralTime: 'Час', pastoralReason: 'Причина пастирського відвідування',
       mealDay: 'День', mealTime: 'Час', mealPlace: 'Місце', mealHost: 'Хто приймає', mealPhone: 'Телефон', mealNote: 'Примітка',
-      pdfPageForAlex: 'Формуляр для Олексія', pdfPageForLydia: 'Формуляр для Лідії', partnerNameAlex: 'Олексій', partnerNameLydia: 'Лідія', pdfVisitTypeLabel: 'Тип відвідування:',
+      pdfPageForNamed: 'Формуляр: {name}', pdfPageOverseer: 'Формуляр районного наглядача', pdfPageWife: 'Формуляр дружини', partnerWife: 'дружина', partnerHusband: 'чоловік', pdfVisitTypeLabel: 'Тип відвідування:',
       pdfMeetingsSchedule: 'Розклад зустрічей', pdfServicePlan: 'План служіння', pdfPastoralVisits: 'Пастирські відвідування', pdfMeals: 'Обіди', pdfNotes: 'Додаткові нотатки',
       pdfManualLinesTitle: 'Для нотаток вручну', pdfGeneratedOn: 'Документ сформовано',
     },
@@ -51,7 +51,7 @@
       serviceTableTime: 'Time', serviceTablePlace: 'Meeting place', serviceTablePartner: 'With whom (name/phone)', serviceTableKind: 'Type of ministry',
       pastoralName: 'Name', pastoralDay: 'Day', pastoralTime: 'Time', pastoralReason: 'Reason for shepherding call',
       mealDay: 'Day', mealTime: 'Time', mealPlace: 'Place', mealHost: 'Host', mealPhone: 'Phone', mealNote: 'Note',
-      pdfPageForAlex: "Alexei's form", pdfPageForLydia: "Lydia's form", partnerNameAlex: 'Alexei', partnerNameLydia: 'Lydia', pdfVisitTypeLabel: 'Visit type:',
+      pdfPageForNamed: 'Form: {name}', pdfPageOverseer: "Circuit overseer's form", pdfPageWife: "Wife's form", partnerWife: 'wife', partnerHusband: 'husband', pdfVisitTypeLabel: 'Visit type:',
       pdfMeetingsSchedule: 'Meeting schedule', pdfServicePlan: 'Field service plan', pdfPastoralVisits: 'Shepherding calls', pdfMeals: 'Meals', pdfNotes: 'Additional notes',
       pdfManualLinesTitle: 'For handwritten notes', pdfGeneratedOn: 'Document generated on',
     },
@@ -63,7 +63,7 @@
       serviceTableTime: 'Godzina', serviceTablePlace: 'Miejsce spotkania', serviceTablePartner: 'Z kim (imi\u0119/tel.)', serviceTableKind: 'Rodzaj słu\u017cby',
       pastoralName: 'Imię', pastoralDay: 'Dzień', pastoralTime: 'Godzina', pastoralReason: 'Powód odwiedzin pasterskich',
       mealDay: 'Dzień', mealTime: 'Godzina', mealPlace: 'Miejsce', mealHost: 'Kto przyjmuje', mealPhone: 'Telefon', mealNote: 'Uwaga',
-      pdfPageForAlex: 'Formularz dla Aleksieja', pdfPageForLydia: 'Formularz dla Lidii', partnerNameAlex: 'Aleksiej', partnerNameLydia: 'Lidia', pdfVisitTypeLabel: 'Rodzaj odwiedzin:',
+      pdfPageForNamed: 'Formularz: {name}', pdfPageOverseer: 'Formularz nadzorcy obwodu', pdfPageWife: 'Formularz żony', partnerWife: 'żona', partnerHusband: 'mąż', pdfVisitTypeLabel: 'Rodzaj odwiedzin:',
       pdfMeetingsSchedule: 'Harmonogram spotkań', pdfServicePlan: 'Plan służby', pdfPastoralVisits: 'Odwiedziny pasterskie', pdfMeals: 'Posiłki', pdfNotes: 'Dodatkowe uwagi',
       pdfManualLinesTitle: 'Na notatki odręczne', pdfGeneratedOn: 'Dokument utworzono',
     },
@@ -75,7 +75,7 @@
       serviceTableTime: 'Uhrzeit', serviceTablePlace: 'Treffpunkt', serviceTablePartner: 'Mit wem (Name/Telefon)', serviceTableKind: 'Art des Dienstes',
       pastoralName: 'Name', pastoralDay: 'Tag', pastoralTime: 'Uhrzeit', pastoralReason: 'Grund für den Hirtenbesuch',
       mealDay: 'Tag', mealTime: 'Uhrzeit', mealPlace: 'Ort', mealHost: 'Gastgeber', mealPhone: 'Telefon', mealNote: 'Anmerkung',
-      pdfPageForAlex: 'Formular für Alexej', pdfPageForLydia: 'Formular für Lydia', partnerNameAlex: 'Alexej', partnerNameLydia: 'Lydia', pdfVisitTypeLabel: 'Art des Besuchs:',
+      pdfPageForNamed: 'Formular: {name}', pdfPageOverseer: 'Formular Kreisaufseher', pdfPageWife: 'Formular Ehefrau', partnerWife: 'Ehefrau', partnerHusband: 'Ehemann', pdfVisitTypeLabel: 'Art des Besuchs:',
       pdfMeetingsSchedule: 'Plan der Zusammenkünfte', pdfServicePlan: 'Predigtdienstplan', pdfPastoralVisits: 'Hirtenbesuche', pdfMeals: 'Mahlzeiten', pdfNotes: 'Zusätzliche Notizen',
       pdfManualLinesTitle: 'Für handschriftliche Notizen', pdfGeneratedOn: 'Dokument erstellt am',
     },
@@ -88,7 +88,19 @@
       MEETING_TYPES: ['meetingTypeMidweek','meetingTypeWeekend','meetingTypeElders','meetingTypeWithElders','meetingTypePioneers','meetingTypeOther'],
       MEAL_DAY_KEYS: ['weekdayWed','weekdayThu','weekdayFri','weekdaySat','weekdaySun'],
       dict: VP_I18N_DICTS[safeLang],
-      t(key) { return this.dict[key] || key; },
+      t(key) {
+        /* Имена на двух страницах формуляра и напарник в пятницу утром берутся из
+           настроек отправителя (решение Алекса 21.10.2026): в коде имён больше нет.
+           Пусто — нейтральные «Формуляр районного надзирателя» / «Формуляр жены». */
+        const st = (typeof App !== 'undefined' && App.state && App.state.app && App.state.app.settings) || {};
+        const a = String(st.formNameOverseer || '').trim(), b = String(st.formNameWife || '').trim();
+        const named = (n) => (this.dict.pdfPageForNamed || '{name}').replace('{name}', n);
+        if (key === 'pdfPageForAlex') return a ? named(a) : this.dict.pdfPageOverseer;
+        if (key === 'pdfPageForLydia') return b ? named(b) : this.dict.pdfPageWife;
+        if (key === 'partnerNameAlex') return a || this.dict.partnerHusband;
+        if (key === 'partnerNameLydia') return b || this.dict.partnerWife;
+        return this.dict[key] || key;
+      },
     };
   }
   const VP_LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English', pl: 'Polski', de: 'Deutsch' };
@@ -2009,13 +2021,13 @@
           'statsModal','statsModalTitle','statsModalSub','statsModalBody','statsModalCloseBtn','statsModalOkBtn','statsBtn','plannerBtn',
           'plannerModal','plannerModalCloseBtn','plannerStartInput','plannerEndInput','plannerEventsList','plannerPreview','plannerCancelBtn','plannerApplyBtn',
           'pinOverlay','pinInput','pinError','pinSubmitBtn','pinSetupBtn','holidaysToggle','autoShowRemindersToggle','editorResultInput','editorResultLabel',
-          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
+          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','formNameOverseerInput','formNameWifeInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
           'letterModal','letterModalSub','letterEmailLangSelect','letterEmailLangNote','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
           'visitDocsModal','visitDocsSub','visitDocsList','visitDocsCloseBtn','visitDocsCloseBtn2',
           'composerModal','composerTitle','composerSub','composerSubject','composerPaper','composerCloseBtn',
-          'composerEditBtn','composerCopySubjectBtn','composerCopyTextBtn','composerPrintBtn','composerPdfBtn','composerSaveBtn','composerPaperHead',
+          'composerEditBtn','composerCopySubjectBtn','composerCopyTextBtn','composerPrintBtn','composerPdfBtn','composerSaveBtn','composerPaperHead','composerPaperTail',
           'languageSelect','themeSelect','fontSizeSelect',
           'settingsPdfBtn','backupBtn','resetAppBtn','themeBtn','exportBtn','importInput','pdfModal','pdfModalCloseBtn',
           'pdfCancelBtn','pdfExportConfirmBtn','pdfRangeCard','pdfRangeStartInput','pdfRangeEndInput','pdfRangeHelp','pdfHint',
@@ -3085,6 +3097,27 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       letterTypeSuffix(visitType) {
         return visitType === 'group' ? 'Group' : visitType === 'pregroup' ? 'Pregroup' : 'Congregation';
       },
+      /**
+       * Рамка письма перед визитом: язык, дата, обращение и заключение.
+       * Язык — язык ТЕКСТА письма, который реально уйдёт на бумагу (решение Алекса
+       * 21.10.2026: «по языку документа»), а не язык интерфейса и не жёсткий uk-UA.
+       * Обращение и заключение — документы «Документов» (visit.letter.greeting /
+       * .closing), их можно править; запасной текст — прежний украинский.
+       */
+      letterFrame(entry, event, bodyHtml) {
+        const lang = this.detectTextLanguage(bodyHtml) || this.docLang();
+        const locale = DOC_LOCALES[lang] || 'uk-UA';
+        const pick = (ctx, fallback) => {
+          try { const f = self.CWTemplates && self.CWTemplates.text ? self.CWTemplates.text(ctx, lang) : null; if (f && f.body) return f.body; } catch (_) { /* общий слой недоступен */ }
+          return fallback;
+        };
+        return {
+          lang,
+          today: new Date().toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }),
+          greeting: this.substitutePlaceholders(pick('visit.letter.greeting', '<p><b>Дорогі брати!</b></p>'), entry, event),
+          closing: this.substitutePlaceholders(pick('visit.letter.closing', '<p>Я вже з нетерпінням чекаю на цю зустріч і надсилаю вам теплі вітання братньої любові,</p><p><b>Ваш {{senderName}}</b></p>'), entry, event),
+        };
+      },
       // Character-based language detection — no dictionaries/libraries needed, just letters that
       // are unique to one language and never appear in the others we support.
       detectTextLanguage(text) {
@@ -3500,7 +3533,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const margin = 54, pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
         const bottomLimit = pageH - margin - 16;
         const settings = App.state.app.settings;
-        const ukDate = (d) => { const dt = new Date(d); return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' }); };
+        const bodyHtml = draftOverride ? draftOverride.bodyHtml : App.ui.substitutePlaceholders(App.ui.getLetterTemplateFor(event?.visitType), entry, event);
+        const frame = App.ui.letterFrame(entry, event, bodyHtml);
 
         const drawHeader = () => {
           doc.setFont(FONT, 'normal'); doc.setFontSize(9.5); doc.setTextColor(60, 64, 74);
@@ -3597,14 +3631,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           const salutationTemplate = App.ui.getSalutationFor(suffixForSalutation);
           const salutationText = App.ui.substitutePlaceholders(salutationTemplate, entry, event);
           y = addRichParagraph(y, singleRun(salutationText, { bold: true, size: 11.5 }), { size: 11.5, gap: 20 });
-          doc.setFont(FONT, 'normal'); doc.setFontSize(11); doc.text(ukDate(new Date()), pageW - margin, y - 8, { align: 'right' });
-          y = addRichParagraph(y, singleRun('Дорогі брати!', { bold: true }), { gap: 14 });
+          doc.setFont(FONT, 'normal'); doc.setFontSize(11); doc.text(frame.today, pageW - margin, y - 8, { align: 'right' });
+          App.ui.parseRichLetterBlocks(frame.greeting).forEach((block) => { y = addRichParagraph(y, block.runs, { gap: 14 }); });
         }
-        const bodyHtml = draftOverride ? draftOverride.bodyHtml : App.ui.substitutePlaceholders(App.ui.getLetterTemplateFor(event?.visitType), entry, event);
         App.ui.parseRichLetterBlocks(bodyHtml).forEach((block) => { y = addRichParagraph(y, block.runs, { size: 11, gap: 14 }); });
         y += 6;
-        y = addRichParagraph(y, singleRun('Я вже з нетерпінням чекаю на цю зустріч і надсилаю вам теплі вітання братньої любові,'), { gap: 22 });
-        y = addRichParagraph(y, singleRun(`Ваш ${App.shared.sender().name || ''}`, { bold: true }), {});
+        const closingBlocks = App.ui.parseRichLetterBlocks(frame.closing);
+        closingBlocks.forEach((block, i) => { y = addRichParagraph(y, block.runs, i < closingBlocks.length - 1 ? { gap: 22 } : {}); });
 
         // ---- Additional pages (configurable per visit type: add/remove in settings) ----
         const suffix = App.ui.letterTypeSuffix(event?.visitType);
@@ -3673,7 +3706,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
            из восстановленной копии, то есть из файла, который пользователь
            пересылал почтой. Экранируются ЗНАЧЕНИЯ; сам шаблон — авторская
            разметка пользователя и остаётся нетронутым. */
-        return self.CWTemplates.render(tpl, this.letterData(entry, event), { escape: true });
+        /* Даты — на языке самого текста (решение Алекса 21.10.2026), а не всегда uk-UA. */
+        const lang = this.detectTextLanguage(tpl) || this.docLang();
+        return self.CWTemplates.render(tpl, this.letterData(entry, event, lang), { escape: true });
       },
       /* ── Язык и текст e-mail перед визитом ──────────────────────────────
          Текст берётся из «Документов» (контекст visit.<тип>.email) на языке,
@@ -4018,6 +4053,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.els.composerPaperHead.innerHTML = head;
           App.els.composerPaperHead.hidden = !head;
         }
+        if (App.els.composerPaperTail) {
+          const tail = this.composerTailHtml(menuItem, entry, event);
+          App.els.composerPaperTail.innerHTML = tail;
+          App.els.composerPaperTail.hidden = !tail;
+        }
         if (App.els.composerPaper) {
           App.els.composerPaper.contentEditable = 'false';
           App.els.composerPaper.innerHTML = built.bodyHtml !== null
@@ -4043,11 +4083,16 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const sender = App.shared.sender();
         const lines = [sender.name, sender.address, sender.phone1, sender.email].filter(Boolean);
         const salutation = this.substitutePlaceholders(this.getSalutationFor(menuItem.suffix), entry, event);
-        const today = new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' });
+        const frame = this.letterFrame(entry, event, this.substitutePlaceholders(this.getLetterTemplateFor(event?.visitType), entry, event));
         return `<div class="cp-doc-sender">${lines.map(esc).join('\n')}</div>`
           + `<div class="cp-doc-salutation">${esc(salutation)}</div>`
-          + `<div class="cp-doc-date">${esc(today)}</div>`
-          + '<div class="cp-doc-salutation" style="margin-top:12px">Дорогі брати!</div>';
+          + `<div class="cp-doc-date">${esc(frame.today)}</div>`
+          + `<div class="cp-doc-greeting" style="margin-top:12px">${frame.greeting}</div>`;
+      },
+      /** Заключение письма для предпросмотра и печати — то же, что дописывает PDF. */
+      composerTailHtml(menuItem, entry, event) {
+        if (menuItem.kind !== 'letter') return '';
+        return this.letterFrame(entry, event, this.substitutePlaceholders(this.getLetterTemplateFor(event?.visitType), entry, event)).closing;
       },
       /** Фактический язык документа для пункта меню (см. docActualLang). */
       docActualLangFor(menuItem) {
@@ -4139,7 +4184,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
              текст приезжает на первом непустом языке, и пометить страницу
              запрошенным значило бы соврать про переносы слов. */
           lang: this.docActualLangFor(state.item),
-          html: `${doc.subject ? `<p><b>${App.utils.escapeHtml(doc.subject)}</b></p>` : head}${body}`,
+          html: `${doc.subject ? `<p><b>${App.utils.escapeHtml(doc.subject)}</b></p>` : head}${body}${!doc.subject && App.els.composerPaperTail && !App.els.composerPaperTail.hidden ? `<div class="cp-doc-tail">${App.els.composerPaperTail.innerHTML}</div>` : ''}`,
           css: '.cp-doc-sender{text-align:right;font-size:11px;color:#556;white-space:pre-line;margin-bottom:16px}'
              + '.cp-doc-salutation{font-weight:700}'
              + '.cp-doc-date{text-align:right;font-size:11.5px;color:#556;margin-top:-14px}',
@@ -4438,7 +4483,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      renderSettings() { if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.value = App.state.app.settings.formNameOverseer || ''; if (App.els.formNameWifeInput) App.els.formNameWifeInput.value = App.state.app.settings.formNameWife || ''; if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
     },
 
     bind() {
@@ -4732,6 +4777,8 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.eventVisitTypeInput?.addEventListener('change', () => App.ui.syncEventVisitFieldsVisibility());
       App.els.geocodeHomeBtn?.addEventListener('click', () => App.ui.geocodeHome());
       App.els.homeAddressInput?.addEventListener('input', (e) => { App.state.app.settings.homeAddress = e.target.value; App.store.save(); });
+      App.els.formNameOverseerInput?.addEventListener('input', (e) => { App.state.app.settings.formNameOverseer = e.target.value; App.store.save(); });
+      App.els.formNameWifeInput?.addEventListener('input', (e) => { App.state.app.settings.formNameWife = e.target.value; App.store.save(); });
       App.els.senderAddressInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ address: e.target.value }); else { App.state.app.settings.senderAddress = e.target.value; App.store.save(); } });
       App.els.senderPhoneInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ phone1: e.target.value }); else { App.state.app.settings.senderPhone = e.target.value; App.store.save(); } });
       App.els.senderEmailInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ email: e.target.value }); else { App.state.app.settings.senderEmail = e.target.value; App.store.save(); } });

@@ -188,7 +188,7 @@ console.log('\n4. Шрифт и санитайзер PDF');
   // Каждый символ русской колонки словаря документов обязан быть в шрифте:
   // иначе jsPDF молча обрежет всю строку.
   const { ctx } = makeEnv();
-  const b64 = readFileSync(PS + '/js/export/fonts/dejavu-sans-subset.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
+  const b64 = readFileSync('shared/fonts/dejavu-sans-subset.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
   ok('субсет шрифта не пустой', b64.length > 10000);
   const docSrc = readFileSync(PS + '/i18n/doc.js', 'utf8');
   const strings = [...docSrc.matchAll(/':\s*'((?:[^'\\]|\\.)*)'/g)].map((x) => x[1]);
@@ -344,7 +344,7 @@ console.log('\n9. Сквозная проверка PDF: текст доезжа
   //   «Szkoła zgłoszenie ćwiczenia» → 24 из 27
   //   «Школа № 12» → 9 из 10 (пропадал №)
   const { jsPDF } = await import('jspdf');
-  const b64 = readFileSync(PS + '/js/export/fonts/dejavu-sans-subset.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
+  const b64 = readFileSync('shared/fonts/dejavu-sans-subset.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   doc.addFileToVFS('DejaVuSans.ttf', b64);
   doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');

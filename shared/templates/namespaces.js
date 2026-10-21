@@ -41,7 +41,7 @@
        сам, если модуль не передал своих (см. shared/templates.js). */
     sender: {
       fields: {
-        name:    { aliases: ['senderName', 'sender'], example: 'Олексій Тимощук' },
+        name:    { aliases: ['senderName', 'sender'], example: 'Іван Петренко' },
         code:    { aliases: ['senderCode'],           example: 'EU-K-01' },
         address: { aliases: ['senderAddress'],        example: 'Warszawa' },
         phone1:  { aliases: ['senderPhone1'],         example: '+48 000 000 000' },
@@ -144,7 +144,7 @@
         startDate:              { aliases: [], example: '12 жовтня 2026 р.' },
         endDate:                { aliases: [], example: '17 жовтня 2026 р.' },
         place:                  { aliases: [], example: 'Зал Царства, Варшава-Бемово' },
-        teacherA:               { aliases: [], example: 'Олексій Тимощук' },
+        teacherA:               { aliases: [], example: 'Іван Петренко' },
         teacherB:               { aliases: [], example: 'Якуб Ульфік' },
         /* Срок и контакты сдачи анкеты. Живут в настройках формуляра
            (meta.registrationConfig), а не в «Назначении»: их задаёт тот же

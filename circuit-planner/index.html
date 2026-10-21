@@ -207,11 +207,14 @@
         </div>
 
         <div class="settings-panel" id="settingsPanelLetter" hidden>
-          <div class="md-card"><h3 data-i18n="cp.sender_section">Отправитель и шапка письма</h3><div style="margin-top:8px"><label data-i18n="cp.sender_name_label" class="small">Ваше имя (для подписи «Ваш {sender}» и шапки письма)</label><input id="senderNameInput" type="text" placeholder="Например: Олексій Тимощук" data-i18n-placeholder="cp.a_name_ph" /></div>
+          <div class="md-card"><h3 data-i18n="cp.sender_section">Отправитель и шапка письма</h3><div style="margin-top:8px"><label data-i18n="cp.sender_name_label" class="small">Ваше имя (для подписи «Ваш {sender}» и шапки письма)</label><input id="senderNameInput" type="text" placeholder="Например: Иван Петренко" data-i18n-placeholder="cp.a_name_ph" /></div>
 <div class="form-grid" style="margin-top:8px">
-<div><label data-i18n="cp.sender_address_label" class="small">Адрес (в шапке письма)</label><input id="senderAddressInput" type="text" placeholder="ul. Przejazd 2, 05-082 Blizne, Poland" /></div>
-<div><label data-i18n="cp.sender_phone_label" class="small">Телефон (в шапке письма)</label><input id="senderPhoneInput" type="text" placeholder="+48 886 260 883 (WhatsApp)" /></div>
+<div><label data-i18n="cp.sender_address_label" class="small">Адрес (в шапке письма)</label><input id="senderAddressInput" type="text" placeholder="ul. Przykładowa 1, 00-001 Warszawa" /></div>
+<div><label data-i18n="cp.sender_phone_label" class="small">Телефон (в шапке письма)</label><input id="senderPhoneInput" type="text" placeholder="+48 000 000 000 (WhatsApp)" /></div>
 <div style="grid-column:1 / -1"><label data-i18n="cp.sender_email_label" class="small">E-mail (в шапке письма)</label><input id="senderEmailInput" type="text" placeholder="name@jwpub.org" /></div>
+<div><label data-i18n="cp.form_name_overseer" class="small">Имя районного (формуляр визита)</label><input id="formNameOverseerInput" type="text" /></div>
+<div><label data-i18n="cp.form_name_wife" class="small">Имя жены (формуляр визита)</label><input id="formNameWifeInput" type="text" /></div>
+<div data-i18n="cp.form_name_hint" class="layout-help" style="grid-column:1 / -1">Две страницы формуляра и напарник в пятницу утром. Пусто — «Формуляр районного надзирателя» и «Формуляр жены».</div>
 </div>
 <div class="form-grid" style="margin-top:8px">
 <div><label data-i18n="cp.send_method" class="small">Способ отправки письма</label><select id="emailMethodSelect"><option data-i18n="cp.mail_client" value="mailto">Почтовый клиент (mailto)</option><option value="owa">Outlook Web App (OWA)</option></select></div>
@@ -409,6 +412,7 @@
              предпросмотр совпадал с бумагой. -->
         <div id="composerPaperHead" class="cp-doc-head" hidden></div>
         <div id="composerPaper"></div>
+        <div id="composerPaperTail" class="cp-doc-tail" hidden></div>
       </div>
       <div class="editor-actions cp-doc-actions">
         <button data-i18n="cp.docs_edit_once" class="md-btn md-btn-text md-state-layer" id="composerEditBtn" type="button">Править разово</button>

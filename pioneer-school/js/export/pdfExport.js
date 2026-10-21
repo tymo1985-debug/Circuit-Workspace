@@ -1,12 +1,8 @@
 // pdfExport.js — генерация PDF-отчётов (jsPDF)
-// Кириллица: стандартные встроенные шрифты jsPDF не поддерживают кириллицу,
-// поэтому для текста используем canvas->image приём (рендерим текст через HTML5 Canvas
-// и вставляем как изображение построчно) — тот же обходной путь, что и в Visit Planner.
-
-// Растр текста без сжатия jsPDF кладёт в документ как есть, из-за чего формуляр
-// на одну страницу весил около мегабайта и его было тяжело отправить письмом
-// или в WhatsApp с телефона. Строки почти целиком белые и жмутся очень хорошо.
-const IMG_COMPRESSION = 'SLOW';
+// Весь текст — настоящим текстом встроенного шрифта DejaVu (общий субсет,
+// shared/fonts/dejavu-sans-subset.js). Раньше списки и формуляры рисовались
+// построчно картинками через canvas: текст не выделялся, файлы были тяжёлыми
+// (список из 12 учащихся — 424 КБ). Решение Алекса 21.10.2026, п.26 аудита.
 
 const PdfExport = {
   // Единая проверка внешней библиотеки. Раньше при недоступном CDN
@@ -22,112 +18,84 @@ const PdfExport = {
     return window.jspdf.jsPDF;
   },
 
-  // Разбивает строку на части, которые физически помещаются в заданную ширину.
-  // Без этого длинные строки (например, карточка учащегося со всеми столбцами)
-  // просто обрезались за краем canvas и молча пропадали из готового PDF.
-  _wrapText(text, { fontSize = 12, bold = false, width = 500 } = {}) {
-    const raw = String(text ?? '');
-    if (!raw.trim()) return [' '];
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return [raw]; // окружение без canvas — лучше отдать строку как есть, чем упасть
-    ctx.font = `${bold ? 'bold ' : ''}${fontSize}px Arial, sans-serif`;
-    if (ctx.measureText(raw).width <= width) return [raw];
-
-    const lines = [];
-    let current = '';
-    for (const word of raw.split(/\s+/)) {
-      const candidate = current ? current + ' ' + word : word;
-      if (ctx.measureText(candidate).width <= width) { current = candidate; continue; }
-      if (current) lines.push(current);
-      // Отдельное слово шире строки (длинный адрес или e-mail) — режем посимвольно.
-      if (ctx.measureText(word).width <= width) { current = word; continue; }
-      let chunk = '';
-      for (const ch of word) {
-        if (ctx.measureText(chunk + ch).width > width && chunk) { lines.push(chunk); chunk = ch; }
-        else chunk += ch;
-      }
-      current = chunk;
-    }
-    if (current) lines.push(current);
-    return lines.length ? lines : [' '];
-  },
-
-  _canvasLineToImage(text, { fontSize = 12, bold = false, width = 700 } = {}) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const scale = 2; // для чёткости
-    const font = `${bold ? 'bold ' : ''}${fontSize}px Arial, sans-serif`;
-
-    // Ширину холста подгоняем под фактическую длину строки, а не под максимально
-    // допустимую. Раньше каждая строка сохранялась как PNG во всю ширину полосы
-    // набора, и готовый файл раздувался до нескольких мегабайт (формуляр на одну
-    // страницу весил ~2,4 МБ) — такой PDF тяжело отправить письмом.
-    const measure = document.createElement('canvas').getContext('2d');
-    let lineWidth = width;
-    if (measure) {
-      measure.font = font;
-      lineWidth = Math.min(width, Math.ceil(measure.measureText(text).width) + 2);
-    }
-    lineWidth = Math.max(1, lineWidth);
-
-    canvas.width = lineWidth * scale;
-    canvas.height = (fontSize + 10) * scale;
-    ctx.scale(scale, scale);
-    // Непрозрачная белая подложка: PNG с альфа-каналом заставляет jsPDF писать в
-    // документ дополнительную маску прозрачности на каждую строку, что почти
-    // удваивало размер файла. Страница всё равно белая, потери нет.
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, lineWidth, fontSize + 10);
-    ctx.font = font;
-    ctx.fillStyle = '#000000';
-    ctx.textBaseline = 'top';
-    ctx.fillText(text, 0, 2);
-    return {
-      dataUrl: canvas.toDataURL('image/png'),
-      width: canvas.width / scale,
-      height: canvas.height / scale
-    };
-  },
-
-  async buildDocument(title, lines) {
+  /** Новый A4-документ со встроенным кириллическим шрифтом. */
+  _textDoc(orientation) {
     const jsPDF = this._requireJsPdf();
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const marginX = 40;
-    let y = 50;
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    const titleImg = this._canvasLineToImage(title, { fontSize: 16, bold: true, width: 500 });
-    doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height, undefined, IMG_COMPRESSION);
-    y += titleImg.height + 16;
-
-    for (const line of lines) {
-      for (const part of this._wrapText(line, { fontSize: 11, width: 500 })) {
-        const img = this._canvasLineToImage(part, { fontSize: 11, width: 500 });
-        if (y + img.height > pageHeight - 40) {
-          doc.addPage();
-          y = 50;
-        }
-        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height, undefined, IMG_COMPRESSION);
-        y += img.height + 4;
-      }
-    }
+    const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: orientation || 'portrait' });
+    this._ensureCyrillicFont(doc);
+    doc.setFont('DejaVuSans', 'normal');
+    doc.setTextColor(20);
     return doc;
   },
 
+  /**
+   * Абзац текстом с переносом по ширине; перенос страницы — между строками,
+   * а не посреди строки. Возвращает новый y.
+   */
+  _para(doc, text, x, y, { size = 11, width = 515, gap = 4, color = 20 } = {}) {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const lineH = size * 1.3;
+    doc.setFontSize(size);
+    doc.setTextColor(color);
+    doc.splitTextToSize(this._sanitizeForFont(text), width).forEach((line) => {
+      if (y + lineH > pageHeight - 40) { doc.addPage(); y = 50; }
+      doc.text(line, x, y, { baseline: 'top' });
+      y += lineH;
+    });
+    return y + gap;
+  },
+
+  async buildDocument(title, lines) {
+    const doc = this._textDoc();
+    let y = this._para(doc, title, 40, 50, { size: 16, gap: 12 });
+    for (const line of lines) y = this._para(doc, line, 40, y, { size: 11 });
+    return doc;
+  },
+
+  // Список учащихся — таблицей, без выбывших (п.26 аудита): раньше это был
+  // сплошной текст «столбец: значение · …» по каждому, включая выбывших.
   async downloadStudentList(students, columns, classesById) {
     const cols = columns && columns.length ? columns : await Students.getColumns();
-    const lines = students.map((s) => {
-      const cls = classesById[s.classId] ? classesById[s.classId].name : D('doc.ps.list.no_class');
-      const parts = cols.map((c) => {
-        const raw = (s.values || {})[c.key];
-        const label = this._formatValue(c, raw);
-        return `${c.label}: ${label || '—'}`;
-      });
-      return `${parts.join(' · ')} · ${D('doc.ps.list.class')}: ${cls}`;
-    });
-    const doc = await this.buildDocument(D('doc.ps.list.students_title'), lines);
+    const byKey = (k) => cols.find((c) => c.key === k);
+    const value = (s, k) => { const c = byKey(k); return c ? this._formatValue(c, (s.values || {})[k]) : ''; };
+    const active = students.filter((s) => (s.values || {}).status !== 'withdrawn');
+    const label = (k, fallback) => { const c = byKey(k); return c ? (Students.label ? Students.label(c) : c.label) : fallback; };
+    const head = ['№', `${label('lastName', '')} ${label('firstName', '')}`.trim(), D('doc.ps.list.class'), label('phone', 'Tel.'), label('email', 'E-mail')];
+    const rows = active.map((s, i) => [
+      String(i + 1),
+      `${value(s, 'lastName')} ${value(s, 'firstName')}`.trim(),
+      classesById[s.classId] ? classesById[s.classId].name : D('doc.ps.list.no_class'),
+      value(s, 'phone'),
+      value(s, 'email'),
+    ]);
+    const doc = this._textDoc();
+    let y = this._para(doc, D('doc.ps.list.students_title'), 40, 50, { size: 16, gap: 12 });
+    this._table(doc, head, rows, y, [28, 170, 110, 100, 107]);
     doc.save('students-list.pdf');
+  },
+
+  /** Простая таблица текстом: перенос внутри ячейки, строка не режется страницей, шапка повторяется. */
+  _table(doc, head, rows, y, widths) {
+    const x0 = 40, size = 9.5, lineH = size * 1.3, pad = 4;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const draw = (cells, isHead) => {
+      doc.setFontSize(size);
+      const wrapped = cells.map((c, i) => doc.splitTextToSize(this._sanitizeForFont(c || ''), widths[i] - pad * 2));
+      const h = Math.max(...wrapped.map((w) => w.length)) * lineH + pad * 2;
+      if (y + h > pageHeight - 40) { doc.addPage(); y = 50; if (!isHead) draw(head, true); }
+      let x = x0;
+      if (isHead) { doc.setFillColor(238, 242, 240); doc.rect(x0, y, widths.reduce((a, b) => a + b, 0), h, 'F'); }
+      doc.setDrawColor(200); doc.setTextColor(isHead ? 60 : 20);
+      wrapped.forEach((lines, i) => {
+        doc.rect(x, y, widths[i], h);
+        lines.forEach((line, k) => doc.text(line, x + pad, y + pad + k * lineH, { baseline: 'top' }));
+        x += widths[i];
+      });
+      y += h;
+    };
+    draw(head, true);
+    rows.forEach((r) => draw(r, false));
+    return y;
   },
 
   _formatValue(column, raw) {
@@ -144,35 +112,17 @@ const PdfExport = {
   _renderStudentFormulaire(doc, student, columns, classLabel, startY, pageHeight, marginX) {
     let y = startY;
     const fullName = `${(student.values || {}).lastName || ''} ${(student.values || {}).firstName || ''}`.trim() || D('doc.ps.form.no_name');
-    const titleImg = this._canvasLineToImage(D('doc.ps.form.student_title', { name: fullName }), { fontSize: 15, bold: true, width: 500 });
-    doc.addImage(titleImg.dataUrl, 'PNG', marginX, y, titleImg.width, titleImg.height, undefined, IMG_COMPRESSION);
-    y += titleImg.height + 10;
-
-    if (classLabel) {
-      const clsImg = this._canvasLineToImage(`${D('doc.ps.list.class')}: ${classLabel}`, { fontSize: 11, width: 500 });
-      doc.addImage(clsImg.dataUrl, 'PNG', marginX, y, clsImg.width, clsImg.height, undefined, IMG_COMPRESSION);
-      y += clsImg.height + 8;
-    }
-
+    y = this._para(doc, D('doc.ps.form.student_title', { name: fullName }), marginX, y, { size: 15, gap: 8 });
+    if (classLabel) y = this._para(doc, `${D('doc.ps.list.class')}: ${classLabel}`, marginX, y, { size: 11, gap: 8 });
     for (const col of columns) {
-      const raw = (student.values || {})[col.key];
-      const value = this._formatValue(col, raw) || '—';
-      const line = `${col.label}: ${value}`;
-      // Длинные значения (адрес, доп. сведения) переносим, иначе они обрезались
-      // по краю canvas и не попадали в готовый формуляр.
-      for (const part of this._wrapText(line, { fontSize: 11.5, width: 500 })) {
-        const img = this._canvasLineToImage(part, { fontSize: 11.5, width: 500 });
-        if (y + img.height > pageHeight - 40) { doc.addPage(); y = 50; }
-        doc.addImage(img.dataUrl, 'PNG', marginX, y, img.width, img.height, undefined, IMG_COMPRESSION);
-        y += img.height + 5;
-      }
+      const value = this._formatValue(col, (student.values || {})[col.key]) || '—';
+      y = this._para(doc, `${col.label}: ${value}`, marginX, y, { size: 11.5, gap: 5 });
     }
     return y;
   },
 
   async downloadStudentFormulaire(student, columns, classLabel) {
-    const jsPDF = this._requireJsPdf();
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const doc = this._textDoc();
     const pageHeight = doc.internal.pageSize.getHeight();
     this._renderStudentFormulaire(doc, student, columns, classLabel, 50, pageHeight, 40);
     const fullName = `${(student.values || {}).lastName || ''}-${(student.values || {}).firstName || ''}`.trim() || 'student';
@@ -181,8 +131,7 @@ const PdfExport = {
 
   // Один PDF, одна страница на каждого учащегося — удобно распечатать/разослать всем сразу.
   async downloadAllStudentFormulaires(students, columns, classesById) {
-    const jsPDF = this._requireJsPdf();
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const doc = this._textDoc();
     const pageHeight = doc.internal.pageSize.getHeight();
     students.forEach((s, idx) => {
       if (idx > 0) doc.addPage();
@@ -251,10 +200,7 @@ const PdfExport = {
   },
 
   // ---------- Печатный бланк регистрации (для рассылки пионерам) ----------
-  // В отличие от остальных функций этого файла (которые рисуют кириллицу как
-  // растровое изображение через canvas — рабочий, но более тяжёлый приём),
-  // здесь используется НАСТОЯЩИЙ встроенный шрифт (DejaVu Sans, урезанный до
-  // нужных символов). Это возможно только для СТАТИЧНОГО содержимого бланка.
+  // Как и весь файл, бланк набран встроенным шрифтом DejaVu Sans (субсет).
   //
   // Важное ограничение (проверено на практике): сделать этот PDF по-настоящему
   // интерактивным (с полями, которые пионер печатает прямо в Adobe/Preview)
@@ -278,7 +224,7 @@ const PdfExport = {
     doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
   },
 
-  // Шрифт бланка урезан (см. js/export/fonts/dejavu-sans-subset.js) до ASCII +
+  // Шрифт бланка урезан (см. shared/fonts/dejavu-sans-subset.js) до ASCII +
   // Latin-1 Supplement + Latin Extended-A + всей кириллицы + пунктуации. Любой
   // символ ВНЕ этого набора (например, «·», emoji, стрелки) не отрисуется — и,
   // что важнее, jsPDF при этом обрежет ВЕСЬ текстовый вызов начиная с этого
@@ -539,10 +485,8 @@ const PdfExport = {
   },
 
   // ---------- Письмо учащемуся (фаза 6, 14.08.2026) ----------
-  // ПОЧЕМУ НЕ buildDocument(). Тот рисует каждую строку растровой картинкой
-  // через canvas — приём рабочий для списков и формуляров, но письмо человек
-  // читает, пересылает и копирует из него текст. Здесь нужен настоящий
-  // встроенный шрифт, тот же, что в печатном бланке.
+  // Своя вёрстка, а не buildDocument(): у письма заголовок по центру и
+  // абзацы из шаблона.
   //
   // ЖИРНОГО НАЧЕРТАНИЯ НЕТ. Субсет DejaVu собран только в normal
   // (scripts/build-pdf-font-subset.mjs), второе начертание удвоило бы вес

@@ -35,7 +35,7 @@ ok(/await writable\.close\(\)[\s\S]{0,120}snapshotLetter/.test(source),"snapshot
 ok(/download\(zipBlob\(files\)[\s\S]{0,180}snapshotLetter/.test(source),"snapshot ZIP вызывается только после успешной сборки");
 ok(/for\(let i=0;i<tasks\.length;i\+\+\)files\.push/.test(source)&&/return files\.length/.test(source),"число PDF равно числу экспортируемых писем");
 ok(/letterTemplateId/.test(letters)&&/pickTemplateInfo\(task\)/.test(letters),"explicit letterTemplateId проходит через текущую template-selection logic");
-ok(html.includes("../shared/pdfstack.js")&&sw.includes("./js/batch-pdf.js")&&sw.includes("../shared/vendor/jspdf.umd.min.js")&&sw.includes("../shared/vendor/html2canvas.min.js"),"PDF stack и новый модуль доступны offline");
+ok(html.includes("../shared/pdfstack.js")&&sw.includes("./js/batch-pdf.js")&&sw.includes("../shared/vendor/jspdf.umd.min.js")&&sw.includes("../shared/fonts/dejavu-sans-subset.js"),"PDF stack и новый модуль доступны offline");
 
 if(failures){console.error("\nCongress batch PDF gate: FAIL ("+failures+")");process.exit(1)}
 console.log("\nCongress batch PDF gate: OK");
