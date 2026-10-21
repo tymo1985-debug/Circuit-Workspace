@@ -5,16 +5,10 @@
  * ЧТО ЛОВИТ. Шаг A2 трека «Архив» (05.10.2026): страница `archive/` и её
  * три обязанности, нарушение каждой из которых бесшумно.
  *
- *  1. PIN-барьер. Хэш в `archive/js/pin.js` — копия `App.ui.pinHash`
- *     Клиндария (выносить функцию в `shared/` значило бы править PIN
- *     Клиндария, а схема §7 это запрещает). Копия расходится молча: изменится
- *     алгоритм в Клиндарии — Архив перестанет принимать верный PIN, или
- *     наоборот. Здесь функция достаётся из РЕАЛЬНОГО `circuit-planner/app.js`
- *     и сравнивается на наборе PIN.
- *  2. Закрытое остаётся закрытым. Пока PIN задан и не введён, конверты
- *     Клиндария не видны нигде на странице: ни в списке, ни в годах, ни в
- *     поиске, ни в сообщении «архив пуст». Проверяется по тексту живой
- *     страницы, а не по логике: утечка бывает и в разметке.
+ *  1. PIN удалён (21.10.2026, решение Алекса). Барьера нет: ни `pin.js`, ни
+ *     плашки, ни диалога; оставшийся от прежней установки `syp-pin-hash`
+ *     ничего не скрывает. Вернуть барьер молча нельзя — гейт упадёт.
+ *  2. Чистая логика отбора и группировки.
  *  3. Отказ не маскируется. База не открылась — страница говорит
  *     «недоступен», а не «пуст».
  *  4. Письма — только чтение. Карточка снимка в Архиве без кнопки удаления;
@@ -44,28 +38,16 @@ const ok = (label, cond, extra) => {
 };
 const settle = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 
-/* ─── 1. Хэш PIN совпадает с Клиндарием ─────────────────────────────────── */
-console.log('\nPIN: копия хэша совпадает с Клиндарием');
+/* ─── 1. PIN удалён ──────────────────────────────────────────────────────── */
+console.log('\nPIN удалён из Клиндария и Архива');
 {
   const app = read('circuit-planner/app.js');
-  const m = app.match(/pinHash\(pin\)\s*\{[^\n]*\}/);
-  ok('App.ui.pinHash найден в circuit-planner/app.js', !!m,
-    'функцию переименовали или перенесли — обновить поиск здесь и копию в archive/js/pin.js');
-  const keyLiteral = /localStorage\.setItem\('syp-pin-hash'/.test(app);
-  ok("Клиндарий хранит PIN под ключом 'syp-pin-hash'", keyLiteral, 'ключ сменили — Архив смотрит не туда');
-
-  const ctx = vm.createContext({ self: null });
-  ctx.self = ctx;
-  vm.runInContext(read('archive/js/pin.js'), ctx);
-  const mine = ctx.ArchivePin;
-  ok('ArchivePin.KEY совпадает с ключом Клиндария', mine.KEY === 'syp-pin-hash', mine.KEY);
-
-  if (m) {
-    const theirs = vm.runInContext('({ ' + m[0] + ' })', vm.createContext({})).pinHash;
-    const pins = ['1234', '0000', '99999999', '4821', '0', '', ' 12 ', 'абвг', 'a'.repeat(200), '12 34'];
-    const bad = pins.filter((p) => theirs(p) !== mine.hash(p));
-    ok('хэш совпадает на ' + pins.length + ' PIN', bad.length === 0, 'расходятся: ' + JSON.stringify(bad));
-  }
+  ok('archive/js/pin.js удалён', !existsSync(join(ROOT, 'archive/js/pin.js')));
+  ok('Клиндарий PIN больше не записывает', !/setItem\('syp-pin-hash'/.test(app) && !/pinHash|showPinGateIfNeeded/.test(app));
+  ok('Клиндарий снимает прежний ключ при запуске', /init\(\)\s*\{[\s\S]{0,400}removeItem\('syp-pin-hash'\)/.test(app));
+  ok('экрана PIN в разметке Клиндария нет', !/id="pin(Overlay|SetupBtn)"/.test(read('circuit-planner/index.html')));
+  const arc = read('archive/index.html') + read('archive/js/app.js') + read('archive/js/logic.js') + read('archive/sw.js');
+  ok('в Архиве нет ни барьера, ни ссылок на него', !/pin\.js|ArchivePin|pinDialog|lockedBox|lockBtn|GATED_MODULE/.test(arc));
 }
 
 /* ─── 2. Чистая логика ───────────────────────────────────────────────────── */
@@ -84,8 +66,6 @@ console.log('\nЛогика отбора и группировки');
     row('b', 'congress-project', 2025, 'Конгресс весна', 'Программа'),
     row('c', 'congress-project', 2023, 'Конгресс осень', 'Альфа программа'),
   ];
-  ok('visible: замок закрыт — Клиндарий скрыт', L.visible(rows, true).map((r) => r.id).join() === 'b,c');
-  ok('visible: замок открыт — видно всё', L.visible(rows, false).length === 3);
   ok('yearsOf: новые сверху, без повторов', L.yearsOf(rows).join() === '2025,2023');
   ok('filter: слова в любом порядке', L.filter(rows, { query: 'программа альфа' }).map((r) => r.id).join() === 'c');
   ok('filter: год', L.filter(rows, { year: 2023 }).length === 1);
@@ -151,7 +131,7 @@ async function openPage(factory, opts = {}) {
   /* Сценарий «база недоступна» ждёт console.error от страницы — не шумим. */
   if (opts.noDb) w.console.error = () => {};
   w.confirm = () => (opts.confirm === undefined ? true : opts.confirm);
-  if (opts.pinHash) w.localStorage.setItem('syp-pin-hash', opts.pinHash);
+  if (opts.staleKey) w.localStorage.setItem('syp-pin-hash', opts.staleKey);
   const ctx = vm.createContext(w);
   ctx.self = w;
   SCRIPTS.filter((s) => !(opts.noDb && /\/db\.js$/.test(s))).forEach((s) => {
@@ -170,16 +150,14 @@ const said = (w, doc, key) => textOf(doc).includes(tr(w, key));
 const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent('click', { bubbles: true }));
 
 {
-  /* 3.1. PIN не задан: видно всё. */
+  /* 3.1. Видно всё. */
   const factory = new IDBFactory();
   await seed(factory);
   const { w, doc } = await openPage(factory);
   ok('ключи словаря страницы разрешаются (а не показываются как есть)',
-    ['arc.empty', 'arc.nothing_found', 'arc.unavailable', 'arc.pin_wrong'].every((k) => tr(w, k) !== k));
+    ['arc.empty', 'arc.nothing_found', 'arc.unavailable'].every((k) => tr(w, k) !== k));
   const items = doc.querySelectorAll('.arc-item');
-  ok('PIN не задан: три записи в списке', items.length === 3, items.length);
-  ok('PIN не задан: плашка замка скрыта', doc.getElementById('lockedBox').hidden === true);
-  ok('PIN не задан: кнопки «Закрыть PIN-ом» нет', doc.getElementById('lockBtn').hidden === true);
+  ok('три записи в списке', items.length === 3, items.length);
   const groups = [...doc.querySelectorAll('.arc-group__title')].map((e) => e.textContent);
   ok('группы по служебным годам, новые сверху', groups.join() === '2025/2026,2024/2025,2023/2024', groups.join());
   ok('фильтр: «Все годы» + три года', doc.querySelectorAll('#yearChips [data-year]').length === 4);
@@ -227,78 +205,16 @@ const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEve
 }
 
 {
-  /* 3.4. PIN задан и не введён: Клиндарий не виден нигде. */
+  /* 3.4. Ключ прежнего PIN остался (Клиндарий ещё не запускался): ничего не скрыто. */
   const factory = new IDBFactory();
   await seed(factory);
-  const pinCtx = vm.createContext({ self: null });
-  pinCtx.self = pinCtx;
-  vm.runInContext(read('archive/js/pin.js'), pinCtx);
-  const hash = pinCtx.ArchivePin.hash('4821');
-  const { w, doc } = await openPage(factory, { pinHash: hash });
-
-  const all = textOf(doc);
-  ok('PIN задан: плашка «закрыто PIN-ом» видна', doc.getElementById('lockedBox').hidden === false);
-  ok('PIN задан: года Клиндария нет на странице', !/2023\/2024/.test(all), all.slice(0, 160));
-  ok('PIN задан: в списке только Конгрессы', doc.querySelectorAll('.arc-item').length === 2
-    && ![...doc.querySelectorAll('.arc-item')].some((b) => /circuit-planner/.test(b.getAttribute('data-open'))));
-  ok('PIN задан: текста закрытого конверта нет нигде', !/Секретный визит Бета/.test(all));
-  const yearsShown = [...doc.querySelectorAll('#yearChips [data-year]')].map((b) => b.getAttribute('data-year')).join();
-  ok('PIN задан: годы считаются по видимым записям (года Клиндария нет)', yearsShown === ',2025,2024', yearsShown);
-
-  const search = doc.getElementById('search');
-  search.value = 'Секретный';
-  search.dispatchEvent(new w.Event('input', { bubbles: true }));
-  ok('поиск не находит закрытое', doc.querySelectorAll('.arc-item').length === 0 && !/Секретный визит Бета/.test(textOf(doc)));
-  ok('поиск по закрытому не выдаёт «архив пуст» (это утверждение о закрытой части)', !said(w, doc, 'arc.empty'));
-  search.value = '';
-  search.dispatchEvent(new w.Event('input', { bubbles: true }));
-
-  /* Прямое открытие закрытого id (в обход списка) тоже не проходит. */
-  w.document.getElementById('list').insertAdjacentHTML('beforeend',
-    '<button class="arc-item" data-open="circuit-planner:serviceYear:2023">x</button>');
-  click(doc.querySelector('[data-open="circuit-planner:serviceYear:2023"]'));
-  await settle(120);
-  ok('закрытый конверт не открывается по прямому id', doc.getElementById('detailScreen').hidden === true);
-
-  /* Неверный PIN. */
-  click(doc.getElementById('unlockBtn'));
-  const input = doc.getElementById('pinInput');
-  input.value = '0000';
-  doc.getElementById('pinForm').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
-  ok('неверный PIN: сообщение, раздел закрыт', doc.getElementById('pinError').textContent === tr(w, 'arc.pin_wrong')
-    && doc.getElementById('lockedBox').hidden === false && !/Секретный визит Бета/.test(textOf(doc)));
-  ok('неверный PIN: поле очищено', input.value === '');
-
-  /* Верный PIN (с пробелами по краям, как у Клиндария). */
-  input.value = ' 4821 ';
-  doc.getElementById('pinForm').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
-  await settle();
-  ok('верный PIN: плашка скрыта, три записи', doc.getElementById('lockedBox').hidden === true
-    && doc.querySelectorAll('.arc-item').length === 3);
-  ok('верный PIN: годы теперь с Клиндарием', doc.querySelectorAll('.arc-group__title').length === 3);
-  ok('верный PIN: появилась кнопка «Закрыть PIN-ом»', doc.getElementById('lockBtn').hidden === false);
-  ok('PIN не записан в хранилище страницей', w.localStorage.getItem('syp-pin-hash') === hash);
-
-  /* Обратно под замок. */
-  click(doc.getElementById('lockBtn'));
-  ok('«Закрыть PIN-ом»: Клиндарий снова скрыт', doc.querySelectorAll('.arc-item').length === 2
-    && !/Секретный визит Бета/.test(textOf(doc)));
+  const { doc } = await openPage(factory, { staleKey: '12345' });
+  ok('старый syp-pin-hash: все три записи, Клиндарий виден', doc.querySelectorAll('.arc-item').length === 3
+    && [...doc.querySelectorAll('.arc-item')].some((b) => /circuit-planner/.test(b.getAttribute('data-open'))));
 }
 
 {
-  /* 3.5. PIN задан, а в архиве нет ничего, кроме Клиндария: не «пуст». */
-  const factory = new IDBFactory();
-  const s = await seed(factory);
-  await s.CWArchive.remove('congress-project:congress:c1', { confirmed: true });
-  await s.CWArchive.remove('congress-project:congress:c0', { confirmed: true });
-  const { w, doc } = await openPage(factory, { pinHash: '12345' });
-  ok('только закрытое: нет ни записей, ни «Архив пока пуст»',
-    doc.querySelectorAll('.arc-item').length === 0 && !said(w, doc, 'arc.empty')
-    && doc.getElementById('lockedBox').hidden === false);
-}
-
-{
-  /* 3.6. Пустой архив без PIN — честное «пуст». */
+  /* 3.6. Пустой архив — честное «пуст». */
   const { w, doc } = await openPage(new IDBFactory());
   ok('пустой архив: «Архив пока пуст»', said(w, doc, 'arc.empty'), tr(w, 'arc.empty'));
 }
@@ -323,7 +239,6 @@ const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEve
     });
     return counts.every((c) => c === counts[0] && c > 20);
   })());
-  ok('в AGENTS модуля описан PIN-барьер', existsSync(join(ROOT, 'archive/AGENTS.md')) && /PIN/.test(read('archive/AGENTS.md')));
 }
 
 console.log(failed ? '\nПровалов: ' + failed : '\nАрхив: всё в порядке');

@@ -323,8 +323,6 @@ email`.
 Живой список — `TODO.md` и аудит `docs/audit/03-full-audit.md`; здесь только
 структурное.
 
-- PIN-защита Клиндария (`localStorage['syp-pin-hash']`) живёт отдельно от
-  единого входа хаба; решение не принято.
 - Структура анкеты пионера описана дважды: схемой
   `pioneer-school/js/modules/registrationSchema.js` и разметкой
   `pioneer-school/register.html`.

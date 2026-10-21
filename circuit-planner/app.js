@@ -2044,7 +2044,7 @@
           'historyModal','historyList','historyModalCloseBtn','historyModalCloseBtn2','openHistoryBtn',
           'statsModal','statsModalTitle','statsModalSub','statsModalBody','statsModalCloseBtn','statsModalOkBtn','statsBtn','plannerBtn',
           'plannerModal','plannerModalCloseBtn','plannerStartInput','plannerEndInput','plannerEventsList','plannerPreview','plannerCancelBtn','plannerApplyBtn',
-          'pinOverlay','pinInput','pinError','pinSubmitBtn','pinSetupBtn','holidaysToggle','autoShowRemindersToggle','editorResultInput','editorResultLabel',
+          'holidaysToggle','autoShowRemindersToggle','editorResultInput','editorResultLabel',
           'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','formNameOverseerInput','formNameWifeInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
@@ -2227,7 +2227,6 @@
         this.renderLetterDuePill();
         if (App.els.holidaysToggle) App.els.holidaysToggle.checked = !!App.state.app.settings.showHolidays;
         if (App.els.autoShowRemindersToggle) App.els.autoShowRemindersToggle.checked = !!App.state.app.settings.autoShowReminders;
-        this.updatePinButton();
         /* Блокировка доменных контролов ставится ПОСЛЕ перерисовки: renderAll()
            пересоздаёт разметку календаря, событий и настроек, и без повторного
            вызова новые элементы остались бы редактируемыми — интерфейс выглядел
@@ -2246,7 +2245,7 @@
          навигация в этот список не входит и в режиме чтения работает.
 
          ЧТО НЕ БЛОКИРУЕТСЯ: навигация, печать, экспорт, S-302, справка,
-         напоминания (только чтение), смена темы и языка, PIN-оверлей. */
+         напоминания (только чтение), смена темы и языка. */
       DEGRADED_MUTATING_IDS: [
         // Создание, правка и удаление событий/визитов
         'newEventBtn', 'saveEventBtn', 'deleteEventBtn', 'editorSaveBtn', 'editorDeleteBtn',
@@ -2966,28 +2965,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           }
         } catch (_) {}
       },
-      // --- PIN protection (local barrier, not cryptographic security) ---
-      pinHash(pin) { let h = 5381; const s = `syp:${pin}`; for (let i = 0; i < s.length; i += 1) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h); },
-      getStoredPin() { try { return localStorage.getItem('syp-pin-hash') || ''; } catch (_) { return ''; } },
-      setupPin() {
-        const existing = this.getStoredPin();
-        if (existing) {
-          const current = window.prompt(App.utils.t('pin_enter_current'));
-          if (current === null) return;
-          if (this.pinHash(current.trim()) !== existing) return App.utils.toast(App.utils.t('pin_wrong'));
-          if (window.confirm(App.utils.t('pin_disable_confirm'))) { try { localStorage.removeItem('syp-pin-hash'); } catch (_) {} App.utils.toast(App.utils.t('pin_disabled')); this.updatePinButton(); return; }
-        }
-        const pin = window.prompt(App.utils.t('pin_set_prompt'));
-        if (!pin) return;
-        const clean = pin.trim();
-        if (!/^\d{4,8}$/.test(clean)) return App.utils.toast(App.utils.t('pin_format'));
-        try { localStorage.setItem('syp-pin-hash', this.pinHash(clean)); } catch (_) {}
-        App.utils.toast(App.utils.t('pin_enabled'));
-        this.updatePinButton();
-      },
-      updatePinButton() {
-        if (App.els.pinSetupBtn) App.els.pinSetupBtn.textContent = this.getStoredPin() ? `🔒 ${App.utils.t('pin_on')}` : `🔒 ${App.utils.t('pin_off')}`;
-      },
       wrapSelection(editor, styleProp, value) {
         const sel = window.getSelection ? window.getSelection() : null;
         if (!sel || !sel.rangeCount || sel.isCollapsed) return false;
@@ -3292,33 +3269,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           const key = findKeyForLabel(meal.day);
           if (key) meal.day = newDict[key];
         });
-      },
-      showPinGateIfNeeded() {
-        const stored = this.getStoredPin();
-        if (!stored || !App.els.pinOverlay) return;
-        App.els.pinOverlay.hidden = false;
-        if (App.els.pinInput) App.els.pinInput.value = '';
-        if (App.els.pinError) App.els.pinError.textContent = '';
-        if (!App.state.pinGateWired) {
-          App.state.pinGateWired = true;
-          const tryUnlock = () => {
-            const currentStored = this.getStoredPin();
-            const value = (App.els.pinInput?.value || '').trim();
-            if (!currentStored || this.pinHash(value) === currentStored) { App.els.pinOverlay.hidden = true; if (App.els.pinInput) App.els.pinInput.value = ''; if (App.els.pinError) App.els.pinError.textContent = ''; }
-            else { if (App.els.pinError) App.els.pinError.textContent = App.utils.t('pin_wrong'); if (App.els.pinInput) { App.els.pinInput.value = ''; App.els.pinInput.focus(); } }
-          };
-          App.els.pinSubmitBtn?.addEventListener('click', tryUnlock);
-          App.els.pinInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-          // Installed PWAs on phones typically suspend/resume the same page instance instead of
-          // reloading it when reopened from the home screen — init() only runs once at true cold
-          // start, so without this the lock screen would only ever appear the very first time.
-          // Re-check whenever the app becomes visible again after being backgrounded.
-          const recheck = () => { if (document.visibilityState === 'visible') App.ui.showPinGateIfNeeded(); };
-          document.addEventListener('visibilitychange', recheck);
-          window.addEventListener('pageshow', recheck);
-          window.addEventListener('focus', recheck);
-        }
-        setTimeout(() => App.els.pinInput?.focus(), 100);
       },
       // ===================== Merged: Visit Form (formerly a separate app) =====================
       vpDefaultsForType(state, type) {
@@ -4608,7 +4558,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.plannerModalCloseBtn?.addEventListener('click', () => App.ui.closeModal(App.els.plannerModal));
       App.els.plannerCancelBtn?.addEventListener('click', () => App.ui.closeModal(App.els.plannerModal));
       App.els.plannerApplyBtn?.addEventListener('click', () => App.ui.applyAutoPlan());
-      App.els.pinSetupBtn?.addEventListener('click', () => App.ui.setupPin());
       App.els.holidaysToggle?.addEventListener('change', (e) => { App.state.app.settings.showHolidays = !!e.target.checked; App.store.save(); App.ui.renderAll(); });
       App.els.autoShowRemindersToggle?.addEventListener('change', (e) => { App.state.app.settings.autoShowReminders = !!e.target.checked; App.store.save(); });
       // Visit Form modal
@@ -5305,6 +5254,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
     },
 
     init() {
+      /* PIN модуля удалён 21.10.2026 (решение Алекса). Хэш прежнего PIN
+         снимается один раз; ключ свой (`syp-`), чужие ключи origin не трогаем. */
+      try { localStorage.removeItem('syp-pin-hash'); } catch (_) { /* хранилище недоступно — ключа тоже нет */ }
       this.ui.cacheElements();
       this.store.load();
       // Сразу после load(): язык нужен раньше первого renderAll(), а
@@ -5352,7 +5304,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       this.ui.renderAll();
       this.bind();
       this.ui.closeMobileMenu();
-      this.ui.showPinGateIfNeeded();
       if (deepLinkedEntry && typeof this.ui.scrollToDetailPanel === 'function') this.ui.scrollToDetailPanel();
       this.ui.showRemindersModalIfNeeded();
       this.ui.checkSixtyDayNotifications();

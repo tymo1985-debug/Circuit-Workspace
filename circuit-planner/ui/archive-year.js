@@ -21,8 +21,7 @@
 //    закончившегося года с АКТУАЛЬНЫМ конвертом, перечитанным перед удалением,
 //    и только после снятого снимка; «Восстановить из Архива» (переход из
 //    модуля Архив с `#archive-restore=<id>`) — только если у года в блобе
-//    нет содержимого, тоже после снимка. Ключ хранилища и PIN не затронуты;
-//    восстановление ждёт снятия PIN.
+//    нет содержимого, тоже после снимка. Ключ хранилища не затронут.
 //  • Отказ `CWArchive.put()` не глотается: пользователь видит, что год НЕ
 //    отправлен (тост + постоянная строка состояния).
 //  • «Архив недоступен» ≠ «года нет в архиве»: при сбое чтения состояние
@@ -488,25 +487,10 @@
       try { root.history.replaceState(null, '', root.location.pathname + root.location.search); } catch (e) { /* хэш останется — не критично */ }
       return id.indexOf(L.MODULE + ':' + L.ENTITY + ':') === 0 ? id : null;
     }
-    /* Действие ждёт снятия PIN: подтверждение поверх экрана PIN показало бы
-       название года тому, кто PIN не знает. Экран PIN включается в init()
-       ПОСЛЕ первого renderAll(), поэтому смотрим не на overlay, а на сам PIN:
-       задан — ждём, пока overlay покажется и снова скроется. Найдено живым
-       прогоном: проверка по overlay пропускала подтверждение раньше PIN. */
-    function runRestoreWhenUnlocked() {
+    /* Отложено на такт: подтверждение показывается после первого renderAll(). */
+    function runRestore() {
       if (!restoreId) return;
-      const needPin = typeof App.ui.getStoredPin === 'function' && !!App.ui.getStoredPin();
-      const ov = App.els.pinOverlay;
-      if (!needPin) { root.setTimeout(() => { if (restoreId) restoreFlow(restoreId); }, 0); return; }
-      if (!ov) { restoreId = null; return; }   // PIN задан, а экрана нет — не рискуем
-      let seenLocked = !ov.hidden;
-      const mo = new MutationObserver(() => {
-        if (!ov.hidden) { seenLocked = true; return; }
-        if (!seenLocked) return;
-        mo.disconnect();
-        if (restoreId) restoreFlow(restoreId);
-      });
-      mo.observe(ov, { attributes: true, attributeFilter: ['hidden'] });
+      root.setTimeout(() => { if (restoreId) restoreFlow(restoreId); }, 0);
     }
 
     /* ── Баннер: предложение или сообщение ── */
@@ -569,7 +553,7 @@
         booted = true;
         restoreId = takeRestoreIntent();
         refreshProposal();
-        runRestoreWhenUnlocked();
+        runRestore();
       }
       if (App.state.selectedScreen === 'settings') {
         root.clearTimeout(panelTimer);

@@ -125,7 +125,7 @@ ok('связь записана (одна, URN)', links.length === 1 && links[0]
 ok('чип: текущие данные Клиндария', /13/.test(await chipText()) && /18/.test(await chipText()) && /Живое собрание/.test(await chipText()), await chipText());
 ok('ссылка чипа — глубокая ссылка', (await pj.getAttribute('#visitPlannerRef', 'href')) === '../circuit-planner/index.html#calendar?entry=entry_live1');
 
-/* ═══ 3. Переход и PIN ═════════════════════════════════════════════════ */
+/* ═══ 3. Переход ═════════════════════════════════════════════════ */
 console.log('\n3. Глубокая ссылка');
 const visitUrl = pj.url();
 await pj.click('#visitPlannerRef');
@@ -137,19 +137,17 @@ await pj.goto(visitUrl, { waitUntil: 'load' });
 await pj.reload({ waitUntil: 'load' });
 await pj.waitForSelector('#visitPlannerRef');
 const pinPage = await ctx.newPage(); watch(pinPage, 'pin');
-await pa.evaluate(() => localStorage.setItem('syp-pin-hash', App.ui.pinHash('2468')));
+/* PIN удалён 21.10.2026: прежний ключ снимается при запуске, экрана блокировки нет. */
+await pa.evaluate(() => localStorage.setItem('syp-pin-hash', '-1'));
 await pinPage.goto(P_URL + '#calendar?entry=entry_live1', { waitUntil: 'load' });
 await pinPage.waitForFunction(() => !!window.App && window.App.state && !!window.App.state.app);
 await settle(pinPage, 600);
-ok('PIN: оверлей закрывает экран', await pinPage.evaluate(() => !document.getElementById('pinOverlay').hidden));
-await pinPage.fill('#pinInput', '2468');
-await pinPage.click('#pinSubmitBtn');
-await settle(pinPage);
-ok('после PIN — нужная запись', await pinPage.evaluate(() => document.getElementById('pinOverlay').hidden && App.state.calendarDetailId === 'entry:entry_live1' && /Живое собрание/.test(document.getElementById('calendarSideTitle').innerText)));
+ok('прежний PIN-ключ снят, экрана блокировки нет', await pinPage.evaluate(() => localStorage.getItem('syp-pin-hash') === null && !document.getElementById('pinOverlay')));
+ok('сразу нужная запись', await pinPage.evaluate(() => App.state.calendarDetailId === 'entry:entry_live1' && /Живое собрание/.test(document.getElementById('calendarSideTitle').innerText)));
 const fresh = async (hash) => { await pinPage.goto('about:blank'); await pinPage.goto(P_URL + hash, { waitUntil: 'load' }); };
 await fresh('#calendar?entry=entry_nope');
 await pinPage.waitForFunction(() => !!window.App && window.App.state && !!window.App.state.app);
-ok('неизвестная запись — обычный запуск, PIN на месте', await pinPage.evaluate(() => !/entry_nope/.test(App.state.calendarDetailId || '') && !document.getElementById('pinOverlay').hidden));
+ok('неизвестная запись — обычный запуск', await pinPage.evaluate(() => !/entry_nope/.test(App.state.calendarDetailId || '')));
 await fresh('#calendar?entry=%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E');
 await pinPage.waitForFunction(() => !!window.App && window.App.state && !!window.App.state.app);
 ok('кривой id — без инъекции', await pinPage.evaluate(() => !document.querySelector('img[src="x"]')));
@@ -159,7 +157,6 @@ ok('обычная навигация по хэшу', await pinPage.evaluate(() 
 await fresh('#events');
 await pinPage.waitForFunction(() => !!window.App && window.App.state && !!window.App.state.app);
 ok('ярлык PWA ./#events', await pinPage.evaluate(() => App.state.selectedScreen === 'events'));
-await pa.evaluate(() => localStorage.removeItem('syp-pin-hash'));
 await pinPage.close();
 
 /* ═══ 4. Соседняя вкладка: правки, удаление, возврат ═══════════════════ */

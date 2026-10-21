@@ -10,10 +10,6 @@
  * а не как «архив пуст»: это разные ответы, и второй при первом был бы ложью
  * (shared/archive.js, шапка).
  *
- * PIN КЛИНДАРИЯ. Пока PIN задан и не введён, конверты Клиндария не попадают ни
- * в список, ни в годы, ни в поиск (archive/js/logic.js: visible). Состояние
- * «открыто» живёт только в памяти страницы (archive/js/pin.js).
- *
  * ПИСЬМА. Показываются из `CWDocs` по `docRefs`; второй копии письма нет.
  * Кнопка удаления снимка с карточки УБРАНА: снимок письма — след, что бумага
  * ушла людям, и стирать его из чужой для него страницы нельзя (это делают в
@@ -24,7 +20,6 @@
 
   var MODULE_ID = 'archive';
   var Logic = self.ArchiveLogic;
-  var Pin = self.ArchivePin;
 
   var state = {
     rows: null,        // null — ещё грузим; массив — конверты без payload
@@ -73,10 +68,6 @@
 
   /* ───────────────────────── список ───────────────────────── */
 
-  function visibleRows() {
-    return Logic.visible(state.rows || [], Pin.isLocked());
-  }
-
   function renderYears(vis) {
     var box = $('#yearChips');
     var years = Logic.yearsOf(vis);
@@ -110,9 +101,6 @@
   }
 
   function renderList() {
-    var locked = Pin.isLocked();
-    $('#lockedBox').hidden = !locked;
-    $('#lockBtn').hidden = !(Pin.isSet() && !locked);
     var list = $('#list');
 
     if (state.error) {
@@ -127,14 +115,11 @@
       return;
     }
 
-    var vis = visibleRows();
+    var vis = state.rows || [];
     renderYears(vis);
     var shown = Logic.filter(vis, { query: state.query, year: state.year });
 
     if (!shown.length) {
-      /* Пока раздел Клиндария закрыт, «архив пуст» утверждать нельзя: пустота
-         видимой части ничего не говорит о закрытой. Тогда — только плашка. */
-      if (locked && !vis.length) { list.innerHTML = ''; return; }
       list.innerHTML = '<div class="md-empty">'
         + esc(t(vis.length ? 'arc.nothing_found' : 'arc.empty')) + '</div>';
       return;
@@ -262,9 +247,7 @@
     var token = ++state.detailToken;
     self.CWArchive.get(id).then(function (rec) {
       if (token !== state.detailToken) return;
-      /* Защита в глубину: закрытый конверт не открывается, даже если id
-         как-то оказался известен (список его и так не показывает). */
-      if (!rec || (rec.module === Logic.GATED_MODULE && Pin.isLocked())) {
+      if (!rec) {
         toast(t('arc.open_failed'));
         return;
       }
@@ -292,35 +275,6 @@
       console.error('Архив: удаление не удалось', e);
       toast(t('arc.delete_failed'));
     });
-  }
-
-  /* ───────────────────────── PIN ───────────────────────── */
-
-  function openPinDialog() {
-    var dlg = $('#pinDialog');
-    $('#pinInput').value = '';
-    $('#pinError').textContent = '';
-    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
-    $('#pinInput').focus();
-  }
-
-  function closePinDialog() {
-    var dlg = $('#pinDialog');
-    if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
-  }
-
-  function onPinSubmit(event) {
-    event.preventDefault();
-    var input = $('#pinInput');
-    if (Pin.unlock(input.value)) {
-      input.value = '';
-      closePinDialog();
-      renderList();
-    } else {
-      input.value = '';
-      $('#pinError').textContent = t('arc.pin_wrong');
-      input.focus();
-    }
   }
 
   /* ───────────────────────── связка ───────────────────────── */
@@ -352,16 +306,6 @@
     $('#backBtn').addEventListener('click', function () { showScreen('list'); });
     $('#detail').addEventListener('click', function (e) {
       if (e.target.closest('#deleteBtn')) deleteRecord();
-    });
-    $('#unlockBtn').addEventListener('click', openPinDialog);
-    $('#pinForm').addEventListener('submit', onPinSubmit);
-    $('#pinCancel').addEventListener('click', closePinDialog);
-    $('#lockBtn').addEventListener('click', function () {
-      Pin.lock();
-      /* Открытая запись Клиндария закрывается вместе с разделом. */
-      var open = (state.rows || []).filter(function (r) { return r.id === state.openId; })[0];
-      if (open && open.module === Logic.GATED_MODULE) showScreen('list');
-      renderList();
     });
   }
 

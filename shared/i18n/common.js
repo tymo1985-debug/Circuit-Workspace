@@ -26,7 +26,7 @@
 
     ru: {
       'backup.title': 'Резервное копирование',
-      'backup.hint': 'Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу. PIN-код Клиндария в копию не входит.',
+      'backup.hint': 'Полная копия включает данные всех модулей и общие настройки — язык, отправителя и общую базу.',
       'backup.save_all': 'Сохранить всё',
       'backup.restore': 'Восстановить из файла',
       'backup.col_module': 'Модуль',
@@ -235,7 +235,7 @@
 
     uk: {
       'backup.title': 'Резервне копіювання',
-      'backup.hint': 'Повна копія включає дані всіх модулів і спільні налаштування — мову, відправника і спільну базу. PIN-код Кліндарія в копію не входить.',
+      'backup.hint': 'Повна копія включає дані всіх модулів і спільні налаштування — мову, відправника і спільну базу.',
       'backup.save_all': 'Зберегти все',
       'backup.restore': 'Відновити з файлу',
       'backup.col_module': 'Модуль',
@@ -429,7 +429,7 @@
 
     en: {
       'backup.title': 'Backup',
-      'backup.hint': 'A full backup includes the data of every module plus the shared settings — language, sender and the shared database. The Klindariy PIN is not included.',
+      'backup.hint': 'A full backup includes the data of every module plus the shared settings — language, sender and the shared database.',
       'backup.save_all': 'Back up everything',
       'backup.restore': 'Restore from a file',
       'backup.col_module': 'Module',
@@ -623,7 +623,7 @@
 
     pl: {
       'backup.title': 'Kopia zapasowa',
-      'backup.hint': 'Pełna kopia obejmuje dane wszystkich modułów oraz wspólne ustawienia — język, nadawcę i wspólną bazę. Kod PIN Klindarium nie jest zapisywany.',
+      'backup.hint': 'Pełna kopia obejmuje dane wszystkich modułów oraz wspólne ustawienia — język, nadawcę i wspólną bazę.',
       'backup.save_all': 'Zapisz wszystko',
       'backup.restore': 'Przywróć z pliku',
       'backup.col_module': 'Moduł',
@@ -817,7 +817,7 @@
 
     de: {
       'backup.title': 'Sicherung',
-      'backup.hint': 'Eine vollständige Sicherung enthält die Daten aller Module sowie die gemeinsamen Einstellungen — Sprache, Absender und gemeinsame Datenbank. Die PIN von Klindarium wird nicht gesichert.',
+      'backup.hint': 'Eine vollständige Sicherung enthält die Daten aller Module sowie die gemeinsamen Einstellungen — Sprache, Absender und gemeinsame Datenbank.',
       'backup.save_all': 'Alles sichern',
       'backup.restore': 'Aus Datei wiederherstellen',
       'backup.col_module': 'Modul',

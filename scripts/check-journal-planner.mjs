@@ -363,7 +363,7 @@ ok('id не попадает в селектор/разметку', !/querySelec
 const init = app.slice(app.indexOf('    init() {'), app.indexOf('    init() {') + 6000);
 ok('экран по-прежнему из хэша до «?» (ярлыки PWA)', /const hashScreen = \(window\.location\.hash \|\| ''\)\.replace\('#', ''\)\.split\('\?'\)\[0\];/.test(init));
 ok('фокус — после calendarView из настроек', init.indexOf("this.state.calendarView = this.state.app.settings.calendarView") < init.indexOf('focusEntryFromHash'));
-ok('PIN не обходится: showPinGateIfNeeded зовётся всегда', /this\.ui\.showPinGateIfNeeded\(\);/.test(init) && !/deepLinkedEntry[^\n]*showPinGateIfNeeded/.test(init));
+ok('PIN удалён: экрана блокировки при запуске нет', !/showPinGateIfNeeded|getStoredPin/.test(app));
 const manifest = JSON.parse(read('circuit-planner/manifest.webmanifest'));
 ok('ярлыки PWA без изменений формы (#screen)', (manifest.shortcuts || []).every((s) => /#[a-z-]+$/.test(s.url) && actions.entryIdFromHash(s.url.slice(s.url.indexOf('#'))) === null));
 

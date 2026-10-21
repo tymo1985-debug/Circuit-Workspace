@@ -1,12 +1,12 @@
 self.CW_RELEASE = {
-  version: '0.42.72',
+  version: '0.42.73',
   changes: [
-    { module: 'circuit-planner', version: '9.113.0', note: 'Печать календаря: номера недель и праздники; подписи нижнего меню на телефоне не обрезаются' },
-    { module: 'congress-project', version: '4.49.1', note: 'На телефоне в шапке видно название модуля: язык — значком, короткое название' },
-    { module: 'pioneer-school', version: '1.15.1', note: 'Таблица учащихся: строки в одну линию, на всю ширину экрана, фамилия закреплена при прокрутке' },
-    { module: 'appointments', version: '5.5.193', note: 'На телефоне в шапке видно название модуля: язык — значком' },
-    { module: 'journal', version: '0.27.10', note: 'На телефоне в шапке видно название модуля: язык — значком' },
-    { module: 'documents', version: '1.12.65', technical: true },
-    { module: 'archive', version: '0.2.49', technical: true },
+    { module: 'circuit-planner', version: '9.114.0', note: 'PIN-код удалён: нет ни экрана блокировки, ни настройки; прежний PIN снимается при запуске' },
+    { module: 'archive', version: '0.3.0', note: 'Раздел Клиндария больше не закрывается PIN-ом' },
+    { module: 'congress-project', version: '4.49.2', technical: true },
+    { module: 'pioneer-school', version: '1.15.2', technical: true },
+    { module: 'appointments', version: '5.5.194', technical: true },
+    { module: 'journal', version: '0.27.11', technical: true },
+    { module: 'documents', version: '1.12.66', technical: true },
   ],
 };

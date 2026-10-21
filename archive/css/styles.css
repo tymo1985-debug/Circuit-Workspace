@@ -14,9 +14,8 @@ body {
 }
 
 /* Атрибут hidden обязан скрывать всегда: `.md-btn` и `.md-banner` задают
-   display и перебивают его — кнопка «Закрыть PIN-ом» торчала в шапке при
-   закрытом разделе. Поймано живым прогоном (скриншот), jsdom этого не видит:
-   он не считает стили. */
+   display и перебивают его. Поймано живым прогоном (скриншот), jsdom этого
+   не видит: он не считает стили. */
 [hidden] { display: none !important; }
 
 .arc-wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 96px; }
@@ -25,10 +24,6 @@ body {
 .arc-toolbar { margin-bottom: 12px; }
 .arc-search { display: block; max-width: 520px; }
 .arc-years { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-
-/* ─── Раздел закрыт PIN-ом ─── */
-.arc-locked { margin-bottom: 16px; }
-.arc-locked__text { margin: 0 0 12px; color: var(--md-on-surface-variant); }
 
 /* ─── Список по годам ─── */
 .arc-groups { display: grid; gap: 22px; }
@@ -101,11 +96,6 @@ body {
 .cwdoc-page { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--md-outline-variant); }
 .cwdoc-page__title { font-size: 12.5px; color: var(--md-on-surface-variant); }
 .cwdoc__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-
-/* ─── Диалог PIN ─── */
-.arc-pin { width: min(92vw, 360px); }
-.arc-pin__title { margin: 0; font: 500 20px/28px var(--md-font-family); }
-.arc-pin__error { min-height: 20px; margin: 8px 0 0; color: var(--md-error); font-size: 13px; }
 
 /* ─── Короткое сообщение ─── */
 .arc-toast {

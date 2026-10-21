@@ -217,7 +217,7 @@ console.log('\nA5: порядок шагов (правила необратим�
   ok('вернуть: конверт → конфликт → confirm → запись разрешена → снимок → вернуть → сохранить',
     order(rs, ['CWArchive.get(', 'yearHasContent(year)', 'confirm(', 'writable()', 'backupFirst(', 'L.restoreYear(', 'App.store.save()']));
   ok('без снимка — отказ (backupFirst бросает)', /if \(!id\) throw codeError\('backup'\)/.test(src));
-  ok('восстановление ждёт снятия PIN', /getStoredPin/.test(src) && /MutationObserver/.test(src) && /seenLocked/.test(src));
+  ok('восстановление после первого renderAll(), без ожидания PIN (PIN удалён)', /function runRestore\(\) \{[^}]*setTimeout\(/.test(src) && !/getStoredPin|pinOverlay/.test(src));
   ok('хэш намерения снимается сразу (перезагрузка не повторяет)', /history\.replaceState/.test(src));
   const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   ok('блоб меняют только removeYear/restoreYear', !/App\.state\.app[\w.\[\]'"]*\s*(=[^=]|\+\+|--)/.test(code) && !/CWArchive\.remove|CWDocs\.remove/.test(code));

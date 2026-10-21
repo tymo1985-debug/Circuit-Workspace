@@ -30,7 +30,6 @@ const ASSETS = [
   './index.html',
   './manifest.json',
   './css/styles.css',
-  './js/pin.js',
   './js/logic.js',
   './js/app.js',
   './i18n/dict.js',
