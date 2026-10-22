@@ -41,7 +41,7 @@
      Новый контейнер без решения гейт не пропустит (J-Final 07.10.2026:
      вкладка «Задачи» собрания и история проекта держали текст после lock). */
   var PLAIN_CONTAINERS = [
-    'overviewCarry', 'overviewTasks', 'overviewProjects',
+    'overviewTasks', 'overviewProjects',
     'tasksList', 'districtProjectsList', 'congProjectsList',
     'districtNotesList', 'congNotesList', 'districtTasksList', 'districtArchiveList',
     'congTasksList', 'congArchiveList', 'congNodeOverview',

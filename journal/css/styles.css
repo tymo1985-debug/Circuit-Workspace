@@ -684,7 +684,6 @@ span.j-planner__chip--broken { cursor: default; }
 .j-tasks-bar .j-search { flex: 1 1 auto; }
 .j-tasks-bar .j-sec__eye { margin: 0; width: 40px; height: 40px; }
 .j-row__title--masked { color: var(--md-on-surface-variant); letter-spacing: 2px; }
-.j-sec__foot { font: 400 13px/20px var(--md-font-family); letter-spacing: 0.15px; color: var(--md-on-surface-variant); margin: var(--cw-space-3) 0 0; }
 @media (pointer: coarse) { .j-sec__eye { width: 44px; height: 44px; margin: -8px 0; } .j-tasks-bar .j-sec__eye { width: 44px; height: 44px; margin: 0; } }
 
 /* Чекбокс задачи на телефоне (22.10.2026): общий слой растягивает кнопки до
@@ -704,4 +703,14 @@ span.j-planner__chip--broken { cursor: default; }
   }
   button.j-check__box[aria-checked="true"]::before { background: var(--md-primary); border-color: var(--md-primary); }
   .j-ptask button.j-check__box[aria-checked="true"]::after { left: 19px; top: 14px; }
+}
+
+/* --- Карточка объекта и «Состав» (O5): «На следующее посещение» ----------- */
+.j-sec--next { border: 2px solid var(--md-primary); }
+.j-sec--next .j-sec__count { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.j-sec__ico { display: inline-flex; color: var(--md-primary); }
+.j-carry-badge {
+  min-width: 22px; padding: 1px 7px; border-radius: var(--md-radius-full); box-sizing: border-box; text-align: center;
+  font: 500 12px/18px var(--md-font-family); font-variant-numeric: tabular-nums;
+  background: var(--md-primary-container); color: var(--md-on-primary-container);
 }

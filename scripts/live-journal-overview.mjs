@@ -93,7 +93,7 @@ await pj.waitForSelector('#overviewTasks .j-row');
 await settle(pj);
 /* O4: текст задач по умолчанию скрыт, задачи собрания — только число. */
 ok('O4: по умолчанию текст задач скрыт', !(await pj.textContent('#overviewTasks')).includes('Подготовить письмо') && (await pj.$$('#overviewTasks .j-row__title--masked')).length === 2);
-ok('O4: задачи собрания — только число, без текста', !(await pj.content()).includes('не для Обзора') && /1/.test(await pj.textContent('#overviewObjectTasks')));
+ok('O5: задач собрания на Обзоре нет — ни строкой, ни числом', !(await pj.content()).includes('не для Обзора') && !(await pj.$('#overviewObjectTasks')));
 await pj.click('#overviewTasksEye');
 await settle(pj);
 ok('O4: «глаз» → текст виден', (await pj.textContent('#overviewTasks')).includes('Подготовить письмо'));
@@ -119,7 +119,12 @@ const clickGo = async (sel, expect) => {
 ok('задача → #tasks/<id>', (await clickGo('#overviewTasks .j-row >> nth=0', '#tasks/' + ids.t1)) === true);
 ok('проект → карточка проекта', (await clickGo('#overviewProjects .j-row', '#districts/' + ids.c + '/project/' + ids.p)) === true);
 ok('посещение → экран посещения', (await clickGo('#overviewVisits .j-row', '#districts/' + ids.c + '/congregation/' + ids.n + '/visit/' + ids.v2)) === true);
-ok('перенос → посещение-источник', (await clickGo('#overviewCarry .j-row', '#districts/' + ids.c + '/congregation/' + ids.n + '/visit/' + ids.v1)) === true);
+ok('O5: переноса на Обзоре нет', !(await pj.$('#overviewCarrySec')) && !(await pj.textContent('#route-overview')).includes('Вернуться к вопросу'));
+await pj.evaluate((h) => { location.hash = h; }, '#districts/' + ids.c + '/congregation/' + ids.n);
+await settle(pj, 500);
+ok('O5: пункт — первым разделом в карточке собрания', await pj.evaluate(() => { const s = document.querySelector('#congNodeOverview > .j-sec'); return !!s && s.classList.contains('j-sec--next') && s.textContent.includes('Вернуться к вопросу'); }));
+await pj.evaluate(() => { location.hash = '#overview'; });
+await settle(pj, 300);
 ok('«Все» задач → #tasks', (await clickGo('#overviewTasksSec a.j-sec__more', '#tasks')) === true);
 await pj.screenshot({ path: '/tmp/o2-desktop.png', fullPage: true });
 

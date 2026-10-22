@@ -221,6 +221,8 @@ const qArch = await J.visitRecords.add(vArch, { type: 'question', body: 'Из а
 const qClosed = await J.visitRecords.add(vOld, { type: 'question', body: 'Будет закрыт' });
 for (const id of [q1, q2, q3, qArch, qClosed]) await J.carry.mark(id);
 await J.carry.touch(qClosed, vNew, 'closed');
+const qGrp = await J.visitRecords.add(vGrp, { type: 'note', body: 'Пункт группы' });
+await J.carry.mark(qGrp);
 
 const pActive = await J.projects.add({ circuitId: c1, title: 'Проект А' });
 const pDone = await J.projects.add({ circuitId: c1, title: 'Проект завершён' });
@@ -246,16 +248,17 @@ ok('[17] архивный район исключён', !ov.circuits.some((c) =>
 const taskIds = ov.tasks.map((r) => r.id);
 ok('[18] открытые задачи района реальные', taskIds.includes(tDueLate) && taskIds.includes(tNoDue) && taskIds.includes(tDueEarly) && !taskIds.includes(tDone));
 ok('[O4] задач собраний, групп и посещений на Обзоре нет', !taskIds.includes(tCong) && !taskIds.includes(tGrp) && !taskIds.includes(tVisit));
-ok('[O4] их число — без текста (собрание, группа, посещение; архив и выполненные не считаются)', ov.objectTasks === 3 && !JSON.stringify(ov.objectTasks).includes('Задача'), ov.objectTasks);
+ok('[O5] на Обзоре нет ни числа задач объектов, ни переноса', !('objectTasks' in ov) && !('carry' in ov) && !JSON.stringify(ov).includes('Вопрос из старого'));
 ok('[22] задачи архивного контекста исключены (узел, посещение)', !taskIds.includes(tArchNode) && !taskIds.includes(tArchVisit));
 const screenOrder = tasksScreen.filter((r) => taskIds.includes(r.id)).map((r) => r.id);
 ok('[19] порядок = порядок экрана «Задачи» (tasks.list)', JSON.stringify(taskIds) === JSON.stringify(screenOrder), taskIds.join() + ' / ' + screenOrder.join());
 ok('[19] сроки раньше, без срока — после', taskIds.indexOf(tDueEarly) < taskIds.indexOf(tDueLate) && taskIds.indexOf(tDueLate) < taskIds.indexOf(tNoDue));
-const carryIds = ov.carry.map((r) => r.id);
-ok('[21] открытый перенос реальный, по источнику и seq', JSON.stringify(carryIds) === JSON.stringify([q1, q3, q2]), carryIds.join());
-ok('[21] закрытый пункт не показан', !carryIds.includes(qClosed));
-ok('[22] перенос из архивного посещения исключён', !carryIds.includes(qArch));
-ok('[21] тот же канон, что carry.openForNode', (await J.carry.openForNode(cong)).map((r) => r.id).filter((id) => id !== qArch).sort().join() === carryIds.slice().sort().join());
+const rs = await J.roster.read();
+const rCong = rs.congregations.find((x) => x.node.id === cong), rGrp = rs.groups.find((x) => x.node.id === grp);
+ok('[O5] Состав: число открытых пунктов собрания (закрытый и из архивного посещения не считаются)', rCong && rCong.carry === 3, rCong && rCong.carry);
+ok('[O5] Состав: у группы — свои пункты', rGrp && rGrp.carry === 1, rGrp && rGrp.carry);
+ok('[O5] Состав: тот же канон, что carry.openForNode без архивных посещений', (await J.carry.openForNode(cong)).filter((r) => r.id !== qArch).length === rCong.carry);
+ok('[O5] Состав: только числа, без текста пунктов', !JSON.stringify(rs).includes('Вопрос из старого') && !JSON.stringify(rs).includes('Пункт группы'));
 const projIds = ov.projects.map((r) => r.id);
 ok('[23] активные проекты реальные', projIds.includes(pActive) && projIds.includes(pB) && !projIds.includes(pDone));
 ok('[24] архивный проект исключён', !projIds.includes(pArch));
@@ -369,6 +372,8 @@ console.log('\n5. O2: экран Обзора');
   await WJ.tasks.add({ nodeId: gp, body: 'Задача группы ОБЪЕКТ' });
   const carryIds = [];
   for (let i = 1; i <= 4; i++) { const id = await WJ.visitRecords.add(v1, { type: 'question', body: 'Вопрос номер ' + i }); await WJ.carry.mark(id); carryIds.push(id); }
+  // O5: пункт вложенной группы — своей страницы у неё нет, виден в карточке собрания.
+  await WJ.carry.mark(await WJ.visitRecords.add(v3, { type: 'note', body: 'Пункт группы Ручей' }));
   const pr = await WJ.projects.add({ circuitId: cA, title: 'Проект Живой' });
   await WJ.nodes.archive(cX);
   const tProt = await WJ.tasks.add({ nodeId: cA, body: TXT, dueDate: '2028-01-01' });
@@ -417,8 +422,6 @@ console.log('\n5. O2: экран Обзора');
     && masked0.every((r) => r.querySelector('.j-row__title--masked')) && eye.getAttribute('aria-pressed') === 'false');
   ok('[O4] скрытая строка ведёт на задачу и сохраняет срок', /^#tasks\//.test(masked0[0].getAttribute('href')) && /\d\d\.\d\d/.test(masked0[0].textContent));
   ok('[O4] задач собраний и групп на Обзоре нет', !$('#overviewTasks').textContent.includes('ОБЪЕКТ') && !$('#overviewTasks').textContent.includes('Собрание Липовое'));
-  ok('[O4] сводка объектов — число без имён', !$('#overviewObjectTasks').hidden && /\b2\b/.test($('#overviewObjectTasks').textContent)
-    && !/Липовое|Ручей|ОБЪЕКТ/.test($('#overviewObjectTasks').textContent));
   ok('[O4] у кнопки доступное имя', !!eye.getAttribute('aria-label') && eye.querySelector('svg'));
   eye.click(); await settle();
   ok('[O4] «глаз» → текст виден, состояние нажато', /Задача номер/.test($('#overviewTasks').textContent) && $('#overviewTasksEye').getAttribute('aria-pressed') === 'true');
@@ -431,13 +434,9 @@ console.log('\n5. O2: экран Обзора');
   ok('[19] «Все» → #tasks', $('#overviewTasksSec a.j-sec__more').getAttribute('href') === '#tasks');
   ok('[20] строка → #tasks/<id>', tr.every((r) => /^#tasks\/[^/]+$/.test(r.getAttribute('href'))) && tr[0].getAttribute('href') === R.build.task(tProt));
   ok('[21/47] заблокировано: текста нет в DOM, есть подпись', !ov().includes(TXT) && tr[0].textContent.includes(LOCKED));
-  // Перенос
-  const cr = rows('overviewCarry');
-  ok('[22] перенос реальный', cr.length && cr.slice(1).every((r) => /Вопрос номер/.test(r.textContent)));
-  ok('[23] превью ≤ 3, счётчик полный', cr.length === 3 && $('#overviewCarryCount').textContent === '4');
-  ok('[24] строка → существующий маршрут посещения', cr.every((r) => r.getAttribute('href') === R.build.visit(cA, cg, v1)));
-  ok('[25] у переноса нет «Все»', !$('#overviewCarrySec .j-sec__more'));
-  ok('[26] защищённый перенос не раскрыт', !ov().includes('Вопрос номер 1') && cr[0].textContent.includes(LOCKED));
+  // O5: пунктов «на следующее посещение» на Обзоре нет — ни строк, ни числа.
+  ok('[O5] секции переноса на Обзоре нет', !$('#overviewCarrySec') && !$('#overviewCarry') && !/Вопрос номер|Пункт группы Ручей/.test(ov()));
+  ok('[O5] строки «задачи собраний и групп» на Обзоре нет', !$('#overviewObjectTasks') && !ov().includes('ОБЪЕКТ'));
   // Проекты
   const pRows = rows('overviewProjects');
   ok('[27] проекты реальные', pRows.length === 1 && pRows[0].textContent.includes('Проект Живой') && $('#overviewProjectsCount').textContent === '1');
@@ -477,6 +476,22 @@ console.log('\n5. O2: экран Обзора');
   W.location.hash = '#overview'; await settle();
   ok('[35] снова Обзор — FAB скрыт', $('#fab').hidden === true);
 
+  // O5: карточка собрания — «На следующее посещение» первым, с пунктами вложенной группы.
+  W.location.hash = R.build.congregation(cA, cg); await settle();
+  const firstSec = $('#congNodeOverview > .j-sec');
+  const nextRows = firstSec ? [...firstSec.querySelectorAll('.j-row')] : [];
+  ok('[O5] карточка: раздел первый и выделен', !!firstSec && firstSec.classList.contains('j-sec--next') && firstSec.textContent.includes(A.t('j.nov.carry_title')));
+  ok('[O5] карточка: свои пункты и пункт вложенной группы, счётчик общий', nextRows.length === 5 && firstSec.querySelector('.j-sec__count').textContent === '5', nextRows.length);
+  const gRow = nextRows.find((r) => r.textContent.includes('Пункт группы Ручей'));
+  ok('[O5] пункт группы подписан группой и ведёт на «Посещения» собрания', !!gRow && gRow.textContent.includes('Ручей') && gRow.getAttribute('href') === R.build.visits(cA, cg));
+  ok('[O5] заблокировано: защищённый пункт без текста', !$('#congNodeOverview').textContent.includes('Вопрос номер 1') && nextRows.some((r) => r.textContent.includes(LOCKED)));
+  W.location.hash = '#roster'; await settle();
+  const badgeOf = (name) => { const r = [...doc.querySelectorAll('#rosterList .j-row')].find((x) => x.textContent.includes(name)); const b = r && r.querySelector('.j-carry-badge'); return b ? b.textContent : ''; };
+  ok('[O5] Состав: значок с числом у собрания', badgeOf('Собрание Липовое') === '4', badgeOf('Собрание Липовое'));
+  W.location.hash = '#roster/groups'; await settle();
+  ok('[O5] Состав: значок у группы, без текста пункта', badgeOf('Группа Ручей') === '1' && !$('#rosterList').textContent.includes('Пункт группы'));
+  W.location.hash = '#overview'; await settle();
+
   // Свежесть
   await WJ.tasks.add({ nodeId: cA, body: 'Новая живая задача' });
   await settle();
@@ -493,9 +508,9 @@ console.log('\n5. O2: экран Обзора');
   ok('[40] новое собрание Журнала → плашка обновилась', stats()[1] === '2', stats().join());
   await WJ.protection.unlock('correct horse battery');
   await settle();
-  ok('[43] разблокировка → текст виден', ov().includes(TXT) && ov().includes('Вопрос номер 1'));
+  ok('[43] разблокировка → текст виден', ov().includes(TXT) && !ov().includes('Вопрос номер'));
   WJ.protection.lock();
-  ok('[46] блокировка: текст убран сразу, до чтения', !ov().includes(TXT) && !ov().includes('Вопрос номер 1'));
+  ok('[46] блокировка: текст убран сразу, до чтения', !ov().includes(TXT));
   await settle();
   ok('[43] блокировка → перерисовано без текста', !ov().includes(TXT) && rows('overviewTasks').length === 3);
 
@@ -520,7 +535,7 @@ console.log('\n5. O2: экран Обзора');
   WJ.protection.lock();                       // новая отрисовка без текста
   await settle();
   release(); await stale; await settle();
-  ok('[46] старая разблокированная отрисовка не вернула текст', !ov().includes(TXT) && !ov().includes('Вопрос номер 1'));
+  ok('[46] старая разблокированная отрисовка не вернула текст', !ov().includes(TXT));
   WJ.overview.read = realRead;
 
   // Состояния календаря на плашки не влияют; сбой Журнала — «—».
@@ -574,7 +589,7 @@ console.log('\n6. O2: статические границы');
     && (sec.match(/j-sec__more/g) || []).length === 1 && /<a class="j-sec__more" href="#tasks"/.test(sec));
   ok('в Обзоре нет строк-фикстур и стрелок', !/j-row"|<svg/.test(sec));
   ok('удалённые ключи нигде не используются', !/j\.link\.history|j\.section\.recent_edits|j\.fab\.new_entry/.test(html + read('journal/js/app.js') + read('journal/js/app/overview.js')));
-  ok('новые ключи на пяти языках', ['j.overview.stat.congregations', 'j.overview.stat.groups', 'j.overview.stat.pregroups', 'j.overview.empty_carry', 'j.overview.empty_tasks', 'j.overview.empty_visits', 'j.overview.unavailable']
+  ok('новые ключи на пяти языках', ['j.overview.stat.congregations', 'j.overview.stat.groups', 'j.overview.stat.pregroups', 'j.overview.empty_tasks', 'j.overview.empty_visits', 'j.overview.unavailable']
     .every((k) => (dict.match(new RegExp("'" + k.replace(/\./g, '\\.') + "'", 'g')) || []).length === 5));
   const R2 = CWJournalRoute;
   ok('[37] пустой хэш → Обзор', R2.parse('').route === 'overview' && R2.parse('#').route === 'overview');

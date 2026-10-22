@@ -64,7 +64,7 @@
     visit: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
   };
   /* Секции со строками, где может оказаться раскрытый текст (J8). */
-  var PLAIN_BOXES = ['overviewCarry', 'overviewTasks', 'overviewProjects'];
+  var PLAIN_BOXES = ['overviewTasks', 'overviewProjects'];
 
   var overviewRenderSeq = 0;
   var overviewUi = { loaded: false, bound: false };
@@ -140,13 +140,6 @@
     return null;
   }
 
-  function carryRow(r, dest, origin, nodes) {
-    var row = linkRow(dest, OV_ICON.carry, true);
-    var body = el('div', 'j-row__body');
-    body.appendChild(textTitle(r));
-    body.appendChild(meta([label(nodes, r.nodeId), origin ? capitalize(seasonLabel(origin.dateFrom)) : '']));
-    return finishRow(row, body);
-  }
   function taskRow(r, nodes, today, masked) {
     var row = linkRow(CWJournalRoute.build.task(r.id), OV_ICON.task, false);
     var body = el('div', 'j-row__body');
@@ -202,18 +195,11 @@
 
   /** Все секции — во фрагменты, без вставки. */
   async function buildSections(data) {
-    var visitById = {};
-    data.visits.forEach(function (x) { visitById[x.visit.id] = x; });
-    var carry = data.carry.map(function (r) {
-      var origin = visitById[r.fields.visitId];
-      return { row: r, origin: origin || null, dest: visitDest(origin) };
-    }).filter(function (x) { return !!x.dest; });
     var visits = data.visits.map(function (x) { return { item: x, dest: visitDest(x) }; }).filter(function (x) { return !!x.dest; });
     var tasks = data.tasks;
 
-    var carryShown = carry.slice(0, PREVIEW), taskShown = tasks.slice(0, PREVIEW), visitShown = visits.slice(0, PREVIEW);
+    var taskShown = tasks.slice(0, PREVIEW), visitShown = visits.slice(0, PREVIEW);
     var ids = {};
-    carryShown.forEach(function (x) { ids[x.row.nodeId] = true; });
     taskShown.forEach(function (r) { ids[r.nodeId] = true; });
     visitShown.forEach(function (x) { ids[x.item.nodeId] = true; });
     var nodes = {};
@@ -223,19 +209,14 @@
     var out = { plain: {} };
     var f;
 
-    f = document.createDocumentFragment();
-    carryShown.forEach(function (x) { f.appendChild(carryRow(x.row, x.dest, x.origin && x.origin.visit, nodes)); });
-    out.carry = { count: carry.length, content: carry.length ? f : hint('j.overview.empty_carry') };
-    out.plain.overviewCarry = plainIn(carryShown.map(function (x) { return x.row; }));
-
-    /* O4: здесь только задачи района; текст скрыт, пока не нажат «глаз».
-       Задачи собраний/групп — лишь число, без имён и текста. */
+    /* O4/O5: здесь только задачи района; текст скрыт, пока не нажат «глаз».
+       Задач и пунктов «на следующее посещение» собраний, групп и предгрупп
+       на Обзоре нет вовсе — они в карточках объектов (решение 22.10.2026). */
     var masked = areTasksMasked();
     f = document.createDocumentFragment();
     taskShown.forEach(function (r) { f.appendChild(taskRow(r, nodes, today, masked)); });
     out.tasks = { count: tasks.length, content: tasks.length ? f : hint('j.overview.empty_tasks') };
     out.plain.overviewTasks = !masked && plainIn(taskShown);
-    out.objectTasks = data.objectTasks || 0;
 
     out.projects = await buildOverviewProjects(data, PREVIEW);
     out.plain.overviewProjects = plainIn(data.projects.slice(0, PREVIEW));
@@ -247,7 +228,7 @@
   }
 
   /* ═══ Вставка ══════════════════════════════════════════════════════════ */
-  var SECTIONS = [['carry', 'overviewCarry'], ['tasks', 'overviewTasks'], ['projects', 'overviewProjects'], ['visits', 'overviewVisits']];
+  var SECTIONS = [['tasks', 'overviewTasks'], ['projects', 'overviewProjects'], ['visits', 'overviewVisits']];
 
   function setSection(box, count, content, busy) {
     $('#' + box + 'Count').textContent = count;
@@ -258,7 +239,6 @@
   function showLoading() {
     $('#overviewStats').replaceChildren(buildStats(null, false, null));
     SECTIONS.forEach(function (s) { setSection(s[1], '…', null, true); });
-    setObjectTasks(0);
     syncMaskButtons();
     $('#overviewNextVisit').hidden = true;
   }
@@ -269,14 +249,8 @@
       if (box && box.hasAttribute('data-ov-plain')) { box.replaceChildren(); box.removeAttribute('data-ov-plain'); }
     });
   }
-  function setObjectTasks(n) {
-    var p = $('#overviewObjectTasks');
-    p.textContent = n ? t('j.overview.object_tasks').replace('%d', String(n)) : '';
-    p.hidden = !n;
-  }
   function commit(view, failed, data, roster) {
     $('#overviewStats').replaceChildren(buildStats(data, failed, roster));
-    setObjectTasks(failed ? 0 : view.objectTasks);
     syncMaskButtons();
     SECTIONS.forEach(function (s) {
       var box = $('#' + s[1]);
@@ -382,10 +356,25 @@
     if (!box) return;
     if (!unlocked() && box.querySelector('[data-plain]')) box.replaceChildren();
     var today = todayIso();
-    var visits, carry, tasks, notes, scope;
+    var visits, carry, tasks, notes, scope, childCarry = [];
     try {
       visits = await CWJournal.visits.byNode(node.id);
       carry = await CWJournal.carry.openForNode(node.id);
+      /* O5: у вложенной группы/предгруппы своей страницы нет — её пункты
+         «на следующее посещение» видны здесь, в карточке собрания-родителя. */
+      if (node.kind === 'congregation') {
+        var kids = (await CWJournal.nodes.byCircuit(node.circuitId)).filter(function (n) {
+          return n.parentId === node.id && (n.kind === 'group' || n.kind === 'pregroup') && n.status !== 'archived';
+        });
+        for (var k = 0; k < kids.length; k++) {
+          var kv = {};
+          (await CWJournal.visits.byNode(kids[k].id)).forEach(function (v) { kv[v.id] = v; });
+          (await CWJournal.carry.openForNode(kids[k].id)).forEach(function (r) {
+            var o = kv[r.fields.visitId];
+            if (o && o.status !== 'archived') childCarry.push({ row: r, origin: o, child: kids[k] });
+          });
+        }
+      }
       tasks = (await CWJournal.tasks.list()).filter(function (r) { return r.nodeId === node.id; });
       notes = await CWJournal.congregationNotes.list(node.id);
       scope = await noteScope(node);
@@ -399,12 +388,44 @@
     var openTasks = tasks.filter(function (r) { return r.status !== 'done'; });
     var picked = pickVisit(visits, today);
     var marked = picked ? await CWJournal.carry.markedIn(picked.visit.id) : [];
-    var plain = plainIn(carry) || plainIn(openTasks.slice(0, NODE_PREVIEW)) || plainIn(notes.slice(0, 3));
+    var childRows = childCarry.map(function (x) { return x.row; });
+    var plain = plainIn(carry) || plainIn(childRows) || plainIn(openTasks.slice(0, NODE_PREVIEW)) || plainIn(notes.slice(0, 3));
     if (!nodeOvCurrent(gen, node.id)) return;
     if (plain && !unlocked()) return;
 
     var f = document.createDocumentFragment();
     var circuitId = node.circuitId;
+
+    /* На следующее посещение (O5) — первым и выделенным: открыл карточку —
+       сразу видно, что сделать в следующий раз. Свои пункты + пункты
+       вложенных групп/предгрупп (с подписью; ведут на «Посещения»
+       собрания, как и остальной Журнал для вложенных групп). */
+    var total = carry.length + childCarry.length;
+    var csec = el('div', 'j-sec j-sec--next');
+    var chead = secHead(t('j.nov.carry_title'), total, null);
+    var flag = el('span', 'j-sec__ico');
+    flag.innerHTML = svg(OV_ICON.carry, 'width="18" height="18"');
+    chead.insertBefore(flag, chead.firstChild);
+    csec.appendChild(chead);
+    if (!total) csec.appendChild(hint('j.nov.carry_empty'));
+    carry.forEach(function (r) {
+      var o = visitById[r.fields.visitId];
+      var crow = linkRow(CWJournalRoute.build.visit(circuitId, node.id, o.id), OV_ICON.carry, true);
+      var cb = el('div', 'j-row__body');
+      cb.appendChild(textTitle(r));
+      cb.appendChild(meta([capitalize(seasonLabel(o.dateFrom))]));
+      csec.appendChild(finishRow(crow, cb));
+    });
+    childCarry.forEach(function (x) {
+      var crow = linkRow(CWJournalRoute.build.visits(circuitId, node.id), OV_ICON.carry, true);
+      var cb = el('div', 'j-row__body');
+      cb.appendChild(textTitle(x.row));
+      var who = t(x.child.kind === 'pregroup' ? 'j.search.kind.pregroup' : 'j.search.kind.group') + ' ' + nodeName(x.child);
+      cb.appendChild(meta([capitalize(who), capitalize(seasonLabel(x.origin.dateFrom))]));
+      csec.appendChild(finishRow(crow, cb));
+    });
+    if (plainIn(carry) || plainIn(childRows)) csec.setAttribute('data-plain', '');
+    f.appendChild(csec);
 
     /* Быстрые действия. */
     var quick = el('div', 'j-chip-row j-nov__quick');
@@ -451,21 +472,6 @@
       vsec.appendChild(add);
     }
     f.appendChild(vsec);
-
-    /* На следующее посещение — всегда виден. */
-    var csec = el('div', 'j-sec');
-    csec.appendChild(secHead(t('j.nov.carry_title'), carry.length, null));
-    if (!carry.length) csec.appendChild(hint('j.nov.carry_empty'));
-    carry.forEach(function (r) {
-      var o = visitById[r.fields.visitId];
-      var crow = linkRow(CWJournalRoute.build.visit(circuitId, node.id, o.id), OV_ICON.carry, true);
-      var cb = el('div', 'j-row__body');
-      cb.appendChild(textTitle(r));
-      cb.appendChild(meta([capitalize(seasonLabel(o.dateFrom))]));
-      csec.appendChild(finishRow(crow, cb));
-    });
-    if (plainIn(carry)) csec.setAttribute('data-plain', '');
-    f.appendChild(csec);
 
     /* Открытые задачи. */
     if (openTasks.length) {

@@ -2586,19 +2586,17 @@
 
   /* ═══ Данные Обзора (O1) ═════════════════════════════════════════════
    * ТОЛЬКО ЧТЕНИЕ, по требованию, в памяти: одно чтение узлов и записей
-   * (snapshot) — пять выборок для Обзора. Ничего не пишется, не кэшируется
+   * (snapshot) — четыре выборки для Обзора. Ничего не пишется, не кэшируется
    * и не индексируется: ни хранилища Обзора, ни материализованного списка,
    * ни следа в localStorage/CWState. Каждый read() читает базу заново.
    *
    * Архивность «в контексте» — то же вычисление, что у поиска/архива
    * (snap.nodeArchived/entryArchived), не новое правило:
    *  - circuits — районы вне архива, порядок sortNodes;
-   *  - tasks    — открытые задачи (status ≠ 'done') вне архивного контекста
-   *               (своего, узла или посещения-источника), порядок
-   *               tasks.sort — тот же, что у экрана «Задачи»;
-   *  - carry    — открытые пункты переноса (carryKey есть) вне архивного
-   *               контекста; порядок — посещение-источник (visitBefore),
-   *               затем fields.seq, id — как у carry.incoming;
+   *  - tasks    — открытые задачи (status ≠ 'done') УЗЛА-РАЙОНА (O4) вне
+   *               архивного контекста (своего, узла или посещения-источника),
+   *               порядок tasks.sort — тот же, что у экрана «Задачи». Задач
+   *               и пунктов переноса собраний/групп здесь нет (O5);
    *  - projects — active-проекты существующих неархивных районов (семантика
    *               блока «Проекты района» Обзора), порядок projects.sort;
    *  - visits   — посещения вне архивного контекста (open и completed),
@@ -2608,19 +2606,9 @@
    *               группы/предгруппы (для CWJournalRoute.build.visit/visits).
    *
    * J8: строки берутся сырыми и раскрываются только ИТОГОВЫЕ — тем же
-   * revealList, что у tasks.list, carry и projects: заблокировано — строка
+   * revealList, что у tasks.list и projects: заблокировано — строка
    * с sec и без title/body; разблокировано — временная копия с
    * неперечислимым текстом. Счётчиков записей «для красоты» нет. */
-  function sortCarryItems(list, entryById) {
-    return list.slice().sort(function (a, b) {
-      var oa = entryById[a.fields.visitId], ob = entryById[b.fields.visitId];
-      if (oa && ob && oa.id !== ob.id) return visitBefore(oa, ob) ? -1 : 1;
-      if (!!oa !== !!ob) return oa ? -1 : 1;
-      var sa = a.fields.seq || 0, sb = b.fields.seq || 0;
-      if (sa !== sb) return sa - sb;
-      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    });
-  }
   var overview = {
     read: async function () {
       var snap = await snapshot(false);
@@ -2629,18 +2617,17 @@
       }));
       var liveCircuit = {};
       circuits.forEach(function (c) { liveCircuit[c.id] = true; });
-      var taskRows = [], carryRows = [], projectRows = [], visitRows = [];
-      /* Обзор (O4): на стартовом экране — только задачи района (nodeId —
-         узел-район). Задачи собраний, групп, предгрупп и их посещений живут
-         в карточках объектов; сюда — лишь их число, без текста и имён. */
-      var objectTasks = 0;
+      var taskRows = [], projectRows = [], visitRows = [];
+      /* Обзор (O4/O5): на стартовом экране — только задачи района (nodeId —
+         узел-район). Задачи и пункты «на следующее посещение» собраний,
+         групп, предгрупп и их посещений сюда не попадают ни строкой, ни
+         числом — они в карточках объектов (решение 22.10.2026). */
       snap.entries.forEach(function (e) {
         if (!e || snap.entryArchived(e)) return;
         if (e.type === 'todo' && e.status !== 'done') {
           var owner = snap.nodeById[e.nodeId];
-          if (owner && owner.kind === 'circuit') taskRows.push(e); else objectTasks++;
+          if (owner && owner.kind === 'circuit') taskRows.push(e);
         }
-        if (e.type !== 'visit' && 'carryKey' in e && hasVisitRef(e) && VISIT_RECORD_TYPES.indexOf(e.type) !== -1) carryRows.push(e);
         if (e.type === 'project' && e.status === 'active' && liveCircuit[e.circuitId]) projectRows.push(e);
         if (e.type === 'visit') visitRows.push(e);
       });
@@ -2656,8 +2643,6 @@
       return {
         circuits: circuits,
         tasks: await revealList(sortTasks(taskRows)),
-        objectTasks: objectTasks,
-        carry: await revealList(sortCarryItems(carryRows, snap.entryById)),
         projects: await revealList(sortProjects(projectRows)),
         visits: visitsOut,
       };
@@ -2678,12 +2663,22 @@
       var circuits = sortNodes(live.filter(function (n) { return n.kind === 'circuit'; }));
       var out = { circuits: circuits, congregations: [], groups: [], pregroups: [] };
       var byKind = { congregation: out.congregations, group: out.groups, pregroup: out.pregroups };
+      /* O5: число открытых пунктов «на следующее посещение» узла — только
+         число (без текста), то же правило, что у carry.openForNode: открытый
+         пункт записи посещения вне архивного контекста. */
+      var carryCount = {};
+      snap.entries.forEach(function (e) {
+        if (!e || e.type === 'visit' || !('carryKey' in e) || !hasVisitRef(e)) return;
+        if (VISIT_RECORD_TYPES.indexOf(e.type) === -1 || snap.entryArchived(e)) return;
+        carryCount[e.nodeId] = (carryCount[e.nodeId] || 0) + 1;
+      });
       sortNodes(live).forEach(function (n) {
         var bucket = byKind[n.kind];
         if (!bucket) return;
         var parent = n.parentId && n.parentId !== ROOT_PARENT ? snap.nodeById[n.parentId] || null : null;
         var alone = isStandaloneNode(n);
-        bucket.push({ node: n, circuitId: n.circuitId || null, standalone: alone, parent: n.kind === 'congregation' || alone ? null : parent });
+        bucket.push({ node: n, circuitId: n.circuitId || null, standalone: alone, parent: n.kind === 'congregation' || alone ? null : parent,
+          carry: carryCount[n.id] || 0 });
       });
       return out;
     },

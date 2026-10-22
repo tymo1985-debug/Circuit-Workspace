@@ -81,7 +81,15 @@
     if (parts.length) body.appendChild(meta);
     row.appendChild(body);
     var end = el('div', 'j-row__end');
-    end.innerHTML = svg(ICON.chevron, 'width="18" height="18"');
+    /* O5: число пунктов «на следующее посещение» — только число, без текста. */
+    if (item.carry > 0) {
+      var badge = el('span', 'j-carry-badge', String(item.carry));
+      var label = t('j.roster.carry').replace('%d', String(item.carry));
+      badge.title = label;
+      badge.setAttribute('aria-label', label);
+      end.appendChild(badge);
+    }
+    end.insertAdjacentHTML('beforeend', svg(ICON.chevron, 'width="18" height="18"'));
     row.appendChild(end);
     return row;
   }

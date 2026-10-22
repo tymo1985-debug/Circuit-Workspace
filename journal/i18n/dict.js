@@ -28,8 +28,8 @@
   global.CWI18n.register({
 
     ru: {
+      'j.roster.carry': 'На следующее посещение: %d',
       'j.section.tasks_district': 'Задачи района',
-      'j.overview.object_tasks': 'Задачи собраний и групп: %d — в их карточках',
       'j.task.mask_toggle': 'Показывать текст задач',
       'j.task.masked': 'Текст скрыт',
       'j.task.search': 'Текст задачи, собрание…',
@@ -58,7 +58,6 @@
       'j.roster.empty_pregroups': 'Предгрупп пока нет.',
       'j.nav.archive': 'Архив',
 
-      'j.section.upcoming': 'К следующим посещениям',
       'j.section.tasks_open': 'Открытые задачи',
       'j.section.projects': 'Проекты района',
       'j.section.recent_visits': 'Последние посещения',
@@ -68,7 +67,6 @@
       'j.overview.stat.congregations': 'Собрания',
       'j.overview.stat.groups': 'Группы',
       'j.overview.stat.pregroups': 'Предгруппы',
-      'j.overview.empty_carry': 'Открытых пунктов на следующие посещения нет.',
       'j.overview.empty_tasks': 'Открытых задач нет.',
       'j.nov.current': 'Текущее посещение',
       'j.nov.upcoming': 'Ближайшее посещение',
@@ -607,8 +605,8 @@
     },
 
     uk: {
+      'j.roster.carry': 'На наступне відвідування: %d',
       'j.section.tasks_district': 'Завдання округу',
-      'j.overview.object_tasks': 'Завдання зборів і груп: %d — у їхніх картках',
       'j.task.mask_toggle': 'Показувати текст завдань',
       'j.task.masked': 'Текст приховано',
       'j.task.search': 'Текст завдання, збір…',
@@ -637,7 +635,6 @@
       'j.roster.empty_pregroups': 'Передгруп поки немає.',
       'j.nav.archive': 'Архів',
 
-      'j.section.upcoming': 'До наступних відвідувань',
       'j.section.tasks_open': 'Відкриті завдання',
       'j.section.projects': 'Проєкти округу',
       'j.section.recent_visits': 'Останні відвідування',
@@ -647,7 +644,6 @@
       'j.overview.stat.congregations': 'Збори',
       'j.overview.stat.groups': 'Групи',
       'j.overview.stat.pregroups': 'Передгрупи',
-      'j.overview.empty_carry': 'Відкритих пунктів на наступні відвідування немає.',
       'j.overview.empty_tasks': 'Відкритих завдань немає.',
       'j.nov.current': 'Поточне відвідування',
       'j.nov.upcoming': 'Найближче відвідування',
@@ -1186,8 +1182,8 @@
     },
 
     en: {
+      'j.roster.carry': 'For the next visit: %d',
       'j.section.tasks_district': 'Circuit tasks',
-      'j.overview.object_tasks': 'Congregation and group tasks: %d — in their cards',
       'j.task.mask_toggle': 'Show task text',
       'j.task.masked': 'Text hidden',
       'j.task.search': 'Task text, congregation…',
@@ -1216,7 +1212,6 @@
       'j.roster.empty_pregroups': 'No pregroups yet.',
       'j.nav.archive': 'Archive',
 
-      'j.section.upcoming': 'For the next visits',
       'j.section.tasks_open': 'Open tasks',
       'j.section.projects': 'Circuit projects',
       'j.section.recent_visits': 'Recent visits',
@@ -1226,7 +1221,6 @@
       'j.overview.stat.congregations': 'Congregations',
       'j.overview.stat.groups': 'Groups',
       'j.overview.stat.pregroups': 'Pregroups',
-      'j.overview.empty_carry': 'No open items for the next visits.',
       'j.overview.empty_tasks': 'No open tasks.',
       'j.nov.current': 'Current visit',
       'j.nov.upcoming': 'Upcoming visit',
@@ -1765,8 +1759,8 @@
     },
 
     pl: {
+      'j.roster.carry': 'Na następną wizytę: %d',
       'j.section.tasks_district': 'Zadania obwodu',
-      'j.overview.object_tasks': 'Zadania zborów i grup: %d — w ich kartach',
       'j.task.mask_toggle': 'Pokazuj treść zadań',
       'j.task.masked': 'Treść ukryta',
       'j.task.search': 'Treść zadania, zbór…',
@@ -1795,7 +1789,6 @@
       'j.roster.empty_pregroups': 'Brak pregrup.',
       'j.nav.archive': 'Archiwum',
 
-      'j.section.upcoming': 'Na kolejne odwiedziny',
       'j.section.tasks_open': 'Otwarte zadania',
       'j.section.projects': 'Projekty obwodu',
       'j.section.recent_visits': 'Ostatnie odwiedziny',
@@ -1805,7 +1798,6 @@
       'j.overview.stat.congregations': 'Zbory',
       'j.overview.stat.groups': 'Grupy',
       'j.overview.stat.pregroups': 'Pregrupy',
-      'j.overview.empty_carry': 'Brak otwartych punktów na kolejne odwiedziny.',
       'j.overview.empty_tasks': 'Brak otwartych zadań.',
       'j.nov.current': 'Bieżąca wizyta',
       'j.nov.upcoming': 'Najbliższa wizyta',
@@ -2344,8 +2336,8 @@
     },
 
     de: {
+      'j.roster.carry': 'Für den nächsten Besuch: %d',
       'j.section.tasks_district': 'Aufgaben des Kreises',
-      'j.overview.object_tasks': 'Aufgaben der Versammlungen und Gruppen: %d — in ihren Karten',
       'j.task.mask_toggle': 'Aufgabentext anzeigen',
       'j.task.masked': 'Text ausgeblendet',
       'j.task.search': 'Aufgabentext, Versammlung…',
@@ -2374,7 +2366,6 @@
       'j.roster.empty_pregroups': 'Noch keine Vorgruppen.',
       'j.nav.archive': 'Archiv',
 
-      'j.section.upcoming': 'Für die nächsten Besuche',
       'j.section.tasks_open': 'Offene Aufgaben',
       'j.section.projects': 'Kreisprojekte',
       'j.section.recent_visits': 'Letzte Besuche',
@@ -2384,7 +2375,6 @@
       'j.overview.stat.congregations': 'Versammlungen',
       'j.overview.stat.groups': 'Gruppen',
       'j.overview.stat.pregroups': 'Vorgruppen',
-      'j.overview.empty_carry': 'Keine offenen Punkte für die nächsten Besuche.',
       'j.overview.empty_tasks': 'Keine offenen Aufgaben.',
       'j.nov.current': 'Aktueller Besuch',
       'j.nov.upcoming': 'Nächster Besuch',

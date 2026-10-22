@@ -134,7 +134,8 @@ async function seedFull(page) {
 }
 const stats = (p) => p.$$eval('#overviewStats .j-ovstat__value', (xs) => xs.map((x) => x.textContent));
 const noCanary = async (p) => { const h = await p.content(); return Object.values(CAN).every((c) => !h.includes(c)); };
-const allCanary = async (p) => { const h = await p.content(); return Object.values(CAN).every((c) => h.includes(c)); };
+// O5: пункт переноса на Обзор не выходит никогда — видны только задача района и проект.
+const allCanary = async (p) => { const h = await p.content(); return h.includes(CAN.task) && h.includes(CAN.project) && !h.includes(CAN.carry); };
 
 /** Геометрия Обзора на телефоне. */
 async function geometry(p) {
@@ -206,8 +207,8 @@ for (const [w, h] of [[320, 800], [360, 800], [430, 900], [1280, 900]]) {
 
 /* ═══ 2. Пять языков на 320 ═════════════════════════════════════════════ */
 console.log('\n2. Языки на 320');
-const OV_KEYS = ['j.nav.overview', 'j.nav.districts', 'j.overview.stat.congregations', 'j.overview.stat.groups', 'j.overview.stat.pregroups', 'j.overview.empty_carry',
-  'j.overview.empty_tasks', 'j.overview.empty_visits', 'j.overview.unavailable', 'j.section.upcoming', 'j.section.tasks_open', 'j.section.projects', 'j.section.recent_visits',
+const OV_KEYS = ['j.nav.overview', 'j.nav.districts', 'j.overview.stat.congregations', 'j.overview.stat.groups', 'j.overview.stat.pregroups',
+  'j.overview.empty_tasks', 'j.overview.empty_visits', 'j.overview.unavailable', 'j.section.tasks_district', 'j.section.projects', 'j.section.recent_visits',
   'j.link.all', 'j.project.empty_overview', 'j.locked.title', 'j.planner.unavailable'];
 for (const lang of ['ru', 'uk', 'en', 'pl', 'de']) {
   for (const state of ['full', 'empty']) {
@@ -237,25 +238,26 @@ console.log('\n3. Пусто / наполнено');
   await page.reload(); await page.waitForSelector('#overviewVisits .j-sec__hint'); await settle(page);
   ok('пусто: сводка — честные нули', (await stats(page)).join() === '0,0,0,0', (await stats(page)).join());
   const counts = await page.$$eval('#route-overview .j-sec__count', (xs) => xs.map((x) => x.textContent));
-  ok('пусто: счётчики секций 0', counts.join() === '0,0,0,0', counts.join());
+  ok('пусто: счётчики секций 0', counts.join() === '0,0,0', counts.join());
   const hints = await page.$$eval('#route-overview .j-sec__hint', (xs) => xs.length);
-  ok('пусто: четыре сообщения «пусто», строк нет', hints === 4 && (await page.$$('#route-overview .j-row')).length === 0);
+  ok('пусто: три сообщения «пусто», строк нет', hints === 3 && (await page.$$('#route-overview .j-row')).length === 0);
   ok('пусто: ни одной фикстуры', !/EU-K-03|Северное|Западное|Уточнить/.test(await page.content()));
   await ctx.close();
 }
 {
   const { ctx, page } = await open('full');
   const ids = await seedFull(page);
-  const order = await page.evaluate(async () => { const d = await CWJournal.overview.read(); return { t: d.tasks.map((r) => r.id), c: d.carry.map((r) => r.id), p: d.projects.map((r) => r.id), v: d.visits.map((x) => x.visit.id), n: [d.tasks.length, d.carry.length, d.projects.length, d.visits.length] }; });
+  const order = await page.evaluate(async () => { const d = await CWJournal.overview.read(); return { t: d.tasks.map((r) => r.id), p: d.projects.map((r) => r.id), v: d.visits.map((x) => x.visit.id), n: [d.tasks.length, d.projects.length, d.visits.length], carry: 'carry' in d }; });
   const dom = await page.evaluate(() => ({
     t: [...document.querySelectorAll('#overviewTasks .j-row')].map((a) => a.getAttribute('href').split('/').pop()),
     counts: [...document.querySelectorAll('#route-overview .j-sec__count')].map((x) => x.textContent),
-    rows: ['overviewCarry', 'overviewTasks', 'overviewProjects', 'overviewVisits'].map((id) => document.getElementById(id).querySelectorAll('.j-row').length),
+    rows: ['overviewTasks', 'overviewProjects', 'overviewVisits'].map((id) => document.getElementById(id).querySelectorAll('.j-row').length),
     hidden: [...document.querySelectorAll('#route-overview .j-row')].filter((r) => r.hidden || getComputedStyle(r).display === 'none').length,
     more: [...document.querySelectorAll('#route-overview .j-sec__more')].map((a) => a.tagName + ':' + a.getAttribute('href')),
   }));
-  ok('наполнено: по 3 строки в каждой секции', dom.rows.join() === '3,3,3,3', dom.rows.join());
-  ok('наполнено: полные счётчики', dom.counts.join() === order.n[1] + ',' + order.n[0] + ',' + order.n[2] + ',' + order.n[3] && order.n.every((x) => x === 5), dom.counts.join());
+  ok('наполнено: по 3 строки в каждой секции', dom.rows.join() === '3,3,3', dom.rows.join());
+  ok('наполнено: полные счётчики', dom.counts.join() === order.n.join() && order.n.every((x) => x === 5), dom.counts.join());
+  ok('O5: переноса на Обзоре нет — ни в данных, ни в DOM', !order.carry && !(await page.$('#overviewCarrySec')));
   ok('наполнено: порядок задач — канон O1', dom.t.join() === order.t.slice(0, 3).join());
   ok('наполнено: четвёртой строки нет в DOM (не спрятана)', dom.hidden === 0);
   ok('наполнено: единственная «Все» → #tasks, «История»/«Все» переноса нет', dom.more.join() === 'A:#tasks');
@@ -272,7 +274,7 @@ console.log('\n3. Пусто / наполнено');
   console.log('\n6. J8: задача, перенос, проект');
   ok('заблокировано: три канарейки отсутствуют во всём HTML (текст, атрибуты)', await noCanary(page));
   await page.evaluate((PASS) => CWJournal.protection.unlock(PASS), PASS); await settle(page);
-  ok('разблокировано: все три видны', await allCanary(page));
+  ok('разблокировано: задача и проект видны, перенос на Обзоре не появляется', await allCanary(page));
   const lockedNow = await page.evaluate(() => { CWJournal.protection.lock(); const h = document.documentElement.outerHTML; return ['КАНАРЕЙКА-ЗАДАЧА-O3', 'КАНАРЕЙКА-ПЕРЕНОС-O3', 'КАНАРЕЙКА-ПРОЕКТ-O3'].some((c) => h.includes(c)); });
   ok('блокировка: текст исчез синхронно', lockedNow === false);
   await settle(page, 900);
@@ -314,12 +316,12 @@ console.log('\n3. Пусто / наполнено');
   }, ids.c);
   ok('одно изменение → одна отрисовка (подписки не размножились)', reads === 1, reads);
   const dup = await page.evaluate(() => ({
-    rows: ['overviewCarry', 'overviewTasks', 'overviewProjects', 'overviewVisits'].map((id) => document.getElementById(id).querySelectorAll('.j-row').length).join(),
+    rows: ['overviewTasks', 'overviewProjects', 'overviewVisits'].map((id) => document.getElementById(id).querySelectorAll('.j-row').length).join(),
     stats: document.querySelectorAll('#overviewStats .j-ovstat').length,
     // Перенос из одного посещения законно ведёт на один адрес — дубли ищем в задачах и посещениях.
     hrefs: (() => { const h = [...document.querySelectorAll('#overviewTasks a.j-row, #overviewVisits a.j-row')].map((a) => a.getAttribute('href')); return h.length - new Set(h).size; })(),
   }));
-  ok('без дублей строк и сводки', dup.rows === '3,3,3,3' && dup.stats === 4 && dup.hrefs === 0, JSON.stringify(dup));
+  ok('без дублей строк и сводки', dup.rows === '3,3,3' && dup.stats === 4 && dup.hrefs === 0, JSON.stringify(dup));
   ok('счётчик задач обновился ровно на 1', (await page.textContent('#overviewTasksCount')) === '6');
 
   /* ═══ 5. Сбой чтения Журнала и восстановление ════════════════════════════ */
@@ -336,7 +338,7 @@ console.log('\n3. Пусто / наполнено');
       hint: document.querySelector('#overviewTasks').textContent === CWJournalApp.t('j.overview.unavailable') };
   });
   expected.push(/O3: намеренный сбой чтения|данные Обзора не прочитаны/);
-  ok('сбой: старых строк нет, «—» вместо чисел, подсказка', fail.rows === 0 && fail.stats === '—' && fail.counts === '—,—,—,—' && fail.hint, JSON.stringify(fail));
+  ok('сбой: старых строк нет, «—» вместо чисел, подсказка', fail.rows === 0 && fail.stats === '—' && fail.counts === '—,—,—' && fail.hint, JSON.stringify(fail));
   ok('сбой: защищённого текста нет', !fail.canary);
   await page.evaluate(() => { CWJournal.overview.read = self.__realRead; location.hash = '#tasks'; });
   await settle(page, 250);
