@@ -53,6 +53,9 @@
   function openNoteDialog() { return A.openNoteDialog.apply(this, arguments); }
   function refreshCurrentView() { return A.refreshCurrentView.apply(this, arguments); }
   function runAction() { return A.runAction.apply(this, arguments); }
+  function areTasksMasked() { return A.areTasksMasked.apply(this, arguments); }
+  function maskedTitleHtml() { return A.maskedTitleHtml.apply(this, arguments); }
+  function syncMaskButtons() { return A.syncMaskButtons.apply(this, arguments); }
 
   var PREVIEW = 3;
   var OV_ICON = {
@@ -144,10 +147,10 @@
     body.appendChild(meta([label(nodes, r.nodeId), origin ? capitalize(seasonLabel(origin.dateFrom)) : '']));
     return finishRow(row, body);
   }
-  function taskRow(r, nodes, today) {
+  function taskRow(r, nodes, today, masked) {
     var row = linkRow(CWJournalRoute.build.task(r.id), OV_ICON.task, false);
     var body = el('div', 'j-row__body');
-    body.appendChild(textTitle(r));
+    if (masked) body.insertAdjacentHTML('beforeend', maskedTitleHtml()); else body.appendChild(textTitle(r));
     var due = null;
     if (r.dueDate) due = el('span', 'md-status ' + (r.dueDate <= today ? 'md-status-important' : 'md-status-normal'), t('j.task.due_short').replace('%s', ddmm(r.dueDate)));
     body.appendChild(meta([due, label(nodes, r.nodeId)]));
@@ -225,10 +228,14 @@
     out.carry = { count: carry.length, content: carry.length ? f : hint('j.overview.empty_carry') };
     out.plain.overviewCarry = plainIn(carryShown.map(function (x) { return x.row; }));
 
+    /* O4: здесь только задачи района; текст скрыт, пока не нажат «глаз».
+       Задачи собраний/групп — лишь число, без имён и текста. */
+    var masked = areTasksMasked();
     f = document.createDocumentFragment();
-    taskShown.forEach(function (r) { f.appendChild(taskRow(r, nodes, today)); });
+    taskShown.forEach(function (r) { f.appendChild(taskRow(r, nodes, today, masked)); });
     out.tasks = { count: tasks.length, content: tasks.length ? f : hint('j.overview.empty_tasks') };
-    out.plain.overviewTasks = plainIn(taskShown);
+    out.plain.overviewTasks = !masked && plainIn(taskShown);
+    out.objectTasks = data.objectTasks || 0;
 
     out.projects = await buildOverviewProjects(data, PREVIEW);
     out.plain.overviewProjects = plainIn(data.projects.slice(0, PREVIEW));
@@ -251,6 +258,8 @@
   function showLoading() {
     $('#overviewStats').replaceChildren(buildStats(null, false, null));
     SECTIONS.forEach(function (s) { setSection(s[1], '…', null, true); });
+    setObjectTasks(0);
+    syncMaskButtons();
     $('#overviewNextVisit').hidden = true;
   }
   /** Заблокировано: секции, где был раскрытый текст, очищаются сразу. */
@@ -260,8 +269,15 @@
       if (box && box.hasAttribute('data-ov-plain')) { box.replaceChildren(); box.removeAttribute('data-ov-plain'); }
     });
   }
+  function setObjectTasks(n) {
+    var p = $('#overviewObjectTasks');
+    p.textContent = n ? t('j.overview.object_tasks').replace('%d', String(n)) : '';
+    p.hidden = !n;
+  }
   function commit(view, failed, data, roster) {
     $('#overviewStats').replaceChildren(buildStats(data, failed, roster));
+    setObjectTasks(failed ? 0 : view.objectTasks);
+    syncMaskButtons();
     SECTIONS.forEach(function (s) {
       var box = $('#' + s[1]);
       if (failed) {

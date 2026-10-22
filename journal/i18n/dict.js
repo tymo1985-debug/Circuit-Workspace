@@ -28,6 +28,13 @@
   global.CWI18n.register({
 
     ru: {
+      'j.section.tasks_district': 'Задачи района',
+      'j.overview.object_tasks': 'Задачи собраний и групп: %d — в их карточках',
+      'j.task.mask_toggle': 'Показывать текст задач',
+      'j.task.masked': 'Текст скрыт',
+      'j.task.search': 'Текст задачи, собрание…',
+      'j.task.search_label': 'Поиск задач',
+      'j.task.no_match': 'Ничего не найдено',
       'j.nav.overview': 'Обзор',
       'j.nav.districts': 'Районы',
       'j.nav.tasks': 'Задачи',
@@ -600,6 +607,13 @@
     },
 
     uk: {
+      'j.section.tasks_district': 'Завдання округу',
+      'j.overview.object_tasks': 'Завдання зборів і груп: %d — у їхніх картках',
+      'j.task.mask_toggle': 'Показувати текст завдань',
+      'j.task.masked': 'Текст приховано',
+      'j.task.search': 'Текст завдання, збір…',
+      'j.task.search_label': 'Пошук завдань',
+      'j.task.no_match': 'Нічого не знайдено',
       'j.nav.overview': 'Огляд',
       'j.nav.districts': 'Округи',
       'j.nav.tasks': 'Завдання',
@@ -1172,6 +1186,13 @@
     },
 
     en: {
+      'j.section.tasks_district': 'Circuit tasks',
+      'j.overview.object_tasks': 'Congregation and group tasks: %d — in their cards',
+      'j.task.mask_toggle': 'Show task text',
+      'j.task.masked': 'Text hidden',
+      'j.task.search': 'Task text, congregation…',
+      'j.task.search_label': 'Search tasks',
+      'j.task.no_match': 'Nothing found',
       'j.nav.overview': 'Overview',
       'j.nav.districts': 'Circuits',
       'j.nav.tasks': 'Tasks',
@@ -1744,6 +1765,13 @@
     },
 
     pl: {
+      'j.section.tasks_district': 'Zadania obwodu',
+      'j.overview.object_tasks': 'Zadania zborów i grup: %d — w ich kartach',
+      'j.task.mask_toggle': 'Pokazuj treść zadań',
+      'j.task.masked': 'Treść ukryta',
+      'j.task.search': 'Treść zadania, zbór…',
+      'j.task.search_label': 'Szukaj zadań',
+      'j.task.no_match': 'Nic nie znaleziono',
       'j.nav.overview': 'Przegląd',
       'j.nav.districts': 'Obwody',
       'j.nav.tasks': 'Zadania',
@@ -2316,6 +2344,13 @@
     },
 
     de: {
+      'j.section.tasks_district': 'Aufgaben des Kreises',
+      'j.overview.object_tasks': 'Aufgaben der Versammlungen und Gruppen: %d — in ihren Karten',
+      'j.task.mask_toggle': 'Aufgabentext anzeigen',
+      'j.task.masked': 'Text ausgeblendet',
+      'j.task.search': 'Aufgabentext, Versammlung…',
+      'j.task.search_label': 'Aufgaben durchsuchen',
+      'j.task.no_match': 'Nichts gefunden',
       'j.nav.overview': 'Übersicht',
       'j.nav.districts': 'Kreise',
       'j.nav.tasks': 'Aufgaben',

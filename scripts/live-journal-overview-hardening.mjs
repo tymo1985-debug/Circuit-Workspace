@@ -110,7 +110,7 @@ async function seedFull(page) {
     const carry = [];
     for (let i = 0; i < 5; i++) { const q = await J.visitRecords.add(visits[0], { type: 'question', body: (i === 0 ? CAN.carry : 'Вопрос ' + i + ' ') + LONG }); await J.carry.mark(q); carry.push(q); }
     const tasks = [];
-    for (let i = 0; i < 5; i++) tasks.push(await J.tasks.add({ nodeId: n, body: (i === 0 ? CAN.task : 'Задача ' + i + ' ') + LONG, dueDate: '2028-0' + (i + 1) + '-15' }));
+    for (let i = 0; i < 5; i++) tasks.push(await J.tasks.add({ nodeId: c, body: (i === 0 ? CAN.task : 'Задача ' + i + ' ') + LONG, dueDate: '2028-0' + (i + 1) + '-15' }));
     const projects = [];
     for (let i = 0; i < 5; i++) projects.push(await J.projects.add({ circuitId: i % 2 ? c2 : c, title: 'Проект ' + i + ' ' + LONG }));
     // Защищённый проект — первым в каноническом порядке Обзора, чтобы он был в превью.
@@ -126,6 +126,9 @@ async function seedFull(page) {
   await plannerWrite(page, PLANNER());
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#overviewTasks .j-row');
+  await settle(page);
+  // O4: текст задач по умолчанию скрыт — здесь проверяется раскрытие J8.
+  await page.click('#overviewTasksEye');
   await settle(page);
   return ids;
 }
@@ -308,7 +311,7 @@ console.log('\n3. Пусто / наполнено');
     await new Promise((r) => setTimeout(r, 700));
     CWJournal.overview.read = real;
     return count;
-  }, ids.n);
+  }, ids.c);
   ok('одно изменение → одна отрисовка (подписки не размножились)', reads === 1, reads);
   const dup = await page.evaluate(() => ({
     rows: ['overviewCarry', 'overviewTasks', 'overviewProjects', 'overviewVisits'].map((id) => document.getElementById(id).querySelectorAll('.j-row').length).join(),

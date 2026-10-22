@@ -2630,9 +2630,16 @@
       var liveCircuit = {};
       circuits.forEach(function (c) { liveCircuit[c.id] = true; });
       var taskRows = [], carryRows = [], projectRows = [], visitRows = [];
+      /* Обзор (O4): на стартовом экране — только задачи района (nodeId —
+         узел-район). Задачи собраний, групп, предгрупп и их посещений живут
+         в карточках объектов; сюда — лишь их число, без текста и имён. */
+      var objectTasks = 0;
       snap.entries.forEach(function (e) {
         if (!e || snap.entryArchived(e)) return;
-        if (e.type === 'todo' && e.status !== 'done') taskRows.push(e);
+        if (e.type === 'todo' && e.status !== 'done') {
+          var owner = snap.nodeById[e.nodeId];
+          if (owner && owner.kind === 'circuit') taskRows.push(e); else objectTasks++;
+        }
         if (e.type !== 'visit' && 'carryKey' in e && hasVisitRef(e) && VISIT_RECORD_TYPES.indexOf(e.type) !== -1) carryRows.push(e);
         if (e.type === 'project' && e.status === 'active' && liveCircuit[e.circuitId]) projectRows.push(e);
         if (e.type === 'visit') visitRows.push(e);
@@ -2649,6 +2656,7 @@
       return {
         circuits: circuits,
         tasks: await revealList(sortTasks(taskRows)),
+        objectTasks: objectTasks,
         carry: await revealList(sortCarryItems(carryRows, snap.entryById)),
         projects: await revealList(sortProjects(projectRows)),
         visits: visitsOut,

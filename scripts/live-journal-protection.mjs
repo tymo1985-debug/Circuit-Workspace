@@ -87,6 +87,11 @@ async function gotoJournal(hash) {
     await ev((h) => { location.hash = h; }, hash || '#overview');
   }
   await settle();
+  // O4: текст задач по умолчанию скрыт — здесь проверяется J8, показать его.
+  if (await ev(() => { const b = document.querySelector('#route-tasks:not([hidden]) #tasksEye'); return !!b && b.getAttribute('aria-pressed') !== 'true'; })) {
+    await page.click('#tasksEye');
+    await settle();
+  }
 }
 async function submitPass(pass, confirm) {
   await page.fill('#protectPass', pass);

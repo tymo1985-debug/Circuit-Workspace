@@ -82,6 +82,10 @@ await pj.evaluate(() => { location.hash = '#districts'; });
 await settle(pj, 200);
 await pj.evaluate(() => { location.hash = '#tasks'; });
 await pj.waitForSelector('#tasksList .j-task');
+// O4: текст задач по умолчанию скрыт — показать.
+ok('O4: на «Задачах» текст по умолчанию скрыт', (await pj.$$('#tasksList .j-row__title--masked')).length === 3 && !(await pj.textContent('#tasksList')).includes('Самостоятельная'));
+await pj.click('#tasksEye');
+await settle(pj, 300);
 const row = pj.locator('#tasksList .j-task', { hasText: 'Самостоятельная задача' });
 await row.locator('.j-check__box').click();
 await settle(pj, 500);

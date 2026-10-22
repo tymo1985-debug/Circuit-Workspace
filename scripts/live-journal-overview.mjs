@@ -72,8 +72,9 @@ const ids = await pj.evaluate(async (SECRET) => {
   const v2 = await J.visits.add({ nodeId: n, dateFrom: '2028-03-13', dateTo: '2028-03-18' });
   const q = await J.visitRecords.add(v1, { type: 'question', body: 'Вернуться к вопросу о расписании встреч' });
   await J.carry.mark(q);
-  const t1 = await J.tasks.add({ nodeId: n, body: 'Подготовить письмо старейшинам', dueDate: '2028-04-01' });
-  const t2 = await J.tasks.add({ nodeId: n, body: SECRET });
+  const t1 = await J.tasks.add({ nodeId: c, body: 'Подготовить письмо старейшинам', dueDate: '2028-04-01' });
+  const t2 = await J.tasks.add({ nodeId: c, body: SECRET });
+  await J.tasks.add({ nodeId: n, body: 'Задача собрания — не для Обзора' });
   await J.protection.setup('correct horse battery', t2);
   J.protection.lock();
   const p = await J.projects.add({ circuitId: c, title: 'Проект районного служения' });
@@ -90,6 +91,12 @@ const ids = await pj.evaluate(async (SECRET) => {
 await pj.reload({ waitUntil: 'load' });
 await pj.waitForSelector('#overviewTasks .j-row');
 await settle(pj);
+/* O4: текст задач по умолчанию скрыт, задачи собрания — только число. */
+ok('O4: по умолчанию текст задач скрыт', !(await pj.textContent('#overviewTasks')).includes('Подготовить письмо') && (await pj.$$('#overviewTasks .j-row__title--masked')).length === 2);
+ok('O4: задачи собрания — только число, без текста', !(await pj.content()).includes('не для Обзора') && /1/.test(await pj.textContent('#overviewObjectTasks')));
+await pj.click('#overviewTasksEye');
+await settle(pj);
+ok('O4: «глаз» → текст виден', (await pj.textContent('#overviewTasks')).includes('Подготовить письмо'));
 const stats = (p) => p.$$eval('#overviewStats .j-ovstat__value', (xs) => xs.map((x) => x.textContent));
 
 /* ═══ A. Desktop ═════════════════════════════════════════════════════════ */
@@ -131,7 +138,7 @@ console.log('\nD. Живое обновление');
 const other = await ctx.newPage(); watch(other, 'tab2');
 await other.goto(J_URL + '#tasks', { waitUntil: 'load' });
 await other.waitForFunction(() => !!self.CWJournal);
-await other.evaluate(async (n) => { await CWJournal.tasks.add({ nodeId: n, body: 'Задача из соседней вкладки' }); }, ids.n);
+await other.evaluate(async (c) => { await CWJournal.tasks.add({ nodeId: c, body: 'Задача из соседней вкладки' }); }, ids.c);
 await settle(pj, 800);
 ok('задача из соседней вкладки → счётчик 3', (await pj.textContent('#overviewTasksCount')) === '3');
 await other.evaluate(async () => { await CWJournal.nodes.add({ kind: 'circuit', parentId: CWJournal.ROOT_PARENT, label: 'Район Третий' }); });
@@ -149,7 +156,7 @@ await pj.evaluate(() => {
 });
 const before = await pj.evaluate(() => document.querySelector('#overviewTasks').innerHTML + '|' + document.querySelector('#overviewTasksCount').textContent);
 await pj.evaluate(() => { self.__ovHold(); self.__pending = CWJournalApp.renderOverview(); });
-await pj.evaluate(async (n) => { await CWJournal.tasks.add({ nodeId: n, body: 'Задача во время ухода' }); }, ids.n);
+await pj.evaluate(async (c) => { await CWJournal.tasks.add({ nodeId: c, body: 'Задача во время ухода' }); }, ids.c);
 await pj.evaluate(() => { location.hash = '#tasks'; });
 await settle(pj, 300);
 await pj.evaluate(async () => { const g = self.__ovGate; self.__ovGate = null; g.r(); await self.__pending; });
@@ -207,13 +214,15 @@ await pm.evaluate(async () => {
   const c = await J.nodes.add({ kind: 'circuit', parentId: J.ROOT_PARENT, label: 'Район' });
   const n = await J.nodes.add({ kind: 'congregation', parentId: c, label: 'Собрание с длинным-длинным-длинным названием Приозёрно-Лесное-Заречное' });
   const v = await J.visits.add({ nodeId: n, dateFrom: '2028-03-13', dateTo: '2028-03-18' });
-  for (let i = 0; i < 4; i++) await J.tasks.add({ nodeId: n, body: 'Очень длинная задача номер ' + i + ' ' + 'словословословословословословословословословословослово'.repeat(2), dueDate: '2028-0' + (i + 1) + '-01' });
+  for (let i = 0; i < 4; i++) await J.tasks.add({ nodeId: c, body: 'Очень длинная задача номер ' + i + ' ' + 'словословословословословословословословословословослово'.repeat(2), dueDate: '2028-0' + (i + 1) + '-01' });
   const q = await J.visitRecords.add(v, { type: 'note', body: 'Длинный пункт переноса, который обязан переноситься по словам и не выходить за экран' });
   await J.carry.mark(q);
   await J.projects.add({ circuitId: c, title: 'Проект с длинным названием, который должен переноситься на мобильном' });
 });
 await pm.reload({ waitUntil: 'load' });
 await pm.waitForSelector('#overviewTasks .j-row');
+await settle(pm);
+await pm.click('#overviewTasksEye');
 await settle(pm);
 const geo = await pm.evaluate(() => {
   const vw = document.documentElement.clientWidth;

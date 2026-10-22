@@ -47,7 +47,8 @@ const NOT_PLAIN = {
   protectIco: 'значок', taskDialogTitle: 'заголовок диалога', noteDialogTitle: 'заголовок диалога',
   importBody: 'названия из календаря', linkDialogCandidates: 'карточки справочника',
   schedulePlannerPanel: 'расписание из Клиндария', nodeDialogTitle: 'заголовок диалога',
-  rosterStatus: 'состояние', rosterList: 'узлы', searchFilters: 'фильтр', searchStatus: 'число найденного', fabLabel: 'подпись кнопки',
+  rosterStatus: 'состояние', rosterList: 'узлы', searchFilters: 'фильтр', searchStatus: 'число найденного', tasksStatus: 'число найденного',
+  overviewObjectTasks: 'число задач объектов, без имён и текста (O4)', fabLabel: 'подпись кнопки',
 };
 const SERVICE = /(Count(_[a-z]+)?|Error|Lede)$/;
 

@@ -202,15 +202,17 @@ const vArch = await J.visits.add({ nodeId: cong, dateFrom: '2028-01-10', dateTo:
 const vInArchNode = await J.visits.add({ nodeId: congArch, dateFrom: '2028-02-01', dateTo: '2028-02-02' });
 const vInArchCircuit = await J.visits.add({ nodeId: congInArchCircuit, dateFrom: '2028-02-05', dateTo: '2028-02-06' });
 
-const tDueLate = await J.tasks.add({ nodeId: cong, body: 'Срок позже', dueDate: '2028-05-01' });
+const tDueLate = await J.tasks.add({ nodeId: c1, body: 'Срок позже', dueDate: '2028-05-01' });
 const tNoDue = await J.tasks.add({ nodeId: c1, body: 'Без срока' });
-const tDueEarly = await J.tasks.add({ nodeId: grp, body: 'Срок раньше', dueDate: '2028-04-01' });
-const tDone = await J.tasks.add({ nodeId: cong, body: 'Сделано' });
+const tDueEarly = await J.tasks.add({ nodeId: c2, body: 'Срок раньше', dueDate: '2028-04-01' });
+const tCong = await J.tasks.add({ nodeId: cong, body: 'Задача собрания' });
+const tGrp = await J.tasks.add({ nodeId: grp, body: 'Задача группы' });
+const tDone = await J.tasks.add({ nodeId: c1, body: 'Сделано' });
 await J.tasks.complete(tDone);
 const tArchNode = await J.tasks.add({ nodeId: congArch, body: 'Узел в архиве' });
 const tArchVisit = await J.visitRecords.add(vArch, { type: 'todo', body: 'Задача архивного посещения' });
 const tVisit = await J.visitRecords.add(vOld, { type: 'todo', body: 'Задача посещения' });
-const tProt = await J.tasks.add({ nodeId: cong, body: 'Секрет ' + CANARY, dueDate: '2028-06-01' });
+const tProt = await J.tasks.add({ nodeId: c1, body: 'Секрет ' + CANARY, dueDate: '2028-06-01' });
 
 const q1 = await J.visitRecords.add(vOld, { type: 'question', body: 'Вопрос из старого' });
 const q2 = await J.visitRecords.add(vNew, { type: 'note', body: 'Заметка из нового' });
@@ -242,7 +244,9 @@ const afterFirstDump = await dump();
 ok('[16] районы — из Журнала', ov.circuits.map((c) => c.id).join() === [c1, c2].join());
 ok('[17] архивный район исключён', !ov.circuits.some((c) => c.id === cArch));
 const taskIds = ov.tasks.map((r) => r.id);
-ok('[18] открытые задачи реальные', taskIds.includes(tDueLate) && taskIds.includes(tNoDue) && taskIds.includes(tDueEarly) && taskIds.includes(tVisit) && !taskIds.includes(tDone));
+ok('[18] открытые задачи района реальные', taskIds.includes(tDueLate) && taskIds.includes(tNoDue) && taskIds.includes(tDueEarly) && !taskIds.includes(tDone));
+ok('[O4] задач собраний, групп и посещений на Обзоре нет', !taskIds.includes(tCong) && !taskIds.includes(tGrp) && !taskIds.includes(tVisit));
+ok('[O4] их число — без текста (собрание, группа, посещение; архив и выполненные не считаются)', ov.objectTasks === 3 && !JSON.stringify(ov.objectTasks).includes('Задача'), ov.objectTasks);
 ok('[22] задачи архивного контекста исключены (узел, посещение)', !taskIds.includes(tArchNode) && !taskIds.includes(tArchVisit));
 const screenOrder = tasksScreen.filter((r) => taskIds.includes(r.id)).map((r) => r.id);
 ok('[19] порядок = порядок экрана «Задачи» (tasks.list)', JSON.stringify(taskIds) === JSON.stringify(screenOrder), taskIds.join() + ' / ' + screenOrder.join());
@@ -359,12 +363,15 @@ console.log('\n5. O2: экран Обзора');
   const v3 = await WJ.visits.add({ nodeId: gp, dateFrom: '2028-04-10', dateTo: '2028-04-11' });
   const v4 = await WJ.visits.add({ nodeId: cg, dateFrom: '2026-05-01', dateTo: '2026-05-02' });
   const taskIds = [];
-  for (let i = 1; i <= 5; i++) taskIds.push(await WJ.tasks.add({ nodeId: cg, body: 'Задача номер ' + i, dueDate: '2028-0' + i + '-10' }));
+  for (let i = 1; i <= 5; i++) taskIds.push(await WJ.tasks.add({ nodeId: cA, body: 'Задача номер ' + i, dueDate: '2028-0' + i + '-10' }));
+  // O4: задачи собрания и группы — не на Обзоре, только число.
+  await WJ.tasks.add({ nodeId: cg, body: 'Задача собрания ОБЪЕКТ' });
+  await WJ.tasks.add({ nodeId: gp, body: 'Задача группы ОБЪЕКТ' });
   const carryIds = [];
   for (let i = 1; i <= 4; i++) { const id = await WJ.visitRecords.add(v1, { type: 'question', body: 'Вопрос номер ' + i }); await WJ.carry.mark(id); carryIds.push(id); }
   const pr = await WJ.projects.add({ circuitId: cA, title: 'Проект Живой' });
   await WJ.nodes.archive(cX);
-  const tProt = await WJ.tasks.add({ nodeId: cg, body: TXT, dueDate: '2028-01-01' });
+  const tProt = await WJ.tasks.add({ nodeId: cA, body: TXT, dueDate: '2028-01-01' });
   await WJ.protection.setup('correct horse battery', tProt);
   const cProt = carryIds[0];
   await WJ.protection.protect(cProt);
@@ -403,6 +410,18 @@ console.log('\n5. O2: экран Обзора');
     && JSON.stringify([...doc.querySelectorAll('#overviewStats a.j-ovstat')].slice(1).map((a) => a.getAttribute('href'))) === '["#roster","#roster/groups","#roster/pregroups"]');
   ok('статистики — с доступным именем', [...doc.querySelectorAll('#overviewStats .j-ovstat')].every((a) => /: /.test(a.getAttribute('aria-label') || '')));
 
+  // O4: по умолчанию текст задач скрыт; задачи объектов — только число.
+  const eye = $('#overviewTasksEye');
+  const masked0 = rows('overviewTasks');
+  ok('[O4] по умолчанию скрыто: строки есть, текста нет', masked0.length === 3 && !/Задача номер/.test($('#overviewTasks').textContent)
+    && masked0.every((r) => r.querySelector('.j-row__title--masked')) && eye.getAttribute('aria-pressed') === 'false');
+  ok('[O4] скрытая строка ведёт на задачу и сохраняет срок', /^#tasks\//.test(masked0[0].getAttribute('href')) && /\d\d\.\d\d/.test(masked0[0].textContent));
+  ok('[O4] задач собраний и групп на Обзоре нет', !$('#overviewTasks').textContent.includes('ОБЪЕКТ') && !$('#overviewTasks').textContent.includes('Собрание Липовое'));
+  ok('[O4] сводка объектов — число без имён', !$('#overviewObjectTasks').hidden && /\b2\b/.test($('#overviewObjectTasks').textContent)
+    && !/Липовое|Ручей|ОБЪЕКТ/.test($('#overviewObjectTasks').textContent));
+  ok('[O4] у кнопки доступное имя', !!eye.getAttribute('aria-label') && eye.querySelector('svg'));
+  eye.click(); await settle();
+  ok('[O4] «глаз» → текст виден, состояние нажато', /Задача номер/.test($('#overviewTasks').textContent) && $('#overviewTasksEye').getAttribute('aria-pressed') === 'true');
   // Задачи
   const tr = rows('overviewTasks');
   const LOCKED = A.t('j.locked.title');
@@ -437,13 +456,29 @@ console.log('\n5. O2: экран Обзора');
   ok('[35] FAB Обзора скрыт', $('#fab').hidden === true);
   W.location.hash = '#tasks'; await settle();
   ok('[36] FAB задач прежний', $('#fab').hidden === false && $('#fabLabel').getAttribute('data-i18n') === 'j.fab.new_task');
+  // O4: «Задачи» — тот же режим скрытия и поиск в памяти.
+  ok('[O4] «Задачи»: режим тот же, что на Обзоре', $('#tasksEye').getAttribute('aria-pressed') === 'true' && $('#tasksList').textContent.includes('Задача номер 1'));
+  const tin = $('#tasksInput');
+  const hashBefore = W.location.hash;
+  tin.value = 'номер 2'; tin.dispatchEvent(new W.Event('input', { bubbles: true })); await settle();
+  ok('[O4] поиск по тексту: только совпадения, счётчик', rows('tasksList').length === 1 && $('#tasksList').textContent.includes('Задача номер 2') && $('#tasksStatus').textContent === '1 / 8', $('#tasksStatus').textContent);
+  tin.value = 'ручей'; tin.dispatchEvent(new W.Event('input', { bubbles: true })); await settle();
+  ok('[O4] поиск по месту (группа)', rows('tasksList').length === 1 && $('#tasksList').textContent.includes('ОБЪЕКТ'));
+  ok('[O4] запрос не в хэше и не в хранилищах', W.location.hash === hashBefore && !Object.keys(W.localStorage).some((k) => /ручей/i.test(W.localStorage.getItem(k) || '')) && !Object.keys(W.sessionStorage).some((k) => /ручей/i.test(W.sessionStorage.getItem(k) || '')));
+  tin.value = 'нет-такого'; tin.dispatchEvent(new W.Event('input', { bubbles: true })); await settle();
+  ok('[O4] пусто → «Ничего не найдено»', !rows('tasksList').length && $('#tasksList').textContent.includes(A.t('j.task.no_match')));
+  $('#tasksClear').click(); await settle();
+  ok('[O4] очистка → весь список', tin.value === '' && rows('tasksList').length === 8 && $('#tasksClear').hidden);
+  $('#tasksEye').click(); await settle();
+  ok('[O4] «глаз» на «Задачах» → текст скрыт', !$('#tasksList').textContent.includes('Задача номер') && rows('tasksList').every((r) => r.querySelector('.j-row__title--masked')));
+  $('#tasksEye').click(); await settle();
   W.location.hash = '#districts'; await settle();
   ok('[36] FAB районов прежний', $('#fab').hidden === false && $('#fabLabel').getAttribute('data-i18n') === 'j.fab.new_circuit');
   W.location.hash = '#overview'; await settle();
   ok('[35] снова Обзор — FAB скрыт', $('#fab').hidden === true);
 
   // Свежесть
-  await WJ.tasks.add({ nodeId: cg, body: 'Новая живая задача' });
+  await WJ.tasks.add({ nodeId: cA, body: 'Новая живая задача' });
   await settle();
   ok('[41] запись Журнала → Обзор обновился', $('#overviewTasksCount').textContent === '7');
   await WJ.nodes.add({ kind: 'circuit', parentId: WJ.ROOT_PARENT, label: 'Район Третий' });
@@ -471,7 +506,7 @@ console.log('\n5. O2: экран Обзора');
   gate = new Promise((r) => { release = r; });
   const before = $('#overviewTasks').innerHTML + '|' + $('#overviewTasksCount').textContent;
   const pending = A.renderOverview();
-  await WJ.tasks.add({ nodeId: cg, body: 'Задача после ухода' });
+  await WJ.tasks.add({ nodeId: cA, body: 'Задача после ухода' });
   W.location.hash = '#tasks'; await wait(40);
   gate = null; release(); await pending; await settle();
   ok('[45] уход с маршрута до конца чтения → старый результат не вставлен', $('#overviewTasks').innerHTML + '|' + $('#overviewTasksCount').textContent === before);
@@ -535,7 +570,8 @@ console.log('\n6. O2: статические границы');
   ok('[12] выдуманные задачи удалены', !/письмо о переносе встречи|встречи со старейшинами|адрес зала у секретаря/.test(html));
   ok('[13] выдуманные посещения удалены', !/Западное — весна 2028|Северное — осень 2027|6 записей|11 записей/.test(html));
   ok('[14] «Недавно изменённые» удалены', !/recent_edits|мысли по организации|вчера, 21:40|сегодня, 09:14/.test(html));
-  ok('[15] кнопок без действия в Обзоре нет', !/<button/.test(sec) && (sec.match(/j-sec__more/g) || []).length === 1 && /<a class="j-sec__more" href="#tasks"/.test(sec));
+  ok('[15] кнопок без действия в Обзоре нет (единственная — «глаз» O4)', (sec.match(/<button/g) || []).length === 1 && /<button[^>]*data-task-mask/.test(sec)
+    && (sec.match(/j-sec__more/g) || []).length === 1 && /<a class="j-sec__more" href="#tasks"/.test(sec));
   ok('в Обзоре нет строк-фикстур и стрелок', !/j-row"|<svg/.test(sec));
   ok('удалённые ключи нигде не используются', !/j\.link\.history|j\.section\.recent_edits|j\.fab\.new_entry/.test(html + read('journal/js/app.js') + read('journal/js/app/overview.js')));
   ok('новые ключи на пяти языках', ['j.overview.stat.congregations', 'j.overview.stat.groups', 'j.overview.stat.pregroups', 'j.overview.empty_carry', 'j.overview.empty_tasks', 'j.overview.empty_visits', 'j.overview.unavailable']

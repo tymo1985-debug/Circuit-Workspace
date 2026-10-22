@@ -676,3 +676,32 @@ span.j-planner__chip--broken { cursor: default; }
 /* Обзор узла (0.27.0) */
 .j-nov__quick { margin: 0 0 var(--cw-space-3, 12px); flex-wrap: wrap; }
 .j-nov__hint { margin: 0 0 var(--cw-space-3, 12px); }
+
+/* --- Обзор и «Задачи» (O4): скрытие текста задач, поиск ------------------- */
+.j-sec__eye { flex: 0 0 auto; width: 36px; height: 36px; margin: -6px 0; }
+.j-sec__eye[aria-pressed="true"] { color: var(--md-primary); }
+.j-tasks-bar { display: flex; align-items: center; gap: var(--cw-space-2); margin-bottom: var(--cw-space-4); }
+.j-tasks-bar .j-search { flex: 1 1 auto; }
+.j-tasks-bar .j-sec__eye { margin: 0; width: 40px; height: 40px; }
+.j-row__title--masked { color: var(--md-on-surface-variant); letter-spacing: 2px; }
+.j-sec__foot { font: 400 13px/20px var(--md-font-family); letter-spacing: 0.15px; color: var(--md-on-surface-variant); margin: var(--cw-space-3) 0 0; }
+@media (pointer: coarse) { .j-sec__eye { width: 44px; height: 44px; margin: -8px 0; } .j-tasks-bar .j-sec__eye { width: 44px; height: 44px; margin: 0; } }
+
+/* Чекбокс задачи на телефоне (22.10.2026): общий слой растягивает кнопки до
+   44×44 (цель касания) — без этого квадрат рисовался на всю кнопку. Цель
+   касания остаётся 44px, видимый квадрат — 20px по центру; отрицательные
+   поля возвращают строке прежнюю плотность. Только button: span-«квадраты»
+   выбора (j-pick__box) не растягиваются и остаются как были. */
+@media (pointer: coarse) {
+  button.j-check__box, button.j-check__box[aria-checked="true"] {
+    position: relative; border: 0; background: transparent; margin: -10px -12px -12px;
+  }
+  .j-task button.j-check__box { margin: -9px -12px -12px; }
+  .j-ptask button.j-check__box { margin: -12px; }
+  button.j-check__box::before {
+    content: ""; position: absolute; left: 12px; top: 12px; width: 20px; height: 20px; box-sizing: border-box;
+    border-radius: 4px; border: 2px solid var(--md-outline); background: transparent;
+  }
+  button.j-check__box[aria-checked="true"]::before { background: var(--md-primary); border-color: var(--md-primary); }
+  .j-ptask button.j-check__box[aria-checked="true"]::after { left: 19px; top: 14px; }
+}

@@ -25,6 +25,61 @@
   function textOr() { return A.textOr.apply(this, arguments); }
   function toggleProtection() { return A.toggleProtection.apply(this, arguments); }
   function todayIso() { return A.todayIso.apply(this, arguments); }
+  function uiLang() { return A.uiLang.apply(this, arguments); }
+  function renderOverview() { return A.renderOverview.apply(this, arguments); }
+
+  /* ═══ Скрытие текста задач (O4) ═══════════════════════════════════════
+   * От случайного взгляда на экран: на Обзоре и на экране «Задачи» вместо
+   * текста — точки, срок и место остаются. Состояние — только в памяти
+   * вкладки: каждый запуск и уход со страницы (pagehide) снова «скрыто».
+   * Ни localStorage, ни базы. Это не защита J8 — та шифрует при хранении. */
+  var tasksMasked = true;
+  var MASK = '••••••••••';
+  var EYE = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+  var EYE_OFF = '<path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17.6 17.6 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>';
+  function areTasksMasked() { return tasksMasked; }
+  function syncMaskButtons() {
+    $all('[data-task-mask]').forEach(function (b) {
+      var label = t('j.task.mask_toggle');
+      b.setAttribute('aria-pressed', tasksMasked ? 'false' : 'true');
+      b.setAttribute('aria-label', label);
+      b.title = label;
+      b.innerHTML = svg(tasksMasked ? EYE_OFF : EYE, 'width="20" height="20"');
+    });
+  }
+  /** Заголовок строки задачи в режиме «скрыто»: одинаковая длина, без текста. */
+  function maskedTitleHtml() {
+    return '<p class="j-row__title j-row__title--masked" aria-label="' + esc(t('j.task.masked')) + '">' + MASK + '</p>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-task-mask]') : null;
+    if (!b) return;
+    tasksMasked = !tasksMasked;
+    syncMaskButtons();
+    var route = parseHash().route;
+    if (route === 'overview') renderOverview();
+    else if (route === 'tasks') renderTasks();
+  });
+  window.addEventListener('pagehide', function () { tasksMasked = true; syncMaskButtons(); });
+
+  /* Поиск на экране «Задачи» (O4): в памяти, по требованию. Запрос — только
+     значение поля (#tasksInput): не пишется ни в хэш, ни в хранилища;
+     блокировка J8 очищает поле вместе с остальными. Текст защищённой задачи
+     в заблокированной сессии не ищется — только место (район › собрание). */
+  function normQuery(s) { return String(s == null ? '' : s).toLocaleLowerCase(uiLang()).replace(/\s+/g, ' ').trim(); }
+  function taskQuery() { var f = $('#tasksInput'); return f ? normQuery(f.value) : ''; }
+  document.addEventListener('input', function (e) {
+    if (!e.target || e.target.id !== 'tasksInput') return;
+    if (parseHash().route === 'tasks') renderTasks();
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('#tasksClear') : null;
+    if (!b) return;
+    var f = $('#tasksInput');
+    f.value = '';
+    f.focus();
+    renderTasks();
+  });
 
 
   /* ═══ Экран «Задачи» (J5) ═════════════════════════════════════════════
@@ -68,12 +123,31 @@
     nodes.forEach(function (n) { byId[n.id] = n; });
     var open = all.filter(function (r) { return r.status !== 'done'; });
     var done = all.filter(function (r) { return r.status === 'done'; });
+    var tabList = taskTab === 'done' ? done : open;
+    var q = focusTask ? '' : taskQuery();
+    if (focusTask && $('#tasksInput')) $('#tasksInput').value = '';
+    var list = tabList;
+    if (q) {
+      list = [];
+      for (var i = 0; i < tabList.length; i++) {
+        var r = tabList[i];
+        var place = byId[r.nodeId] ? await nodePath(byId, byId[r.nodeId]) : '';
+        var text = isLockedRow(r) ? '' : (r.body || '');
+        if (normQuery(text + ' ' + place).indexOf(q) !== -1) list.push(r);
+      }
+    }
+    if (mine !== tasksRenderSeq) return;
     $('#tasksLede').textContent = t('j.visit.summary_tasks_counts').replace('%d', String(open.length)).replace('%d', String(done.length));
     $all('#route-tasks [data-task-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-task-tab') === taskTab); });
-    var list = taskTab === 'done' ? done : open;
+    $('#tasksClear').hidden = !$('#tasksInput').value;
+    $('#tasksStatus').textContent = q ? list.length + ' / ' + tabList.length : '';
+    syncMaskButtons();
     var box = $('#tasksList');
-    if (mine !== tasksRenderSeq) return;
     box.innerHTML = '';
+    if (q && !list.length) {
+      box.innerHTML = '<p class="j-sec__hint">' + esc(t('j.task.no_match')) + '</p>';
+      return;
+    }
     if (!list.length) {
       box.innerHTML = '<div class="md-emptystate"><div class="md-emptystate__icon" aria-hidden="true">' +
         svg('<path d="m3 8 3 3 5-5"/><path d="m3 17 3 3 5-5"/><path d="M14 8h7M14 18h7"/>', 'width="32" height="32"') + '</div>' +
@@ -81,7 +155,7 @@
         '<p class="md-emptystate__text">' + esc(t('j.task.empty_text')) + '</p></div>';
       return;
     }
-    var built = await buildTaskRows(list, byId, focusTask, renderTasks);
+    var built = await buildTaskRows(list, byId, focusTask, renderTasks, tasksMasked);
     var frag = built.frag;
     focusRow = built.focusRow;
     if (mine !== tasksRenderSeq) return;
@@ -95,8 +169,11 @@
   }
 
   /** Строки задач (общие для экрана «Задачи» и вкладки «Задачи» района).
-   *  rerender — перерисовка вызывающего экрана после операции. */
-  async function buildTaskRows(list, byId, focusTask, rerender) {
+   *  rerender — перерисовка вызывающего экрана после операции; masked —
+   *  режим «скрыто» (O4, только экран «Задачи»: карточки объектов — рабочее
+   *  место, там текст виден). Задача из явной ссылки #tasks/<id> видна и
+   *  в режиме «скрыто» — её открыли намеренно. */
+  async function buildTaskRows(list, byId, focusTask, rerender, masked) {
     var focusRow = null;
     var today = todayIso();
     var frag = document.createDocumentFragment();
@@ -116,7 +193,7 @@
       row.innerHTML =
         '<button type="button" class="j-check__box" role="checkbox" aria-checked="' + isDone + '" aria-label="' + esc(t('j.record.todo_toggle')) + '"' + (mutable ? '' : ' disabled') + '></button>' +
         '<div class="j-task__main" role="button" tabindex="' + (mutable ? '0' : '-1') + '" aria-disabled="' + !mutable + '">' +
-        '<p class="j-row__title' + (isLockedRow(r) ? ' u-muted' : '') + '">' + esc(textOr(r, 'body')) + lockMark(r) + '</p>' +
+        (masked && !(focusTask && r.id === focusTask.id) ? maskedTitleHtml() : '<p class="j-row__title' + (isLockedRow(r) ? ' u-muted' : '') + '">' + esc(textOr(r, 'body')) + lockMark(r) + '</p>') +
         '<p class="j-row__meta">' + due + esc(ctx) + (mutable ? '' : '<span class="j-dot">·</span>' + esc(t('j.task.readonly'))) + '</p></div>';
       (function (r, isDone, mutable) {
         row.querySelector('.j-check__box').addEventListener('click', function () {
@@ -340,9 +417,12 @@
   }
 
   /* Публикация для других файлов Журнала. */
+  A.areTasksMasked = areTasksMasked;
+  A.maskedTitleHtml = maskedTitleHtml;
   A.openTaskDialog = openTaskDialog;
   A.renderCongregationTasks = renderCongregationTasks;
   A.renderDistrictTasks = renderDistrictTasks;
   A.renderTasks = renderTasks;
   A.setTaskTab = setTaskTab;
+  A.syncMaskButtons = syncMaskButtons;
 })();
