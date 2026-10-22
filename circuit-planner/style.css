@@ -340,18 +340,17 @@
   
   @media (max-width:1280px){.calendar-layout{grid-template-columns:1fr}}
   .day-cell.holiday .day-num{color:var(--md-error);font-weight:800}
-  .settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-  .md-chip.settings-tab{opacity:.65}
-  .settings-tab.active{opacity:1;background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
-  .settings-panel{display:grid;gap:16px}
-  .settings-data-grid{grid-template-columns:repeat(2,1fr)}
-  /* На узком экране (реестр контрольных точек, «phone») «Экспорт и печать» /
-     «Синхронизация» ломались на две узкие колонки с переносами текста и
-     кнопок. DOM-порядок уже даёт нужную последовательность (Экспорт и
-     печать → Синхронизация), поэтому reflow достаточно свести к 1 колонке. */
-  @media (max-width:600px){.settings-data-grid{grid-template-columns:1fr !important}
-    .settings-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .settings-tabs .settings-tab:last-child{grid-column:1 / -1}}
+  /* Настройки — одна страница (22.10.2026, вариант B): группы идут подряд,
+     липкая полоса чипов прокручивает к группе и подсвечивает текущую. */
+  .settings-jump{position:sticky;top:var(--topbar-h, 88px);z-index:20;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:8px 0 10px;margin-bottom:8px;background:var(--md-background)}
+  .settings-jump::-webkit-scrollbar{display:none}
+  .settings-jump-chip{flex:0 0 auto;white-space:nowrap}
+  .settings-jump-chip.active{background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}
+  .settings-group{display:grid;gap:16px;scroll-margin-top:calc(var(--topbar-h, 88px) + 64px)}
+  .settings-group + .settings-group{margin-top:28px;padding-top:20px;border-top:1px solid var(--md-outline-variant)}
+  .settings-group-title{margin:0;font-size:18px}
+  .settings-toggles{display:flex;gap:12px;flex-wrap:wrap}
+  .settings-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .rte-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
   .md-btn.rte-btn{min-width:40px;padding:8px 12px;height:auto}
   .rte-btn.active{background:var(--md-primary);color:var(--md-on-primary);border-color:var(--md-primary)}

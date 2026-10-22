@@ -2125,11 +2125,12 @@
         if (App.els.toggleTeamPanelBtn) App.els.toggleTeamPanelBtn.textContent = App.state.calendarView === 'year' ? App.utils.t('calendar_view_month') : App.utils.t('calendar_view_year');
         if (App.els.todayMonthBtn) App.els.todayMonthBtn.textContent = App.utils.t('today');
         if (App.els.eventScheduleInput) App.els.eventScheduleInput.placeholder = App.utils.t('placeholder_schedule');
-        const headings = qa('#events h3, #settings h3');
-        if (headings[0]) { headings[0].textContent = ''; headings[0].hidden = true; headings[0].style.display = 'none'; }
-        if (headings[1]) headings[1].textContent = App.utils.t('event_editor');
-        if (headings[2]) headings[2].textContent = App.utils.t('look_and_feel');
-        if (headings[3]) headings[3].textContent = App.utils.t('data_management');
+        // Заголовки — по селектору, не по номеру: позиционная перезапись
+        // давала карточкам настроек чужие названия («Управление данными» над
+        // «Отправителем»). Заголовки настроек ведёт data-i18n.
+        const tplTitle = q('#events .event-templates-title');
+        if (tplTitle) { tplTitle.textContent = ''; tplTitle.hidden = true; tplTitle.style.display = 'none'; }
+        const editorTitle = q('#events h3[data-i18n="cp.event_editor"]'); if (editorTitle) editorTitle.textContent = App.utils.t('event_editor');
         if (App.els.resetEventBtn) App.els.resetEventBtn.textContent = App.utils.t('clear');
         if (App.els.saveEventBtn) App.els.saveEventBtn.textContent = App.utils.t('save_event');
         if (App.els.settingsPdfBtn) App.els.settingsPdfBtn.textContent = App.utils.t('pdf_print');
@@ -2139,6 +2140,9 @@
         if (App.els.resetAppBtn) App.els.resetAppBtn.textContent = App.utils.t('reset_app');
         const settingsSmall = qa('#settings .small');
         settingsSmall.forEach((el) => {
+          // Подписи с data-i18n переводит словарь; угадывание по тексту
+          // затирало их («Адрес (в шапке письма)» → «Адрес»).
+          if (el.hasAttribute('data-i18n')) return;
           const text = el.textContent.trim();
           if (text.includes('Добавить служебный год') || text.includes('Add service year') || text.includes('Додати службовий рік') || text.includes('Dodaj rok służbowy')) el.textContent = App.utils.t('add_service_year');
           if (text.includes('Язык') || text.includes('Language') || text.includes('Мова') || text.includes('Język')) el.textContent = App.utils.t('language');
@@ -2287,8 +2291,10 @@
         '#eventEditorModal input', '#eventEditorModal select', '#eventEditorModal textarea',
         '#calendarEditor input', '#calendarEditor select', '#calendarEditor textarea',
         '#visitFormModal input', '#visitFormModal select', '#visitFormModal textarea',
-        '#settingsPanelData input', '#settingsPanelData select',
-        '#settingsPanelLetter input', '#settingsPanelLetter select', '#settingsPanelLetter textarea',
+        '#settingsGroupLetter input', '#settingsGroupLetter select', '#settingsGroupLetter textarea',
+        '#settingsGroupPlanning input', '#settingsGroupPlanning select',
+        '#settingsGroupYear input', '#settingsGroupYear select',
+        '#settingsGroupData input', '#settingsGroupData select',
         '#senderNameInput', '#senderAddressInput', '#senderPhoneInput', '#senderEmailInput',
         '#homeAddressInput', '#owaUrlInput',
         '#holidaysToggle', '#autoShowRemindersToggle',
@@ -4546,11 +4552,36 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.eventDeleteCloseBtn?.addEventListener('click', () => App.ui.closeEventDeleteModal());
       App.els.remindersModalCloseBtn?.addEventListener('click', () => App.ui.closeRemindersModal());
       App.els.remindersModalOkBtn?.addEventListener('click', () => App.ui.closeRemindersModal());
-      document.querySelectorAll('.settings-tab').forEach((btn) => btn.addEventListener('click', () => {
-        document.querySelectorAll('.settings-tab').forEach((b) => b.classList.toggle('active', b === btn));
-        const panels = { appearance: 'settingsPanelAppearance', letter: 'settingsPanelLetter', data: 'settingsPanelData' };
-        Object.entries(panels).forEach(([key, id]) => { const el = document.getElementById(id); if (el) el.hidden = btn.dataset.settingsTab !== key; });
-      }));
+      // Настройки — одна страница: чип прокручивает к группе, при прокрутке
+      // подсвечивается группа у верхнего края. Без location.hash — хэш занят
+      // маршрутами (#archive-restore=).
+      {
+        const chips = Array.from(document.querySelectorAll('[data-settings-jump]'));
+        const markChip = (id) => chips.forEach((c) => {
+          const on = c.dataset.settingsJump === id;
+          c.classList.toggle('active', on);
+          if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current');
+        });
+        chips.forEach((c) => c.addEventListener('click', () => {
+          const target = document.getElementById(c.dataset.settingsJump);
+          if (!target) return;
+          markChip(target.id);
+          const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          // Полосу чипов двигаем вручную: второй scrollIntoView прерывает
+          // плавную прокрутку страницы.
+          const strip = c.parentElement;
+          if (strip) strip.scrollLeft = Math.max(0, c.offsetLeft - (strip.clientWidth - c.offsetWidth) / 2);
+        }));
+        const groups = chips.map((c) => document.getElementById(c.dataset.settingsJump)).filter(Boolean);
+        if (groups.length && 'IntersectionObserver' in window) {
+          const io = new IntersectionObserver((entries) => {
+            const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+            if (vis[0]) markChip(vis[0].target.id);
+          }, { rootMargin: '-30% 0px -60% 0px' });
+          groups.forEach((g) => io.observe(g));
+        }
+      }
       App.els.statsBtn?.addEventListener('click', () => App.ui.openStatsModal());
       App.els.statsModalCloseBtn?.addEventListener('click', () => App.ui.closeModal(App.els.statsModal));
       App.els.statsModalOkBtn?.addEventListener('click', () => App.ui.closeModal(App.els.statsModal));
