@@ -101,10 +101,10 @@ ok('add для вложенной группы → journal-node-not-found', (awa
 ok('list для вложенной группы пуст', (await J.congregationNotes.list(kid)).length === 0);
 
 console.log('\nЭкран и ключи i18n');
-const districts = read('journal/js/app/districts.js');
-ok('действие to-standalone в меню строки и страницы', (districts.match(/data-action="to-standalone"/g) || []).length === 3 && districts.includes("action === 'to-standalone'"));
+// С 0.30.0 экран зовёт общий диалог «Изменить вид и место» (nodes.relocate,
+// scripts/check-journal-relocate.mjs); convertToStandalone остаётся API.
 const dict = read('journal/i18n/dict.js');
-for (const key of ['j.action.to_standalone', 'j.confirm.to_standalone', 'j.error.convert_children', 'j.error.convert_card_taken', 'j.error.convert_kind', 'j.card.group_entries_title']) {
+for (const key of ['j.error.convert_card_taken', 'j.error.convert_kind', 'j.card.group_entries_title']) {
   ok(key + ' — во всех пяти языках', (dict.match(new RegExp("'" + key.replace(/\./g, '\\.') + "'", 'g')) || []).length === 5);
 }
 

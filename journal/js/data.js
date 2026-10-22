@@ -489,6 +489,117 @@
     });
   }
   nodes.convertToStandalone = convertToStandalone;
+
+  /* ─── Вид и место узла (0.30.0, решение Алекса 22.10.2026) ────────────────
+   * Исправление ошибочно заведённого узла в обе стороны: собрание ↔ группа ↔
+   * предгруппа, самостоятельная ↔ при собрании. Только в пределах своего
+   * района: circuitId не меняется, поэтому посещения, их записи, задачи,
+   * перенос, заметки, связи и communityId остаются как есть — на узел они
+   * ссылаются по id. kind/parentId через nodes.update по-прежнему не меняются
+   * (J3a): это отдельный явный путь, как convertToStandalone.
+   *   inspectRelocate(id, target) — только чтение: что останется, что мешает;
+   *   relocate(id, target, { expect }) — пакет CWDB.batch под замком
+   *     cw-journal-community (тот же, что у communityId).
+   * target = { kind, parentId }: собрание — parentId = район; группа и
+   * предгруппа — район (самостоятельная) или собрание того же района.
+   * Отказ: вид не congregation|group|pregroup (journal-node-relocate-kind);
+   * ничего не меняется (journal-node-relocate-same); место чужого района,
+   * архивное, сам узел или не тот вид родителя (journal-node-relocate-parent);
+   * узел в архивном контексте (journal-node-archived); у узла есть дети, а он
+   * перестаёт быть собранием (journal-node-has-children); у узла есть записи
+   * собрания, а он становится вложенной группой — у неё записей нет, они бы
+   * пропали из виду (journal-node-has-notes); карточка справочника занята
+   * другой группой/предгруппой (journal-node-community-taken, правило R2).
+   * `expect` — подпись проверки, которую человек видел: состав изменился —
+   * journal-node-changed. */
+  var RELOCATE_KINDS = ['congregation', 'group', 'pregroup'];
+  async function inspectRelocate(id, target) {
+    target = target || {};
+    var node = await nodesBase.get(id);
+    if (!node) throw new Error('journal-node-not-found');
+    var kind = target.kind, parentId = target.parentId;
+    var blockers = [];
+    function block(code) { if (blockers.indexOf(code) < 0) blockers.push(code); }
+    if (RELOCATE_KINDS.indexOf(node.kind) < 0 || RELOCATE_KINDS.indexOf(kind) < 0) block('journal-node-relocate-kind');
+    else if (kind === node.kind && parentId === node.parentId) block('journal-node-relocate-same');
+    var parent = typeof parentId === 'string' && parentId ? await nodesBase.get(parentId) : null;
+    var nested = false;
+    if (!parent || parent.id === node.id || parent.circuitId !== node.circuitId || parent.status === 'archived') {
+      block('journal-node-relocate-parent');
+    } else if (kind === 'congregation') {
+      if (parent.kind !== 'circuit') block('journal-node-relocate-parent');
+    } else if (parent.kind === 'congregation') {
+      nested = true;
+    } else if (parent.kind !== 'circuit') {
+      block('journal-node-relocate-parent');
+    }
+    // Архивный контекст: сам узел, нынешний родитель-собрание, район.
+    var circuit = node.circuitId ? await nodesBase.get(node.circuitId) : null;
+    var current = node.parentId && node.parentId !== node.circuitId ? await nodesBase.get(node.parentId) : null;
+    if (node.status === 'archived' || !circuit || circuit.status === 'archived' || (current && current.status === 'archived')) {
+      block('journal-node-archived');
+    }
+    var children = await nodesBase.by('parentId', id);
+    if (children.length && kind !== 'congregation') block('journal-node-has-children');
+    var entryRows = await entriesBase.by('nodeId', id);
+    var counts = { visits: 0, records: 0, tasks: 0, notes: 0, carry: 0, links: 0, children: children.length, protectedCount: 0 };
+    entryRows.forEach(function (e) {
+      if (e.type === 'visit') counts.visits++;
+      else if (hasVisitRef(e)) counts.records++;
+      else if (e.type === 'todo') counts.tasks++;
+      else if (isNodeNoteRow(e) && e.nodeId !== e.circuitId) counts.notes++;
+      if (e.type !== 'visit' && 'carryKey' in e && hasVisitRef(e)) counts.carry++;
+      if (e.sec) counts.protectedCount++;
+    });
+    if (nested && counts.notes) block('journal-node-has-notes');
+    var community = 'none';
+    if (hasCommunity(node)) {
+      community = 'free';
+      if (UNIQUE_COMMUNITY_KINDS.indexOf(kind) >= 0) {
+        var taken = (await nodesBase.getAll()).some(function (n) {
+          return n.id !== id && n.communityId === node.communityId && UNIQUE_COMMUNITY_KINDS.indexOf(n.kind) >= 0;
+        });
+        if (taken) { community = 'taken'; block('journal-node-community-taken'); }
+      }
+    }
+    var byId = {};
+    var ref = 'journal:node/' + id;
+    (await db().journalLinks.byIndex('from', ref)).concat(await db().journalLinks.byIndex('to', ref)).forEach(function (l) { byId[l.id] = l; });
+    var linkRows = Object.keys(byId).sort().map(function (k) { return byId[k]; });
+    counts.links = linkRows.length;
+    var signature = [id + '@' + (node.updatedAt || ''), (parent ? parent.id + '@' + (parent.updatedAt || '') : '-'),
+      'c' + children.length, 'e' + entryRows.length, kind + '>' + parentId].join('|');
+    return { node: node, parent: parent, target: { kind: kind, parentId: parentId }, nested: nested, counts: counts,
+      community: community, blockers: blockers, signature: signature, entries: entryRows, links: linkRows };
+  }
+  async function relocateNode(id, target, opts) {
+    opts = opts || {};
+    return withCommunityLock(async function () {
+      var plan = await inspectRelocate(id, target);
+      if (plan.blockers.length) throw new Error(plan.blockers[0]);
+      if (opts.expect !== undefined && opts.expect !== plan.signature) throw new Error('journal-node-changed');
+      var node = plan.node;
+      var next = Object.assign({}, node, { kind: plan.target.kind, parentId: plan.target.parentId, updatedAt: now() });
+      if (node.parentId !== plan.target.parentId) {
+        var siblings = await nodesBase.by('parentId', plan.target.parentId);
+        next.sort = siblings.reduce(function (max, r) { return Math.max(max, typeof r.sort === 'number' ? r.sort : 0); }, -1) + 1;
+      }
+      var ops = [
+        { store: 'journalNodes', type: 'expect', key: id, match: node, exact: true },
+        { store: 'journalNodes', type: 'expect', key: plan.parent.id, match: plan.parent, exact: true },
+      ];
+      if (plan.target.kind !== 'congregation') ops.push({ store: 'journalNodes', type: 'expectNone', index: 'parentId', value: id });
+      ops.push({ store: 'journalNodes', type: 'put', value: next });
+      try { await db().batch(ops); }
+      catch (e) {
+        if (e && e.message === 'cwdb-batch-precondition') throw new Error('journal-node-changed');
+        throw e;
+      }
+      return next;
+    });
+  }
+  nodes.inspectRelocate = inspectRelocate;
+  nodes.relocate = relocateNode;
   nodes.inspectRemoval = planNodeRemoval;
   nodes.removeWithContents = removeNodeWithContents;
 

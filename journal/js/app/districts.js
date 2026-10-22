@@ -145,8 +145,8 @@
       items += '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>'
         + '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>';
     }
-    if (kind === 'congregation') {
-      items += '<button type="button" class="md-menu__item" role="menuitem" data-action="to-standalone">' + esc(t('j.action.to_standalone')) + '</button>';
+    if (kind === 'congregation' || kind === 'group' || kind === 'pregroup') {
+      items += '<button type="button" class="md-menu__item" role="menuitem" data-action="relocate">' + esc(t('j.action.relocate')) + '</button>';
     }
     if (kind === 'group' || kind === 'pregroup') {
       items += '<button type="button" class="md-menu__item" role="menuitem" data-action="link-directory">' + esc(t('j.identity.link_action')) + '</button>';
@@ -175,19 +175,134 @@
     });
   }
 
-  /* ═══ Собрание → самостоятельная группа (0.26.0) ═══════════════════════
-   * Меняется только вид узла; посещения, записи, задачи и связи остаются.
-   * Обратного действия нет — об этом сказано в подтверждении. → true, если
-   * преобразован. */
-  async function convertNode(node) {
-    if (!confirm(t('j.confirm.to_standalone').replace('%s', nodeName(node)))) return false;
+  /* ═══ Вид и место узла (0.30.0, решение Алекса 22.10.2026) ════════════
+   * Один диалог вместо «Преобразовать в самостоятельную группу»: собрание ↔
+   * группа ↔ предгруппа, самостоятельная ↔ при собрании (того же района).
+   * Каждое изменение выбора — CWJournal.nodes.inspectRelocate (только
+   * чтение): что останется, что мешает. «Скачать копию и изменить» — сначала
+   * файл JSON (сырые строки узла, как перед удалением), потом
+   * nodes.relocate с подписью проверки (expect). Обратно — тем же пунктом. */
+  var RELOCATE_OPTIONS = [
+    { key: 'congregation', kind: 'congregation', nested: false },
+    { key: 'group_alone', kind: 'group', nested: false },
+    { key: 'group_in', kind: 'group', nested: true },
+    { key: 'pregroup_alone', kind: 'pregroup', nested: false },
+    { key: 'pregroup_in', kind: 'pregroup', nested: true },
+  ];
+  /* Помехи — своими словами диалога (общий errorMessage говорит об удалении). */
+  var RELOCATE_MSG = {
+    'journal-node-has-children': 'j.error.relocate_children',
+    'journal-node-has-notes': 'j.error.has_notes',
+    'journal-node-relocate-parent': 'j.error.relocate_parent',
+    'journal-node-relocate-kind': 'j.error.relocate_parent',
+    'journal-node-relocate-same': 'j.error.relocate_same',
+    'journal-node-archived': 'j.error.relocate_archived',
+    'journal-node-community-taken': 'j.error.convert_card_taken',
+  };
+  var relocateUi = { node: null, plan: null, seq: 0, bound: false, busy: false };
+  function relocateCurrentKey(node) {
+    var nested = node.parentId !== node.circuitId;
+    return node.kind === 'congregation' ? 'congregation' : node.kind + (nested ? '_in' : '_alone');
+  }
+  function relocateTarget() {
+    var picked = document.querySelector('#relocateOptions input[name="relocateKind"]:checked');
+    if (!picked) return null;
+    var opt = RELOCATE_OPTIONS.filter(function (o) { return o.key === picked.value; })[0];
+    var node = relocateUi.node;
+    return { kind: opt.kind, parentId: opt.nested ? $('#relocateParent').value : node.circuitId, nested: opt.nested };
+  }
+  function relocateLine(ok, text) {
+    var p = el('p', 'j-relocate__line ' + (ok ? 'j-relocate__line--ok' : 'j-relocate__line--warn'));
+    p.innerHTML = svg(ok ? '<path d="m5 12 5 5L20 7"/>' : '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>', 'width="16" height="16"');
+    p.appendChild(document.createTextNode(text));
+    return p;
+  }
+  async function refreshRelocateCheck() {
+    var gen = ++relocateUi.seq;
+    var target = relocateTarget();
+    var box = $('#relocateCheck');
+    var apply = $('#relocateApply');
+    $('#relocateParentField').hidden = !(target && target.nested);
+    relocateUi.plan = null;
+    apply.disabled = true;
+    if (!target) { box.replaceChildren(el('p', 'j-sec__hint', t('j.relocate.pick'))); return; }
+    if (target.nested && !target.parentId) { box.replaceChildren(el('p', 'j-sec__hint', t('j.relocate.no_parent'))); return; }
+    var plan;
+    try { plan = await CWJournal.nodes.inspectRelocate(relocateUi.node.id, target); }
+    catch (err) { if (gen === relocateUi.seq) box.replaceChildren(relocateLine(false, errorMessage(err))); return; }
+    if (gen !== relocateUi.seq) return;
+    var f = document.createDocumentFragment();
+    var c = plan.counts;
+    f.appendChild(relocateLine(true, t('j.relocate.keep_visits').replace('%d', String(c.visits))));
+    f.appendChild(relocateLine(true, t('j.relocate.keep_entries').replace('%d', String(c.records + c.tasks + c.notes))));
+    f.appendChild(relocateLine(true, t('j.relocate.keep_carry').replace('%d', String(c.carry))));
+    if (c.links) f.appendChild(relocateLine(true, t('j.relocate.keep_links').replace('%d', String(c.links))));
+    if (plan.community === 'free') f.appendChild(relocateLine(true, t('j.relocate.card_free')));
+    plan.blockers.forEach(function (code) { f.appendChild(relocateLine(false, t(RELOCATE_MSG[code] || '') || errorMessage(new Error(code)))); });
+    box.replaceChildren(f);
+    relocateUi.plan = plan.blockers.length ? null : plan;
+    apply.disabled = !relocateUi.plan;
+  }
+  function downloadRelocateCopy(plan) {
+    downloadNodeExport({ node: plan.node, entries: plan.entries, links: plan.links });
+  }
+  async function applyRelocate() {
+    var plan = relocateUi.plan;
+    if (!plan || relocateUi.busy) return;
+    relocateUi.busy = true;
+    var errEl = $('#relocateError');
+    errEl.hidden = true;
     try {
-      await CWJournal.nodes.convertToStandalone(node.id);
+      downloadRelocateCopy(plan);
+      await CWJournal.nodes.relocate(plan.node.id, plan.target, { expect: plan.signature });
     } catch (err) {
-      alert(err && err.message === 'journal-node-has-children' ? t('j.error.convert_children') : errorMessage(err));
-      return false;
+      relocateUi.busy = false;
+      errEl.textContent = errorMessage(err);
+      errEl.hidden = false;
+      refreshRelocateCheck();
+      return;
     }
-    return true;
+    relocateUi.busy = false;
+    $('#relocateDialog').close();
+    // Узел стал вложенной группой — своей страницы у него нет: открыть
+    // собрание-родителя. Иначе — перерисовать текущий экран.
+    var st = parseHash();
+    if (st.congregationId === plan.node.id && plan.nested) location.hash = CWJournalRoute.build.congregation(plan.node.circuitId, plan.target.parentId);
+    else refreshCurrentView();
+  }
+  async function openRelocateDialog(node) {
+    var dlg = $('#relocateDialog');
+    relocateUi.node = node;
+    relocateUi.plan = null;
+    relocateUi.busy = false;
+    $('#relocateError').hidden = true;
+    var current = relocateCurrentKey(node);
+    $('#relocateNode').textContent = nodeName(node) + ' · ' + t('j.relocate.current').replace('%s', t('j.relocate.opt.' + current));
+    var congs = (await CWJournal.nodes.byCircuit(node.circuitId)).filter(function (n) {
+      return n.kind === 'congregation' && n.status !== 'archived' && n.id !== node.id;
+    }).sort(function (a, b) { return nodeName(a).localeCompare(nodeName(b)); });
+    var sel = $('#relocateParent');
+    sel.innerHTML = congs.map(function (n) { return '<option value="' + esc(n.id) + '">' + esc(nodeName(n)) + '</option>'; }).join('');
+    // Вложенная сейчас — по умолчанию предложить другое собрание.
+    var otherCong = congs.filter(function (n) { return n.id !== node.parentId; })[0];
+    if (otherCong && node.parentId !== node.circuitId) sel.value = otherCong.id;
+    $('#relocateOptions').innerHTML = RELOCATE_OPTIONS.map(function (o) {
+      var isNow = o.key === current;
+      var off = o.nested && !congs.length;
+      return '<label class="md-radio j-relocate__opt' + (isNow ? ' j-relocate__opt--now' : '') + '">' +
+        '<input type="radio" name="relocateKind" value="' + o.key + '"' + (off ? ' disabled' : '') + '>' +
+        '<span class="j-relocate__label">' + esc(t('j.relocate.opt.' + o.key)) + '</span>' +
+        (isNow ? '<span class="j-relocate__now">' + esc(t('j.relocate.now')) + '</span>' : '') + '</label>';
+    }).join('');
+    if (!relocateUi.bound) {
+      relocateUi.bound = true;
+      $('#relocateOptions').addEventListener('change', refreshRelocateCheck);
+      sel.addEventListener('change', refreshRelocateCheck);
+      $('#relocateApply').addEventListener('click', applyRelocate);
+      $('#relocateCancel').addEventListener('click', function () { dlg.close(); });
+    }
+    await refreshRelocateCheck();
+    dlg.showModal();
   }
 
   /* ═══ Удаление узла (0.24.0) ═══════════════════════════════════════════
@@ -253,8 +368,8 @@
         refreshCurrentView();
         return;
       }
-      if (action === 'to-standalone') {
-        if (await convertNode(node)) refreshCurrentView();
+      if (action === 'relocate') {
+        await openRelocateDialog(node);
         return;
       }
       if (action === 'delete') {
@@ -709,7 +824,7 @@
       (isCongNode ? '<button type="button" class="md-menu__item" role="menuitem" data-action="add-group">' + esc(t('j.action.add_group')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="add-pregroup">' + esc(t('j.action.add_pregroup')) + '</button>' : '') +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="rename">' + esc(t('j.action.rename')) + '</button>' +
-      (isCongNode ? '<button type="button" class="md-menu__item" role="menuitem" data-action="to-standalone">' + esc(t('j.action.to_standalone')) + '</button>' : '') +
+      '<button type="button" class="md-menu__item" role="menuitem" data-action="relocate">' + esc(t('j.action.relocate')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="toggle-archive">' + esc(node.status === 'archived' ? t('j.action.unarchive') : t('j.action.archive')) + '</button>' +
       '<button type="button" class="md-menu__item" role="menuitem" data-action="delete">' + esc(t('j.action.delete')) + '</button>';
     var freshBtn = btn.cloneNode(true);
@@ -720,13 +835,11 @@
     // refreshCurrentView(), который теперь (см. п.3 прошлой правки)
     // корректно перерисовывает именно congregation-detail. Второй CRUD
     // здесь не заводится — только доступ к существующему.
+    panel.querySelector('[data-action="relocate"]').onclick = function () {
+      panel.hidden = true;
+      openRelocateDialog(node).catch(function (err) { alert(errorMessage(err)); });
+    };
     if (isCongNode) {
-      panel.querySelector('[data-action="to-standalone"]').onclick = function () {
-        panel.hidden = true;
-        convertNode(node).then(function (done) {
-          if (done) renderCongregationDetail(node.circuitId, node.id);
-        }).catch(function (err) { alert(errorMessage(err)); });
-      };
       panel.querySelector('[data-action="add-group"]').onclick = function () {
         panel.hidden = true;
         handleRowAction('add-group', node);
@@ -1383,4 +1496,5 @@
   A.noteScope = noteScope;
   A.openNoteDialog = openNoteDialog;
   A.runAction = runAction;
+  A.openRelocateDialog = openRelocateDialog;
 })();

@@ -922,6 +922,28 @@
         </form>
       </dialog>
 
+      <!-- Вид и место узла (0.30.0): выбор, проверка до изменения, копия. -->
+      <dialog id="relocateDialog" class="md-dialog j-relocate" aria-labelledby="relocateDialogTitle">
+        <form method="dialog" id="relocateDialogForm">
+          <div class="md-dialog-head"><h3 class="md-title-medium" id="relocateDialogTitle" data-i18n="j.relocate.title">Вид и место</h3></div>
+          <div class="md-dialog-body">
+            <p class="j-relocate__node" id="relocateNode"></p>
+            <div class="j-relocate__opts" id="relocateOptions" role="radiogroup" aria-labelledby="relocateDialogTitle"></div>
+            <div class="md-field md-field-select" id="relocateParentField" hidden>
+              <label for="relocateParent" data-i18n="j.relocate.pick_parent">Собрание</label>
+              <select id="relocateParent"></select>
+            </div>
+            <div class="j-relocate__check" id="relocateCheck" aria-live="polite"></div>
+            <p class="j-sec__hint" data-i18n="j.relocate.note">Перед изменением скачается копия (файл JSON). Вернуть можно тем же пунктом меню.</p>
+            <p class="j-dialog-error" id="relocateError" role="alert" hidden></p>
+          </div>
+          <div class="md-dialog-actions">
+            <button type="button" class="md-btn md-btn-text" id="relocateCancel" data-i18n="j.action.cancel">Отмена</button>
+            <button type="button" class="md-btn md-btn-filled" id="relocateApply" data-i18n="j.relocate.apply" disabled>Скачать копию и изменить</button>
+          </div>
+        </form>
+      </dialog>
+
       <!-- Диалог редактирования расписания (Journal-owned, не CWDirectory). -->
       <dialog id="scheduleDialog" class="md-dialog" aria-labelledby="scheduleDialogTitle">
         <form method="dialog" id="scheduleDialogForm">

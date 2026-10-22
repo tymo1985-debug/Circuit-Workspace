@@ -23,6 +23,8 @@
   function svg() { return A.svg.apply(this, arguments); }
   function t() { return A.t.apply(this, arguments); }
   function revealActiveTab() { return A.revealActiveTab.apply(this, arguments); }
+  function openRelocateDialog() { return A.openRelocateDialog.apply(this, arguments); }
+  function errorMessage() { return A.errorMessage.apply(this, arguments); }
 
   var TAB_KEY = { congregations: 'congregations', groups: 'groups', pregroups: 'pregroups' };
   var rosterRenderSeq = 0;
@@ -94,6 +96,26 @@
     return row;
   }
 
+  /** Строка-ссылка + рядом кнопка «Изменить вид и место» (0.30.0). Кнопка —
+   *  соседка ссылки, не внутри неё: интерактивное в <a> не вкладывается. */
+  function buildItem(data, item, multi) {
+    var wrap = el('div', 'j-roster__item');
+    wrap.appendChild(buildRow(data, item, multi));
+    if (item.node.status !== 'archived') {
+      var b = el('button', 'md-icon-btn j-roster__relocate');
+      b.type = 'button';
+      var label = t('j.action.relocate');
+      b.title = label;
+      b.setAttribute('aria-label', label + ' ' + nodeName(item.node));
+      b.innerHTML = svg('<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>', 'width="20" height="20"');
+      b.addEventListener('click', function () {
+        openRelocateDialog(item.node).catch(function (err) { alert(errorMessage(err)); });
+      });
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
   function setCounts(data) {
     Object.keys(TAB_KEY).forEach(function (k) {
       var n = $('#rosterCount_' + k);
@@ -128,7 +150,7 @@
       return;
     }
     var frag = document.createDocumentFragment();
-    list.forEach(function (it) { frag.appendChild(buildRow(data, it, multi)); });
+    list.forEach(function (it) { frag.appendChild(buildItem(data, it, multi)); });
     box.appendChild(frag);
     status.textContent = list.length + ' / ' + all.length;
   }

@@ -160,7 +160,7 @@ console.log('\n6. Собрание не пострадало');
 await pj.goto(J_URL + '#districts/' + encodeURIComponent(seed.c) + '/congregation/' + encodeURIComponent(seed.hh)); await pj.reload(); await settle(pj, 1000);
 ok('у собрания блоки на месте, вкладка «Записи» есть', await pj.locator('#congIdentityCard').isVisible() && await pj.locator('#congChildrenSec').isVisible() && await pj.locator('[data-cong-tab="entries"]').isVisible());
 
-console.log('\n7. «Преобразовать в самостоятельную группу» (0.26.0)');
+console.log('\n7. «Изменить вид и место»: собрание → самостоятельная группа (0.30.0)');
 const cv = await pj.evaluate(async (c) => {
   const id = await CWJournal.nodes.add({ kind: 'congregation', parentId: c, label: 'Group (Ukrainian) Test-Convert' });
   await CWJournal.congregationNotes.add(id, { type: 'note', body: 'Заметка до преобразования' });
@@ -170,11 +170,22 @@ const cv = await pj.evaluate(async (c) => {
 await pj.goto(J_URL + '#districts/' + encodeURIComponent(seed.c) + '/congregation/' + encodeURIComponent(cv)); await pj.reload(); await settle(pj, 1000);
 await pj.click('#moreBtn'); await settle(pj, 200);
 const menu7 = await pj.evaluate(() => [...document.querySelectorAll('#moreMenuPanel [data-action]')].map((b) => b.dataset.action));
-ok('в меню собрания есть «Преобразовать»', menu7.includes('to-standalone'), JSON.stringify(menu7));
-const nConf = confirms.length;
-await pj.locator('#moreMenuPanel [data-action="to-standalone"]').click();
+ok('в меню собрания есть «Изменить вид и место»', menu7.includes('relocate'), JSON.stringify(menu7));
+await pj.locator('#moreMenuPanel [data-action="relocate"]').click();
+await settle(pj, 600);
+ok('диалог открыт, отмечено «сейчас: собрание», кнопка ждёт выбора', await pj.evaluate(() => document.getElementById('relocateDialog').open
+  && document.querySelector('.j-relocate__opt--now input').value === 'congregation' && document.getElementById('relocateApply').disabled));
+await pj.check('#relocateOptions input[value="group_alone"]'); await settle(pj, 500);
+const check7 = await pj.textContent('#relocateCheck');
+ok('проверка: посещение и заметка останутся, помех нет', /: 1 /.test(check7) && !(await pj.$('#relocateCheck .j-relocate__line--warn')) && !(await pj.locator('#relocateApply').isDisabled()), check7);
+await pj.check('#relocateOptions input[value="group_in"]'); await settle(pj, 500);
+ok('во вложенную группу с заметками — помеха, кнопка недоступна', !!(await pj.$('#relocateCheck .j-relocate__line--warn')) && await pj.locator('#relocateApply').isDisabled());
+await pj.check('#relocateOptions input[value="group_alone"]'); await settle(pj, 500);
+const dl7 = pj.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+await pj.click('#relocateApply');
+const file7 = await dl7;
 await settle(pj, 1000);
-ok('подтверждение показано с названием узла', confirms.length === nConf + 1 && confirms[nConf].includes('Test-Convert'), confirms[nConf]);
+ok('копия скачана до изменения (файл JSON)', !!file7 && /\.json$/.test(file7.suggestedFilename()), file7 && file7.suggestedFilename());
 const cvNode = await pj.evaluate((id) => CWJournal.nodes.get(id), cv);
 ok('узел стал группой, остался под районом', cvNode.kind === 'group' && cvNode.parentId === seed.c);
 ok('страница перерисована как у группы: карточка собрания скрыта', await pj.locator('#congIdentityCard').isHidden());
@@ -184,7 +195,7 @@ ok('заметка, созданная до преобразования, вид
 await pj.locator('[data-cong-tab="visits"]').click(); await settle(pj, 600);
 ok('посещение сохранилось', (await pj.evaluate((id) => CWJournal.visits.byNode(id), cv)).length === 1);
 const menu7b = await pj.evaluate(() => { document.getElementById('moreBtn').click(); return [...document.querySelectorAll('#moreMenuPanel [data-action]')].map((b) => b.dataset.action); });
-ok('после преобразования пункта «Преобразовать» нет', !menu7b.includes('to-standalone'), JSON.stringify(menu7b));
+ok('пункт остаётся — изменение обратимо', menu7b.includes('relocate') && !menu7b.includes('to-standalone'), JSON.stringify(menu7b));
 await pj.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/sg-converted.png' });
 
 ok('в консоли нет ошибок', errors.length === 0, errors.join(' | '));
