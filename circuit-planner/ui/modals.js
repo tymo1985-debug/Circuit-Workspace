@@ -184,6 +184,7 @@
   }
   function checkSixtyDayNotifications() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = App.utils.letterReminderDays();
     const due = (App.state.app.entries || []).filter((entry) => {
       if (entry.notified60 || entry?.flags?.letter) return false;
       const event = App.data.getEventById(entry.eventId);
@@ -191,14 +192,14 @@
       const start = App.utils.parseLocalDate(entry.start);
       if (!start) return false;
       const daysUntil = Math.round((start - today) / 86400000);
-      return daysUntil >= 0 && daysUntil <= 60;
+      return daysUntil >= 0 && daysUntil <= days;
     });
     if (!due.length) return;
     if (due.length === 1) {
       const entry = due[0]; const event = App.data.getEventById(entry.eventId);
-      App.utils.toast(App.utils.t('reminder_60days', { title: entry.title || event?.name || '' }));
+      App.utils.toast(App.utils.t('reminder_60days', { title: entry.title || event?.name || '', days }));
     } else {
-      App.utils.toast(App.utils.tn('reminder_60days_many', due.length));
+      App.utils.toast(App.utils.tn('reminder_60days_many', due.length, { days }));
     }
     due.forEach((entry) => { entry.notified60 = true; });
     App.store.save();

@@ -93,7 +93,10 @@
            настроек отправителя (решение Алекса 21.10.2026): в коде имён больше нет.
            Пусто — нейтральные «Формуляр районного надзирателя» / «Формуляр жены». */
         const st = (typeof App !== 'undefined' && App.state && App.state.app && App.state.app.settings) || {};
-        const a = String(st.formNameOverseer || '').trim(), b = String(st.formNameWife || '').trim();
+        /* С 23.10.2026: пустое имя районного = имя отправителя (общий слой). */
+        let senderName = '';
+        try { senderName = (typeof App !== 'undefined' && App.shared && typeof App.shared.sender === 'function') ? String(App.shared.sender().name || '') : ''; } catch (e) { senderName = ''; }
+        const a = String(st.formNameOverseer || '').trim() || senderName.trim(), b = String(st.formNameWife || '').trim();
         const named = (n) => (this.dict.pdfPageForNamed || '{name}').replace('{name}', n);
         if (key === 'pdfPageForAlex') return a ? named(a) : this.dict.pdfPageOverseer;
         if (key === 'pdfPageForLydia') return b ? named(b) : this.dict.pdfPageWife;
@@ -215,7 +218,7 @@
       calendarEditingTarget: null,
       weekSearch: '',
       noteSearch: '',
-      exportType: 'json',
+      exportType: 'ics',
       pdfExportType: 'month-grid',
       teamPanelHidden: false,
       calendarView: 'month',
@@ -452,33 +455,80 @@
         const a = year % 19, b = Math.floor(year / 100), c = year % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31) - 1, day = ((h + l - 7 * m + 114) % 31) + 1;
         return new Date(year, month, day);
       },
-      holidaysForYear(year) {
-        const iso = (d) => this.iso(d);
+      /* Праздники (23.10.2026): таблица ключей вместо русских строк — название
+         переводится при показе, страны выбираются в настройках. Строка:
+         [месяц-день или сдвиг от Пасхи, ключ, страны, страны «частично»]. */
+      HOLIDAYS: [
+        ['01-01', 'new_year', ['CZ', 'AT', 'DE', 'PL']],
+        ['01-06', 'epiphany', ['AT', 'PL']],
+        [-2, 'good_friday', ['CZ', 'DE']],
+        [0, 'easter_sunday', ['PL']],
+        [1, 'easter_monday', ['CZ', 'AT', 'DE', 'PL']],
+        ['05-01', 'labour', ['CZ', 'AT', 'DE', 'PL']],
+        ['05-03', 'constitution_pl', ['PL']],
+        ['05-08', 'liberation_cz', ['CZ']],
+        [39, 'ascension', ['AT', 'DE']],
+        [49, 'pentecost', ['PL']],
+        [50, 'whit_monday', ['AT', 'DE']],
+        [60, 'corpus_christi', ['AT', 'DE', 'PL'], ['DE']],
+        ['07-05', 'cyril_methodius', ['CZ']],
+        ['07-06', 'jan_hus', ['CZ']],
+        ['08-15', 'assumption', ['AT', 'PL']],
+        ['09-28', 'statehood_cz', ['CZ']],
+        ['10-03', 'unity_de', ['DE']],
+        ['10-26', 'national_at', ['AT']],
+        ['10-28', 'independence_cz', ['CZ']],
+        ['11-01', 'all_saints', ['AT', 'PL']],
+        ['11-11', 'independence_pl', ['PL']],
+        ['11-17', 'freedom_cz', ['CZ']],
+        ['12-08', 'immaculate', ['AT']],
+        ['12-24', 'christmas_eve', ['CZ', 'DE', 'PL'], ['DE']],
+        ['12-25', 'christmas', ['CZ', 'AT', 'DE', 'PL']],
+        ['12-26', 'christmas2', ['CZ', 'AT', 'DE', 'PL']],
+      ],
+      HOLIDAY_COUNTRIES: ['CZ', 'AT', 'DE', 'PL'],
+      holidayCountries() {
+        const v = App.state.app?.settings?.holidayCountries;
+        return Array.isArray(v) ? v.filter((c) => this.HOLIDAY_COUNTRIES.includes(c)) : ['CZ', 'AT', 'DE'];
+      },
+      holidaysForYear(year, countries) {
         const easter = this.easterDate(year);
-        const off = (days) => { const d = new Date(easter); d.setDate(d.getDate() + days); return d; };
         const map = {};
-        const add = (dateIso, name) => { (map[dateIso] = map[dateIso] || []).push(name); };
-        add(`${year}-01-01`, 'Новый год (CZ/AT/DE)');
-        add(`${year}-05-01`, 'День труда (CZ/AT/DE)');
-        add(`${year}-12-24`, 'Сочельник (CZ/DE частично)');
-        add(`${year}-12-25`, 'Рождество (CZ/AT/DE)');
-        add(`${year}-12-26`, '2-й день Рождества (CZ/AT/DE)');
-        add(`${year}-05-08`, 'День победы (CZ)'); add(`${year}-07-05`, 'Кирилл и Мефодий (CZ)'); add(`${year}-07-06`, 'Ян Гус (CZ)'); add(`${year}-09-28`, 'День государственности (CZ)'); add(`${year}-10-28`, 'День независимости (CZ)'); add(`${year}-11-17`, 'День свободы (CZ)');
-        add(`${year}-01-06`, 'Богоявление (AT)'); add(`${year}-08-15`, 'Успение (AT)'); add(`${year}-10-26`, 'Нацпраздник (AT)'); add(`${year}-11-01`, 'Все святые (AT)'); add(`${year}-12-08`, 'Непорочное зачатие (AT)');
-        add(`${year}-10-03`, 'День единства (DE)');
-        add(iso(off(-2)), 'Страстная пятница (CZ/DE)');
-        add(iso(off(1)), 'Пасхальный понедельник (CZ/AT/DE)');
-        add(iso(off(39)), 'Вознесение (AT/DE)');
-        add(iso(off(50)), 'Духов понедельник (AT/DE)');
-        add(iso(off(60)), 'Тело Христово (AT/DE частично)');
+        this.HOLIDAYS.forEach(([when, key, cs, partial = []]) => {
+          const hit = cs.filter((c) => countries.includes(c));
+          if (!hit.length) return;
+          let dateIso;
+          if (typeof when === 'number') { const d = new Date(easter); d.setDate(d.getDate() + when); dateIso = this.iso(d); }
+          else dateIso = `${year}-${when}`;
+          (map[dateIso] = map[dateIso] || []).push({ key, cs: hit, partial: partial.filter((c) => hit.includes(c)) });
+        });
         return map;
       },
       holidaysCache: {},
       getHolidayNames(dateIso) {
         if (!App.state.app?.settings?.showHolidays) return null;
+        const countries = this.holidayCountries();
+        if (!countries.length) return null;
         const year = Number(String(dateIso).slice(0, 4));
-        if (!this.holidaysCache[year]) this.holidaysCache[year] = this.holidaysForYear(year);
-        return this.holidaysCache[year][dateIso] || null;
+        const cacheKey = `${year}|${countries.join(',')}`;
+        if (!this.holidaysCache[cacheKey]) this.holidaysCache[cacheKey] = this.holidaysForYear(year, countries);
+        const list = this.holidaysCache[cacheKey][dateIso];
+        if (!list) return null;
+        const part = this.t('hol_partial');
+        return list.map((h) => `${this.t('hol_' + h.key)} (${h.cs.map((c) => (h.partial.includes(c) ? `${c} ${part}` : c)).join('/')})`);
+      },
+      /** Срок напоминания о письме, дней (настройка с 23.10.2026; было жёстко 60). */
+      letterReminderDays() {
+        const v = Number(App.state.app?.settings?.letterReminderDays);
+        return [30, 45, 60, 90].includes(v) ? v : 60;
+      },
+      /** Следующий служебный год, который пора добавить: июнь–август (конец
+       *  текущего года), если его ещё нет. С сентября он уже текущий. */
+      nextServiceYearDue() {
+        const now = new Date();
+        if (now.getMonth() < 5 || now.getMonth() > 7) return 0;
+        const next = this.getServiceYearForDate(now) + 1;
+        return App.state.app?.serviceYears?.[next] ? 0 : next;
       },
       serviceYearLabel(year) { return window.CWServiceYear ? window.CWServiceYear.label(year) : `${year}/${year + 1}`; },
       pdfFilenameSuffix(entry, event) {
@@ -1256,7 +1306,7 @@
           const daysUntil = Math.round((start - today) / 86400000);
           if (daysUntil < -3) return; // visit already passed a few days ago — stop nagging
           const needsS302 = !entry?.flags?.f302;
-          const needsLetter = !entry?.flags?.letter && daysUntil <= 60;
+          const needsLetter = !entry?.flags?.letter && daysUntil <= App.utils.letterReminderDays();
           if (!needsS302 && !needsLetter) return;
           items.push({ id: entry.id, title: entry.title || event?.name || App.utils.t('event'), start: entry.start, end: entry.end, daysUntil, needsS302, needsLetter, visitType });
         });
@@ -1640,59 +1690,6 @@
         App.store.save();
         App.ui.renderCalendar();
       },
-      exportSyncFile() {
-        const now = new Date().toISOString();
-        App.state.app.meta = App.state.app.meta || {};
-        App.state.app.meta.lastSyncExportAt = now;
-        App.state.app.meta.version = App.config.version;
-        App.store.save();
-        const payload = {
-          schema: 'service-year-planner-sync-v1',
-          exportedAt: now,
-          appVersion: `v${App.config.version}`,
-          source: 'manual-file-sync',
-          payload: App.state.app
-        };
-        App.utils.downloadText(`service-year-planner-sync-${App.utils.iso(new Date())}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
-        App.ui.renderSettings();
-        App.utils.toast(App.utils.t('sync_export_done'));
-      },
-      importSyncFile(file) {
-        if (!file) return App.utils.toast(App.utils.t('sync_no_file'));
-        if (!window.confirm(App.utils.t('sync_import_confirm'))) { if (App.els.syncImportInput) App.els.syncImportInput.value = ''; return; }
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const parsed = JSON.parse(String(reader.result || '{}'));
-            const rawPayload = parsed?.payload || parsed?.app || parsed;
-            App.state.app = App.store.migrate(rawPayload);
-            App.state.app.meta = App.state.app.meta || {};
-            App.state.app.meta.lastSyncImportAt = new Date().toISOString();
-            App.state.app.meta.lastSyncSourceExportedAt = parsed?.exportedAt || '';
-            App.state.app.meta.version = App.config.version;
-            App.store.save();
-            const years = Object.keys(App.state.app.serviceYears || {}).map(Number).sort((a,b) => a - b);
-            const currentSY = App.utils.getServiceYearForDate(new Date());
-            const preferredSY = years.includes(currentSY) ? currentSY : (years.length ? years[years.length - 1] : currentSY);
-            App.state.selectedYear = preferredSY;
-            App.data.ensureServiceYear(preferredSY);
-            App.data.getWeeksForYear(preferredSY);
-            const bounds = App.utils.serviceYearBounds(preferredSY);
-            const now = new Date();
-            const showDate = (now >= bounds.start && now <= bounds.end) ? now : bounds.start;
-            App.state.calendarYear = showDate.getFullYear();
-            App.state.calendarMonth = showDate.getMonth();
-            App.ui.renderAll();
-            App.utils.toast(App.utils.t('sync_import_done'));
-          } catch (error) {
-            console.error(error);
-            App.utils.toast(App.utils.t('sync_import_failed'));
-          }
-          if (App.els.syncImportInput) App.els.syncImportInput.value = '';
-        };
-        reader.onerror = () => { App.utils.toast(App.utils.t('sync_import_failed')); if (App.els.syncImportInput) App.els.syncImportInput.value = ''; };
-        reader.readAsText(file, 'utf-8');
-      },
       exportJson() {
         App.state.app.meta = App.state.app.meta || {};
         App.state.app.meta.lastBackupAt = new Date().toISOString();
@@ -1736,20 +1733,70 @@
       exportSingleEventIcs(itemId) {
         const item = App.data.getCalendarItemById(itemId); if (!item) return; const event = App.data.getEventById(item.eventId); App.utils.downloadText(`${App.utils.fileSlug(item.title || event?.name || 'event') || 'event'}.ics`, App.utils.makeSingleIcs(item, event), 'text/calendar;charset=utf-8');
       },
+      /* Восстановление из файла (23.10.2026): всегда с подтверждением и
+         контрольной точкой перед заменой — откат через «Историю изменений».
+         Понимает прежние форматы: копию календаря, файл ручной синхронизации
+         (schema service-year-planner-sync-v1) и старый sp-backup-v2. Полную
+         копию Circuit Workspace (кнопка ⤓) восстанавливает хаб — там
+         предохранительный снимок и сверка схемы общей базы. */
       importJson(file) {
-        if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const parsed = JSON.parse(String(reader.result || '{}')); App.state.app = App.store.migrate(parsed); App.store.save(); const years = Object.keys(App.state.app.serviceYears).map(Number).sort((a,b) => a - b);
-            const currentSY = App.utils.getServiceYearForDate(new Date());
-            const preferredSY = years.includes(currentSY) ? currentSY : (years.length ? years[years.length - 1] : currentSY);
-            App.state.selectedYear = preferredSY;
-            // Make calendar show something from imported range
-            const bounds = App.utils.serviceYearBounds(preferredSY);
-            const now = new Date();
-            const inRange = now >= bounds.start && now <= bounds.end;
-            const showDate = inRange ? now : bounds.start;
-            App.state.calendarYear = showDate.getFullYear();
-            App.state.calendarMonth = showDate.getMonth();
-            if (!inRange) { App.state.calendarView = 'year'; App.state.app.settings.calendarView = 'year'; }
-            App.ui.renderAll(); App.utils.toast(parsed?.schema === 'sp-backup-v2' ? App.utils.t('imported_backup') : App.utils.t('imported_json')); } catch (error) { console.error(error); App.utils.toast(App.utils.t('import_failed')); } if (App.els.importInput) App.els.importInput.value = ''; }; reader.readAsText(file, 'utf-8');
+        const clear = () => { if (App.els.importInput) App.els.importInput.value = ''; };
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onerror = () => { clear(); App.utils.toast(App.utils.t('import_failed')); };
+        reader.onload = () => {
+          let parsed;
+          try { parsed = JSON.parse(String(reader.result || '{}')); } catch (error) { clear(); App.utils.toast(App.utils.t('import_failed')); return; }
+          clear();
+          if (parsed && window.CWBackup && parsed.format === window.CWBackup.FORMAT) {
+            if (window.confirm(App.utils.t('restore_in_hub'))) window.location.href = '../index.html#backupCard';
+            return;
+          }
+          const isSync = !!parsed && parsed.schema === 'service-year-planner-sync-v1';
+          const raw = isSync ? (parsed.payload || parsed.app || {}) : parsed;
+          if (!window.confirm(App.utils.t('restore_confirm'))) return;
+          Promise.resolve(App.store.checkpointNow('pre-import')).catch(() => null).then(() => {
+            try {
+              App.state.app = App.store.migrate(raw);
+              App.store.save();
+              const years = Object.keys(App.state.app.serviceYears).map(Number).sort((a,b) => a - b);
+              const currentSY = App.utils.getServiceYearForDate(new Date());
+              const preferredSY = years.includes(currentSY) ? currentSY : (years.length ? years[years.length - 1] : currentSY);
+              App.state.selectedYear = preferredSY;
+              // Make calendar show something from imported range
+              const bounds = App.utils.serviceYearBounds(preferredSY);
+              const now = new Date();
+              const inRange = now >= bounds.start && now <= bounds.end;
+              const showDate = inRange ? now : bounds.start;
+              App.state.calendarYear = showDate.getFullYear();
+              App.state.calendarMonth = showDate.getMonth();
+              if (!inRange) { App.state.calendarView = 'year'; App.state.app.settings.calendarView = 'year'; }
+              App.ui.renderAll();
+              App.utils.toast(parsed?.schema === 'sp-backup-v2' ? App.utils.t('imported_backup') : App.utils.t('imported_json'));
+            } catch (error) { console.error(error); App.utils.toast(App.utils.t('import_failed')); }
+          });
+        };
+        reader.readAsText(file, 'utf-8');
+      },
+      /** Копия модуля — та же, что кнопка ⤓ в шапке (полная: с отправителем,
+       *  шаблонами, историей и архивом). Без общего слоя — прежний JSON календаря. */
+      backupModule() {
+        if (window.CWBackup && typeof window.CWBackup.saveModule === 'function') {
+          return window.CWBackup.saveModule('circuit-planner')
+            .then(() => App.ui.renderSettings())
+            .catch((error) => { console.error(error); App.utils.toast(App.utils.t('backup_failed')); });
+        }
+        this.exportJson();
+        App.ui.renderSettings();
+        return Promise.resolve();
+      },
+      /** Сброс: подтверждение → копия → контрольная точка → сброс. Отменяется
+       *  через «Историю изменений»; отправитель, тексты и архив не затрагиваются. */
+      resetAppSafely() {
+        if (!window.confirm(App.utils.t('reset_confirm2'))) return Promise.resolve(false);
+        return this.backupModule()
+          .then(() => Promise.resolve(App.store.checkpointNow('pre-reset')).catch(() => null))
+          .then(() => { this.resetApp(); return true; });
       },
       resetApp() { App.state.app = App.store.createDefaultData(); const sy = App.utils.getServiceYearForDate(new Date()); App.data.addServiceYear(sy); App.store.save(); App.ui.renderAll(); App.utils.toast(App.utils.t('app_reset')); },
       openPdf() { if (App.els.pdfModal) App.els.pdfModal.hidden = false; },
@@ -2053,10 +2100,10 @@
           'composerModal','composerTitle','composerSub','composerSubject','composerPaper','composerCloseBtn',
           'composerEditBtn','composerCopySubjectBtn','composerCopyTextBtn','composerPrintBtn','composerPdfBtn','composerSaveBtn','composerPaperHead','composerPaperTail',
           'languageSelect','themeSelect','fontSizeSelect',
-          'settingsPdfBtn','backupBtn','resetAppBtn','themeBtn','exportBtn','importInput','pdfModal','pdfModalCloseBtn',
+          'calendarPrintBtn','calendarExportBtn','backupBtn','resetAppBtn','importInput','letterReminderDaysSelect','holidayCountries','serviceYearList','nextYearHint','backupStatusLine','pdfModal','pdfModalCloseBtn',
           'pdfCancelBtn','pdfExportConfirmBtn','pdfRangeCard','pdfRangeStartInput','pdfRangeEndInput','pdfRangeHelp','pdfHint',
           'bottomNav','bottomNavRow','mobileOverlay','mobileMenuToggleBtn','exportModal','exportModalCloseBtn','exportCancelBtn',
-          'exportConfirmBtn','exportRangeCard','exportRangeStartInput','exportRangeEndInput','exportRangeHelp','syncTitle','syncHint','syncExportBtn','syncImportInput','syncImportLabel','syncStatus','addYearInput','addNextYearBtn','addYearBtn'
+          'exportConfirmBtn','exportRangeCard','exportRangeStartInput','exportRangeEndInput','exportRangeHelp','addNextYearBtn','addYearBtn'
         ].forEach((id) => { App.els[id] = document.getElementById(id); });
       },
       cleanupCalendarChrome() {
@@ -2114,13 +2161,6 @@
         const cwVersion = q('#cwModuleVersion'); if (cwVersion) cwVersion.textContent = `v${App.config.version}`;
         // Keep the tab title in sync with the single source of truth instead of hardcoding it in index.html.
         document.title = `${App.utils.t('appTitle')} v${App.config.version}`;
-        if (App.els.themeBtn) App.els.themeBtn.textContent = App.utils.t('theme');
-        if (App.els.exportBtn) App.els.exportBtn.textContent = App.utils.t('export');
-        if (App.els.syncTitle) App.els.syncTitle.textContent = App.utils.t('sync_title');
-        if (App.els.syncHint) App.els.syncHint.textContent = App.utils.t('sync_hint');
-        if (App.els.syncExportBtn) App.els.syncExportBtn.textContent = App.utils.t('sync_export');
-        if (App.els.syncImportLabel) App.els.syncImportLabel.textContent = App.utils.t('sync_import');
-        const importLabel = q('label[for="importInput"]'); if (importLabel) importLabel.textContent = App.utils.t('import_json');
         if (App.els.offlineBanner) App.els.offlineBanner.textContent = App.utils.t('offline');
         if (App.els.toggleTeamPanelBtn) App.els.toggleTeamPanelBtn.textContent = App.state.calendarView === 'year' ? App.utils.t('calendar_view_month') : App.utils.t('calendar_view_year');
         if (App.els.todayMonthBtn) App.els.todayMonthBtn.textContent = App.utils.t('today');
@@ -2133,10 +2173,6 @@
         const editorTitle = q('#events h3[data-i18n="cp.event_editor"]'); if (editorTitle) editorTitle.textContent = App.utils.t('event_editor');
         if (App.els.resetEventBtn) App.els.resetEventBtn.textContent = App.utils.t('clear');
         if (App.els.saveEventBtn) App.els.saveEventBtn.textContent = App.utils.t('save_event');
-        if (App.els.settingsPdfBtn) App.els.settingsPdfBtn.textContent = App.utils.t('pdf_print');
-        if (App.els.addNextYearBtn) App.els.addNextYearBtn.textContent = App.utils.t('add_next_year');
-        if (App.els.addYearBtn) App.els.addYearBtn.textContent = App.utils.t('add');
-        if (App.els.backupBtn) App.els.backupBtn.textContent = App.utils.t('create_backup');
         if (App.els.resetAppBtn) App.els.resetAppBtn.textContent = App.utils.t('reset_app');
         const settingsSmall = qa('#settings .small');
         settingsSmall.forEach((el) => {
@@ -2265,11 +2301,11 @@
         'composerSaveBtn', 'composerEditBtn', 'letterSendBtn', 'letterSnapshotBtn',
         'letterEmailBodyResetToDefaultBtn',
         // Импорт и сброс — крупные необратимые операции
-        'importInput', 'syncImportInput', 'resetAppBtn',
+        'importInput', 'resetAppBtn',
         // Геокодирование записывает координаты в данные
         'geocodeEventBtn', 'geocodeHomeBtn',
         // Служебные годы
-        'addYearBtn', 'addNextYearBtn', 'addYearInput',
+        'addNextYearBtn',
       ],
       /* ДИНАМИЧЕСКИЕ контролы: создаются при renderAll()/renderCalendar(), в
          index.html их нет, поэтому статической сверки идентификаторов мало.
@@ -4463,7 +4499,41 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }));
       },
 
-      renderSettings() { if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.value = App.state.app.settings.formNameOverseer || ''; if (App.els.formNameWifeInput) App.els.formNameWifeInput.value = App.state.app.settings.formNameWife || ''; if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); if (App.els.addYearInput && !App.els.addYearInput.value) App.els.addYearInput.value = String(Math.max(...Object.keys(App.state.app.serviceYears).map(Number), App.utils.getServiceYearForDate(new Date())) + 1); if (App.els.syncStatus) { const meta = App.state.app.meta || {}; const fmt = (value) => value ? new Date(value).toLocaleString(App.utils.lang()) : ''; const parts = []; if (meta.lastSyncExportAt) parts.push(`${App.utils.t('sync_last_export')}: ${fmt(meta.lastSyncExportAt)}`); if (meta.lastSyncImportAt) parts.push(`${App.utils.t('sync_last_import')}: ${fmt(meta.lastSyncImportAt)}`); App.els.syncStatus.textContent = parts.join(' · ') || App.utils.t('sync_never'); } },
+      /* Настройки, добавленные 23.10.2026 (фаза 1 чистки настроек): срок
+         напоминания, страны праздников, служебные годы, строка состояния копии.
+         Вызывается в конце renderSettings(). */
+      renderSettingsExtras() {
+        const st = App.state.app.settings;
+        const t = (k, v) => App.utils.t(k, v);
+        if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.placeholder = (App.shared.sender().name || '').trim();
+        if (App.els.letterReminderDaysSelect) App.els.letterReminderDaysSelect.value = String(App.utils.letterReminderDays());
+        const countries = App.utils.holidayCountries();
+        document.querySelectorAll('[data-holiday-country]').forEach((box) => {
+          box.checked = countries.includes(box.dataset.holidayCountry);
+          box.closest('label')?.classList.toggle('is-off', !st.showHolidays);
+        });
+        const years = Object.keys(App.state.app.serviceYears || {}).map(Number).sort((a, b) => a - b);
+        const next = (years.length ? Math.max(...years) : App.utils.getServiceYearForDate(new Date())) + 1;
+        if (App.els.serviceYearList) App.els.serviceYearList.innerHTML = years.map((y) => `<span class="md-chip settings-chip is-static">${App.utils.escapeHtml(App.utils.serviceYearLabel(y))}</span>`).join('');
+        if (App.els.addNextYearBtn) App.els.addNextYearBtn.textContent = t('sy_add_next', { year: App.utils.serviceYearLabel(next) });
+        const due = App.utils.nextServiceYearDue();
+        if (App.els.nextYearHint) {
+          App.els.nextYearHint.hidden = !due;
+          App.els.nextYearHint.textContent = due ? t('sy_next_hint', { year: App.utils.serviceYearLabel(due) }) : '';
+        }
+        if (App.els.backupStatusLine) {
+          const fmt = (v) => new Date(v).toLocaleString(App.utils.lang(), { dateStyle: 'medium', timeStyle: 'short' });
+          let last = '';
+          try { const e = window.CWBackup && window.CWBackup.log ? window.CWBackup.log()['circuit-planner'] : null; if (e && e.at) last = e.at; } catch (e) { /* no-op */ }
+          const legacy = App.state.app.meta && App.state.app.meta.lastBackupAt;
+          if (legacy && (!last || legacy > last)) last = legacy;
+          const parts = [last ? t('backup_status_last', { date: fmt(last) }) : t('backup_status_never')];
+          const cp = App.store.history && App.store.history.available && App.store.history.available() ? App.store.history.lastAt() : 0;
+          if (cp) parts.push(t('backup_status_checkpoint', { date: fmt(cp) }));
+          App.els.backupStatusLine.textContent = parts.join(' · ');
+        }
+      },
+      renderSettings() { if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.value = App.state.app.settings.formNameOverseer || ''; if (App.els.formNameWifeInput) App.els.formNameWifeInput.value = App.state.app.settings.formNameWife || ''; if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); this.renderSettingsExtras(); },
     },
 
     bind() {
@@ -4531,11 +4601,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.editorCancelBtn?.addEventListener('click', () => App.ui.closeCalendarEditor());
       App.els.editorSaveBtn?.addEventListener('click', () => App.actions.saveCalendarEditor());
       App.els.editorDeleteBtn?.addEventListener('click', () => App.actions.deleteCalendarEditorItem());
-      App.els.settingsPdfBtn?.addEventListener('click', () => App.actions.openPdf());
+      App.els.calendarPrintBtn?.addEventListener('click', () => App.actions.openPdf());
       App.els.pdfModalCloseBtn?.addEventListener('click', () => App.actions.closePdf());
       App.els.pdfCancelBtn?.addEventListener('click', () => App.actions.closePdf());
       App.els.pdfExportConfirmBtn?.addEventListener('click', () => App.actions.doPrint());
-      App.els.exportBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = false; });
+      App.els.calendarExportBtn?.addEventListener('click', () => { App.state.exportType = 'ics'; if (App.els.exportModal) App.els.exportModal.hidden = false; });
       App.els.exportModalCloseBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = true; });
       App.els.fillCongNumbersBtn?.addEventListener('click', () => App.ui.openFillNumbersModal());
       App.els.fillNumbersCancelBtn?.addEventListener('click', () => App.ui.closeModal(App.els.fillNumbersModal));
@@ -4562,9 +4632,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           c.classList.toggle('active', on);
           if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current');
         });
+        // Пока идёт прокрутка по нажатию, наблюдатель не перебивает выбор
+        // (последняя группа короткая и до верхней полосы не доезжает).
+        let lockUntil = 0;
         chips.forEach((c) => c.addEventListener('click', () => {
           const target = document.getElementById(c.dataset.settingsJump);
           if (!target) return;
+          lockUntil = Date.now() + 1500;
           markChip(target.id);
           const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
@@ -4576,6 +4650,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const groups = chips.map((c) => document.getElementById(c.dataset.settingsJump)).filter(Boolean);
         if (groups.length && 'IntersectionObserver' in window) {
           const io = new IntersectionObserver((entries) => {
+            if (Date.now() < lockUntil) return;
             const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
             if (vis[0]) markChip(vis[0].target.id);
           }, { rootMargin: '-30% 0px -60% 0px' });
@@ -4781,6 +4856,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.eventVisitTypeInput?.addEventListener('change', () => App.ui.syncEventVisitFieldsVisibility());
       App.els.geocodeHomeBtn?.addEventListener('click', () => App.ui.geocodeHome());
       App.els.homeAddressInput?.addEventListener('input', (e) => { App.state.app.settings.homeAddress = e.target.value; App.store.save(); });
+      // Координаты дома определяются сами после ввода адреса (кнопка осталась для повтора).
+      App.els.homeAddressInput?.addEventListener('change', (e) => { if (String(e.target.value || '').trim()) App.ui.geocodeHome(); });
+      App.els.letterReminderDaysSelect?.addEventListener('change', (e) => { App.state.app.settings.letterReminderDays = Number(e.target.value) || 60; App.store.save(); App.ui.renderAll(); });
+      document.querySelectorAll('[data-holiday-country]').forEach((box) => box.addEventListener('change', () => {
+        const picked = Array.from(document.querySelectorAll('[data-holiday-country]')).filter((b) => b.checked).map((b) => b.dataset.holidayCountry);
+        App.state.app.settings.holidayCountries = picked;
+        App.store.save(); App.ui.renderAll();
+      }));
       App.els.formNameOverseerInput?.addEventListener('input', (e) => { App.state.app.settings.formNameOverseer = e.target.value; App.store.save(); });
       App.els.formNameWifeInput?.addEventListener('input', (e) => { App.state.app.settings.formNameWife = e.target.value; App.store.save(); });
       App.els.senderAddressInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ address: e.target.value }); else { App.state.app.settings.senderAddress = e.target.value; App.store.save(); } });
@@ -4817,14 +4900,12 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       App.els.historyModalCloseBtn?.addEventListener('click', () => App.ui.closeModal(App.els.historyModal));
       App.els.historyModalCloseBtn2?.addEventListener('click', () => App.ui.closeModal(App.els.historyModal));
       App.els.exportCancelBtn?.addEventListener('click', () => { if (App.els.exportModal) App.els.exportModal.hidden = true; });
-      App.els.exportConfirmBtn?.addEventListener('click', () => { if (App.state.exportType === 'ics') App.actions.exportIcs(); else App.actions.exportJson(); if (App.els.exportModal) App.els.exportModal.hidden = true; });
-      App.els.syncExportBtn?.addEventListener('click', () => App.actions.exportSyncFile());
-      App.els.syncImportInput?.addEventListener('change', (e) => App.actions.importSyncFile(e.target.files?.[0] || null));
+      App.els.exportConfirmBtn?.addEventListener('click', () => { App.actions.exportIcs(); if (App.els.exportModal) App.els.exportModal.hidden = true; });
       document.querySelectorAll('[data-export-type]').forEach((btn) => btn.addEventListener('click', () => { App.state.exportType = btn.dataset.exportType; document.querySelectorAll('[data-export-type]').forEach((node) => node.classList.toggle('active', node === btn)); if (App.els.exportRangeCard) App.els.exportRangeCard.style.display = App.state.exportType === 'ics' ? 'block' : 'none'; }));
       document.querySelectorAll('[data-pdf-type]').forEach((btn) => btn.addEventListener('click', () => { App.state.pdfExportType = btn.dataset.pdfType; document.querySelectorAll('[data-pdf-type]').forEach((node) => node.classList.toggle('active', node === btn)); if (App.els.pdfRangeCard) App.els.pdfRangeCard.style.display = ['custom-range-calendar','custom-range'].includes(App.state.pdfExportType) ? 'block' : 'none'; }));
-      App.els.backupBtn?.addEventListener('click', () => App.actions.exportJson());
+      App.els.backupBtn?.addEventListener('click', () => App.actions.backupModule());
       App.els.importInput?.addEventListener('change', (e) => App.actions.importJson(e.target.files?.[0] || null));
-      App.els.resetAppBtn?.addEventListener('click', () => { if (window.confirm(App.utils.t('reset_confirm'))) App.actions.resetApp(); });
+      App.els.resetAppBtn?.addEventListener('click', () => App.actions.resetAppSafely());
       App.els.mobileMenuToggleBtn?.addEventListener('click', () => App.ui.toggleMobileMenu());
       App.els.mobileOverlay?.addEventListener('click', () => App.ui.closeMobileMenu());
       // sidebarClickStopper: prevent overlay/pointer issues on small screens
@@ -4837,8 +4918,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.ui.closeMobileMenu();
       });
  document.addEventListener('click', (e) => { const popover = document.getElementById('dayPopover'); if (!popover || popover.hidden) return; if (popover.contains(e.target) || e.target.closest('.sy-day')) return; App.ui.hideDayPopover(true); });
-      App.els.addYearBtn?.addEventListener('click', () => { if (App.data.addServiceYear(Number(App.els.addYearInput?.value))) App.ui.renderAll(); });
-      App.els.addNextYearBtn?.addEventListener('click', () => { const years = Object.keys(App.state.app.serviceYears).map(Number); const nextYear = (years.length ? Math.max(...years) : App.utils.getServiceYearForDate(new Date())) + 1; if (App.data.addServiceYear(nextYear)) { if (App.els.addYearInput) App.els.addYearInput.value = String(nextYear + 1); App.ui.renderAll(); } });
+      App.els.addNextYearBtn?.addEventListener('click', () => { const years = Object.keys(App.state.app.serviceYears).map(Number); const nextYear = (years.length ? Math.max(...years) : App.utils.getServiceYearForDate(new Date())) + 1; if (App.data.addServiceYear(nextYear)) App.ui.renderAll(); });
       window.addEventListener('online', () => App.els.offlineBanner?.classList.remove('show'));
       window.addEventListener('offline', () => App.els.offlineBanner?.classList.add('show'));
       if (!navigator.onLine) App.els.offlineBanner?.classList.add('show');
@@ -5338,6 +5418,16 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       if (deepLinkedEntry && typeof this.ui.scrollToDetailPanel === 'function') this.ui.scrollToDetailPanel();
       this.ui.showRemindersModalIfNeeded();
       this.ui.checkSixtyDayNotifications();
+      // Июнь–август — один раз за год подсказать добавить следующий служебный год.
+      {
+        const due = this.utils.nextServiceYearDue();
+        if (due) {
+          const key = `cp-next-year-hint-${due}`;
+          let seen = false;
+          try { seen = localStorage.getItem(key) === '1'; localStorage.setItem(key, '1'); } catch (e) { seen = true; }
+          if (!seen) this.utils.toast(this.utils.t('sy_next_toast', { year: this.utils.serviceYearLabel(due) }));
+        }
+      }
       // checkAutoBackupReminder(): отключено — теперь есть общий backup всех
       // модулей Circuit Workspace в хабе, отдельное модульное напоминание
       // дублирует его. Функция оставлена нетронутой (не удалена), просто
