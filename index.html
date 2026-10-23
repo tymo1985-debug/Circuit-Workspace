@@ -745,6 +745,24 @@
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
+  .cw-backup-nudge {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+    margin: 0 0 14px; padding: 10px 14px; border-radius: 12px;
+    background: color-mix(in srgb, var(--status-critical) 10%, var(--md-surface));
+    border: 1px solid color-mix(in srgb, var(--status-critical) 35%, transparent);
+    color: var(--md-on-surface); text-decoration: none;
+    font: 500 13px/18px var(--md-font-family);
+  }
+  .cw-backup-nudge[hidden], .cw-view-settings .cw-backup-nudge { display: none; }
+  .cw-backup-nudge.is-warn {
+    background: color-mix(in srgb, var(--status-important) 10%, var(--md-surface));
+    border-color: color-mix(in srgb, var(--status-important) 35%, transparent);
+  }
+  .cw-backup-nudge svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--status-critical); }
+  .cw-backup-nudge.is-warn svg { color: var(--status-important); }
+  .cw-backup-nudge__text { flex: 1 1 14em; }
+  .cw-backup-nudge__go { color: var(--md-primary); white-space: nowrap; }
+  .cw-backup-nudge:hover .cw-backup-nudge__go, .cw-backup-nudge:focus-visible .cw-backup-nudge__go { text-decoration: underline; }
   .cw-hub-hint {
     display: flex;
     align-items: flex-start;
@@ -1005,6 +1023,16 @@
         <span id="orderToggleLabel" data-i18n="hub.order_edit">Настроить порядок</span>
       </button>
     </div>
+
+    <!-- Напоминание о копии на главном экране (аудит 08, п.4). Видно, когда
+         полной копии нет или она старше 10 дней — те же пороги и тот же текст,
+         что у строки состояния в карточке «Резервное копирование»; ссылка
+         ведёт к ней, сохранение остаётся там (одна точка входа, без дублей). -->
+    <a class="cw-backup-nudge" id="backupNudge" href="#backupCard" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <span class="cw-backup-nudge__text" id="backupNudgeText"></span>
+      <span class="cw-backup-nudge__go"><span data-i18n="backup.title">Резервное копирование</span> →</span>
+    </a>
 
     <!-- ЯРУС 1: рабочие модули. Признак яруса формальный, а не вкусовой:
          у рабочего модуля есть собственная страница, собственная версия в
@@ -2021,6 +2049,12 @@
       }
 
       ageSlot.textContent = text;
+      var nudge = document.getElementById('backupNudge');
+      if (nudge) {
+        nudge.hidden = level === 'ok';
+        nudge.classList.toggle('is-warn', level === 'warn');
+        document.getElementById('backupNudgeText').textContent = text;
+      }
       LEVELS.forEach(function (cls) { card.classList.remove(cls); });
       card.classList.add('cw-syscard--' + level);
     }

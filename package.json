@@ -9,7 +9,8 @@
     "test:update": "node scripts/live-update-pipeline.mjs",
     "test:device": "node scripts/live-device-matrix.mjs",
     "test:journal": "node scripts/live-journal-all.mjs",
-    "test:release": "npm test && npm run test:smoke && npm run test:update && npm run test:device"
+    "test:template": "node scripts/live-template-integration.mjs",
+    "test:release": "npm test && npm run test:smoke && npm run test:update && npm run test:device && npm run test:template"
   },
   "devDependencies": {
     "acorn": "8.18.0",

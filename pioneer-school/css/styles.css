@@ -337,6 +337,19 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   .sidebar-footer { display: none; }
 }
 
+/* Телефон: меню разделов — выпадающий список (аудит 08, п.5). */
+.nav-select { display: none; }
+@media (max-width: 600px) {
+  .sidebar .nav { display: none; }
+  .nav-select {
+    display: block; width: 100%; min-height: 44px;
+    padding: 8px 12px; border-radius: 12px;
+    border: 1px solid var(--md-outline-variant);
+    background: var(--md-surface-container); color: var(--md-on-surface);
+    font: 500 15px/20px var(--md-font-family);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }

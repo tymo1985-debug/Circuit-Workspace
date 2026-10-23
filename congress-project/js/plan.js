@@ -12,6 +12,7 @@ export function htmlCell(t,k){if(k==="speaker")return(t.participants||[]).filter
 
 // keep=true — сохранить текущий выбор колонок (возврат из диалога «не помещается»)
 export function openPrintColumns(keep){
+  if(!A())return;
   let box=$("#printColumnsBox");
   let prev=keep?$$("#printColumnsBox input").reduce((a,x)=>(a[x.value]=x.checked,a),{}):null;
   box.innerHTML=COLS.map(c=>`<label><input type="checkbox" value="${c[0]}"${(!prev||prev[c[0]])?" checked":""}> ${c[1]}</label>`).join("");

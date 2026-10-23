@@ -8,6 +8,9 @@ import path from 'node:path';
 const ROOT = process.cwd();
 const PORT = 8141;
 const BASE = `http://127.0.0.1:${PORT}`;
+/* Первая строка, у которой есть письмо: в демо-программе первой идёт раздел,
+   а .ed и .le должны относиться к одному заданию. */
+const ROW = '#tasksBody tr:has(.le)';
 const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png', '.ico':'image/x-icon', '.woff2':'font/woff2' };
 const server = http.createServer((req,res)=>{
   let p=decodeURIComponent(req.url.split('?')[0]);if(p.endsWith('/'))p+='index.html';
@@ -42,10 +45,20 @@ try {
   assert.ok(templateId,'custom template was not created');
 
   await page.goto(BASE+'/congress-project/',{waitUntil:'networkidle'});
-  await page.click('#tasksBody .ed');
+  /* Чистый профиль: конгрессов нет (демо больше не создаётся само, 21.10).
+     Тест сам создаёт демо-конгресс через пустое состояние — заодно
+     проверяет приглашение «Создайте первый конгресс» (аудит 08, п.1, п.6). */
+  await page.waitForSelector('#congressEmpty:not([hidden])');
+  await page.click('#emptyNewCongressBtn');
+  await page.waitForSelector('#newCongressDialog[open]');
+  assert.equal(await page.inputValue('#newCongressMode'),'demo');
+  await page.click('#createCongressBtn');
+  await page.waitForSelector('#tasksBody tr:has(.le) .ed');
+  assert.equal(await page.locator('#congressEmpty').isHidden(),true);
+  await page.click(ROW+' .ed');
   await page.selectOption('#eLetterTemplate',templateId);
   await page.click('#saveEditBtn');
-  await page.click('#tasksBody .le');
+  await page.click(ROW+' .le');
   await page.waitForSelector('#letterDialog[open]');
   assert.match(await page.locator('#letterPreview').innerText(),/LIVE_BODY/);
   assert.equal(await page.locator('#letterPreview strong').first().innerText(),'LIVE_BODY');
@@ -64,11 +77,11 @@ try {
   assert.equal(await page.evaluate(id=>CWTemplates.get(id),templateId),null);
 
   await page.goto(BASE+'/congress-project/',{waitUntil:'networkidle'});
-  await page.click('#tasksBody .ed');
+  await page.click(ROW+' .ed');
   assert.equal(await page.inputValue('#eLetterTemplate'),templateId,'deleted selection id must be preserved');
   assert.equal(await page.locator('#eLetterTemplateMissing').isHidden(),false);
   await page.click('#editDialog button[value="cancel"]');
-  await page.click('#tasksBody .le');
+  await page.click(ROW+' .le');
   assert.doesNotMatch(await page.locator('#letterPreview').innerText(),/LIVE_BODY/);
   assert.equal(errors.length,0,'desktop console/page errors: '+errors.join(' | '));
   await ctx.close();
@@ -77,6 +90,10 @@ try {
   await mobile.page.goto(BASE+'/documents/',{waitUntil:'networkidle'});
   await mobile.page.evaluate(async()=>CWTemplates.save('usr.live.mobile','uk',{body:'mobile',context:'congress.assignment.invitation:Mobile',module:'congress-project',format:'text',title:'Mobile'}));
   await mobile.page.reload({waitUntil:'networkidle'});
+  /* Библиотека сгруппирована по модулям, раскрыта только первая группа —
+     раскрыть ту, где лежит шаблон, как сделал бы пользователь. */
+  const head=mobile.page.locator('.doc-group:has([data-open="usr.live.mobile"]) .doc-group__head');
+  if(await head.getAttribute('aria-expanded')!=='true')await head.click();
   await mobile.page.click('[data-open="usr.live.mobile"]');
   assert.equal(await mobile.page.locator('#textToolbar').isHidden(),false);
   assert.equal(await mobile.page.locator('#deleteTemplateBtn').isHidden(),false);

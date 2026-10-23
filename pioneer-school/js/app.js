@@ -33,8 +33,29 @@ function showRoute(route) {
   const target = document.getElementById('route-' + safeRoute);
   if (target) target.classList.remove('hidden');
   $all('.nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.route === safeRoute));
+  syncNavSelect(safeRoute);
   if (window.location.hash.slice(1) !== safeRoute) window.location.hash = safeRoute;
   renderRoute(safeRoute);
+}
+
+/* Выпадающий список разделов для телефона строится из .nav при каждом показе
+   экрана: подписи берутся из уже переведённых кнопок, поэтому смена языка
+   (PSI18n.init → showRoute) обновляет и список. */
+function syncNavSelect(route) {
+  const select = document.getElementById('navSelect');
+  if (!select) return;
+  let html = '', open = false;
+  [...document.querySelectorAll('.nav > *')].forEach((el) => {
+    if (el.classList.contains('nav-group-label')) {
+      if (open) html += '</optgroup>';
+      html += `<optgroup label="${esc(el.textContent.trim())}">`; open = true;
+    } else if (el.dataset.route) {
+      html += `<option value="${esc(el.dataset.route)}">${esc(el.textContent.trim())}</option>`;
+    }
+  });
+  if (open) html += '</optgroup>';
+  select.innerHTML = html;
+  select.value = route;
 }
 
 async function renderRoute(route) {
@@ -1458,6 +1479,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (current) showRoute(current.id.replace('route-', ''));
   });
   $all('.nav-item').forEach((btn) => btn.addEventListener('click', () => showRoute(btn.dataset.route)));
+  document.getElementById('navSelect')?.addEventListener('change', (e) => showRoute(e.target.value));
   initBackup();
 
   // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).

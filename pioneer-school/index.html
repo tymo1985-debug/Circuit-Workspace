@@ -38,6 +38,11 @@
 <div class="app-shell">
   <aside class="sidebar">
 
+    <!-- Телефон (≤600px): вместо 14 пунктов меню — выпадающий список
+         (аудит 08, п.5). Пункты собирает js/app.js из .nav, отдельного
+         списка разделов в разметке нет. -->
+    <select id="navSelect" class="nav-select" data-i18n-aria-label="ps.ui.nav_section" aria-label="Раздел"></select>
+
     <nav class="nav">
       <div data-i18n="ps.ui.do_shkoly" class="nav-group-label">До школы</div>
       <button data-i18n="ps.ui.obzor" class="nav-item" data-route="dashboard">Обзор</button>

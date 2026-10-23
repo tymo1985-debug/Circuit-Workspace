@@ -23,7 +23,7 @@ import { $, $$ } from './dom.js';
    унаследовать read-only кнопке и запереть её вместе с остальными. */
 const MUTATING_IDS = [
   // Создание и удаление конгрессов и серий
-  'newCongressBtn', 'createCongressBtn', 'deleteCongressBtn', 'newSeriesBtn', 'createSeriesBtn',
+  'newCongressBtn', 'emptyNewCongressBtn', 'createCongressBtn', 'deleteCongressBtn', 'newSeriesBtn', 'createSeriesBtn',
   // Программа и задания
   'addTaskBtn', 'mAddTaskBtn', 'addSectionBtn', 'duplicateTaskBtn', 'duplicateTaskEmptyBtn',
   'duplicateMenuBtn', 'saveEditBtn',
