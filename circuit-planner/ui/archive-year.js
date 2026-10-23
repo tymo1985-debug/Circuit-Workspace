@@ -178,6 +178,34 @@
   const fail = (code, field) => { const e = new Error('CPArchiveYear: ' + code + (field ? ' ' + field : '')); e.code = code; if (field) e.field = field; return e; };
 
   /**
+   * Что потеряет архив, если записать текущий срез поверх лежащего конверта
+   * (аудит 08, п.2). Конверт пишется ЦЕЛИКОМ, прежняя ревизия не хранится,
+   * поэтому «Обновить архив» после «Убрать год» и новой правки в этом году
+   * затирал архив новым, почти пустым срезом.
+   *   lostWeeks / lostVisits — записи архива (недели по id, визиты по id),
+   *     которых в текущем срезе нет;
+   *   removed — в текущем срезе нет НИ ОДНОЙ записи архива: год был убран и
+   *     начат заново. Обновлять такой архив нельзя — сначала восстановить год.
+   * Сравнение только по наличию: правка внутри записи — обычное обновление.
+   */
+  function loss(archived, current, year) {
+    const weeksOf = (p) => Object.keys(((((p || {}).serviceYears || {})[year] || {}).weeks) || {})
+      .filter((id) => meaningfulWeek(p.serviceYears[year].weeks[id]));
+    const visitsOf = (p) => (((p || {}).entries) || []).map((e) => e && e.id).filter(Boolean);
+    const aw = weeksOf(archived), av = visitsOf(archived);
+    const cw = new Set(weeksOf(current)), cv = new Set(visitsOf(current));
+    const lostWeeks = aw.filter((id) => !cw.has(id)).length;
+    const lostVisits = av.filter((id) => !cv.has(id)).length;
+    const kept = (aw.length - lostWeeks) + (av.length - lostVisits);
+    return {
+      archivedWeeks: aw.length, archivedVisits: av.length,
+      currentWeeks: cw.size, currentVisits: cv.size,
+      lostWeeks, lostVisits,
+      removed: aw.length + av.length > 0 && kept === 0,
+    };
+  }
+
+  /**
    * A5: убрать год из блоба (меняет `app` на месте). Только недели года
    * (`serviceYears[year]`) и визиты с `start` в границах года. Собрания
    * (справочник) и письма («Документы») общие для всех лет и остаются.
@@ -220,7 +248,7 @@
     return { weeks: Object.keys(src.weeks).length, entries: add.length, events: evAdd.length };
   }
 
-  root.CPArchiveYear = { MODULE, ENTITY, DECLINED_KEY, collect, hasContent, fingerprint, buildEnvelope, idOf, isFinished, meaningfulWeek, removeYear, restoreYear };
+  root.CPArchiveYear = { MODULE, ENTITY, DECLINED_KEY, collect, hasContent, fingerprint, buildEnvelope, idOf, isFinished, meaningfulWeek, loss, removeYear, restoreYear };
 
   /* ═══════════════════════ Интерфейс ═══════════════════════ */
 
@@ -300,7 +328,8 @@
         if (!rec) return { state: 'none' };
         const current = await envelopeFor(year);
         const fresh = !!(rec.payload && rec.payload.fingerprint === current.payload.fingerprint);
-        return { state: fresh ? 'ok' : 'stale', revision: rec.revision, archivedAt: rec.archivedAt };
+        const removed = !fresh && !!rec.payload && L.loss(rec.payload, current.payload, year).removed;
+        return { state: fresh ? 'ok' : 'stale', removed, revision: rec.revision, archivedAt: rec.archivedAt };
       } catch (e) {
         return { state: 'unknown' };
       }
@@ -317,6 +346,7 @@
       if (e && e.code === 'readonly') return t('arch_err_readonly') + ' ' + t(notDone);
       if (e && e.code === 'backup') return t('arch_err_backup') + ' ' + t(notDone);
       if (e && e.code === 'stale') return t('arch_err_stale');
+      if (e && e.code === 'removed') return t('arch_err_removed');
       if (e && e.code === 'conflict') return t('arch_err_conflict', { year: e.year || '' });
       if (e && e.code === 'missing') return t('arch_err_missing');
       if (e && e.code === 'current') return t('arch_err_current');
@@ -367,7 +397,8 @@
       const st = await status(year);
       if (token !== panelToken) return;   // за время чтения выбрали другой год
       btn.textContent = t(st.state === 'stale' ? 'arch_update' : 'arch_send');
-      btn.disabled = st.state === 'ok';
+      btn.disabled = st.state === 'ok' || st.removed === true;
+      if (st.removed) { setStatusLine(t('arch_err_removed'), true); return; }
       /* «Убрать год» — только у закончившегося года с АКТУАЛЬНЫМ архивом. */
       if (rm) rm.hidden = !(st.state === 'ok' && L.isFinished(year, currentYear()));
       const text = {
@@ -387,7 +418,21 @@
       let ok = false;
       try {
         if (!archiveReady()) throw codeError('unavailable');
-        const rec = await root.CWArchive.put(await envelopeFor(year));
+        const env = await envelopeFor(year);
+        /* Аудит 08, п.2 (решение Алекса: запрет + подтверждение). Убранный и
+           начатый заново год не перезаписываем вовсе; меньше данных, чем в
+           архиве, — только после явного согласия с числами. */
+        const prev = await root.CWArchive.get(L.idOf(year));
+        if (prev && prev.payload) {
+          const l = L.loss(prev.payload, env.payload, year);
+          if (l.removed) throw codeError('removed');
+          if (l.lostWeeks + l.lostVisits > 0 && !root.confirm(t('arch_shrink_confirm', {
+            year: App.utils.serviceYearLabel(year),
+            aw: l.archivedWeeks, av: l.archivedVisits, cw: l.currentWeeks, cv: l.currentVisits,
+            lost: l.lostWeeks + l.lostVisits,
+          }))) { if (btn) btn.disabled = false; return false; }
+        }
+        const rec = await root.CWArchive.put(env);
         App.utils.toast(t('arch_done', { year: App.utils.serviceYearLabel(year), rev: rec.revision }));
         ok = true;
       } catch (e) {

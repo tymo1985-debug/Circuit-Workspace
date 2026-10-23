@@ -161,6 +161,35 @@
     return openDb().then((db) => db.transaction(storeName, mode).objectStore(storeName));
   }
 
+  /**
+   * Запись одним запросом, которая отвечает ТОЛЬКО после фиксации транзакции
+   * (аудит 08, п.3). `request.onsuccess` значит «запрос принят», а не «данные
+   * на диске»: отказ при фиксации (нет места — QuotaExceededError) приходит
+   * позже, событием abort, и прежде терялся молча — вызывающий уже считал
+   * запись состоявшейся. Так CWState стирал из localStorage зеркало после
+   * «успешной» парковки, а снимок перед необратимым шагом мог не лечь.
+   * `run(store)` обязан вернуть IDBRequest; промис отдаёт его `result`.
+   */
+  function commitRequest(storeName, run) {
+    return openDb().then((db) => new Promise((resolve, reject) => {
+      let transaction;
+      let request;
+      try {
+        transaction = db.transaction(storeName, 'readwrite');
+        request = run(transaction.objectStore(storeName));
+      } catch (error) { reject(error); return; }
+      let result;
+      let failure = null;
+      request.onsuccess = () => { result = request.result; };
+      request.onerror = () => { failure = failure || request.error; };
+      transaction.oncomplete = () => resolve(result);
+      transaction.onerror = () => reject(failure || transaction.error);
+      transaction.onabort = () => reject(
+        failure || transaction.error || new Error(`CWDB.${storeName}: транзакция прервана`)
+      );
+    }));
+  }
+
   function promisifyRequest(req) {
     return new Promise((resolve, reject) => {
       req.onsuccess = () => resolve(req.result);
@@ -227,13 +256,13 @@
         });
       },
 
-      /** Добавить запись; если record.id не задан — генерируется автоматически. Возвращает id. */
+      /** Добавить запись; если record.id не задан — генерируется автоматически. Возвращает id.
+       *  Отвечает после фиксации транзакции (commitRequest), как и put/remove/clear. */
       async add(record) {
-        const store = await tx(storeName, 'readwrite');
         // id ставится ПОСЛЕ спреда: при { id: ..., ...record } объект с явным
         // полем id: undefined затирал сгенерированный ключ, и store.add падал.
         const payload = { ...record, id: record.id || uid(idPrefix) };
-        await promisifyRequest(store.add(payload));
+        await commitRequest(storeName, (store) => store.add(payload));
         return payload.id;
       },
 
@@ -266,9 +295,8 @@
 
       /** Полностью заменить запись (put), либо создать, если не было. */
       async put(record) {
-        const store = await tx(storeName, 'readwrite');
         const payload = { ...record, id: record.id || uid(idPrefix) };
-        await promisifyRequest(store.put(payload));
+        await commitRequest(storeName, (store) => store.put(payload));
         return payload.id;
       },
 
@@ -341,14 +369,12 @@
 
       /** Удалить запись по id */
       async remove(id) {
-        const store = await tx(storeName, 'readwrite');
-        await promisifyRequest(store.delete(id));
+        await commitRequest(storeName, (store) => store.delete(id));
       },
 
       /** Удалить все записи store (с осторожностью) */
       async clear() {
-        const store = await tx(storeName, 'readwrite');
-        await promisifyRequest(store.clear());
+        await commitRequest(storeName, (store) => store.clear());
       },
     };
   }

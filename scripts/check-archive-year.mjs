@@ -226,5 +226,29 @@ console.log('\nA5: порядок шагов (правила необратим�
   ok('index.html: #archiveYearRemoveBtn и #archiveProposalOkBtn', html.includes('id="archiveYearRemoveBtn"') && html.includes('id="archiveProposalOkBtn"'));
 }
 
+/* ─── 8. Повторная отправка не затирает архив (аудит 08, п.2) ─── */
+console.log('\nПовторная отправка года: потери архива');
+{
+  const full = L.buildEnvelope(baseApp(), 2025, mk()).payload;
+  const same = L.loss(full, L.buildEnvelope(baseApp(), 2025, mk()).payload, 2025);
+  ok('тот же срез — потерь нет', same.lostWeeks === 0 && same.lostVisits === 0 && !same.removed, JSON.stringify(same));
+  const removedApp = baseApp();
+  L.removeYear(removedApp, 2025, SY.bounds(2025));
+  removedApp.serviceYears[2025] = { weeks: { '2026-03-02': week('2026-03-02', { eventId: 'e4' }) } };
+  const r = L.loss(full, L.buildEnvelope(removedApp, 2025, mk()).payload, 2025);
+  ok('убран и начат заново — removed (обновлять нельзя)', r.removed === true && r.lostWeeks === 2 && r.lostVisits === 2, JSON.stringify(r));
+  const partApp = baseApp();
+  delete partApp.serviceYears[2025].weeks['2025-09-15'];
+  const p = L.loss(full, L.buildEnvelope(partApp, 2025, mk()).payload, 2025);
+  ok('часть записей удалена — потеря видна, но не removed', p.lostWeeks === 1 && p.lostVisits === 0 && !p.removed, JSON.stringify(p));
+  ok('пустой архив — не removed', L.loss({ serviceYears: {}, entries: [] }, full, 2025).removed === false);
+  const src = read('circuit-planner/ui/archive-year.js');
+  const i = src.indexOf('async function send(');
+  const send = src.slice(i, src.indexOf('\n    }\n', i));
+  ok('send: конверт прочитан и сверен (loss) ДО CWArchive.put',
+    send.indexOf('CWArchive.get(') > 0 && send.indexOf('L.loss(') > send.indexOf('CWArchive.get(') && send.indexOf('CWArchive.put(') > send.indexOf('L.loss('));
+  ok("send: removed → отказ, потеря → confirm", /if \(l\.removed\) throw codeError\('removed'\)/.test(send) && /confirm\(t\('arch_shrink_confirm'/.test(send));
+}
+
 console.log(failed ? '\nПровалено: ' + failed : '\nВсё в порядке.');
 process.exit(failed ? 1 : 0);
