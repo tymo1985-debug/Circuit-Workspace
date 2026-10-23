@@ -62,9 +62,11 @@ if (!registry.length) {
 // Ищем именно РАЗМЕТКУ секции, а не имя класса: те же имена встречаются выше
 // в блоке стилей, и поиск по голому 'cw-tier--work' вырезал бы кусок CSS.
 const tierStart = html.indexOf('class="cw-tier cw-tier--work"');
-const tierEnd = html.indexOf('class="cw-tier cw-tier--system"');
+// Рабочий ярус кончается там, где начинается экран «Настройки» (с 23.10.2026
+// системного яруса на главной нет).
+const tierEnd = html.indexOf('id="hubSettings"');
 if (tierStart === -1 || tierEnd === -1 || tierEnd < tierStart) {
-  problems.push('в index.html не найдены секции ярусов (cw-tier--work / cw-tier--system)');
+  problems.push('в index.html не найдены секции ярусов (cw-tier--work / #hubSettings)');
 }
 
 const tierHtml = html.slice(Math.max(tierStart, 0), tierEnd === -1 ? html.length : tierEnd);

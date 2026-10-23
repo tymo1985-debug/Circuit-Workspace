@@ -252,8 +252,38 @@
      четыре в ряд им не нужны. Значение ставит скрипт от числа карточек
      (сейчас одна → одна колонка), медиазапрос ниже перекрывает его на узком
      экране. */
-  .cw-grid--system { --cw-cols: var(--cw-cols-system, 2); }
-  @media (max-width: 900px) { .cw-grid--system { --cw-cols: 1; } }
+  .cw-grid--settings { --cw-cols: 2; }
+  @media (max-width: 900px) { .cw-grid--settings { --cw-cols: 1; } }
+
+  /* Экран «Настройки» (#settings): показывается классом на <body>, без
+     перезагрузки. На нём скрыты рабочий ярус и панель порядка плиток. */
+  .cw-settings { display: none; padding: 8px 0 32px; }
+  .cw-view-settings .cw-settings { display: block; }
+  .cw-view-settings .cw-order-bar,
+  .cw-view-settings .cw-tier--work,
+  .cw-view-settings .cw-hub-hint { display: none; }
+  .cw-settings__head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 12px; }
+  .cw-settings__head h2 { margin: 0; font: 500 22px/28px var(--md-font-family); color: var(--md-on-surface); }
+  .cw-settings__jump {
+    position: sticky; top: 0; z-index: 20; display: flex; gap: 8px;
+    overflow-x: auto; scrollbar-width: none; padding: 8px 0 10px; margin-bottom: 8px;
+    background: var(--md-background);
+  }
+  .cw-settings__jump::-webkit-scrollbar { display: none; }
+  .cw-chip {
+    flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px;
+    border: 1px solid var(--md-outline-variant); border-radius: 999px; white-space: nowrap;
+    background: var(--md-surface-container); color: var(--md-on-surface);
+    font: 500 13px/16px var(--md-font-family); text-decoration: none;
+  }
+  .cw-chip:hover { border-color: var(--md-primary); }
+  .cw-chip.is-active { background: var(--md-primary); color: var(--md-on-primary); border-color: var(--md-primary); }
+  .cw-chip:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+  .cw-settings__group { scroll-margin-top: 64px; }
+  .cw-settings__group + .cw-settings__group { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--md-outline-variant); }
+  .cw-settings__group-title { margin: 0 0 12px; font: 500 16px/24px var(--md-font-family); color: var(--md-on-surface); }
+  #appearanceCard select { width: 100%; }
+  @media (max-width: 600px) { .cw-chip { min-height: 44px; } }
 
   .cw-grid {
     position: relative;
@@ -571,6 +601,7 @@
     letter-spacing: 0.4px;
     color: var(--md-outline);
   }
+  .cw-form select,
   .cw-form input,
   .cw-form textarea {
     width: 100%;
@@ -930,6 +961,9 @@
           <label class="cw-sr-only" for="hubTheme" data-i18n="common.theme">Тема</label>
           <select class="cw-lang__select" id="hubTheme" data-i18n-title="common.theme"></select>
         </span>
+        <a class="cw-update-btn" id="hubSettingsBtn" href="#settings" data-i18n-title="hub.settings" data-i18n-aria-label="hub.settings">
+          <svg class="cw-update-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </a>
         <button type="button" class="cw-update-btn" id="hubUpdateBtn" data-i18n-title="hub.update_label" data-i18n-aria-label="hub.update_label">
           <svg class="cw-update-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
           <span class="cw-update-btn__label" data-i18n="hub.update_label">Проверить обновления</span>
@@ -1137,12 +1171,102 @@
          страницы и без версии. Сейчас здесь одна карточка; «Настройки»
          (отправитель, язык, тема) — следующий кандидат, место под них
          оставлено: число колонок яруса скрипт считает от числа карточек. -->
-    <section class="cw-tier cw-tier--system" aria-labelledby="tierSystem">
-      <h2 class="cw-tier__label" id="tierSystem">
-        <span data-i18n="hub.tier_system">Система</span>
-      </h2>
+    <!-- НАСТРОЙКИ ХАБА (23.10.2026, решение Алекса): отдельный экран #settings.
+         Карточки бывшего яруса «Система» переехали сюда, id и скрипты не
+         менялись. Общие настройки приложения — здесь; модули ссылаются сюда. -->
+    <section class="cw-settings" id="hubSettings" aria-labelledby="hubSettingsTitle">
+      <div class="cw-settings__head">
+        <a class="cw-btn" href="#" id="hubSettingsBack" data-i18n="hub.settings_back">← К модулям</a>
+        <h2 id="hubSettingsTitle" data-i18n="hub.settings">Настройки</h2>
+      </div>
+      <nav class="cw-settings__jump" id="hubSettingsJump" aria-label="Разделы настроек" data-i18n-aria-label="hub.set_jump_aria">
+        <a class="cw-chip" href="#hubSetProfile" data-settings-jump="hubSetProfile" data-i18n="hub.set_profile">Профиль</a>
+        <a class="cw-chip" href="#hubSetAppearance" data-settings-jump="hubSetAppearance" data-i18n="hub.set_appearance">Внешний вид</a>
+        <a class="cw-chip" href="#hubSetData" data-settings-jump="hubSetData" data-i18n="hub.set_data">Данные и диагностика</a>
+      </nav>
+      <section class="cw-settings__group" id="hubSetProfile" aria-labelledby="hubSetProfileTitle">
+        <h3 class="cw-settings__group-title" id="hubSetProfileTitle" data-i18n="hub.set_profile">Профиль</h3>
+        <div class="cw-grid cw-grid--settings">
+        <article class="cw-card cw-syscard" id="senderCard" aria-labelledby="senderHeading">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2"/><path d="M14.5 10h4M14.5 13.5h4"/></svg>
+            </div>
+            <h3 id="senderHeading" data-i18n="sender.title">Отправитель</h3>
+          </div>
 
-      <div class="cw-grid cw-grid--system">
+            <!-- Пустой отправитель — не мелочь: письма всех модулей печатают
+                 шапку и подпись из этой записи, и при пустых полях документ
+                 молча уходит без шапки. Поэтому у карточки есть состояние,
+                 как у резервной копии. -->
+            <p class="cw-syscard__state">
+              <span class="cw-syscard__dot" aria-hidden="true"></span>
+              <span id="senderState"></span>
+            </p>
+
+            <p class="cw-syscard__hint" data-i18n="sender.hint">Имя, код района и контакты подставляются в шапку и подпись писем во всех модулях. Данные общие: правка здесь видна и в модулях.</p>
+
+            <div class="cw-sender-preview" id="senderPreview" aria-live="polite"></div>
+
+            <details class="cw-disclose">
+              <summary data-i18n="sender.edit">Изменить данные</summary>
+              <div class="cw-form">
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_name">Имя и фамилия</span>
+                    <input id="sender-name" type="text" autocomplete="name">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_code">Код района</span>
+                    <input id="sender-code" type="text" autocomplete="off">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_phone1">Телефон</span>
+                    <input id="sender-phone1" type="tel" autocomplete="tel">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_phone2">Второй телефон</span>
+                    <input id="sender-phone2" type="tel" autocomplete="tel">
+                  </label>
+                  <label class="cw-form__field">
+                    <span class="cw-form__label" data-i18n="sender.f_email">E-mail</span>
+                    <input id="sender-email" type="email" autocomplete="email">
+                  </label>
+                  <label class="cw-form__field cw-form__field--wide">
+                    <span class="cw-form__label" data-i18n="sender.f_address">Адрес</span>
+                    <textarea id="sender-address" rows="2" autocomplete="street-address"></textarea>
+                  </label>
+              </div>
+          </details>
+        </article>
+        </div>
+      </section>
+      <section class="cw-settings__group" id="hubSetAppearance" aria-labelledby="hubSetAppearanceTitle">
+        <h3 class="cw-settings__group-title" id="hubSetAppearanceTitle" data-i18n="hub.set_appearance">Внешний вид</h3>
+        <div class="cw-grid cw-grid--settings">
+        <article class="cw-card cw-syscard" id="appearanceCard" aria-labelledby="appearanceHeading">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 3a9 9 0 0 1 0 18"/></svg>
+            </div>
+            <h3 id="appearanceHeading" data-i18n="hub.set_appearance">Внешний вид</h3>
+          </div>
+          <p class="cw-syscard__hint" data-i18n="hub.set_appearance_hint">Язык и тема общие для всего приложения: модули подхватывают их сами. Быстрые переключатели есть и в шапке.</p>
+          <div class="cw-form">
+            <label class="cw-form__field">
+              <span class="cw-form__label" data-i18n="hub.language_label">Язык интерфейса</span>
+              <select id="settingsLanguage"></select>
+            </label>
+            <label class="cw-form__field">
+              <span class="cw-form__label" data-i18n="common.theme">Тема</span>
+              <select id="settingsTheme"></select>
+            </label>
+          </div>
+        </article>
+        </div>
+      </section>
+      <section class="cw-settings__group" id="hubSetData" aria-labelledby="hubSetDataTitle">
+        <h3 class="cw-settings__group-title" id="hubSetDataTitle" data-i18n="hub.set_data">Данные и диагностика</h3>
+        <div class="cw-grid cw-grid--settings">
         <article class="cw-card cw-syscard" id="backupCard" aria-labelledby="backupHeading">
           <div class="cw-syscard__head">
             <div class="cw-syscard__icon" aria-hidden="true">
@@ -1218,11 +1342,6 @@
 
           <p class="cw-backup__status" id="backupStatus" role="status" aria-live="polite"></p>
         </article>
-
-        <!-- Офлайн-готовность (аудит 03, P1-5). Пустой кэш онлайн незаметен —
-             о нём узнают в поле, без сети. Хаб при каждом запуске сверяет
-             кэш каждого модуля и сам докачивает недостающее; карточка
-             показывает итог текстом, а не только цветом. -->
         <article class="cw-card cw-syscard" id="offlineCard" aria-labelledby="offlineHeading" hidden>
           <div class="cw-syscard__head">
             <div class="cw-syscard__icon" aria-hidden="true">
@@ -1241,11 +1360,6 @@
               </button>
             </div>
         </article>
-
-        <!-- Диагностика (аудит 03, P2-6). Работа идёт с телефона без DevTools:
-             ошибки страниц (shared/errors.js) складываются в общее кольцо, а
-             «кнопка ничего не сделала» диагностируется копированием отчёта.
-             Копируется только по нажатию, ничего не отправляется. -->
         <article class="cw-card cw-syscard" id="errorsCard" aria-labelledby="errorsHeading">
           <div class="cw-syscard__head">
             <div class="cw-syscard__icon" aria-hidden="true">
@@ -1263,59 +1377,8 @@
             <button type="button" class="cw-btn" id="errorsClearBtn" data-i18n="errors.clear" hidden>Очистить список ошибок</button>
           </div>
         </article>
-
-        <article class="cw-card cw-syscard" id="senderCard" aria-labelledby="senderHeading">
-          <div class="cw-syscard__head">
-            <div class="cw-syscard__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2"/><path d="M14.5 10h4M14.5 13.5h4"/></svg>
-            </div>
-            <h3 id="senderHeading" data-i18n="sender.title">Отправитель</h3>
-          </div>
-
-            <!-- Пустой отправитель — не мелочь: письма всех модулей печатают
-                 шапку и подпись из этой записи, и при пустых полях документ
-                 молча уходит без шапки. Поэтому у карточки есть состояние,
-                 как у резервной копии. -->
-            <p class="cw-syscard__state">
-              <span class="cw-syscard__dot" aria-hidden="true"></span>
-              <span id="senderState"></span>
-            </p>
-
-            <p class="cw-syscard__hint" data-i18n="sender.hint">Имя, код района и контакты подставляются в шапку и подпись писем во всех модулях. Данные общие: правка здесь видна и в модулях.</p>
-
-            <div class="cw-sender-preview" id="senderPreview" aria-live="polite"></div>
-
-            <details class="cw-disclose">
-              <summary data-i18n="sender.edit">Изменить данные</summary>
-              <div class="cw-form">
-                  <label class="cw-form__field">
-                    <span class="cw-form__label" data-i18n="sender.f_name">Имя и фамилия</span>
-                    <input id="sender-name" type="text" autocomplete="name">
-                  </label>
-                  <label class="cw-form__field">
-                    <span class="cw-form__label" data-i18n="sender.f_code">Код района</span>
-                    <input id="sender-code" type="text" autocomplete="off">
-                  </label>
-                  <label class="cw-form__field">
-                    <span class="cw-form__label" data-i18n="sender.f_phone1">Телефон</span>
-                    <input id="sender-phone1" type="tel" autocomplete="tel">
-                  </label>
-                  <label class="cw-form__field">
-                    <span class="cw-form__label" data-i18n="sender.f_phone2">Второй телефон</span>
-                    <input id="sender-phone2" type="tel" autocomplete="tel">
-                  </label>
-                  <label class="cw-form__field">
-                    <span class="cw-form__label" data-i18n="sender.f_email">E-mail</span>
-                    <input id="sender-email" type="email" autocomplete="email">
-                  </label>
-                  <label class="cw-form__field cw-form__field--wide">
-                    <span class="cw-form__label" data-i18n="sender.f_address">Адрес</span>
-                    <textarea id="sender-address" rows="2" autocomplete="street-address"></textarea>
-                  </label>
-              </div>
-          </details>
-        </article>
-      </div>
+        </div>
+      </section>
     </section>
   </div>
 </main>
@@ -1351,10 +1414,78 @@
   });
 
 
+  /* ── Экран «Настройки» (#settings) ─────────────────────────────────────
+     Один класс на <body>: главная скрывает рабочий ярус, настройки
+     показываются. Адреса #settings, #senderCard, #backupCard и другие id
+     внутри экрана открывают его сразу (модули ссылаются на эти якоря). */
+  (function () {
+    var view = document.getElementById('hubSettings');
+    if (!view) return;
+    var chips = [].slice.call(document.querySelectorAll('[data-settings-jump]'));
+    var lockUntil = 0;
+    function markChip(id) {
+      chips.forEach(function (c) {
+        var on = c.getAttribute('data-settings-jump') === id;
+        c.classList.toggle('is-active', on);
+        if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current');
+      });
+    }
+    function target() {
+      var id = (location.hash || '').slice(1);
+      if (!id) return null;
+      if (id === 'settings') return { open: true, el: null };
+      var el = document.getElementById(id);
+      return el && view.contains(el) ? { open: true, el: el } : null;
+    }
+    function sync(initial) {
+      var t = target();
+      var was = document.body.classList.contains('cw-view-settings');
+      document.body.classList.toggle('cw-view-settings', !!t);
+      if (t && !was) {
+        if (t.el) t.el.scrollIntoView({ block: 'start' }); else window.scrollTo(0, 0);
+      } else if (t && t.el) {
+        t.el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      } else if (!t && was && !initial) {
+        window.scrollTo(0, 0);
+      }
+    }
+    chips.forEach(function (c) {
+      c.addEventListener('click', function (e) {
+        e.preventDefault();
+        var el = document.getElementById(c.getAttribute('data-settings-jump'));
+        if (!el) return;
+        lockUntil = Date.now() + 1500;
+        markChip(el.id);
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      });
+    });
+    var groups = chips.map(function (c) { return document.getElementById(c.getAttribute('data-settings-jump')); }).filter(Boolean);
+    if (groups.length && 'IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        if (Date.now() < lockUntil) return;
+        var vis = entries.filter(function (e) { return e.isIntersecting; })
+          .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+        if (vis[0]) markChip(vis[0].target.id);
+      }, { rootMargin: '-30% 0px -60% 0px' });
+      groups.forEach(function (g) { io.observe(g); });
+    }
+    var back = document.getElementById('hubSettingsBack');
+    if (back) back.addEventListener('click', function (e) {
+      e.preventDefault();
+      history.pushState(null, '', location.pathname + location.search);
+      sync();
+    });
+    window.addEventListener('hashchange', function () { sync(); });
+    window.addEventListener('popstate', function () { sync(); });
+    markChip('hubSetProfile');
+    sync(true);
+  })();
+
   /* HUB-ORDER:BEGIN --------------------------------------------------------
      Пользовательский порядок плиток. Две НЕЗАВИСИМЫЕ зоны:
        work   — #moduleGrid (рабочие модули, id = data-module);
-       system — .cw-grid--system (системные карточки, id = id элемента).
+       (зона «system» снята 23.10.2026 — карточки на экране «Настройки»).
      Источник правды о принадлежности к зоне — только разметка index.html
      (тот же, что проверяет check-hub-tiles.mjs против CW_MODULES). Канон
      зоны снимается с DOM ДО применения сохранённого порядка. Сохранённое
@@ -1367,10 +1498,12 @@
   (function () {
     var KEY = 'cw-hub-order';
     var zones = {
-      work:   { grid: document.getElementById('moduleGrid'), idOf: function (el) { return el.getAttribute('data-module'); } },
-      system: { grid: document.querySelector('.cw-grid--system'), idOf: function (el) { return el.id || null; } }
+      work: { grid: document.getElementById('moduleGrid'), idOf: function (el) { return el.getAttribute('data-module'); } }
     };
-    var ZONE_NAMES = ['work', 'system'];
+    /* Зона «system» снята 23.10.2026: системные карточки переехали на экран
+       «Настройки» и больше не переставляются. Прежний ключ `system` в записи
+       порядка игнорируется и при первой записи исчезает. */
+    var ZONE_NAMES = ['work'];
 
     function itemsOf(z) {
       if (!z.grid) return [];
@@ -1628,7 +1761,6 @@
   (function () {
     var board = document.querySelector('.cw-board');
     var work = document.getElementById('moduleGrid');
-    var system = document.querySelector('.cw-grid--system');
     if (!board) return;
 
     function items(grid) {
@@ -1669,9 +1801,6 @@
         if (counter) counter.textContent = '· ' + n;
         renderMeta(n);
       }
-      if (system) {
-        system.style.setProperty('--cw-cols-system', Math.min(2, items(system).length));
-      }
     }
 
     refresh();
@@ -1685,28 +1814,38 @@
   // (ключ 'cw-lang:<module>') останется на своём — это и есть наследование
   // с локальным переопределением.
   (function () {
-    if (window.CWTheme) window.CWTheme.mountSelect(document.getElementById('hubTheme'));
-    var select = document.getElementById('hubLanguage');
+    /* Тема и язык есть в двух местах: быстрые переключатели в шапке и поля
+       на экране «Настройки». Оба — один и тот же общий ключ, синхронизация
+       через CWTheme / CWI18n.onChange. */
+    ['hubTheme', 'settingsTheme'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (window.CWTheme && el) window.CWTheme.mountSelect(el);
+    });
+    var selects = ['hubLanguage', 'settingsLanguage'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
 
     // Опции строим из реестра языков, а не из разметки: добавление языка =
     // одна строка в shared/i18n.js + переводы, без правки HTML.
     // Только включённые языки интерфейса (флаг `ui` в реестре).
-    CWI18n.UI_LANGS.forEach(function (lang) {
-      var option = document.createElement('option');
-      option.value = lang.code;
-      option.textContent = lang.label;
-      select.appendChild(option);
+    selects.forEach(function (select) {
+      CWI18n.UI_LANGS.forEach(function (lang) {
+        var option = document.createElement('option');
+        option.value = lang.code;
+        option.textContent = lang.label;
+        select.appendChild(option);
+      });
     });
 
     var active = CWI18n.init();   // без module → это хаб
-    select.value = active;
-
-    select.addEventListener('change', function (e) {
-      CWI18n.setLang(e.target.value);   // apply() внутри — перерисовка мгновенная
+    selects.forEach(function (select) {
+      select.value = active;
+      select.addEventListener('change', function (e) {
+        CWI18n.setLang(e.target.value);   // apply() внутри — перерисовка мгновенная
+      });
     });
 
-    // Смена языка в другой вкладке (событие storage) — держим селект в курсе.
-    CWI18n.onChange(function (lang) { select.value = lang; });
+    // Смена языка в другой вкладке (событие storage) или в соседнем поле —
+    // держим все селекты в курсе.
+    CWI18n.onChange(function (lang) { selects.forEach(function (select) { select.value = lang; }); });
   })();
 
   // Общая БД теперь подключена статическим script-тегом в head (см. комментарий
