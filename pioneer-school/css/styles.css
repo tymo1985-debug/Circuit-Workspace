@@ -469,26 +469,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 /* --- Переключатель языка интерфейса в сайдбаре (js/i18n.js) ---
    Язык документов (PDF-анкета, формуляры, экспорт) намеренно не зависит от
    этого выбора — это свойство бумаги, а не оболочки. */
-/* Выбор языка переехал из сайдбара в шапку модуля (.md-topbar-v2__actions).
-   Прежний .sidebar-lang удалён вместе с хардкодом option{color:#1b1b1f;
-   background:#fff} — он не подчинялся теме. */
-#ui-language{
-  height:32px;padding:0 10px;border-radius:var(--md-radius-full);
-  border:1px solid var(--md-outline-variant);background:var(--md-surface);
-  color:var(--md-on-surface);font:500 12px/16px var(--md-font-family);cursor:pointer;
-}
-
-/* Телефон: селектор языка — иконка-глобус (аудит 07, п.«Заголовки на телефоне»).
-   Полное имя языка («Українська») занимало 120px и вытесняло название модуля
-   из шапки. Это тот же настоящий <select>: нативный список, label и change. */
-@media (max-width: 600px) {
-  #ui-language {
-    width: 40px; min-width: 40px; padding: 0; color: transparent;
-    -webkit-appearance: none; appearance: none;
-    background: var(--md-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") center / 20px no-repeat;
-  }
-  #ui-language option { color: var(--md-on-surface); background: var(--md-surface); }
-}
+/* Переключатель языка интерфейса убран 23.10.2026: язык задаётся только в хабе. */
 
 /* ---------- Документы модуля (фаза 6, 14.08.2026) ----------
    Меню «Создать документ» на экране «Назначение» и лист предпросмотра в

@@ -459,16 +459,6 @@ body::before{display:none !important}
    .calendar-layout между колонками, не отдельные магические числа. */
 @media (min-width:1181px){.nv-row{max-width:calc(100% - var(--calendar-side-width) - var(--calendar-layout-gap))}}
 @media (max-width:600px){.main{padding:14px 12px 92px !important}.service-year-grid{grid-template-columns:1fr !important;padding:10px !important;gap:12px !important}.calendar-toolbar{padding:14px !important}.calendar-title{font-size:1.2rem}.sidebar{width:86vw !important;left:-90vw !important}.app.menu-open .sidebar{left:0 !important}}
- [data-font-size="80"]{--ui-font-scale:.80}
- [data-font-size="85"]{--ui-font-scale:.85}
- [data-font-size="90"]{--ui-font-scale:.90}
- [data-font-size="95"]{--ui-font-scale:.95}
- [data-font-size="100"]{--ui-font-scale:1}
- [data-font-size="105"]{--ui-font-scale:1.05}
- [data-font-size="110"]{--ui-font-scale:1.10}
- [data-font-size="115"]{--ui-font-scale:1.15}
- [data-font-size="120"]{--ui-font-scale:1.20}
- [data-font-size="125"]{--ui-font-scale:1.25}
 
 
  

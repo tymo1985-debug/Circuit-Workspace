@@ -164,7 +164,6 @@
     if (!self.CWI18n) return;
     self.CWI18n.bindModule({
       module: MODULE_ID,
-      select: 'uiLanguage',
       onChange: function () { applyRoute(); },
     });
   }

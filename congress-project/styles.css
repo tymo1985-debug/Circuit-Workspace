@@ -1781,49 +1781,12 @@ dialog {
     font-size: 16pt
   }
 }
-/* --- Переключатель языка интерфейса в шапке (js/i18n.js) ---
-   Язык ПИСЕМ задаётся отдельно, в настройках письма: это разные вещи, и
-   селекты намеренно стоят в разных местах, чтобы их не путали. */
-.ui-lang {
-  display: inline-flex;
-  align-items: center
-}
-.ui-lang select {
-  height: 36px;
-  padding: 0 8px;
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  background: var(--md-surface);
-  color: var(--md-on-surface);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.ui-lang select:hover {
-  border-color: var(--md-primary)
-}
-
-/* Телефон: селектор языка — иконка-глобус (аудит 07, п.«Заголовки на телефоне»).
-   Полное имя языка («Українська») занимало 120px и вытесняло название модуля
-   из шапки. Это тот же настоящий <select>: нативный список, label и change. */
-@media (max-width: 600px) {
-  .ui-lang select {
-    width: 40px; min-width: 40px; padding: 0; color: transparent;
-    -webkit-appearance: none; appearance: none;
-    background: var(--md-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") center / 20px no-repeat;
-  }
-  .ui-lang select option { color: var(--md-on-surface); background: var(--md-surface); }
-}
+/* Переключатель языка интерфейса убран 23.10.2026: язык задаётся только в хабе. */
 .module-version {
   margin: 0;
   color: var(--md-on-surface-variant);
   font-size: 12px;
   font-variant-numeric: tabular-nums
-}
-@media print {
-  .ui-lang {
-    display: none !important
-  }
 }
 /* --- Шапка после перехода на общий компонент -------------------------
    Разметка шапки теперь .md-topbar-v2 (общий слой). Прежний блок .topbar

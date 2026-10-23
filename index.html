@@ -1250,7 +1250,7 @@
             </div>
             <h3 id="appearanceHeading" data-i18n="hub.set_appearance">Внешний вид</h3>
           </div>
-          <p class="cw-syscard__hint" data-i18n="hub.set_appearance_hint">Язык и тема общие для всего приложения: модули подхватывают их сами. Быстрые переключатели есть и в шапке.</p>
+          <p class="cw-syscard__hint" data-i18n="hub.set_appearance_hint">Язык, тема и размер общие для всего приложения: модули подхватывают их сами. Язык и тему можно быстро сменить и в шапке.</p>
           <div class="cw-form">
             <label class="cw-form__field">
               <span class="cw-form__label" data-i18n="hub.language_label">Язык интерфейса</span>
@@ -1259,6 +1259,10 @@
             <label class="cw-form__field">
               <span class="cw-form__label" data-i18n="common.theme">Тема</span>
               <select id="settingsTheme"></select>
+            </label>
+            <label class="cw-form__field">
+              <span class="cw-form__label" data-i18n="hub.font_scale_label">Размер интерфейса</span>
+              <select id="settingsFontScale"></select>
             </label>
           </div>
         </article>
@@ -1809,10 +1813,9 @@
 
   // --- Язык интерфейса ------------------------------------------------
   // Хаб задаёт язык по умолчанию для всей экосистемы: CWI18n.setLang здесь
-  // пишет общий ключ 'cw-lang'. Модуль, в котором пользователь язык не менял,
-  // подхватит его при следующем открытии; модуль с собственным выбором
-  // (ключ 'cw-lang:<module>') останется на своём — это и есть наследование
-  // с локальным переопределением.
+  // пишет общий ключ 'cw-lang', модули подхватывают его сами.
+  // Своего языка у модулей больше нет (решение Алекса 23.10.2026, фаза 3):
+  // ключи 'cw-lang:<module>' не читаются, язык всегда отсюда.
   (function () {
     /* Тема и язык есть в двух местах: быстрые переключатели в шапке и поля
        на экране «Настройки». Оба — один и тот же общий ключ, синхронизация
@@ -1821,6 +1824,8 @@
       var el = document.getElementById(id);
       if (window.CWTheme && el) window.CWTheme.mountSelect(el);
     });
+    var scaleEl = document.getElementById('settingsFontScale');
+    if (window.CWTheme && window.CWTheme.mountScaleSelect && scaleEl) window.CWTheme.mountScaleSelect(scaleEl);
     var selects = ['hubLanguage', 'settingsLanguage'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
 
     // Опции строим из реестра языков, а не из разметки: добавление языка =

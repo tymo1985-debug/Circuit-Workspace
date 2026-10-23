@@ -662,7 +662,6 @@
     if (!self.CWI18n) return;
     self.CWI18n.bindModule({
       module: MODULE_ID,
-      select: 'uiLanguage',
       onChange: function () {
         /* Панель и списки строятся скриптом, а не разметкой, поэтому общий
            apply() их не достаёт — перерисовываем сами. */

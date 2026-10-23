@@ -1683,7 +1683,6 @@
          `module`, то есть выбор в Документах был невозможен в принципе. */
       self.CWI18n.bindModule({
         module: MODULE_ID,
-        select: 'uiLanguage',
         versionSlot: 'moduleVersion',
         onChange: function () { renderFilters(); renderArchiveFilters(); },
       });

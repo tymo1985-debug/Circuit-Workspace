@@ -10,15 +10,15 @@
  * постепенно, ничего не ломая по дороге.
  *
  * ПРАВИЛО РАЗРЕШЕНИЯ ЯЗЫКА (по убыванию приоритета):
- *   1. localStorage['cw-lang:<module>'] — локальный выбор внутри модуля.
- *      Пишется ТОЛЬКО когда пользователь сам сменил язык в этом модуле.
- *   2. localStorage['cw-lang']          — язык, выбранный в хабе.
- *   3. navigator.language                — первый запуск, ничего не выбрано.
- *   4. 'ru'                              — финальный запасной вариант.
+ *   1. localStorage['cw-lang']          — язык, выбранный в хабе.
+ *   2. navigator.language                — первый запуск, ничего не выбрано.
+ *   3. 'ru'                              — финальный запасной вариант.
  *
- * Отсюда и наследование: пока у модуля нет своего ключа, он следует за
- * хабом. Появился ключ — модуль живёт своей жизнью. Удалили ключ
- * (`resetToHub()`) — снова следует за хабом.
+ * ЯЗЫК ТОЛЬКО В ХАБЕ (решение Алекса 23.10.2026, фаза 3 общих настроек).
+ * До этого у модуля мог быть свой выбор — ключ 'cw-lang:<module>' с высшим
+ * приоритетом. Теперь он не читается и не пишется: setLang() из модуля без
+ * scope:'hub' ничего не сохраняет, isInherited() всегда true. Старые ключи
+ * в хранилище не удаляются — их можно вернуть, если решение пересмотрят.
  *
  * ПОДКЛЮЧЕНИЕ (хаб):
  *   <script src="shared/i18n.js"></script>
@@ -53,7 +53,8 @@
      литерал '__hub' был объявлен в каждом модуле отдельно — четыре копии
      одной константы, которые обязаны совпадать, но ничем не связаны. */
   var HUB_VALUE = '__hub';
-  var MODULE_KEY_PREFIX = 'cw-lang:';
+  /* Прежний ключ языка модуля 'cw-lang:<module>' (до 23.10.2026) больше не
+     читается и не пишется; данные под ним сохранены. */
   var FALLBACK = 'ru';
 
   /* Порядок здесь = порядок в переключателях языка. Подписи намеренно
@@ -90,9 +91,6 @@
   function write(key, value) {
     try { global.localStorage.setItem(key, value); } catch (e) { /* no-op */ }
   }
-  function drop(key) {
-    try { global.localStorage.removeItem(key); } catch (e) { /* no-op */ }
-  }
 
   function normalize(value) {
     if (!value) return null;
@@ -108,10 +106,6 @@
     return code && UI_CODES.indexOf(code) >= 0 ? code : null;
   }
 
-  function moduleKey() {
-    return moduleId ? MODULE_KEY_PREFIX + moduleId : null;
-  }
-
   function fromBrowser() {
     var list = (global.navigator && (global.navigator.languages || [global.navigator.language])) || [];
     for (var i = 0; i < list.length; i++) {
@@ -122,9 +116,7 @@
   }
 
   function resolve() {
-    var key = moduleKey();
-    return (key && normalizeUi(read(key)))
-      || normalizeUi(read(HUB_KEY))
+    return normalizeUi(read(HUB_KEY))
       || fromBrowser()
       || FALLBACK;
   }
@@ -284,7 +276,7 @@
       if (!bound) {
       bound = true;
       global.addEventListener('storage', function (e) {
-        if (!e || (e.key !== HUB_KEY && e.key !== moduleKey())) return;
+        if (!e || e.key !== HUB_KEY) return;
         var next = resolve();
         if (next === current) return;
         current = next;
@@ -419,7 +411,7 @@
     getHubLang: function () { return normalizeUi(read(HUB_KEY)) || fromBrowser() || FALLBACK; },
 
     /** true — модуль следует за хабом (своего выбора нет). */
-    isInherited: function () { return !moduleId || !normalizeUi(read(moduleKey())); },
+    isInherited: function () { return true; },
 
     /**
      * @param {string} lang
@@ -433,17 +425,17 @@
       if (!code) return CWI18n.getLang();
       var scope = (options && options.scope) || (moduleId ? 'module' : 'hub');
 
-      if (scope === 'hub') write(HUB_KEY, code);
-      else write(moduleKey(), code);
+      /* Своего языка у модуля нет (фаза 3): выбор пишется только в хаб. */
+      if (scope !== 'hub') return CWI18n.getLang();
+      write(HUB_KEY, code);
 
       if (code !== current) { current = code; apply(); notify(); }
       return current;
     },
 
-    /** Убирает локальный выбор модуля — язык снова наследуется от хаба. */
+    /** Перечитывает язык хаба. Своего выбора у модуля нет с 23.10.2026;
+     *  метод оставлен для совместимости, прежний ключ модуля не трогает. */
     resetToHub: function () {
-      var key = moduleKey();
-      if (key) drop(key);
       var next = resolve();
       if (next !== current) { current = next; apply(); notify(); }
       return current;

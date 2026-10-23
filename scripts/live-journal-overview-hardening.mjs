@@ -62,7 +62,15 @@ const expected = [];                 // намеренные сбои: текс�
 const watch = (page, name) => {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(name + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push(name + ': ' + String(e)));
-  page.on('requestfailed', (r) => { if (!/favicon/.test(r.url())) errors.push(name + ': request failed ' + r.url()); });
+  /* Шрифт, оборванный закрытием контекста (net::ERR_ABORTED), — гонка
+     стенда, а не ошибка страницы: латинский Roboto грузится лениво, при
+     первом латинском глифе. До 23.10.2026 его рано запрашивал селектор
+     языка в шапке («English», «Deutsch»), после его удаления — позже. */
+  page.on('requestfailed', (r) => {
+    if (/favicon/.test(r.url())) return;
+    if (/\.woff2$/.test(r.url()) && /ERR_ABORTED/.test((r.failure() || {}).errorText || '')) return;
+    errors.push(name + ': request failed ' + r.url());
+  });
   page.on('dialog', (d) => d.accept());
 };
 const J_URL = BASE + '/journal/index.html';
@@ -159,7 +167,9 @@ async function geometry(p) {
     // В защищённом проекте на 320 px в шапке одновременно шесть действий.
     // 44 px — общий coarse-pointer минимум; требование 56 px к одному select
     // искусственно объявляло корректную плотную раскладку ошибкой.
-    const topOk = langW >= 44 && topOverlap === 0 && rects.every((r) => r.left >= -0.5 && r.right <= vw + 0.5) && ctl.every(clickable) && !!bar.querySelector('a.cw-home-btn, .cw-home-btn[href]');
+    /* Селектор языка из шапки убран 23.10.2026 (язык только в хабе); если он
+       вернётся, по-прежнему не уже 44px. */
+    const topOk = (!bar.querySelector('select') || langW >= 44) && topOverlap === 0 && rects.every((r) => r.left >= -0.5 && r.right <= vw + 0.5) && ctl.every(clickable) && !!bar.querySelector('a.cw-home-btn, .cw-home-btn[href]');
     window.scrollTo(0, document.documentElement.scrollHeight);
     const last = [...document.querySelectorAll('#route-overview .j-sec')].pop().getBoundingClientRect();
     const nav2 = document.querySelector('.md-bottomnav').getBoundingClientRect();
@@ -303,7 +313,7 @@ console.log('\n3. Пусто / наполнено');
   /* ═══ 8. Повторные обновления и подписки ═══════════════════════════════ */
   console.log('\n8. Повторные обновления');
   for (let i = 0; i < 4; i++) { await page.evaluate(() => { location.hash = '#tasks'; }); await settle(page, 150); await page.evaluate(() => { location.hash = '#overview'; }); await settle(page, 150); }
-  for (const l of ['uk', 'de', 'ru']) { await page.selectOption('#uiLanguage', l); await settle(page, 200); }
+  for (const l of ['uk', 'de', 'ru']) { await page.evaluate((x) => CWI18n.setLang(x, { scope: 'hub' }), l); /* язык только в хабе (23.10.2026) */ await settle(page, 200); }
   await page.evaluate(() => { CWJournalApp.wireOverviewChrome(); CWJournalApp.wireOverviewChrome(); });
   await settle(page);
   const reads = await page.evaluate(async (n) => {

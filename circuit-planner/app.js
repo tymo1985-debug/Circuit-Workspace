@@ -2099,7 +2099,7 @@
           'visitDocsModal','visitDocsSub','visitDocsList','visitDocsCloseBtn','visitDocsCloseBtn2',
           'composerModal','composerTitle','composerSub','composerSubject','composerPaper','composerCloseBtn',
           'composerEditBtn','composerCopySubjectBtn','composerCopyTextBtn','composerPrintBtn','composerPdfBtn','composerSaveBtn','composerPaperHead','composerPaperTail',
-          'languageSelect','themeSelect','fontSizeSelect',
+          'themeSelect',
           'calendarPrintBtn','calendarExportBtn','backupBtn','resetAppBtn','importInput','letterReminderDaysSelect','holidayCountries','serviceYearList','nextYearHint','backupStatusLine','pdfModal','pdfModalCloseBtn',
           'pdfCancelBtn','pdfExportConfirmBtn','pdfRangeCard','pdfRangeStartInput','pdfRangeEndInput','pdfRangeHelp','pdfHint',
           'bottomNav','bottomNavRow','mobileOverlay','mobileMenuToggleBtn','exportModal','exportModalCloseBtn','exportCancelBtn',
@@ -2108,19 +2108,6 @@
       },
       cleanupCalendarChrome() {
         document.querySelectorAll('#calendar .legend, .sy-legend, .sy-compact-hint').forEach((node) => node.remove());
-      },
-      ensureFontSizeControl() {
-        if (document.getElementById('fontSizeSelect')) {
-          App.els.fontSizeSelect = document.getElementById('fontSizeSelect');
-          return;
-        }
-        const layoutSelect = document.getElementById('layoutPresetSelect');
-        const host = layoutSelect?.closest('div');
-        if (!host?.parentNode) return;
-        const wrap = document.createElement('div');
-        wrap.innerHTML = `<label class="small" data-i18n="cp.font_size_label">Размер шрифта интерфейса</label><select id="fontSizeSelect"><option data-i18n="cp.fs_80" value="80">80% — Очень мелкий</option><option data-i18n="cp.fs_85" value="85">85% — Мелкий</option><option data-i18n="cp.fs_90" value="90">90% — Компактный</option><option data-i18n="cp.fs_95" value="95">95% — Чуть меньше</option><option data-i18n="cp.fs_100" value="100">100% — Обычный</option><option data-i18n="cp.fs_105" value="105">105% — Чуть больше</option><option data-i18n="cp.fs_110" value="110">110% — Крупный</option><option data-i18n="cp.fs_115" value="115">115% — Очень крупный</option><option data-i18n="cp.fs_120" value="120">120% — Максимальный</option><option data-i18n="cp.fs_125" value="125">125% — Огромный</option></select><div class="layout-help" data-i18n="cp.font_size_hint">Меняет размер текста, кнопок и календаря.</div>`;
-        host.parentNode.insertBefore(wrap, host);
-        App.els.fontSizeSelect = document.getElementById('fontSizeSelect');
       },
       ensureEditorNoteField() {
         if (!App.els.calendarEditor) return;
@@ -2225,28 +2212,10 @@
           if (App.els.exportCancelBtn) App.els.exportCancelBtn.textContent = App.utils.t('close');
           if (App.els.exportConfirmBtn) App.els.exportConfirmBtn.textContent = App.utils.t('download');
         }
-        if (App.els.languageSelect) {
-          // Раньше подписи ставились по индексу (opts[0..3]) — добавление
-          // опции «Как в Circuit Workspace» сдвинуло бы их все. Теперь
-          // сопоставление идёт по value и от порядка не зависит.
-          const NATIVE = { ru: 'Русский', en: 'English', uk: 'Українська', pl: 'Polski', de: 'Deutsch' };
-          // Отключённые языки интерфейса (флаг `ui` в shared/i18n.js) убираются
-          // из списка: `hidden` на <option> iOS Safari не соблюдает.
-          const uiCodes = (typeof CWI18n !== 'undefined' && CWI18n.UI_LANGS) ? CWI18n.UI_LANGS.map((l) => l.code) : null;
-          Array.from(App.els.languageSelect.options).forEach((opt) => {
-            if (uiCodes && NATIVE[opt.value] && uiCodes.indexOf(opt.value) < 0) { opt.remove(); return; }
-            if (opt.value === App.i18nBridge.HUB_VALUE) {
-              opt.textContent = App.i18nBridge.ready() ? CWI18n.t('common.language_inherit') : 'Как в Circuit Workspace';
-            } else if (NATIVE[opt.value]) {
-              opt.textContent = NATIVE[opt.value];
-            }
-          });
-        }
       },
       renderAll() {
         this.ensureCalendarViewStyles();
         this.ensureEditorNoteField();
-        this.ensureFontSizeControl();
         this.localizeStaticTexts();
         this.applyTheme();
         this.applyFontSize();
@@ -2414,14 +2383,14 @@
       },
       renderLayoutOptions() { const options = App.config.layoutPresets.map((item) => `<option value="${item.value}">${App.utils.escapeHtml(App.utils.t(item.labelKey))}</option>`).join(''); ['layoutPresetSelect','calendarLayoutPresetSelect'].forEach((id) => { const el = App.els[id]; if (!el) return; el.innerHTML = options; el.value = App.state.app.settings.layoutPreset; }); },
       applyFontSize() {
-        const legacyMap = { small: '90', normal: '100', large: '110', xlarge: '120' };
-        const allowed = ['80','85','90','95','100','105','110','115','120','125'];
-        const raw = String(App.state.app?.settings?.fontSize || '100');
-        const value = legacyMap[raw] || (allowed.includes(raw) ? raw : '100');
-        if (App.state.app.settings.fontSize !== value) { App.state.app.settings.fontSize = value; App.store.save(); }
-        document.documentElement.setAttribute('data-font-size', value);
-        document.documentElement.style.setProperty('--ui-font-scale', String(Number(value) / 100));
-        if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = value;
+        // Размер — общая настройка приложения (CWTheme.setScale, экран
+        // «Настройки» хаба; решение Алекса 23.10.2026, фаза 3). Прежний выбор
+        // Клиндария переносится один раз: adoptScale() пишет, только если
+        // общего значения ещё нет. settings.fontSize в данных не удаляется.
+        if (this._fontAdopted) return;
+        this._fontAdopted = true;
+        const raw = App.state.app?.settings?.fontSize;
+        if (raw && String(raw) !== '100' && typeof CWTheme !== 'undefined' && CWTheme.adoptScale) CWTheme.adoptScale(raw);
       },
       applyTheme() {
         // Тема — общая настройка приложения (shared/theme.js), а не модуля.
@@ -4533,7 +4502,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.els.backupStatusLine.textContent = parts.join(' · ');
         }
       },
-      renderSettings() { if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.value = App.state.app.settings.formNameOverseer || ''; if (App.els.formNameWifeInput) App.els.formNameWifeInput.value = App.state.app.settings.formNameWife || ''; if (App.els.languageSelect) App.els.languageSelect.value = App.i18nBridge.selectValue(); if (App.els.fontSizeSelect) App.els.fontSizeSelect.value = App.state.app.settings.fontSize || '100'; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); this.renderSettingsExtras(); },
+      renderSettings() { if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.value = App.state.app.settings.formNameOverseer || ''; if (App.els.formNameWifeInput) App.els.formNameWifeInput.value = App.state.app.settings.formNameWife || ''; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); this.renderSettingsExtras(); },
     },
 
     bind() {
@@ -4568,8 +4537,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         App.store.save();
         if (!window.CWTheme) App.ui.renderAll();
       });
-      App.els.fontSizeSelect?.addEventListener('change', (e) => { App.state.app.settings.fontSize = e.target.value; App.store.save(); App.ui.applyFontSize(); });
-      App.els.languageSelect?.addEventListener('change', (e) => { App.i18nBridge.choose(e.target.value); });
       App.els.layoutPresetSelect?.addEventListener('change', (e) => { App.state.app.settings.layoutPreset = e.target.value; App.store.save(); App.ui.renderAll(); });
       App.els.calendarLayoutPresetSelect?.addEventListener('change', (e) => { App.state.app.settings.layoutPreset = e.target.value; App.store.save(); App.ui.renderAll(); });
       App.els.prevMonthBtn?.addEventListener('click', () => { if (App.state.calendarView === 'year') { const sy = App.utils.getServiceYearForDate(new Date(App.state.calendarYear, App.state.calendarMonth, 1)) - 1; App.state.calendarYear = sy; App.state.calendarMonth = App.config.serviceYearStartMonth; App.ui.renderCalendar(); return; } const date = new Date(App.state.calendarYear, App.state.calendarMonth - 1, 1); App.state.calendarMonth = date.getMonth(); App.state.calendarYear = date.getFullYear(); App.ui.renderCalendar(); });
@@ -5291,13 +5258,11 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
 
     i18nBridge: {
       MODULE: 'circuit-planner',
-      HUB_VALUE: '__hub',
       SUPPORTED: ['ru', 'uk', 'en', 'pl', 'de'],
       // Отображение «нет такого языка → ближайший» осталось как механизм:
       // сейчас все пять языков экосистемы поддержаны и карта пуста, но
       // появится шестой — подхватится здесь, не трогая toSupported().
       NEAREST: {},
-      _busy: false,
 
       // shared/i18n.js может быть не подключён (например, модуль открыт
       // отдельно от монорепо) — тогда всё работает ровно как раньше.
@@ -5317,22 +5282,18 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         // собственный renderAll(); от общего слоя нужно только разрешение языка.
         CWI18n.init({ module: this.MODULE, apply: false });
         const settings = App.state.app.settings;
-        const hadSavedData = !!App.store.lastWrittenPayload;
 
-        if (!CWI18n.isInherited()) {
-          settings.language = this.toSupported(CWI18n.getLang());
-        } else if (hadSavedData) {
-          settings.language = this.toSupported(settings.language || 'ru');
-          CWI18n.setLang(settings.language, { scope: 'module' });
-        } else {
-          settings.language = this.toSupported(CWI18n.getHubLang());
-        }
+        // Язык только в хабе (решение Алекса 23.10.2026, фаза 3): свой выбор
+        // модуля и прежний settings.language больше не решают — зеркало
+        // просто следует за общим языком.
+        // Без save(): зеркало живёт в памяти и уйдёт в данные со следующей
+        // обычной записью — ранний save() до миграций init() не нужен.
+        settings.language = this.toSupported(CWI18n.getLang());
         document.documentElement.lang = settings.language;
 
         // Сменили язык в хабе в соседней вкладке — модуль без своего выбора
         // должен перестроиться сам.
         CWI18n.onChange(() => {
-          if (this._busy || !CWI18n.isInherited()) return;
           const next = this.toSupported(CWI18n.getLang());
           if (next === App.state.app.settings.language) return;
           App.state.app.settings.language = next;
@@ -5342,26 +5303,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         });
       },
 
-      // Выбор в селекте настроек: конкретный язык или «как в хабе».
-      choose(value) {
-        const settings = App.state.app.settings;
-        this._busy = true;
-        try {
-          if (value === this.HUB_VALUE) {
-            if (this.ready()) { CWI18n.resetToHub(); settings.language = this.toSupported(CWI18n.getLang()); }
-          } else {
-            settings.language = value;
-            if (this.ready()) CWI18n.setLang(value, { scope: 'module' });
-          }
-        } finally { this._busy = false; }
-        document.documentElement.lang = settings.language;
-        App.store.save();
-        App.ui.renderAll();
-      },
-
-      selectValue() {
-        return (this.ready() && CWI18n.isInherited()) ? this.HUB_VALUE : (App.state.app.settings.language || 'ru');
-      },
     },
 
     init() {

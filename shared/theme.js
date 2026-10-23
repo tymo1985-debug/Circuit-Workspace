@@ -33,6 +33,14 @@
  * до того, как отработает скрипт, и вернёт рассинхрон, ради устранения
  * которого файл и написан.
  *
+ * РАЗМЕР (23.10.2026, решение Алекса — фаза 3 общих настроек). Здесь же живёт
+ * масштаб интерфейса: та же природа, что у темы (человек + устройство, один на
+ * всё приложение), и тот же момент применения — до первой отрисовки.
+ * Механизм — CSS `zoom` на <html>, как масштаб в браузере: модули задают
+ * размеры в px, поэтому масштаб через rem менял бы 5 элементов из 92.
+ * Ключ `cw-font-scale`, значения 90…125 с шагом 5 (проценты). На печати
+ * масштаб снимается (`@media print`), окна печати документов он не трогает.
+ *
  * СИНХРОНИЗАЦИЯ между вкладками и модулями — через событие `storage`, как
  * в `shared/doclang.js`. Плюс подписка на смену системной темы, пока режим
  * 'auto'.
@@ -49,6 +57,13 @@
   var listeners = [];
   var mediaQuery = null;
   var started = false;
+
+  var SCALE_KEY = 'cw-font-scale';
+  var SCALES = ['90', '95', '100', '105', '110', '115', '120', '125'];
+  /* Прежние значения Клиндария: словесные и 80/85, которых в общем ряду нет. */
+  var SCALE_LEGACY = { small: '90', normal: '100', large: '110', xlarge: '120', '80': '90', '85': '90' };
+  var scale = null;
+  var scaleListeners = [];
 
   function read() {
     try { return global.localStorage.getItem(KEY); } catch (e) { return null; }
@@ -157,6 +172,50 @@
     watchPrint();
   }
 
+  function readScale() {
+    try { return global.localStorage.getItem(SCALE_KEY); } catch (e) { return null; }
+  }
+  function normalizeScale(value) {
+    if (value === null || value === undefined || value === '') return null;
+    var v = String(value).trim().replace('%', '');
+    v = SCALE_LEGACY[v] || v;
+    return SCALES.indexOf(v) >= 0 ? v : null;
+  }
+  /** Единственное место, где меняется масштаб в DOM. */
+  function paintScale() {
+    var doc = global.document;
+    var root = doc && doc.documentElement;
+    if (!root) return;
+    if (scale === '100') { root.style.removeProperty('zoom'); root.removeAttribute('data-cw-scale'); }
+    else { root.style.zoom = String(Number(scale) / 100); root.setAttribute('data-cw-scale', scale); }
+    /* Печать — в натуральную величину. Стиль один на страницу и ставится
+       сразу: файл подключён в <head>, ждать разбора <body> не нужно. */
+    if (!doc.getElementById('cw-scale-print')) {
+      var st = doc.createElement('style');
+      st.id = 'cw-scale-print';
+      st.textContent = '@media print{html{zoom:1!important}}';
+      (doc.head || root).appendChild(st);
+    }
+  }
+  function notifyScale() {
+    for (var i = 0; i < scaleListeners.length; i++) {
+      try { scaleListeners[i](scale); } catch (e) { console.warn('CWTheme scale listener failed', e); }
+    }
+  }
+  function startScale() {
+    if (scale) return;
+    scale = normalizeScale(readScale()) || '100';
+    paintScale();
+    global.addEventListener('storage', function (e) {
+      if (!e || e.key !== SCALE_KEY) return;
+      var next = normalizeScale(e.newValue) || '100';
+      if (next === scale) return;
+      scale = next;
+      paintScale();
+      notifyScale();
+    });
+  }
+
   var CWTheme = {
     MODES: function () { return MODES.slice(); },
 
@@ -256,8 +315,79 @@
       CWTheme.onChange(function () { el.value = mode; });
       if (global.CWI18n && global.CWI18n.onChange) global.CWI18n.onChange(fill);
     },
+
+    /* ─── Масштаб интерфейса ─────────────────────────────────────────── */
+
+    /** @returns {string[]} допустимые значения, проценты строкой */
+    SCALES: function () { return SCALES.slice(); },
+
+    /** @returns {string} текущий масштаб, например '100' */
+    getScale: function () { startScale(); return scale; },
+
+    /** @returns {string} применённый масштаб */
+    setScale: function (value) {
+      startScale();
+      var next = normalizeScale(value);
+      if (!next) return scale;
+      try { global.localStorage.setItem(SCALE_KEY, next); } catch (e) { /* приватный режим */ }
+      if (next !== scale) { scale = next; paintScale(); notifyScale(); }
+      return scale;
+    },
+
+    /**
+     * Одноразовый перенос прежнего размера модуля (Клиндарий) — как adopt()
+     * темы: пишет только если общего ключа ещё нет.
+     * @returns {boolean} true — значение принято
+     */
+    adoptScale: function (value) {
+      startScale();
+      var next = normalizeScale(value);
+      if (!next || readScale()) return false;
+      try { global.localStorage.setItem(SCALE_KEY, next); } catch (e) { return false; }
+      if (next !== scale) { scale = next; paintScale(); notifyScale(); }
+      return true;
+    },
+
+    /** @returns {Function} отписка */
+    onScaleChange: function (fn) {
+      if (typeof fn !== 'function') return function () {};
+      scaleListeners.push(fn);
+      return function () {
+        var i = scaleListeners.indexOf(fn);
+        if (i >= 0) scaleListeners.splice(i, 1);
+      };
+    },
+
+    /**
+     * Наполняет <select> рядом масштабов и связывает его с настройкой.
+     * Подпись «обычный» у 100 % — из CWI18n (common.font_scale_normal).
+     */
+    mountScaleSelect: function (el) {
+      if (!el || el.tagName !== 'SELECT') return;
+      startScale();
+      var fill = function () {
+        var normal = global.CWI18n ? global.CWI18n.t('common.font_scale_normal') : '';
+        if (!normal || normal === 'common.font_scale_normal') normal = 'обычный';
+        el.textContent = '';
+        SCALES.forEach(function (v) {
+          var opt = global.document.createElement('option');
+          opt.value = v;
+          opt.textContent = v + ' %' + (v === '100' ? ' — ' + normal : '');
+          el.appendChild(opt);
+        });
+        el.value = scale;
+      };
+      fill();
+      if (el.__cwScaleBound) return;
+      el.__cwScaleBound = true;
+      el.addEventListener('change', function () { CWTheme.setScale(el.value); });
+      CWTheme.onScaleChange(function () { el.value = scale; });
+      if (global.CWI18n && global.CWI18n.onChange) global.CWI18n.onChange(fill);
+    },
   };
 
   global.CWTheme = CWTheme;
   start();
+  /* Только на странице: в service worker'е нет документа. */
+  if (global.document) startScale();
 })(typeof self !== 'undefined' ? self : this);

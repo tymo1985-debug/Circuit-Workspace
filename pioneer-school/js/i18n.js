@@ -60,9 +60,6 @@ const PSI18n = {
     }
     this._bridge = CWI18n.bindModule({
       module: this.MODULE,
-      /* id селектора у Школы через дефис — это исторически её разметка, и
-         переименование ради единообразия сломало бы вёрстку без выигрыша. */
-      select: 'ui-language',
       titleKey: 'module.pioneer-school.title',
       onChange: rerender,
     });

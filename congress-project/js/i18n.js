@@ -71,7 +71,6 @@ export function init(rerender) {
   }
   bridge = CWI18n.bindModule({
     module: MODULE,
-    select: 'uiLanguage',
     titleKey: 'cong.app.title',
     versionSlot: 'moduleVersion',
     onChange: rerender,
