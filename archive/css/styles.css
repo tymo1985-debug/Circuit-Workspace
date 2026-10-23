@@ -106,8 +106,22 @@ body {
   opacity: 0; pointer-events: none; transition: opacity var(--md-dur-short) var(--md-ease-standard);
 }
 .arc-toast.is-on { opacity: 1; }
+.arc-toast.has-action { display: flex; align-items: center; gap: 12px; }
+.arc-toast.has-action.is-on { pointer-events: auto; }
+.arc-toast__action {
+  flex: 0 0 auto; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--md-radius-sm);
+  background: transparent; color: var(--md-inverse-primary); font: 500 13.5px/20px var(--md-font-family); cursor: pointer;
+}
 
 @media (max-width: 600px) {
   .arc-wrap { padding: 14px 12px 96px; }
   .arc-detail__title { font-size: 18px; line-height: 26px; }
 }
+
+/* Холст в цвет body: при коротком содержимом низ экрана на телефоне был
+   цвета html (--md-surface) — светлая полоса под страницей (аудит 08, п.14). */
+html:root { background: var(--md-surface-container); }
+/* body не ниже экрана: html и body с overflow-x:hidden делают body
+   прокручиваемым контейнером, и всё, что выходит за его нижний край
+   (меню «⋮» на коротком экране), обрезалось. */
+body { min-height: 100vh; min-height: 100dvh; }

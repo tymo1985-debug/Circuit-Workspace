@@ -71,7 +71,7 @@ const CHROME = process.env.CHROME_PATH || (() => {
   const guess = '/opt/pw-browsers';
   try {
     const dir = fs.readdirSync(guess).find((d) => /^chromium-\d+$/.test(d));
-    if (dir) return path.join(guess, dir, 'chrome-linux', 'chrome');
+    if (dir) return ['chrome-linux64', 'chrome-linux'].map((sub) => path.join(guess, dir, sub, 'chrome')).find((p) => fs.existsSync(p));
   } catch (e) { /* сборки Playwright здесь нет */ }
   return undefined;   // playwright-core поищет сам и внятно откажет
 })();

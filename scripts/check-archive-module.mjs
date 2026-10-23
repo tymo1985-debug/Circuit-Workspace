@@ -202,6 +202,21 @@ const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEve
     doc.getElementById('listScreen').hidden === false && doc.querySelectorAll('.arc-item').length === 2);
   ok('письмо в хранилище документов НЕ тронуто удалением конверта',
     (await w.CWDocs.list({ module: 'congress-project', entity: 'congress', id: 'c1' })).length === 1);
+
+  /* 3.3a. «Отменить» в сообщении возвращает конверт как был (аудит 08, п.10). */
+  const undo = doc.querySelector('#toast .arc-toast__action');
+  ok('после удаления в сообщении есть «Отменить»', !!undo && undo.textContent === tr(w, 'arc.undo'));
+  click(undo);
+  await settle(150);
+  const back = await w.CWArchive.get('congress-project:congress:c1');
+  ok('«Отменить» — конверт снова в хранилище, payload и ревизия прежние',
+    !!back && back.payload && back.revision === 1 && doc.querySelectorAll('.arc-item').length === 3);
+  ok('restore() не затирает конверт, появившийся заново',
+    (await w.CWArchive.restore({ ...back, title: 'старый' })) === false
+    && (await w.CWArchive.get('congress-project:congress:c1')).title !== 'старый');
+  let rejected = false;
+  try { await w.CWArchive.restore({ id: 'x' }); } catch (e) { rejected = e.code === 'invalid'; }
+  ok('restore() без модуля из SOURCES — отказ invalid', rejected);
 }
 
 {

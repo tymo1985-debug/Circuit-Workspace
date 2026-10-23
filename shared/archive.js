@@ -30,6 +30,7 @@
  *                   список: «архива нет» и «архив пуст» — разные ответы);
  *   'invalid'     — конверт не той формы, `field` называет поле;
  *   'unconfirmed' — remove() без явного подтверждения.
+ *   'invalid' (restore) — не конверт: нет id или модуль не из SOURCES.
  *
  * ─── РЕВИЗИИ ────────────────────────────────────────────────────────────────
  *
@@ -247,6 +248,27 @@
     });
   }
 
+  /**
+   * Вернуть только что удалённый конверт как есть — «Отменить» после
+   * remove() (аудит 08, п.10). Запись кладётся целиком, без put(): ревизия,
+   * даты и payload остаются прежними. Если за это время конверт с тем же id
+   * появился снова (год заново отправили), новый не затирается.
+   * @returns {Promise<boolean>} восстановлен ли прежний конверт
+   */
+  function restore(rec) {
+    if (!rec || typeof rec.id !== 'string' || !SOURCES[rec.module]) {
+      return Promise.reject(fail('invalid', 'restore: нужен конверт, полученный get()'));
+    }
+    return init().then(function () {
+      var restored = false;
+      return db()[STORE].mutate(rec.id, function (current) {
+        if (current) return undefined; // не трогаем: запись оставляется как есть
+        restored = true;
+        return rec;
+      }).then(function () { return restored; });
+    });
+  }
+
   global.CWArchive = {
     FORMAT: FORMAT,
     SOURCES: SOURCES,
@@ -258,5 +280,6 @@
     list: list,
     years: years,
     remove: remove,
+    restore: restore,
   };
 })(typeof self !== 'undefined' ? self : this);

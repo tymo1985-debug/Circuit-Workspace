@@ -413,7 +413,11 @@ console.log('\n5. O2: экран Обзора');
   ok('[5] календарь (2/1/1) на плашки не влияет', st[1] !== '2' && st[3] !== '1', st.join());
   ok('районы → #districts; остальные → «Состав»', $('#overviewStats a.j-ovstat').getAttribute('href') === '#districts'
     && JSON.stringify([...doc.querySelectorAll('#overviewStats a.j-ovstat')].slice(1).map((a) => a.getAttribute('href'))) === '["#roster","#roster/groups","#roster/pregroups"]');
-  ok('статистики — с доступным именем', [...doc.querySelectorAll('#overviewStats .j-ovstat')].every((a) => /: /.test(a.getAttribute('aria-label') || '')));
+  /* Доступное имя начинается с видимого текста «число подпись» (WCAG 2.5.3, аудит 08, п.13). */
+  ok('статистики — с доступным именем, начинается с видимого текста', [...doc.querySelectorAll('#overviewStats .j-ovstat')].every((a) => {
+    const visible = a.querySelector('.j-ovstat__value').textContent + ' ' + a.querySelector('.j-ovstat__label').textContent;
+    return (a.getAttribute('aria-label') || '').startsWith(visible);
+  }));
 
   // O4: по умолчанию текст задач скрыт; задачи объектов — только число.
   const eye = $('#overviewTasksEye');

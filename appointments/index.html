@@ -160,7 +160,7 @@
       <!-- Скрытый input + своя кнопка: системный вид file-инпута выпадает
            из дизайн-системы, а accept="image/*" на телефоне сразу предлагает
            камеру. -->
-      <input id="signFile" type="file" accept="image/*" class="sr-only">
+      <input id="signFile" type="file" accept="image/*" class="sr-only" tabindex="-1" aria-hidden="true">
       <div class="sign-actions">
         <button type="button" class="md-btn md-btn-tonal" id="signPickBtn">Загрузить</button>
         <button type="button" class="md-btn md-btn-text" id="signClearBtn" data-i18n="ap.sign.clear">Удалить</button>

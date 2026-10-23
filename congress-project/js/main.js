@@ -22,7 +22,12 @@ import { addMin, clean, clone, id, isLetterable, isSection, today, tv } from "./
    Заведено под перенос шаблонов: до 26.08.2026 его отказ уходил только в
    консоль, то есть не существовал для пользователя вовсе. */
 export function showStartupNotice(text){let b=$("#errorBox");if(!b)return;b.textContent=text;b.classList.remove("hidden")}
-window.onerror=(m,u,l,c,e)=>{let b=$("#errorBox");if(b){b.textContent=t("cong.err.js")+": "+m+"\n"+t("cong.msg.row_label",{n:l})+"\n"+(e&&e.stack?e.stack:"");b.classList.remove("hidden")}};
+/* Сбой показывается понятным текстом и короткой строкой причины; стек и
+   окружение — по кнопке «Скопировать диагностику» (shared/errors.js), а не
+   сырым текстом на экране (аудит 08, п.15). */
+export function showError(head,err){let b=$("#errorBox");if(!b)return;let msg=err&&err.message?err.message:String(err||"");b.textContent="";let p=document.createElement("p");p.className="error-box__text";p.textContent=t("cong.err.friendly");let d=document.createElement("p");d.className="error-box__detail";d.textContent=head+(msg?": "+msg:"");b.append(p,d);if(self.CWErrors){let btn=document.createElement("button");btn.type="button";btn.className="light tiny";btn.textContent=t("errors.copy");btn.onclick=()=>self.CWErrors.copy().then(ok=>{btn.textContent=t(ok?"errors.copied":"errors.copy_failed")});b.append(btn)}b.classList.remove("hidden")}
+function startupFailed(e){try{self.CWErrors?.note(e,"congress:start")}catch(x){}showError(t("cong.err.start"),e)}
+window.onerror=(m,u,l,c,e)=>{showError(t("cong.err.js"),e||m)};
 export function clearSelectionIfOutside(e){if(!store.sel)return;if(e.target.closest('dialog,.program-table,.sidebar,button,input,select,textarea,label,.md-topbar-v2,.md-menu'))return;store.sel=null;renderTasks()}
 export function bind(){initTopbarMenu();initMenu("#congressMoreBtn","#congressMoreMenu");initMenu("#printMenuBtn","#printMenu");initMenu("#duplicateMenuBtn","#duplicateMenu");
 // Дублирующее меню — первый .md-menu внутри native <dialog>. Escape на
@@ -71,7 +76,7 @@ Promise.all([initState(),senderReady]).then(()=>{load();announceParked();initMob
 // Своя ветка ошибок обязательна: сбой переноса не должен уходить в errorBox
 // запуска, модуль при нём работает на прежнем источнике.
 templatesReady.then(()=>adoptTemplates()).then(res=>{if(res==="failed")showStartupNotice(t("cong.alert.templates_move_failed"))}).catch(e=>console.error("Конгрессы: хранилище шаблонов недоступно",e));
-}).catch(e=>{let b=$("#errorBox");if(b){b.textContent="Ошибка запуска: "+e.message+"\n"+e.stack;b.classList.remove("hidden")}});
+}).catch(startupFailed);
 // Общий справочник собраний (фаза 5, шаг 5) подпитывает автодополнение поля
 // собрания. Запуск его НЕ ждёт: до готовности datalist ровно прежний, а после
 // перерисовывается. Модуль в справочник не пишет — обратная запись выключена
@@ -79,4 +84,4 @@ templatesReady.then(()=>adoptTemplates()).then(res=>{if(res==="failed")showStart
 self.CWDirectory?.init?.().then(ok=>{if(ok)renderLists()}).catch(e=>console.error("Конгрессы: справочник собраний недоступен",e));
 // Соседняя вкладка или Клиндарий поправили карточку — список обновляется без
 // перезагрузки. Событие приходит через маячок cw-directory-rev.
-self.CWDirectory?.onChange?.(()=>renderLists())}catch(e){let b=$("#errorBox");b.textContent="Ошибка запуска: "+e.message+"\n"+e.stack;b.classList.remove("hidden")}})
+self.CWDirectory?.onChange?.(()=>renderLists())}catch(e){startupFailed(e)}})

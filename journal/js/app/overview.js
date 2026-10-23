@@ -79,7 +79,9 @@
     var item = el(href ? 'a' : 'span', 'j-ovstat');
     if (href) item.href = href;
     if (title) item.title = title;
-    item.setAttribute('aria-label', label + ': ' + (title ? title : value));
+    /* Доступное имя начинается с видимого текста «5 Районы» (WCAG 2.5.3,
+       аудит 08, п.13); подсказка, если есть, идёт после. */
+    item.setAttribute('aria-label', value + ' ' + label + (title ? ': ' + title : ''));
     item.appendChild(el('b', 'j-ovstat__value', value));
     item.appendChild(el('span', 'j-ovstat__label', label));
     return item;

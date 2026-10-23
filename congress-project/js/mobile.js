@@ -106,9 +106,8 @@ export function initMobile() {
   /* .sidebar переносится целиком, а не по частям: main.js исключает
      `.sidebar` в clearSelectionIfOutside, и разрыв этой вложенности сбрасывал
      бы выделенное задание при каждом клике по списку конгрессов.
-     «Сбросить данные» едет вместе с ним — кнопка лежит внутри сайдбара, и
-     вынимать её отдельно значило бы держать для неё два разных дома в двух
-     режимах. */
+     «Сбросить данные» в сайдбаре больше нет — она в меню «⋮» шапки (аудит 08,
+     п.16), одном и том же на телефоне и на широком экране. */
   const pickMoved = [remember(document.querySelector(".sidebar"), menu)].filter(Boolean);
   const compactMoved = [
     remember($("#programActions"), sheetBody),

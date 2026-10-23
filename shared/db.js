@@ -110,8 +110,25 @@
 
   let dbPromise = null;
 
+  /* Защита данных от очистки браузером (аудит 08, п.9). Раньше persist()
+     запрашивал только хаб, а модуль, установленный или открытый напрямую,
+     — нет. Разрешение действует на весь origin, поэтому достаточно одного
+     молчаливого запроса на страницу при первом открытии базы. Отказ или
+     отсутствие API ничего не меняют: запись идёт как прежде. */
+  let persistAsked = false;
+  function askPersist() {
+    if (persistAsked) return;
+    persistAsked = true;
+    try {
+      const st = self.navigator && navigator.storage;
+      if (!st || !st.persisted || !st.persist) return;
+      st.persisted().then((ok) => (ok ? ok : st.persist())).catch(() => {});
+    } catch (e) { /* без API — поведение прежнее */ }
+  }
+
   function openDb() {
     if (dbPromise) return dbPromise;
+    askPersist();
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
 

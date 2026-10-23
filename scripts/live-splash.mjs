@@ -43,7 +43,7 @@ await new Promise((r) => server.listen(PORT, r));
 const CHROME = process.env.CHROME_PATH || (() => {
   try {
     const dir = fs.readdirSync('/opt/pw-browsers').find((d) => /^chromium-\d+$/.test(d));
-    if (dir) return path.join('/opt/pw-browsers', dir, 'chrome-linux', 'chrome');
+    if (dir) return ['chrome-linux64', 'chrome-linux'].map((sub) => path.join('/opt/pw-browsers', dir, sub, 'chrome')).find((p) => fs.existsSync(p));
   } catch (e) { /* нет сборки Playwright */ }
   return undefined;
 })();

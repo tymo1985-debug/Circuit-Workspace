@@ -22,7 +22,7 @@
  * ─── ЗАПУСК ────────────────────────────────────────────────────────────────
  *
  *     npm i playwright-core
- *     CHROME_PATH=/opt/pw-browsers/chromium-*\/chrome-linux/chrome \
+ *     CHROME_PATH=/opt/pw-browsers/chromium-*\/chrome-linux64/chrome \
  *       node scripts/live-tracts.mjs
  */
 import { chromium } from 'playwright-core';

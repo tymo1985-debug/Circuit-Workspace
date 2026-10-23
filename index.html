@@ -599,6 +599,8 @@
   .cw-form__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .cw-form__field--wide { grid-column: 1 / -1; }
   .cw-form__field[hidden] { display: none; }
+  .cw-profile-retry { margin: 0; }
+  .cw-profile-retry:has(> [hidden]) { display: none; }
   .cw-profile-status { margin: 0; color: var(--md-on-surface-variant); font: 400 13px/18px var(--md-font-family); }
   .cw-form__label {
     font: 400 12px/16px var(--md-font-family);
@@ -1292,6 +1294,9 @@
               <input id="profile-homeAddress" type="text" autocomplete="off" placeholder="Praha, Česká republika">
             </label>
             <p class="cw-form__field--wide cw-profile-status" id="profileHomeStatus" aria-live="polite"></p>
+            <!-- Координаты не нашлись (нет сети, неточный адрес) — повторить
+                 поиск, не правя адрес (аудит 08, п.11). -->
+            <p class="cw-form__field--wide cw-profile-retry"><button type="button" class="cw-btn" id="profileHomeRetry" hidden data-i18n="profile.home_retry">Найти снова</button></p>
           </div>
         </article>
         <article class="cw-card cw-syscard" id="mailCard" aria-labelledby="mailHeading">
@@ -2616,10 +2621,16 @@
     var geoSeq = 0;
     var t = function (k, v) { return CWI18n.t(k, v); };
 
+    var homeRetry = document.getElementById('profileHomeRetry');
+    var locating = false;
+
     function renderHome(p) {
+      var hasAddr = !!String(p.homeAddress || '').trim();
+      var hasCoords = typeof p.homeLat === 'number' && typeof p.homeLng === 'number';
+      if (homeRetry) homeRetry.hidden = !hasAddr || hasCoords || locating || typeof CWGeocode === 'undefined';
       if (!homeStatus) return;
-      if (!String(p.homeAddress || '').trim()) { homeStatus.textContent = t('profile.home_empty'); return; }
-      if (typeof p.homeLat === 'number' && typeof p.homeLng === 'number') {
+      if (!hasAddr) { homeStatus.textContent = t('profile.home_empty'); return; }
+      if (hasCoords) {
         homeStatus.textContent = t('profile.home_found', { place: p.homePlace || p.homeAddress, lat: p.homeLat.toFixed(3), lng: p.homeLng.toFixed(3) });
       } else {
         homeStatus.textContent = t('profile.home_nocoords');
@@ -2643,6 +2654,7 @@
     function lock() {
       var locked = CWProfile.status() === 'degraded';
       Object.keys(inputs).forEach(function (f) { inputs[f].disabled = locked; });
+      if (homeRetry) homeRetry.disabled = locked;
     }
 
     ['overseerName', 'wifeName', 'owaUrl'].forEach(function (f) {
@@ -2658,18 +2670,34 @@
         CWProfile.set({ homeAddress: inputs.homeAddress.value, homeLat: null, homeLng: null, homePlace: '' });
         renderHome(CWProfile.get());
       });
-      inputs.homeAddress.addEventListener('change', function () {
-        var addr = inputs.homeAddress.value.trim();
-        if (!addr || typeof CWGeocode === 'undefined') return;
-        var mine = ++geoSeq;
-        if (homeStatus) homeStatus.textContent = t('profile.home_locating');
-        CWGeocode.address(addr).then(function (r) {
-          // Пока искали, адрес могли поменять — чужие координаты не пишем.
-          if (mine !== geoSeq || String(CWProfile.get().homeAddress || '').trim() !== addr) return;
-          if (!r) { if (homeStatus) homeStatus.textContent = t('profile.home_failed'); return; }
-          CWProfile.set({ homeLat: r.lat, homeLng: r.lng, homePlace: r.displayName || '' });
+      inputs.homeAddress.addEventListener('change', locateHome);
+    }
+    if (homeRetry) homeRetry.addEventListener('click', locateHome);
+
+    function locateHome() {
+      var addr = String(CWProfile.get().homeAddress || '').trim();
+      if (!addr || typeof CWGeocode === 'undefined' || CWProfile.status() === 'degraded') return;
+      var mine = ++geoSeq;
+      locating = true;
+      if (homeRetry) homeRetry.hidden = true;
+      if (homeStatus) homeStatus.textContent = t('profile.home_locating');
+      CWGeocode.address(addr).then(function (r) {
+        // Пока искали, адрес могли поменять — чужие координаты не пишем.
+        if (mine !== geoSeq) return;
+        locating = false;
+        if (String(CWProfile.get().homeAddress || '').trim() !== addr) { renderHome(CWProfile.get()); return; }
+        if (!r) {
           renderHome(CWProfile.get());
-        });
+          if (homeStatus) homeStatus.textContent = t('profile.home_failed');
+          return;
+        }
+        CWProfile.set({ homeLat: r.lat, homeLng: r.lng, homePlace: r.displayName || '' });
+        renderHome(CWProfile.get());
+      }, function () {
+        if (mine !== geoSeq) return;
+        locating = false;
+        renderHome(CWProfile.get());
+        if (homeStatus) homeStatus.textContent = t('profile.home_failed');
       });
     }
 

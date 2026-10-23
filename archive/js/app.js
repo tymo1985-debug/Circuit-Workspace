@@ -51,13 +51,29 @@
     return s === key ? id : s;
   }
 
-  function toast(message) {
+  /* action — { label, run }: кнопка в сообщении (например, «Отменить»);
+     такое сообщение держится дольше, чтобы успеть нажать. */
+  function toast(message, action) {
     var el = $('#toast');
     if (!el) return;
-    el.textContent = message;
+    el.textContent = '';
+    el.appendChild(document.createElement('span')).textContent = message;
+    el.classList.toggle('has-action', !!action);
+    if (action) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'arc-toast__action';
+      btn.textContent = action.label;
+      btn.addEventListener('click', function () {
+        clearTimeout(toastTimer);
+        el.classList.remove('is-on', 'has-action');
+        action.run();
+      }, { once: true });
+      el.appendChild(btn);
+    }
     el.classList.add('is-on');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove('is-on'); }, 2600);
+    toastTimer = setTimeout(function () { el.classList.remove('is-on', 'has-action'); }, action ? 10000 : 2600);
   }
 
   function summaryLabel(key) {
@@ -267,13 +283,29 @@
     var rec = (state.rows || []).filter(function (r) { return r.id === id; })[0];
     var title = rec ? rec.title : id;
     if (!window.confirm(t('arc.confirm_delete', { title: title }))) return;
-    self.CWArchive.remove(id, { confirmed: true }).then(function () {
-      toast(t('arc.deleted'));
+    /* Полная запись берётся ДО удаления: из неё «Отменить» возвращает
+       конверт как был (аудит 08, п.10). Не прочиталась — удаление не идёт. */
+    var full = null;
+    self.CWArchive.get(id).then(function (rec) {
+      full = rec || null;
+      return self.CWArchive.remove(id, { confirmed: true });
+    }).then(function () {
+      toast(t('arc.deleted'), full ? { label: t('arc.undo'), run: function () { undoDelete(full); } } : null);
       showScreen('list');
       return load();
     }).catch(function (e) {
       console.error('Архив: удаление не удалось', e);
       toast(t('arc.delete_failed'));
+    });
+  }
+
+  function undoDelete(rec) {
+    self.CWArchive.restore(rec).then(function (restored) {
+      toast(t(restored ? 'arc.restored' : 'arc.restore_newer'));
+      return load();
+    }).catch(function (e) {
+      console.error('Архив: восстановление не удалось', e);
+      toast(t('arc.restore_failed'));
     });
   }
 

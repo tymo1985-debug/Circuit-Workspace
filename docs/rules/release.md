@@ -74,7 +74,9 @@
 Перед push — `npm run test:release` целиком, а не только `npm test`: CI
 гоняет ещё `test:smoke`, `test:update`, `test:device` (цели касания 44px и
 т.п.). В облачной сессии без скачивания браузера:
-`CHROME_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run test:release`.
+`CHROME_PATH=/opt/pw-browsers/chromium npm run test:release` (симлинк на актуальную
+сборку; часть live-скриптов находит её и сама — `chromium-*/chrome-linux64`, затем
+старое `chrome-linux`).
 
 Проверяет `scripts/check-shared-bump.mjs`. Гейт гонять **до коммита**: при
 незакоммиченной правке `shared/*` база — `HEAD`, и проверка работает даже в

@@ -105,6 +105,8 @@ label.icon-text-btn {
 .hidden {
   display: none !important
 }
+.error-box__text, .error-box__detail { margin: 0 0 8px }
+.error-box__detail { font-size: 12px; opacity: .85; overflow-wrap: anywhere }
 .error-box {
   margin: 12px 16px;
   padding: 12px;
@@ -557,10 +559,10 @@ input:focus, select:focus, textarea:focus {
 .row-menu .md-menu__panel {
   min-width: 160px
 }
-.row-menu .md-menu__item-danger {
+.md-menu__item-danger {
   color: var(--md-error)
 }
-.row-menu .md-menu__item-danger:hover {
+.md-menu__item-danger:hover {
   background: var(--md-error-container)
 }
 dialog {
@@ -1936,7 +1938,9 @@ dialog {
   gap: 8px;
   position: sticky;
   top: var(--cw-topbar-h);
-  z-index: 20;
+  /* Ниже шапки: при равных z-index полоса, стоящая позже в DOM, ложилась
+     поверх меню «⋮» шапки и прятала его первые пункты. */
+  z-index: calc(var(--cw-z-topbar) - 1);
   padding: 8px;
   background: var(--md-surface);
   border-bottom: 1px solid var(--md-outline-variant)
@@ -2302,3 +2306,14 @@ body.cong-empty .table-hint-row,
 body.cong-empty .table-wrap,
 body.cong-empty #congressSettingsBtn,
 body.cong-empty .mobile-fab { display: none !important }
+
+/* Холст в цвет body: при коротком содержимом низ экрана на телефоне был
+   цвета html (--md-surface) — светлая полоса под страницей (аудит 08, п.14). */
+html:root { background: var(--md-surface-container); }
+/* body не ниже экрана: html и body с overflow-x:hidden делают body
+   прокручиваемым контейнером, и всё, что выходит за его нижний край
+   (меню «⋮» на коротком экране), обрезалось. */
+body { min-height: 100vh; min-height: 100dvh; }
+/* «Импорт JSON» — <label> (внутри file-input), общее правило label ставило
+   его колонкой: иконка над подписью. В меню — строкой, как остальные пункты. */
+label.md-menu__item { flex-direction: row; font-weight: 400; color: var(--md-on-surface) }
