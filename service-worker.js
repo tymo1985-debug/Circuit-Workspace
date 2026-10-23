@@ -30,6 +30,8 @@ const SHELL_FILES = [
   './shared/theme.js',
   './shared/backup.js',
   './shared/sender.js',
+  './shared/profile.js',
+  './shared/geocode.js',
   './shared/state.js',
   './shared/parked.js',
   './shared/version.js',

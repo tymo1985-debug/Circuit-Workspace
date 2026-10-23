@@ -210,7 +210,10 @@
          ошибки. Отбор по префиксу, как у `snapshots`: ключ конверта
          `<module>:<entity>:<sourceId>`, чужие конверты в копию не едут, а
          восстановление сливает по ключу и соседа не затирает. */
-      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', 'communities', { store: 'state', ids: ['circuit-planner', 'shared:sender'] }, { store: 'snapshots', prefix: 'circuit-planner:' }, { store: 'archive', prefix: 'circuit-planner:' }] },
+      /* `shared:profile` (фаза 4, 23.10.2026): имена для формуляра, дом и
+         способ отправки почты переехали в общий профиль хаба — без него копия
+         модуля восстановилась бы с пустым домом и безымянным формуляром. */
+      sharedStores: { 'circuit-workspace-db': ['templates', 'documents', 'communities', { store: 'state', ids: ['circuit-planner', 'shared:sender', 'shared:profile'] }, { store: 'snapshots', prefix: 'circuit-planner:' }, { store: 'archive', prefix: 'circuit-planner:' }] },
     },
     'pioneer-school': {
       local: [],

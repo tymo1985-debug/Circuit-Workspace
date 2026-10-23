@@ -26,7 +26,9 @@ if (m) {
     ok('отклонено: ' + JSON.stringify(bad), owaBase(bad) === DEF);
   }
 }
-ok('адрес для окна письма берётся через owaBase', /const base = App\.utils\.owaBase\(App\.state\.app\.settings\.owaUrl\)/.test(src));
+/* С 23.10.2026 (фаза 4) ссылка OWA приходит из профиля хаба (`prof`), но
+   через тот же owaBase — проверяется именно это. */
+ok('адрес для окна письма берётся через owaBase', /const base = App\.utils\.owaBase\(prof\.owaUrl\)/.test(src));
 ok('окно OWA открывается с noopener', /window\.open\(url, '_blank', 'noopener'\)/.test(src));
 ok('настройки при загрузке проходят через owaBase', /out\.owaUrl = App\.utils\.owaBase\(out\.owaUrl\)/.test(src));
 

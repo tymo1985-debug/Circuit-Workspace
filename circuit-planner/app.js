@@ -96,7 +96,10 @@
         /* С 23.10.2026: пустое имя районного = имя отправителя (общий слой). */
         let senderName = '';
         try { senderName = (typeof App !== 'undefined' && App.shared && typeof App.shared.sender === 'function') ? String(App.shared.sender().name || '') : ''; } catch (e) { senderName = ''; }
-        const a = String(st.formNameOverseer || '').trim() || senderName.trim(), b = String(st.formNameWife || '').trim();
+        /* С 23.10.2026 (фаза 4): имена — из профиля хаба (App.shared.profile()). */
+        let prof = { overseerName: st.formNameOverseer, wifeName: st.formNameWife };
+        try { if (typeof App !== 'undefined' && App.shared && typeof App.shared.profile === 'function') prof = App.shared.profile(); } catch (e) { /* профиль недоступен — прежние настройки */ }
+        const a = String(prof.overseerName || '').trim() || senderName.trim(), b = String(prof.wifeName || '').trim();
         const named = (n) => (this.dict.pdfPageForNamed || '{name}').replace('{name}', n);
         if (key === 'pdfPageForAlex') return a ? named(a) : this.dict.pdfPageOverseer;
         if (key === 'pdfPageForLydia') return b ? named(b) : this.dict.pdfPageWife;
@@ -442,6 +445,7 @@
       },
       async geocodeAddress(address) {
         if (!address || !address.trim()) return null;
+        if (typeof CWGeocode !== 'undefined') return CWGeocode.address(address);   // общий слой (фаза 4)
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`);
           if (!res.ok) return null;
@@ -2092,7 +2096,7 @@
           'statsModal','statsModalTitle','statsModalSub','statsModalBody','statsModalCloseBtn','statsModalOkBtn','statsBtn','plannerBtn',
           'plannerModal','plannerModalCloseBtn','plannerStartInput','plannerEndInput','plannerEventsList','plannerPreview','plannerCancelBtn','plannerApplyBtn',
           'holidaysToggle','autoShowRemindersToggle','editorResultInput','editorResultLabel',
-          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','homeAddressInput','formNameOverseerInput','formNameWifeInput','geocodeHomeBtn','homeGeocodeStatus','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput','emailMethodSelect','owaUrlInput','owaUrlRow','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
+          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','profileSummary','homeSummary','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
           'letterModal','letterModalSub','letterEmailLangSelect','letterEmailLangNote','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
@@ -2272,7 +2276,7 @@
         // Импорт и сброс — крупные необратимые операции
         'importInput', 'resetAppBtn',
         // Геокодирование записывает координаты в данные
-        'geocodeEventBtn', 'geocodeHomeBtn',
+        'geocodeEventBtn',
         // Служебные годы
         'addNextYearBtn',
       ],
@@ -2300,8 +2304,6 @@
         '#settingsGroupPlanning input', '#settingsGroupPlanning select',
         '#settingsGroupYear input', '#settingsGroupYear select',
         '#settingsGroupData input', '#settingsGroupData select',
-        '#senderNameInput', '#senderAddressInput', '#senderPhoneInput', '#senderEmailInput',
-        '#homeAddressInput', '#owaUrlInput',
         '#holidaysToggle', '#autoShowRemindersToggle',
       ],
 
@@ -2855,7 +2857,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.plannerEndInput && !App.els.plannerEndInput.value) App.els.plannerEndInput.value = App.utils.iso(stats.syEnd);
         if (App.els.plannerEventsList) App.els.plannerEventsList.innerHTML = stats.unvisited.length
           ? stats.unvisited.map((ev) => {
-              const settings = App.state.app.settings;
+              const settings = App.shared.profile();
               const hasHome = typeof settings.homeLat === 'number' && typeof settings.homeLng === 'number';
               const hasCoords = typeof ev.lat === 'number' && typeof ev.lng === 'number';
               const km = (hasHome && hasCoords) ? App.utils.haversineKm(settings.homeLat, settings.homeLng, ev.lat, ev.lng) : null;
@@ -2877,7 +2879,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const CLUSTER_KM = 150; // congregations within this of each other join the same away-tour
         const MAX_TOUR_WEEKS = 6; // "можем оставаться на посещениях от пяти до максимум шести недель"
 
-        const settings = App.state.app.settings;
+        const settings = App.shared.profile();   // дом — из профиля хаба (фаза 4)
         const hasHome = typeof settings.homeLat === 'number' && typeof settings.homeLng === 'number';
         const selectedEvents = selectedIds.map((id) => App.data.getEventById(id)).filter(Boolean);
         const withDistance = selectedEvents.map((ev) => {
@@ -3222,7 +3224,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       renderEventDistanceStatus() {
         if (!App.els.eventDistanceStatus) return;
         const coords = App.state.editingEventCoords;
-        const settings = App.state.app.settings;
+        const settings = App.shared.profile();   // дом — из профиля хаба (фаза 4)
         if (!coords) { App.els.eventDistanceStatus.textContent = ''; return; }
         if (typeof settings.homeLat === 'number' && typeof settings.homeLng === 'number') {
           const km = App.utils.haversineKm(settings.homeLat, settings.homeLng, coords.lat, coords.lng);
@@ -3251,18 +3253,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           }
         }
         App.ui.renderEventDistanceStatus();
-      },
-      async geocodeHome() {
-        const address = App.els.homeAddressInput?.value.trim();
-        if (!address) return App.utils.toast(App.utils.t('geo_need_city'));
-        if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = App.utils.t('geo_locating');
-        const result = await App.utils.geocodeAddress(address);
-        if (!result) { if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = App.utils.t('geo_failed'); return; }
-        App.state.app.settings.homeLat = result.lat;
-        App.state.app.settings.homeLng = result.lng;
-        App.store.save();
-        if (App.els.homeGeocodeStatus) App.els.homeGeocodeStatus.textContent = App.utils.t('geo_found', { place: result.displayName || address });
-        App.utils.toast(App.utils.t('geo_home_saved'));
       },
       retranslateVisitFormWeekdays(oldLang, newLang) {
         const state = App.state.visitFormData; if (!state) return;
@@ -4363,8 +4353,9 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }
         const mailto = () => {
           const subject = App.els.letterSubjectInput?.value || entry.subject || this.buildLetterSubject(entry, event);
-          if (App.state.app.settings.emailMethod === 'owa') {
-            const base = App.utils.owaBase(App.state.app.settings.owaUrl);
+          const prof = App.shared.profile();   // способ отправки — из профиля хаба (фаза 4)
+          if (prof.mailMethod === 'owa') {
+            const base = App.utils.owaBase(prof.owaUrl);
             const url = `${base}?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
             window.open(url, '_blank', 'noopener');
           } else {
@@ -4474,7 +4465,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       renderSettingsExtras() {
         const st = App.state.app.settings;
         const t = (k, v) => App.utils.t(k, v);
-        if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.placeholder = (App.shared.sender().name || '').trim();
+        this.renderProfileSummary();
         if (App.els.letterReminderDaysSelect) App.els.letterReminderDaysSelect.value = String(App.utils.letterReminderDays());
         const countries = App.utils.holidayCountries();
         document.querySelectorAll('[data-holiday-country]').forEach((box) => {
@@ -4502,7 +4493,29 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           App.els.backupStatusLine.textContent = parts.join(' · ');
         }
       },
-      renderSettings() { if (App.els.formNameOverseerInput) App.els.formNameOverseerInput.value = App.state.app.settings.formNameOverseer || ''; if (App.els.formNameWifeInput) App.els.formNameWifeInput.value = App.state.app.settings.formNameWife || ''; const sndr = App.shared.sender(); if (App.els.senderNameInput && document.activeElement !== App.els.senderNameInput) App.els.senderNameInput.value = sndr.name; if (App.els.senderAddressInput && document.activeElement !== App.els.senderAddressInput) App.els.senderAddressInput.value = sndr.address; if (App.els.senderPhoneInput && document.activeElement !== App.els.senderPhoneInput) App.els.senderPhoneInput.value = sndr.phone1; if (App.els.senderEmailInput && document.activeElement !== App.els.senderEmailInput) App.els.senderEmailInput.value = sndr.email; { const senderLocked = (typeof CWSender !== 'undefined' && typeof CWSender.status === 'function' && CWSender.status() === 'degraded'); ['senderNameInput','senderAddressInput','senderPhoneInput','senderEmailInput'].forEach((k) => { if (App.els[k]) App.els[k].disabled = senderLocked; }); } if (App.els.emailMethodSelect) App.els.emailMethodSelect.value = App.state.app.settings.emailMethod || 'mailto'; if (App.els.owaUrlInput && document.activeElement !== App.els.owaUrlInput) App.els.owaUrlInput.value = App.state.app.settings.owaUrl || 'https://outlook.office.com/mail/deeplink/compose'; if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = (App.state.app.settings.emailMethod === 'owa') ? '' : 'none'; if (App.els.homeAddressInput && document.activeElement !== App.els.homeAddressInput) App.els.homeAddressInput.value = App.state.app.settings.homeAddress || ''; if (App.els.homeGeocodeStatus && typeof App.state.app.settings.homeLat === 'number') App.els.homeGeocodeStatus.textContent = App.utils.t('geo_home_saved_coords', { lat: App.state.app.settings.homeLat.toFixed(3), lng: App.state.app.settings.homeLng.toFixed(3) }); this.renderSettingsExtras(); },
+      renderSettings() { this.renderSettingsExtras(); },
+      /* Профиль (отправитель, имена для формуляра, дом, почта) с 23.10.2026
+         правится только в хабе — здесь сводка и ссылка «Изменить в хабе». */
+      renderProfileSummary() {
+        const tEsc = (k, v) => App.utils.tEsc(k, v);
+        const esc = App.utils.escapeHtml;
+        const none = `<span class="profile-summary__none">${tEsc('sum_not_set')}</span>`;
+        const val = (v) => (String(v || '').trim() ? esc(String(v).trim()) : none);
+        const row = (labelHtml, value) => `<div class="profile-summary__row"><dt>${labelHtml}</dt><dd>${value}</dd></div>`;
+        const snd = App.shared.sender();
+        const p = App.shared.profile();
+        if (App.els.profileSummary) {
+          const contact = [snd.address, snd.phone1, snd.email].map((x) => String(x || '').trim()).filter(Boolean).join(' · ');
+          const form = [String(p.overseerName || '').trim() || String(snd.name || '').trim(), String(p.wifeName || '').trim()].filter(Boolean).join(' / ');
+          App.els.profileSummary.innerHTML = row(tEsc('sum_sender'), val(snd.name)) + row(tEsc('sum_contact'), val(contact))
+            + row(tEsc('sum_form'), val(form)) + row(tEsc('sum_mail'), p.mailMethod === 'owa' ? 'Outlook Web App (OWA)' : tEsc('mail_client'));
+        }
+        if (App.els.homeSummary) {
+          const coords = (typeof p.homeLat === 'number' && typeof p.homeLng === 'number')
+            ? ' · ' + tEsc('geo_home_saved_coords', { lat: p.homeLat.toFixed(3), lng: p.homeLng.toFixed(3) }) : '';
+          App.els.homeSummary.innerHTML = row(tEsc('sum_home'), String(p.homeAddress || '').trim() ? esc(p.homeAddress.trim()) + coords : none);
+        }
+      },
     },
 
     bind() {
@@ -4818,26 +4831,14 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (App.els.letterAttachStatus) App.els.letterAttachStatus.textContent = App.utils.t('plan_downloaded');
       });
       App.els.letterSendBtn?.addEventListener('click', () => App.ui.sendLetterNow());
-      App.els.senderNameInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ name: e.target.value }); else { App.state.app.settings.senderName = e.target.value; App.store.save(); } });
       App.els.geocodeEventBtn?.addEventListener('click', () => App.ui.geocodeCurrentEvent());
       App.els.eventVisitTypeInput?.addEventListener('change', () => App.ui.syncEventVisitFieldsVisibility());
-      App.els.geocodeHomeBtn?.addEventListener('click', () => App.ui.geocodeHome());
-      App.els.homeAddressInput?.addEventListener('input', (e) => { App.state.app.settings.homeAddress = e.target.value; App.store.save(); });
-      // Координаты дома определяются сами после ввода адреса (кнопка осталась для повтора).
-      App.els.homeAddressInput?.addEventListener('change', (e) => { if (String(e.target.value || '').trim()) App.ui.geocodeHome(); });
       App.els.letterReminderDaysSelect?.addEventListener('change', (e) => { App.state.app.settings.letterReminderDays = Number(e.target.value) || 60; App.store.save(); App.ui.renderAll(); });
       document.querySelectorAll('[data-holiday-country]').forEach((box) => box.addEventListener('change', () => {
         const picked = Array.from(document.querySelectorAll('[data-holiday-country]')).filter((b) => b.checked).map((b) => b.dataset.holidayCountry);
         App.state.app.settings.holidayCountries = picked;
         App.store.save(); App.ui.renderAll();
       }));
-      App.els.formNameOverseerInput?.addEventListener('input', (e) => { App.state.app.settings.formNameOverseer = e.target.value; App.store.save(); });
-      App.els.formNameWifeInput?.addEventListener('input', (e) => { App.state.app.settings.formNameWife = e.target.value; App.store.save(); });
-      App.els.senderAddressInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ address: e.target.value }); else { App.state.app.settings.senderAddress = e.target.value; App.store.save(); } });
-      App.els.senderPhoneInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ phone1: e.target.value }); else { App.state.app.settings.senderPhone = e.target.value; App.store.save(); } });
-      App.els.senderEmailInput?.addEventListener('input', (e) => { if (typeof CWSender !== 'undefined') CWSender.set({ email: e.target.value }); else { App.state.app.settings.senderEmail = e.target.value; App.store.save(); } });
-      App.els.emailMethodSelect?.addEventListener('change', (e) => { App.state.app.settings.emailMethod = e.target.value; App.store.save(); if (App.els.owaUrlRow) App.els.owaUrlRow.style.display = e.target.value === 'owa' ? '' : 'none'; });
-      App.els.owaUrlInput?.addEventListener('input', (e) => { App.state.app.settings.owaUrl = e.target.value; App.store.save(); });
       App.els.previewLetterPdfBtn?.addEventListener('click', async () => {
         const type = App.state.letterEditingType || 'Congregation';
         const visitTypeMap = { Congregation: 'congregation', Group: 'group', Pregroup: 'pregroup' };
@@ -4955,6 +4956,23 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         const s = App.state.app.settings;   // модуль открыт без общего слоя
         return { name: s.senderName || '', code: '', address: s.senderAddress || '',
                  phone1: s.senderPhone || '', phone2: '', email: s.senderEmail || '' };
+      },
+      /**
+       * Профиль хаба (фаза 4, 23.10.2026): имена для формуляра, дом, почта.
+       * До готовности общей записи, без общего слоя или в режиме только для
+       * чтения — прежние собственные настройки модуля (их не удаляем).
+       */
+      profile() {
+        const s = App.state.app.settings;
+        const local = {
+          overseerName: s.formNameOverseer || '', wifeName: s.formNameWife || '',
+          homeAddress: typeof s.homeAddress === 'string' ? s.homeAddress : '',
+          homeLat: typeof s.homeLat === 'number' ? s.homeLat : null,
+          homeLng: typeof s.homeLng === 'number' ? s.homeLng : null, homePlace: '',
+          mailMethod: s.emailMethod === 'owa' ? 'owa' : '', owaUrl: s.owaUrl || '',
+        };
+        if (typeof CWProfile === 'undefined' || !this._profileReady || CWProfile.status() === 'degraded') return local;
+        return CWProfile.get();
       },
       // Язык ДОКУМЕНТА. Раньше формуляр и письмо шли за языком интерфейса —
       // теперь это независимая настройка: можно работать в польском
@@ -5237,6 +5255,26 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           });
           CWSender.onChange(() => App.ui.renderSettings());
           if (typeof CWSender.onStatusChange === 'function') CWSender.onStatusChange(() => App.ui.renderSettings());
+        }
+        // Профиль (фаза 4): разовый перенос имён, дома и способа отправки в
+        // общую запись. adopt() пишет, только если она ещё пуста; свои поля
+        // модуль НЕ удаляет (решение Алекса — ключ модуля остаётся). Значения
+        // по умолчанию (mailto, стандартная ссылка OWA) не переносятся.
+        if (typeof CWProfile !== 'undefined') {
+          const owa = String(s.owaUrl || '').trim();
+          const seed = {
+            overseerName: String(s.formNameOverseer || ''), wifeName: String(s.formNameWife || ''),
+            homeAddress: typeof s.homeAddress === 'string' ? s.homeAddress : '',
+            homeLat: typeof s.homeLat === 'number' ? s.homeLat : null,
+            homeLng: typeof s.homeLng === 'number' ? s.homeLng : null,
+            mailMethod: s.emailMethod === 'owa' ? 'owa' : '',
+            owaUrl: owa && owa !== CWProfile.OWA_DEFAULT ? owa : '',
+          };
+          Promise.resolve(CWProfile.ready()).then(() => CWProfile.adopt(seed)).catch(() => false).then(() => {
+            App.shared._profileReady = true;
+            App.ui.renderAll();
+          });
+          CWProfile.onChange(() => { if (App.shared._profileReady) App.ui.renderAll(); });
         }
         if (typeof CWDocLang !== 'undefined') {
           // Языки, на которых модуль умеет выпускать документы: тема письма

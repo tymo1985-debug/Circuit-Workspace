@@ -21,6 +21,8 @@
 <script src="shared/i18n/common.js"></script>
 <script src="shared/backup.js"></script>
 <script src="shared/sender.js"></script>
+<script src="shared/profile.js"></script>
+<script src="shared/geocode.js"></script>
 <!-- Фаза C2: CWState.create('shared:sender') вызывается синхронно внутри
      CWSender.ready(), которая исполняется дальше в этом же документе — то
      есть shared/db.js обязан быть загружен и выполнен ДО этой точки, а не
@@ -596,6 +598,8 @@
   }
   .cw-form__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .cw-form__field--wide { grid-column: 1 / -1; }
+  .cw-form__field[hidden] { display: none; }
+  .cw-profile-status { margin: 0; color: var(--md-on-surface-variant); font: 400 13px/18px var(--md-font-family); }
   .cw-form__label {
     font: 400 12px/16px var(--md-font-family);
     letter-spacing: 0.4px;
@@ -1237,6 +1241,52 @@
                   </label>
               </div>
           </details>
+        </article>
+        <article class="cw-card cw-syscard" id="profileCard" aria-labelledby="profileHeading">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>
+            </div>
+            <h3 id="profileHeading" data-i18n="profile.title">Формуляр и дом</h3>
+          </div>
+          <p class="cw-syscard__hint" data-i18n="profile.hint">Имена на страницах формуляра визита и дом, от которого считаются расстояния и маршруты. Общие для всех модулей.</p>
+          <div class="cw-form">
+            <label class="cw-form__field">
+              <span class="cw-form__label" data-i18n="profile.f_overseer">Имя районного (формуляр)</span>
+              <input id="profile-overseerName" type="text" autocomplete="off">
+            </label>
+            <label class="cw-form__field">
+              <span class="cw-form__label" data-i18n="profile.f_wife">Имя жены (формуляр)</span>
+              <input id="profile-wifeName" type="text" autocomplete="off">
+            </label>
+            <label class="cw-form__field cw-form__field--wide">
+              <span class="cw-form__label" data-i18n="profile.f_home">Дом (город или адрес)</span>
+              <input id="profile-homeAddress" type="text" autocomplete="off" placeholder="Praha, Česká republika">
+            </label>
+            <p class="cw-form__field--wide cw-profile-status" id="profileHomeStatus" aria-live="polite"></p>
+          </div>
+        </article>
+        <article class="cw-card cw-syscard" id="mailCard" aria-labelledby="mailHeading">
+          <div class="cw-syscard__head">
+            <div class="cw-syscard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+            </div>
+            <h3 id="mailHeading" data-i18n="profile.mail_title">Почта</h3>
+          </div>
+          <p class="cw-syscard__hint" data-i18n="profile.mail_hint">Чем открывать готовое письмо собранию.</p>
+          <div class="cw-form">
+            <label class="cw-form__field">
+              <span class="cw-form__label" data-i18n="profile.f_mail">Способ отправки</span>
+              <select id="profile-mailMethod">
+                <option value="mailto" data-i18n="profile.mail_client">Почтовая программа</option>
+                <option value="owa">Outlook Web App (OWA)</option>
+              </select>
+            </label>
+            <label class="cw-form__field cw-form__field--wide" id="profileOwaRow" hidden>
+              <span class="cw-form__label" data-i18n="profile.f_owa">Ссылка OWA для нового письма</span>
+              <input id="profile-owaUrl" type="url" autocomplete="off">
+            </label>
+          </div>
         </article>
         </div>
       </section>
@@ -2515,6 +2565,107 @@
     (self.CWSender && typeof self.CWSender.ready === 'function'
       ? self.CWSender.ready()
       : Promise.resolve()).then(function () { fill(); applySenderLock(); }).then(offerParkedSender);
+  })();
+
+  // --- Профиль: формуляр, дом, почта (фаза 4, 23.10.2026) ---------------
+  // Общая запись `shared:profile` (shared/profile.js, тот же движок, что у
+  // отправителя). Правится только здесь; Клиндарий читает. Координаты дома
+  // хаб определяет сам после ввода адреса (shared/geocode.js); при правке
+  // адреса прежние координаты сбрасываются — они относились к старому.
+  (function () {
+    if (typeof CWProfile === 'undefined') return;
+    var FIELDS = ['overseerName', 'wifeName', 'homeAddress', 'mailMethod', 'owaUrl'];
+    var inputs = {};
+    FIELDS.forEach(function (f) { var el = document.getElementById('profile-' + f); if (el) inputs[f] = el; });
+    var homeStatus = document.getElementById('profileHomeStatus');
+    var owaRow = document.getElementById('profileOwaRow');
+    var geoSeq = 0;
+    var t = function (k, v) { return CWI18n.t(k, v); };
+
+    function renderHome(p) {
+      if (!homeStatus) return;
+      if (!String(p.homeAddress || '').trim()) { homeStatus.textContent = t('profile.home_empty'); return; }
+      if (typeof p.homeLat === 'number' && typeof p.homeLng === 'number') {
+        homeStatus.textContent = t('profile.home_found', { place: p.homePlace || p.homeAddress, lat: p.homeLat.toFixed(3), lng: p.homeLng.toFixed(3) });
+      } else {
+        homeStatus.textContent = t('profile.home_nocoords');
+      }
+    }
+
+    function fill() {
+      var p = CWProfile.get();
+      FIELDS.forEach(function (f) {
+        var el = inputs[f];
+        if (!el) return;
+        var v = f === 'mailMethod' ? (p.mailMethod === 'owa' ? 'owa' : 'mailto') : String(p[f] || '');
+        if (el.value !== v && document.activeElement !== el) el.value = v;
+      });
+      if (inputs.owaUrl) inputs.owaUrl.placeholder = CWProfile.OWA_DEFAULT;
+      if (owaRow) owaRow.hidden = p.mailMethod !== 'owa';
+      if (inputs.overseerName && typeof CWSender !== 'undefined') inputs.overseerName.placeholder = String(CWSender.get().name || '');
+      renderHome(p);
+    }
+
+    function lock() {
+      var locked = CWProfile.status() === 'degraded';
+      Object.keys(inputs).forEach(function (f) { inputs[f].disabled = locked; });
+    }
+
+    ['overseerName', 'wifeName', 'owaUrl'].forEach(function (f) {
+      if (!inputs[f]) return;
+      inputs[f].addEventListener('input', function () { var patch = {}; patch[f] = inputs[f].value; CWProfile.set(patch); });
+    });
+    if (inputs.mailMethod) inputs.mailMethod.addEventListener('change', function () {
+      CWProfile.set({ mailMethod: inputs.mailMethod.value === 'owa' ? 'owa' : '' });
+      fill();
+    });
+    if (inputs.homeAddress) {
+      inputs.homeAddress.addEventListener('input', function () {
+        CWProfile.set({ homeAddress: inputs.homeAddress.value, homeLat: null, homeLng: null, homePlace: '' });
+        renderHome(CWProfile.get());
+      });
+      inputs.homeAddress.addEventListener('change', function () {
+        var addr = inputs.homeAddress.value.trim();
+        if (!addr || typeof CWGeocode === 'undefined') return;
+        var mine = ++geoSeq;
+        if (homeStatus) homeStatus.textContent = t('profile.home_locating');
+        CWGeocode.address(addr).then(function (r) {
+          // Пока искали, адрес могли поменять — чужие координаты не пишем.
+          if (mine !== geoSeq || String(CWProfile.get().homeAddress || '').trim() !== addr) return;
+          if (!r) { if (homeStatus) homeStatus.textContent = t('profile.home_failed'); return; }
+          CWProfile.set({ homeLat: r.lat, homeLng: r.lng, homePlace: r.displayName || '' });
+          renderHome(CWProfile.get());
+        });
+      });
+    }
+
+    function offerParkedProfile() {
+      /* Новый потребитель CWState обязан показать отложенное зеркало
+         (shared/AGENTS.md §5): истории у профиля нет — решает пользователь. */
+      if (!self.CWParked) return;
+      self.CWParked.offerChoice('shared:profile', function (payload) {
+        if (CWProfile.status() === 'degraded') return false;
+        var parsed;
+        try { parsed = JSON.parse(payload); } catch (e) { return false; }
+        if (!parsed || typeof parsed !== 'object') return false;
+        CWProfile.set(parsed);
+        fill();
+        return new Promise(function (resolve) {
+          var until = Date.now() + 8000;
+          (function poll() {
+            if (!CWProfile.dirty()) { resolve(true); return; }
+            if (Date.now() > until) { resolve(false); return; }
+            setTimeout(poll, 200);
+          })();
+        });
+      });
+    }
+
+    CWProfile.onChange(fill);
+    CWProfile.onStatusChange(lock);
+    CWI18n.onChange(fill);
+    if (typeof CWSender !== 'undefined') CWSender.onChange(fill);
+    CWProfile.ready().then(function () { fill(); lock(); }).then(offerParkedProfile);
   })();
 
   // Регистрация SW и слежение за обновлениями — общий слой (shared/update.js).

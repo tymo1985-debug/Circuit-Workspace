@@ -142,32 +142,9 @@
         <p class="md-formsection__hint" data-i18n="ap.sender.shared_hint">Общие данные: те же во всех модулях Circuit Workspace.</p>
       </div>
 
-      <div id="senderFields">
-        <div class="md-field">
-          <input id="senderName" type="text" placeholder=" ">
-          <label for="senderName" data-i18n="ap.sender.name">Имя и фамилия</label>
-        </div>
-        <div class="md-field">
-          <input id="senderCode" type="text" placeholder=" ">
-          <label for="senderCode" data-i18n="ap.sender.code">Код района</label>
-        </div>
-        <div class="md-field">
-          <textarea id="senderAddress" rows="2" placeholder=" "></textarea>
-          <label for="senderAddress" data-i18n="ap.sender.address">Адрес</label>
-        </div>
-        <div class="md-field">
-          <input id="senderPhone1" type="text" placeholder=" ">
-          <label for="senderPhone1" data-i18n="ap.sender.phone1">Телефон</label>
-        </div>
-        <div class="md-field">
-          <input id="senderPhone2" type="text" placeholder=" ">
-          <label for="senderPhone2" data-i18n="ap.sender.phone2">Второй телефон</label>
-        </div>
-        <div class="md-field">
-          <input id="senderEmail" type="text" placeholder=" ">
-          <label for="senderEmail" data-i18n="ap.sender.email">Эл. почта</label>
-        </div>
-      </div>
+      <!-- Отправитель правится только в хабе (фаза 4, 23.10.2026): здесь сводка. -->
+      <p id="senderSummary" class="md-formsection__hint" aria-live="polite"></p>
+      <a class="md-btn md-btn-outlined" href="../index.html#hubSetProfile" data-i18n="ap.sender.edit_in_hub">Изменить в хабе</a>
     </section>
 
     <!-- Подпись. Данные модуля, а не общего слоя: скан подписи лежит в

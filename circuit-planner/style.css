@@ -643,3 +643,10 @@ a:where(:not([class])):visited{color:var(--md-primary)}
 /* Тост наверху справа закрывал заголовок и крестик окон (z-index тоста выше,
    чем у окна). На телефоне он живёт внизу, над нижним меню. */
 @media (max-width:600px){.toast-wrap{top:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));left:12px;right:12px}}
+/* Сводка профиля хаба в настройках (фаза 4, 23.10.2026): правится в хабе,
+   здесь только показывается. */
+.profile-summary{display:grid;gap:6px;margin:0 0 12px}
+.profile-summary__row{display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:10px;align-items:baseline}
+.profile-summary__row dt{color:var(--md-on-surface-variant);font-size:13px}
+.profile-summary__row dd{margin:0;overflow-wrap:anywhere}
+.profile-summary__none{color:var(--md-on-surface-variant);font-style:italic}

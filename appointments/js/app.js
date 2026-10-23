@@ -105,15 +105,6 @@
 
   /* Поля формы отправителя → поля общего слоя. Имена элементов разметки не
      менялись, чтобы правка не разошлась по всему модулю. */
-  var SENDER_MAP = {
-    senderName: 'name',
-    senderCode: 'code',
-    senderAddress: 'address',
-    senderPhone1: 'phone1',
-    senderPhone2: 'phone2',
-    senderEmail: 'email',
-  };
-
   var LISTS = ['elders', 'servants', 'removed'];
 
   /* --- Подпись: параметры обработки -----------------------------------
@@ -612,16 +603,15 @@
   }
 
   /* --- Панель отправителя -------------------------------------------- */
+  /* Отправитель правится только в хабе (фаза 4, 23.10.2026): здесь сводка
+     в порядке шапки письма и ссылка «Изменить в хабе». */
   function renderSenderPanel() {
+    var el = document.getElementById('senderSummary');
+    if (!el) return;
     var sd = sender();
-    var locked = !!(self.CWSender && typeof self.CWSender.status === 'function' && self.CWSender.status() === 'degraded');
-    Object.keys(SENDER_MAP).forEach(function (id) {
-      var el = document.getElementById(id);
-      /* Не перетираем поле, в котором сейчас печатают: обновление может
-         прийти из другой вкладки или другого модуля. */
-      if (el && document.activeElement !== el) el.value = sd[SENDER_MAP[id]] || '';
-      if (el) el.disabled = locked;
-    });
+    var parts = ['name', 'code', 'address', 'phone1', 'phone2', 'email']
+      .map(function (f) { return String(sd[f] || '').trim(); }).filter(Boolean);
+    el.textContent = parts.length ? parts.join(' · ') : t('ap.sender.not_set');
   }
 
   /* --- Имя файла при печати ------------------------------------------
@@ -741,18 +731,6 @@
         renderList(name);
         renderLetter();
         save();
-      });
-    });
-
-    /* Отправитель живёт в общем слое: пишем сразу туда, в состоянии модуля
-       его копии нет. Своё хранилище save() при этом не трогаем. */
-    Object.keys(SENDER_MAP).forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el || !self.CWSender) return;
-      el.addEventListener('input', function () {
-        var patch = {};
-        patch[SENDER_MAP[id]] = el.value;
-        self.CWSender.set(patch);
       });
     });
 

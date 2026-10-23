@@ -25,6 +25,8 @@
 <script src="../shared/i18n/common.js"></script>
 <!-- Словарь модуля: с фазы 5 он вынесен из app.js в общий слой (префикс cp.). -->
 <script src="../shared/sender.js"></script>
+<script src="../shared/profile.js"></script>
+<script src="../shared/geocode.js"></script>
 <!-- Отложенная запись состояния: подключать ДО app.js, планировщик создаётся
      при первом save() (фаза 1 миграции на shared/db.js). -->
 <script src="../shared/persist.js"></script>
@@ -196,19 +198,11 @@
         </section>
         <section class="settings-group" id="settingsGroupLetter" aria-labelledby="settingsGroupLetterTitle">
           <h3 class="settings-group-title" id="settingsGroupLetterTitle" data-i18n="cp.letter_tab">✉ Письмо</h3>
-          <div class="md-card"><h3 data-i18n="cp.sender_section">Отправитель и шапка письма</h3><div style="margin-top:8px"><label data-i18n="cp.sender_name_label" class="small">Ваше имя (для подписи «Ваш {sender}» и шапки письма)</label><input id="senderNameInput" type="text" placeholder="Например: Иван Петренко" data-i18n-placeholder="cp.a_name_ph" /></div>
-<div class="form-grid" style="margin-top:8px">
-<div><label data-i18n="cp.sender_address_label" class="small">Адрес (в шапке письма)</label><input id="senderAddressInput" type="text" placeholder="ul. Przykładowa 1, 00-001 Warszawa" /></div>
-<div><label data-i18n="cp.sender_phone_label" class="small">Телефон (в шапке письма)</label><input id="senderPhoneInput" type="text" placeholder="+48 000 000 000 (WhatsApp)" /></div>
-<div style="grid-column:1 / -1"><label data-i18n="cp.sender_email_label" class="small">E-mail (в шапке письма)</label><input id="senderEmailInput" type="text" placeholder="name@jwpub.org" /></div>
-<div><label data-i18n="cp.form_name_overseer" class="small">Имя районного (формуляр визита)</label><input id="formNameOverseerInput" type="text" /></div>
-<div><label data-i18n="cp.form_name_wife" class="small">Имя жены (формуляр визита)</label><input id="formNameWifeInput" type="text" /></div>
-<div data-i18n="cp.form_name_hint2" class="layout-help" style="grid-column:1 / -1">Две страницы формуляра и напарник в пятницу утром. Пусто — имя отправителя и «Формуляр жены».</div>
+          <div class="md-card"><h3 data-i18n="cp.hub_profile_title">Отправитель, формуляр и почта</h3>
+<div data-i18n="cp.hub_profile_hint" class="small" style="margin-bottom:8px">Общие для всего Circuit Workspace — меняются в настройках хаба.</div>
+<dl class="profile-summary" id="profileSummary"></dl>
+<div class="editor-actions" style="justify-content:flex-start"><a class="md-btn md-btn-outlined md-state-layer" href="../index.html#hubSetProfile" data-i18n="cp.edit_in_hub">Изменить в хабе</a></div>
 </div>
-<div class="form-grid" style="margin-top:8px">
-<div><label data-i18n="cp.send_method" class="small">Способ отправки письма</label><select id="emailMethodSelect"><option data-i18n="cp.mail_client" value="mailto">Почтовый клиент (mailto)</option><option value="owa">Outlook Web App (OWA)</option></select></div>
-<div id="owaUrlRow"><label data-i18n="cp.owa_link" class="small">Ссылка OWA для составления письма</label><input id="owaUrlInput" type="text" placeholder="https://outlook.office.com/mail/deeplink/compose" /></div>
-</div></div>
 
 <div class="md-card">
 <h3 data-i18n="cp.letter_text">Текст письма</h3>
@@ -229,11 +223,8 @@
           <div class="md-card">
             <h3 data-i18n="cp.home_place">Место проживания (для автопланирования)</h3>
             <div data-i18n="cp.home_hint" class="small" style="margin-bottom:8px">Используется, чтобы «Авто-план» группировал дальние собрания (Германия, Австрия и т.д.) в один выезд, а не заставлял ездить туда-обратно каждую неделю.</div>
-            <div class="form-grid">
-              <div><label data-i18n="cp.home_city" class="small">Город проживания</label><input id="homeAddressInput" type="text" placeholder="Praha, Česká republika" /></div>
-              <div style="display:flex;gap:10px;align-items:end"><button data-i18n="cp.detect_coords" class="md-btn md-btn-outlined md-state-layer" id="geocodeHomeBtn" type="button">📍 Определить координаты</button></div>
-            </div>
-            <div class="small" id="homeGeocodeStatus" style="margin-top:8px;color:var(--md-on-surface-variant)" aria-live="polite"></div>
+            <dl class="profile-summary" id="homeSummary"></dl>
+            <div class="editor-actions" style="justify-content:flex-start"><a class="md-btn md-btn-outlined md-state-layer" href="../index.html#hubSetProfile" data-i18n="cp.edit_in_hub">Изменить в хабе</a></div>
           </div>
           <div class="md-card">
             <h3 data-i18n="cp.set_calendar">Календарь и напоминания</h3>

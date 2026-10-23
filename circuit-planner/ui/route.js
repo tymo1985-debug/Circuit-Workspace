@@ -37,7 +37,7 @@
 //    список и сводка работают, на карте — уведомление. Маркеры — divIcon,
 //    без PNG. Карта создаётся один раз; перерисовка точек — только при
 //    смене данных, «вписать» — только при первом показе и смене года.
-//  • R3: дом (settings.homeLat/homeLng) — точка 0, только если координаты
+//  • R3: дом (профиль хаба: homeLat/homeLng) — точка 0, только если координаты
 //    заданы; без них маршрут как в R2. Дом входит и в км по прямой.
 //    Дорожные км/время — CPRouteLegs (OSRM): кэш показывается сам, сеть —
 //    только по кнопке. Линии на карте остаются прямыми (геометрия дорог не
@@ -1064,7 +1064,9 @@
     }
 
     function home() {
-      const s = App.state.app.settings || {};
+      // Дом — из профиля хаба (фаза 4, 23.10.2026); без общего слоя —
+      // прежние настройки модуля (App.shared.profile() решает сам).
+      const s = (App.shared && typeof App.shared.profile === 'function') ? App.shared.profile() : (App.state.app.settings || {});
       return { lat: s.homeLat, lng: s.homeLng, name: typeof s.homeAddress === 'string' ? s.homeAddress : '' };
     }
 
