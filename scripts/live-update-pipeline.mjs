@@ -127,8 +127,15 @@ try {
     };
   });
   await page.waitForTimeout(1000);
-  if (!await page.locator('#cwUpdateBar .cw-update__apply').count()) await page.click('#hubUpdateBtn');
+  /* С Ф5 визуального аудита (0.45.6) кнопка проверки живёт в «Настройках»
+     (#settings, карточка «Версия и обновления»), а не в шапке хаба. */
+  if (!await page.locator('#cwUpdateBar .cw-update__apply').count()) {
+    await page.evaluate(() => { location.hash = 'settings'; });
+    await page.waitForSelector('#hubUpdateBtn', { state: 'visible' });
+    await page.click('#hubUpdateBtn');
+  }
   await page.waitForSelector('#cwUpdateBar .cw-update__apply', { timeout: 30000 });
+  await page.evaluate(() => { if (location.hash === '#settings') history.replaceState(null, '', location.pathname); window.dispatchEvent(new HashChangeEvent('hashchange')); });
   const offered = await page.locator('#cwUpdateBar').innerText();
   const bannerBox = await page.locator('#cwUpdateBar').boundingBox();
   if (!bannerBox || bannerBox.x < 0 || bannerBox.x + bannerBox.width > 430 || bannerBox.y < 0 || bannerBox.y + bannerBox.height > 900) {

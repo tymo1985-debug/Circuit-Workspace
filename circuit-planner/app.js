@@ -881,6 +881,7 @@
           if (usable && !fromLegacy) this.lastConfirmedPayload = saved || null;
           const trustedForApp = !!saved && (!fromLegacy || legacyValid);
           App.state.app = trustedForApp ? this.migrate(JSON.parse(saved)) : this.createDefaultData();
+          this.publishSummary();
         } catch (error) {
           console.error('Storage load failed', error);
           App.state.app = this.createDefaultData();
@@ -985,6 +986,20 @@
         const p = this.persist();
         if (p) p.flush(reason || 'flush'); else this.writeNow();
       },
+      /** Сводка для хаба (shared/summary.js, Ф5): ближайшие посещения. Только
+       *  то, что хабу нужно; ошибка здесь не должна мешать сохранению. */
+      publishSummary() {
+        if (!self.CWSummary || !App.state.app) return;
+        try {
+          const today = self.CWSummary.today();
+          const visits = (App.state.app.entries || []).map((entry) => {
+            const event = App.data.getEventById(entry.eventId);
+            if (!event?.visitType || !entry.start || !entry.end || entry.end < today) return null;
+            return { title: entry.title || event.name || '', start: entry.start, end: entry.end };
+          }).filter(Boolean).sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).slice(0, 10);
+          self.CWSummary.publish('circuit-planner', { visits });
+        } catch (e) { console.warn('CWSummary: сводка Клиндария не записана', e); }
+      },
       writeNow() {
         try {
           this.snapshotIfDue();
@@ -995,7 +1010,7 @@
              только для чтения, а не запасная запись в localStorage. */
           if (this.source !== 'db' || !this.canWrite()) { this.enterDegraded(); return; }
           this.remote.writeOutcome(payload).then((outcome) => {
-            if (outcome === 'written') { this.lastConfirmedPayload = payload; this.domainBaselinePayload = payload; this.clearConflict(); return; }
+            if (outcome === 'written') { this.lastConfirmedPayload = payload; this.domainBaselinePayload = payload; this.clearConflict(); this.publishSummary(); return; }
             /* Отказ по ревизии: канон не тронут, правка жива в памяти, baseline
                НЕ сдвигается — иначе следующее чужое состояние сочло бы вкладку
                чистой и стёрло бы правку. */
@@ -5455,6 +5470,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             App.state.app = App.store.migrate(JSON.parse(payload));
             App.store.lastWrittenPayload = payload;
             App.store.lastConfirmedPayload = payload;
+            App.store.publishSummary();
             App.store.domainBaselinePayload = payload;
             App.store.clearConflict();
             App.ui.renderAll();

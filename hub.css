@@ -730,6 +730,39 @@
 .cw-backup-nudge__text { flex: 1 1 14em; }
 .cw-backup-nudge__go { color: var(--md-primary); white-space: nowrap; }
 .cw-backup-nudge:hover .cw-backup-nudge__go, .cw-backup-nudge:focus-visible .cw-backup-nudge__go { text-decoration: underline; }
+
+/* «Сегодня» (Ф5): карточки ближайших дел. Акцент модуля — по data-module
+   на самой карточке (дорожка слева и цвет действия). */
+.cw-today { margin: 0 0 18px; }
+.cw-today[hidden], .cw-view-settings .cw-today { display: none; }
+.cw-today__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.cw-today__card {
+  position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 14px;
+  align-items: start; padding: 14px 16px 14px 18px; overflow: hidden;
+  background: var(--md-surface-container-low); color: var(--md-on-surface); text-decoration: none;
+}
+.cw-today__card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, var(--cw-module), var(--cw-module-edge));
+}
+.cw-today__card:hover { transform: none; }
+.cw-today__icon { width: 36px; height: 36px; border-radius: 9px; grid-row: span 2; }
+.cw-today__body { min-width: 0; }
+.cw-today__kicker { margin: 0; font: 500 12px/16px var(--md-font-family); letter-spacing: .4px; color: var(--md-on-surface-variant); }
+.cw-today__title { margin: 2px 0 0; font: 500 16px/22px var(--md-font-family); overflow-wrap: anywhere; }
+.cw-today__meta { margin: 2px 0 0; font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.cw-today__progress { margin-top: 8px; height: 4px; border-radius: 999px; background: var(--md-surface-container-highest); overflow: hidden; }
+.cw-today__progress > span { display: block; height: 100%; background: var(--cw-module); }
+.cw-today__go { grid-column: 2; margin-top: 6px; font: 500 14px/20px var(--md-font-family); color: var(--cw-module); }
+.cw-today__card:hover .cw-today__go, .cw-today__card:focus-visible .cw-today__go { text-decoration: underline; }
+.cw-today__empty { margin: 0; font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface-variant); }
+/* Кнопка проверки обновлений переехала в «Настройки» (Ф5): вращение значка
+   на время проверки — как было у круглой кнопки в шапке. */
+.cw-about__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.cw-update-inline[disabled] { opacity: .6; cursor: progress; }
+.cw-update-inline[disabled] .cw-update-btn__icon { animation: cw-spin 1s linear infinite; }
+.cw-update-inline .cw-update-btn__icon { width: 18px; height: 18px; }
+.cw-update-inline .cw-update-btn__label { display: inline; }
 .cw-hub-hint {
   display: flex;
   align-items: flex-start;

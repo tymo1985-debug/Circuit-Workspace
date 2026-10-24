@@ -166,7 +166,14 @@ export function domainDirty(){
   return domainPayload(JSON.stringify(store.st))!==domainPayload(domainBaselinePayload)}
 
 /** Обе отметки после подтверждённого канонического состояния. */
-function markConfirmed(payload){domainBaselinePayload=payload;lastConfirmedPayload=payload}
+function markConfirmed(payload){domainBaselinePayload=payload;lastConfirmedPayload=payload;try{publishSummary(JSON.parse(payload))}catch{}}
+/* Сводка для хаба (shared/summary.js, Ф5): ближайшие конгрессы. Пишется при
+   подтверждённой записи, при принятии состояния соседней вкладки и при
+   загрузке. Ошибка здесь не должна мешать сохранению. */
+function publishSummary(st){try{if(!self.CWSummary||!st)return;let today=self.CWSummary.today();
+  let list=(st.congresses||[]).filter(c=>c&&c.date&&c.date>=today).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).slice(0,5)
+    .map(c=>({name:c.name||"",place:c.place||"",date:c.date,responseDeadline:c.responseDeadline||""}));
+  self.CWSummary.publish("congress-project",{congresses:list})}catch(e){console.warn("CWSummary: сводка Конгрессов не записана",e)}}
 
 /* ── Где лежат автокопии (фаза 4 миграции на shared/db.js) ───────────────────
    Десять копий — это десять ПОЛНЫХ состояний рядом с рабочим; вместе с
@@ -458,6 +465,7 @@ export function load(){
      Это НЕ «подтверждённый канон»: перенос из прежнего ключа подтверждается
      отдельно выше, когда запись разрешится. */
   domainBaselinePayload=JSON.stringify(store.st);
+  publishSummary(store.st);
   /* Нет общего слоя или он не writable — read-only. Прежний ключ с фазы B не
      является записываемым запасным путём. */
   if(!canWrite())enterDegraded()}

@@ -1539,3 +1539,100 @@ function buildChangeLines(release, ready) {
     });
   }
 })();
+
+/* ── «Сегодня» (визуальный аудит, Ф5) ───────────────────────────────────
+   Идущее или ближайшее посещение и ближайший конгресс. Источник — только
+   сводки, которые модули публикуют сами (shared/summary.js): хаб не знает
+   схем их баз. «Через сколько дней» и «день N из M» считаются здесь, от
+   сегодняшней даты, поэтому сводка не устаревает от течения времени.
+   Пока ни один модуль сводку не опубликовал (свежая установка, модуль ещё
+   не открывали после выпуска) — раздел скрыт целиком. */
+(function () {
+  var section = document.getElementById('hubToday');
+  var grid = document.getElementById('hubTodayGrid');
+  if (!section || !grid || !window.CWSummary) return;
+
+  var DAY = 86400000;
+  function parse(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : null; }
+  function t(key, vars) { return window.CWI18n ? CWI18n.t(key, vars) : key; }
+  function fmt(iso, opts) {
+    var d = parse(iso); if (!d) return '';
+    try { return new Intl.DateTimeFormat(window.CWI18n ? CWI18n.getLang() : 'ru', opts || { day: 'numeric', month: 'short' }).format(d); }
+    catch (e) { return iso; }
+  }
+  function range(a, b) { return a === b ? fmt(a) : fmt(a) + ' – ' + fmt(b); }
+  function until(iso, todayD) {
+    var n = Math.round((parse(iso) - todayD) / DAY);
+    if (n <= 0) return t('hub.today_today');
+    if (n === 1) return t('hub.today_tomorrow');
+    return t('hub.today_in', { n: n, unit: window.CWI18n ? CWI18n.tn('unit.days', n) : '' });
+  }
+
+  function card(moduleId, href, kicker, title, meta, go, progress) {
+    var a = document.createElement('a');
+    a.className = 'cw-card cw-today__card';
+    a.href = href;
+    a.setAttribute('data-module', moduleId);
+    var img = document.createElement('img');
+    img.className = 'cw-today__icon'; img.alt = ''; img.width = 36; img.height = 36;
+    img.src = 'shared/brand/' + moduleId + '-icon-source.svg';
+    var body = document.createElement('div'); body.className = 'cw-today__body';
+    [['cw-today__kicker', kicker], ['cw-today__title', title], ['cw-today__meta', meta]].forEach(function (p) {
+      if (!p[1]) return;
+      var el = document.createElement('p'); el.className = p[0]; el.textContent = p[1]; body.appendChild(el);
+    });
+    if (progress != null) {
+      var bar = document.createElement('div'); bar.className = 'cw-today__progress';
+      bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+      bar.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
+      var fill = document.createElement('span'); fill.style.width = Math.round(progress * 100) + '%';
+      bar.appendChild(fill); body.appendChild(bar);
+    }
+    var goEl = document.createElement('span'); goEl.className = 'cw-today__go'; goEl.textContent = go + ' →';
+    a.appendChild(img); a.appendChild(body); a.appendChild(goEl);
+    return a;
+  }
+
+  function render() {
+    var today = CWSummary.today();
+    var todayD = parse(today);
+    var planner = CWSummary.read('circuit-planner');
+    var congress = CWSummary.read('congress-project');
+    grid.textContent = '';
+    if (!planner && !congress) { section.hidden = true; return; }
+    section.hidden = false;
+
+    var visit = planner && (planner.data.visits || []).filter(function (v) { return v.end >= today; })[0];
+    if (visit) {
+      var running = visit.start <= today;
+      var total = Math.round((parse(visit.end) - parse(visit.start)) / DAY) + 1;
+      var dayN = Math.round((todayD - parse(visit.start)) / DAY) + 1;
+      grid.appendChild(card('circuit-planner', 'circuit-planner/index.html',
+        t(running ? 'hub.today_visit_now' : 'hub.today_visit_next'),
+        visit.title,
+        (running ? t('hub.today_day_of', { n: dayN, total: total }) : until(visit.start, todayD)) + ' · ' + range(visit.start, visit.end),
+        t('hub.today_open_calendar'),
+        running ? dayN / total : null));
+    }
+
+    var cong = congress && (congress.data.congresses || []).filter(function (c) { return c.date >= today; })[0];
+    if (cong) {
+      var meta = [until(cong.date, todayD), fmt(cong.date, { day: 'numeric', month: 'long' }), cong.place].filter(Boolean).join(' · ');
+      if (cong.responseDeadline && cong.responseDeadline >= today) meta += ' · ' + t('hub.today_reply_by', { date: fmt(cong.responseDeadline) });
+      grid.appendChild(card('congress-project', 'congress-project/index.html',
+        t('hub.today_congress_next'), cong.name, meta, t('hub.today_open_program'), null));
+    }
+
+    if (!grid.children.length) {
+      var empty = document.createElement('p'); empty.className = 'cw-today__empty'; empty.textContent = t('hub.today_empty');
+      grid.appendChild(empty);
+    }
+  }
+
+  render();
+  if (window.CWI18n) CWI18n.onChange(render);
+  // Модуль, открытый в соседней вкладке, обновил сводку — перерисовываем.
+  window.addEventListener('storage', function (e) { if (e.key && e.key.indexOf(CWSummary.PREFIX) === 0) render(); });
+  // Вернулись на вкладку на следующий день — «через N дней» должно пересчитаться.
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') render(); });
+})();
