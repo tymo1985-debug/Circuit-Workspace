@@ -29,7 +29,7 @@ body {
 .arc-groups { display: grid; gap: 22px; }
 .arc-group { display: grid; gap: 10px; }
 .arc-group__title { margin: 0; font: 500 16px/22px var(--md-font-family); color: var(--md-on-surface); }
-.arc-group__meta { margin: -6px 0 2px; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.arc-group__meta { margin: -6px 0 2px; font-size: 12px; color: var(--md-on-surface-variant); }
 .arc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 
 /* Запись списка — кнопка целиком: на телефоне цель нажатия должна быть
@@ -49,12 +49,12 @@ body {
   background: var(--md-secondary-container); color: var(--md-on-secondary-container);
   font-size: 12px; line-height: 18px;
 }
-.arc-item__meta { margin: 4px 0 0; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.arc-item__meta { margin: 4px 0 0; font-size: 12px; color: var(--md-on-surface-variant); }
 
 /* ─── Экран записи ─── */
 #detail { margin-top: 8px; display: grid; gap: 18px; }
 .arc-detail__title { margin: 0; font: 500 20px/28px var(--md-font-family); }
-.arc-detail__meta { margin: 4px 0 0; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.arc-detail__meta { margin: 4px 0 0; font-size: 12px; color: var(--md-on-surface-variant); }
 .arc-summary { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
 .arc-summary li {
   padding: 4px 12px; border-radius: var(--md-radius-full);
@@ -68,7 +68,7 @@ body {
   border-radius: var(--md-radius-sm); background: var(--md-surface-container-low);
   overflow-wrap: anywhere;
 }
-.arc-row__date { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.arc-row__date { font-size: 12px; color: var(--md-on-surface-variant); }
 .arc-row__title { font-weight: 500; }
 .arc-row__note { margin-top: 2px; color: var(--md-on-surface-variant); white-space: pre-wrap; }
 .arc-row__tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
@@ -82,19 +82,19 @@ body {
   padding: 14px 16px; background: var(--md-surface-container-low);
 }
 .cwdoc__head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.cwdoc__meta { font-size: 12.5px; color: var(--md-on-surface-variant); }
-.cwdoc__subject { margin: 8px 0 0; font-size: 13.5px; }
+.cwdoc__meta { font-size: 12px; color: var(--md-on-surface-variant); }
+.cwdoc__subject { margin: 8px 0 0; font-size: 14px; }
 .cwdoc__text { margin-top: 10px; }
 .cwdoc__text summary { cursor: pointer; font-size: 13px; color: var(--md-primary); }
 .cwdoc__body {
-  margin-top: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.5;
+  margin-top: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.5;
   border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs);
   background: var(--md-surface-container-lowest);
   overflow-wrap: anywhere;
 }
 .cwdoc-plain { white-space: pre-wrap; }
 .cwdoc-page { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--md-outline-variant); }
-.cwdoc-page__title { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.cwdoc-page__title { font-size: 12px; color: var(--md-on-surface-variant); }
 .cwdoc__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
 /* ─── Короткое сообщение ─── */
@@ -102,7 +102,7 @@ body {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
   max-width: min(92vw, 420px); padding: 10px 16px;
   border-radius: var(--md-radius-sm); background: var(--md-inverse-surface);
-  color: var(--md-inverse-on-surface); font-size: 13.5px;
+  color: var(--md-inverse-on-surface); font-size: 14px;
   opacity: 0; pointer-events: none; transition: opacity var(--md-dur-short) var(--md-ease-standard);
 }
 .arc-toast.is-on { opacity: 1; }
@@ -110,7 +110,7 @@ body {
 .arc-toast.has-action.is-on { pointer-events: auto; }
 .arc-toast__action {
   flex: 0 0 auto; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--md-radius-sm);
-  background: transparent; color: var(--md-inverse-primary); font: 500 13.5px/20px var(--md-font-family); cursor: pointer;
+  background: transparent; color: var(--md-inverse-primary); font: 500 14px/20px var(--md-font-family); cursor: pointer;
 }
 
 @media (max-width: 600px) {

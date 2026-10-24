@@ -1,13 +1,13 @@
 self.CW_RELEASE = {
-  version: '0.45.2',
+  version: '0.45.3',
   changes: [
-    { module: 'hub', version: '0.45.2', note: 'Единый фон экранов во всех модулях, карточки чуть светлее фона в тёмной теме' },
-    { module: 'journal', version: '0.30.11', note: 'Шапка во всю ширину экрана, без полей по краям' },
-    { module: 'circuit-planner', version: '9.119.4', note: 'Шапка на телефоне больше не сжимается; карточки календаря без тяжёлой тени' },
-    { module: 'pioneer-school', version: '1.16.4', note: 'Карточки обзора в тёмной теме больше не почти чёрные' },
-    { module: 'congress-project', version: '4.51.3', note: 'Фон экрана такой же, как в остальных модулях' },
-    { module: 'appointments', version: '5.5.208', note: 'Фон экрана такой же, как в остальных модулях' },
-    { module: 'documents', version: '1.12.80', note: 'Фон экрана такой же, как в остальных модулях' },
-    { module: 'archive', version: '0.4.3', note: 'Фон экрана такой же, как в остальных модулях' },
+    { module: 'hub', version: '0.45.3', note: 'Один шрифт во всём приложении: настоящий жирный, единая шкала размеров, поля и кнопки тем же шрифтом' },
+    { module: 'pioneer-school', version: '1.16.5', note: 'Подписи разделов и карточек — основным шрифтом вместо моноширинного' },
+    { module: 'congress-project', version: '4.51.4', note: 'Время в программе — основным шрифтом с ровными цифрами' },
+    { module: 'documents', version: '1.12.81', note: 'Заголовки групп переменных — основным шрифтом' },
+    { module: 'circuit-planner', version: '9.119.5', note: 'Поля и кнопки — тем же шрифтом, что и весь модуль' },
+    { module: 'appointments', version: '5.5.209', note: 'Поля и кнопки — тем же шрифтом, что и весь модуль' },
+    { module: 'journal', version: '0.30.12', technical: true },
+    { module: 'archive', version: '0.4.4', technical: true },
   ],
 };

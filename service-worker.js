@@ -48,6 +48,8 @@ const SHELL_FILES = [
   './shared/fonts/roboto-latin-500-normal.woff2',
   './shared/fonts/roboto-cyrillic-400-normal.woff2',
   './shared/fonts/roboto-cyrillic-500-normal.woff2',
+  './shared/fonts/roboto-latin-700-normal.woff2',
+  './shared/fonts/roboto-cyrillic-700-normal.woff2',
   './shared/fonts/material-symbols-outlined-subset.woff2',
   './icon-16.png',
   './icon-32.png',

@@ -58,6 +58,8 @@ const ASSETS = [
   '../shared/fonts/roboto-latin-500-normal.woff2',
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
   '../shared/fonts/roboto-cyrillic-500-normal.woff2',
+  '../shared/fonts/roboto-latin-700-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-700-normal.woff2',
 ];
 
 self.CWOfflineCheck.listen('archive', APP_VERSION, CACHE_NAME, ASSETS);

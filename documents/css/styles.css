@@ -115,7 +115,7 @@ body {
 .doc-group__head[aria-expanded="true"]::before { transform: rotate(45deg); }
 .doc-group__head:focus-visible { outline: 2px solid var(--md-primary); outline-offset: -2px; }
 .doc-group__name { flex: 1; min-width: 0; }
-.doc-group__count { font: 500 12.5px/1 var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.doc-group__count { font: 500 12px/1 var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
 .doc-group__rows { border-top: 1px solid var(--md-outline-variant); }
 .doc-group .doc-row {
   border: 0; border-radius: 0; background: transparent; padding: 10px 16px;
@@ -151,7 +151,7 @@ body {
    `.doc-row__langs` такого лечения не требует — flex-контейнер сам блочный,
    поэтому ряд языковых меток и раньше вставал на свою строку. */
 .doc-row__name { display: block; font: 500 15px/20px var(--md-font-family); color: var(--md-on-surface); }
-.doc-row__meta { display: block; font-size: 12.5px; color: var(--md-on-surface-variant); margin-top: 3px; }
+.doc-row__meta { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-top: 3px; }
 .doc-row__langs { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 
 /* Языковая метка. Закрашенная — перевод есть; бледная — колонка пуста и
@@ -435,7 +435,7 @@ body {
 .vars-dialog__list { flex: 1 1 auto; overflow-y: auto; padding: 0 16px 16px; min-height: 0; }
 
 .vars-dialog__list h4 {
-  margin: 14px 0 6px; font: 500 12px/16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 14px 0 6px; font: 500 12px/16px var(--md-font-family);
   color: var(--md-on-surface-variant);
 }
 .vars-dialog__list h4:first-child { margin-top: 0; }
@@ -496,7 +496,7 @@ body {
 
 .arc-group { display: grid; gap: 10px; }
 .arc-group__title { margin: 0; font: 500 15px/20px var(--md-font-family); color: var(--md-on-surface); }
-.arc-group__meta { margin: -6px 0 2px; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.arc-group__meta { margin: -6px 0 2px; font-size: 12px; color: var(--md-on-surface-variant); }
 
 /* Карточку снимка рисует общий shared/docsview.js классами `.cwdoc-*`.
    Прежние `.arc-doc*` принадлежали местной копии рендерера и переименованы
@@ -508,12 +508,12 @@ body {
   padding: 14px 16px; background: var(--md-surface-container-low);
 }
 .cwdoc__head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.cwdoc__meta { font-size: 12.5px; color: var(--md-on-surface-variant); }
-.cwdoc__subject { margin: 8px 0 0; font-size: 13.5px; }
+.cwdoc__meta { font-size: 12px; color: var(--md-on-surface-variant); }
+.cwdoc__subject { margin: 8px 0 0; font-size: 14px; }
 .cwdoc__text { margin-top: 10px; }
 .cwdoc__text summary { cursor: pointer; font-size: 13px; color: var(--md-primary); }
 .cwdoc__body {
-  margin-top: 10px; padding: 12px 14px; font-size: 13.5px; line-height: 1.5;
+  margin-top: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.5;
   border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs);
   background: var(--md-surface-container-lowest);
   /* Письмо может прийти из RTE с длинными неразрывными вставками — без этого
@@ -523,14 +523,14 @@ body {
 /* Текстовый формат хранит переносы значащими символами, а не разметкой. */
 .cwdoc-plain { white-space: pre-wrap; }
 .cwdoc-page { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--md-outline-variant); }
-.cwdoc-page__title { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.cwdoc-page__title { font-size: 12px; color: var(--md-on-surface-variant); }
 .cwdoc__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
 /* ── Общий справочник собраний (только просмотр) ───────────────────────── */
 .dir-list { display: grid; gap: 12px; margin-top: 10px; }
 .dir-card { border: 1px solid var(--md-outline-variant); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
 .dir-card__name { margin: 0; font: 600 15px/20px var(--md-font-family); }
-.dir-card__sources { margin: 4px 0 0; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.dir-card__sources { margin: 4px 0 0; font-size: 12px; color: var(--md-on-surface-variant); }
 .dir-card__rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
-.dir-card__rows dt { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.dir-card__rows dt { font-size: 12px; color: var(--md-on-surface-variant); }
 .dir-card__rows dd { margin: 0; }

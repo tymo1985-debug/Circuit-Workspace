@@ -101,6 +101,8 @@ const APP_SHELL_URLS = [
   '../shared/fonts/roboto-latin-500-normal.woff2',
   '../shared/fonts/roboto-cyrillic-400-normal.woff2',
   '../shared/fonts/roboto-cyrillic-500-normal.woff2',
+  '../shared/fonts/roboto-latin-700-normal.woff2',
+  '../shared/fonts/roboto-cyrillic-700-normal.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

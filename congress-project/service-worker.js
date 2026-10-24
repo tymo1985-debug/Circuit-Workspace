@@ -24,6 +24,7 @@ const ASSETS=['./','./index.html','./styles.css','./manifest.json','./favicon-32
 '../shared/theme.js','../shared/backup.js',
 '../shared/fonts/roboto-latin-400-normal.woff2','../shared/fonts/roboto-latin-500-normal.woff2',
 '../shared/fonts/roboto-cyrillic-400-normal.woff2','../shared/fonts/roboto-cyrillic-500-normal.woff2',
+'../shared/fonts/roboto-latin-700-normal.woff2','../shared/fonts/roboto-cyrillic-700-normal.woff2',
 './js/main.js','./js/mobile.js',
 './js/topbar-menu.js','./js/state.js','./js/render.js','./js/degraded.js','./js/tasks.js','./js/congress.js','./js/directories.js',
 './js/archive-logic.js','./js/archive-congress.js','./js/letters.js','./js/batch-pdf.js','./js/plan.js','./js/plan-fit.js','./js/printing.js','./js/backup.js',

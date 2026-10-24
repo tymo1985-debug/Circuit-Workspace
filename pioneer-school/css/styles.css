@@ -9,8 +9,9 @@
      тёмная панель внутри светлого модуля не подчинялась ни одной теме и
      оставалась тёмной даже когда всё остальное светлело. Узнаваемость
      модуля теперь несёт акцент (--cw-module из data-module), а не заливка. */
-  /* Шрифты — локальные (офлайн-PWA), вместо Google Fonts CDN */
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Подписи и номера — Roboto с цифрами одной ширины (визуальный аудит
+     24.10.2026, Ф2): ui-monospace на каждой системе был своим шрифтом. */
+  --font-mono: var(--md-font-family);
 }
 
 * { box-sizing: border-box; }
@@ -72,7 +73,8 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .nav-group-label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--md-on-surface-variant);
@@ -101,7 +103,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 
 .sidebar-footer {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--md-on-surface-variant);
   padding: 10px 8px 0;
   border-top: 1px solid var(--md-outline-variant);
@@ -124,7 +126,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .route-header h1 {
   font-family: var(--md-font-family);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 500;
   margin: 0 0 4px;
 }
@@ -147,7 +149,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .panel h3 {
   font-family: var(--md-font-family);
-  font-size: 15.5px;
+  font-size: 16px;
   margin: 0 0 10px;
 }
 
@@ -160,14 +162,14 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 .fact-list {
   margin: 0;
   padding-left: 20px;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--md-on-surface-variant);
 }
 .fact-list li { margin-bottom: 4px; }
 
 .hint {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--md-on-surface-variant);
   font-style: italic;
 }
@@ -185,19 +187,20 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   padding: 18px;
 }
 .stat-title {
-  font-size: 11.5px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--md-on-surface-variant);
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .stat-value {
   font-family: var(--md-font-family);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 500;
   margin: 6px 0 2px;
 }
-.stat-sub { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.stat-sub { font-size: 12px; color: var(--md-on-surface-variant); }
 
 .form-grid {
   display: grid;
@@ -210,7 +213,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--md-on-surface-variant);
 }
 
@@ -263,7 +266,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid var(--md-outline-variant);
-  font-size: 13.5px;
+  font-size: 14px;
 }
 .list-row:last-child { border-bottom: none; }
 
@@ -300,6 +303,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 }
 .lesson-number {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
   background: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
@@ -307,7 +311,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   border-radius: 20px;
   font-size: 13px;
 }
-.lesson-teacher { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.lesson-teacher { font-size: 12px; color: var(--md-on-surface-variant); }
 .lesson-done { margin-left: auto; }
 
 .media-block {
@@ -320,7 +324,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .media-label { font-size: 13px; font-weight: 500; }
 .media-cue { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
 
-.simple-list { padding-left: 18px; font-size: 13.5px; }
+.simple-list { padding-left: 18px; font-size: 14px; }
 
 @media (max-width: 900px) {
   .app-shell { flex-direction: column; }
@@ -367,7 +371,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .pill-option input { position: absolute; opacity: 0; width: 0; height: 0; }
 .pill-option span {
   display: inline-block; padding: 9px 18px; border: 1px solid var(--md-outline-variant); border-radius: 20px;
-  font-size: 13.5px; cursor: pointer; background: var(--md-surface-container-lowest); color: var(--md-on-surface-variant); transition: all .15s ease;
+  font-size: 14px; cursor: pointer; background: var(--md-surface-container-lowest); color: var(--md-on-surface-variant); transition: all .15s ease;
 }
 .pill-option input:checked + span { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); font-weight: 500; }
 .pill-option input:focus-visible + span { outline: 2px solid var(--md-primary); outline-offset: 2px; }
@@ -381,12 +385,12 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
 .check-card {
   display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--md-outline-variant);
-  border-radius: 8px; background: var(--md-surface-container-lowest); font-size: 13.5px; cursor: pointer;
+  border-radius: 8px; background: var(--md-surface-container-lowest); font-size: 14px; cursor: pointer;
 }
 .check-card:has(input:checked) { border-color: var(--md-primary); background: var(--md-secondary-container); }
 .check-card input { accent-color: var(--md-primary); }
 
-.closing-note { background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); padding: 20px 22px; font-size: 13.5px; line-height: 1.6; color: var(--md-on-surface-variant); }
+.closing-note { background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); padding: 20px 22px; font-size: 14px; line-height: 1.6; color: var(--md-on-surface-variant); }
 .closing-note p { margin: 0 0 12px; }
 .closing-note .deadline-line, .closing-note .method-line { color: var(--md-on-surface); font-weight: 500; }
 .placeholder-empty { color: var(--md-error); font-style: italic; font-weight: 400; }
@@ -425,7 +429,8 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .column-row input[type=text] { flex: 1; min-width: 140px; }
 .column-type-badge {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
   text-transform: uppercase;
   color: var(--md-on-surface-variant);
   background: var(--md-surface-container);
@@ -452,7 +457,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   max-width: 760px; width: 100%; box-shadow: var(--md-elevation-3);
 }
 .modal-box h2 {
-  font-family: var(--md-font-family); font-size: 19px; margin: 0 0 6px;
+  font-family: var(--md-font-family); font-size: 20px; margin: 0 0 6px;
 }
 .modal-close-row { display: flex; justify-content: flex-end; margin-top: 16px; gap: 10px; }
 
@@ -468,7 +473,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 
 /* ---------- Редактируемая таблица предпросмотра импорта ---------- */
 .editable-table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--md-outline-variant); border-radius: 8px; margin: 12px 0; }
-.editable-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.editable-table { border-collapse: collapse; width: 100%; font-size: 12px; }
 .editable-table th, .editable-table td {
   border: 1px solid var(--md-outline-variant); padding: 0; min-width: 120px;
 }
@@ -508,19 +513,19 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .doc-menu button:hover { background: var(--md-surface-container-highest); }
 .doc-menu .doc-mi-name { display: block; font: 500 14px/18px var(--md-font-family); }
 .doc-menu .doc-mi-sub { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
-.doc-menu .doc-menu-empty { padding: 10px 12px; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.doc-menu .doc-menu-empty { padding: 10px 12px; font-size: 12px; color: var(--md-on-surface-variant); }
 
 .doc-paper {
   background: #fdfdfb; color: #16251d; border-radius: var(--md-radius-xs);
   padding: 24px 28px; margin: 12px 0 4px; min-height: 240px;
-  font: 13.5px/1.62 Georgia, "Times New Roman", serif; white-space: pre-wrap;
+  font: 14px/1.62 Georgia, "Times New Roman", serif; white-space: pre-wrap;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 .doc-paper:focus { outline: 2px solid var(--md-primary); outline-offset: 2px; }
 .doc-pending {
   margin: 0; padding: 8px 12px; border-radius: var(--md-radius-xs);
   background: var(--status-important-bg, var(--md-surface-container-highest));
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 /* ── Архив выданных документов ─────────────────────────────────────────────
@@ -530,14 +535,14 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 .docs-arc__owner { font-weight: 600; margin-bottom: 6px; }
 .cwdoc { border: 1px solid var(--md-outline-variant); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
 .cwdoc__head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
-.cwdoc__meta { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.cwdoc__meta { font-size: 12px; color: var(--md-on-surface-variant); }
 .cwdoc__subject { margin: 8px 0 0; font-weight: 500; }
 .cwdoc__text { margin-top: 8px; }
 .cwdoc__text summary { cursor: pointer; color: var(--md-primary); }
 .cwdoc__body { margin-top: 8px; }
 .cwdoc-plain { white-space: pre-wrap; }
 .cwdoc-page { margin-top: 10px; }
-.cwdoc-page__title { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.cwdoc-page__title { font-size: 12px; color: var(--md-on-surface-variant); }
 .cwdoc__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
 /* Уведомления модуля (js/pdfstack.js). Своего слоя уведомлений у Школы не
