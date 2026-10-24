@@ -111,6 +111,10 @@
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       var willOpen = panel.hidden;
+      // Ф4: общий «⋮» модуля — версия и «Копия модуля» (shared/nav.js)
+      // дописываются в конец панели при открытии, когда пункты экрана уже
+      // расставлены и подписаны обработчиками.
+      if (willOpen && panel.id === 'moreMenuPanel' && window.CWNav) window.CWNav.appendModuleItems(panel);
       closeAllMenus(panel);
       panel.hidden = !willOpen;
       btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
@@ -323,22 +327,27 @@
 
   function ddmm(iso) { return iso.slice(8, 10) + '.' + iso.slice(5, 7); }
 
-  /** Вне экрана открытого района #moreBtn — тот же декоративный элемент,
-   *  что и в J1: пустая панель, обработчик снят, подпись возвращена к
-   *  общей «Ещё». Вызывается из applyRoute() при уходе с districts/<id>. */
+  /** Вне экрана открытого района у #moreBtn нет пунктов экрана: панель
+   *  очищается, обработчики снимаются, подпись возвращается к общей «Ещё».
+   *  С Ф4 кнопка не декоративная — в ней общие пункты модуля (версия,
+   *  «Копия модуля»), см. wireMenuToggle. Вызывается из applyRoute(). */
   function resetMoreMenu() {
     var btn = $('#moreBtn');
     var panel = $('#moreMenuPanel');
+    var cloned = false;
     if (!panel.hidden || panel.innerHTML) {
       panel.hidden = true;
       panel.innerHTML = '';
       var freshBtn = btn.cloneNode(true);
       btn.parentNode.replaceChild(freshBtn, btn);
+      cloned = true;
     }
     btn = $('#moreBtn');
     btn.setAttribute('data-i18n-aria-label', 'j.action.more');
     btn.setAttribute('aria-label', t('j.action.more'));
     btn.setAttribute('aria-expanded', 'false');
+    // Клон снял все обработчики (и флаг скопировал) — проводим заново.
+    if (cloned || !btn.dataset.cwModuleMenu) { btn.dataset.cwModuleMenu = '1'; wireMenuToggle(btn, panel); }
   }
 
   function resolveCommunity(id) { return isDirectoryReady() && id ? CWDirectory.get(id) : null; }

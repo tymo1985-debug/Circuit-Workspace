@@ -1078,6 +1078,20 @@ body.cw-root {
 .md-menu__item .icon,
 .md-menu__item svg { flex: 0 0 auto; width: 18px; height: 18px; }
 .md-menu__sep { height: 1px; background: var(--md-outline-variant); margin: var(--cw-space-1) var(--cw-space-2); }
+/* Информационная строка меню (версия модуля): не пункт — не нажимается. */
+.md-menu__meta {
+  display: flex; align-items: center; gap: var(--cw-space-3);
+  min-height: 36px; padding: 0 var(--cw-space-3);
+  font: 400 12px/16px var(--md-font-family); letter-spacing: 0.4px;
+  color: var(--md-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+.md-menu__meta svg { flex: 0 0 auto; width: 18px; height: 18px; }
+/* Версия модуля живёт в меню «⋮» (Ф4, см. shared/nav.js). В подзаголовке
+   шапки модуль по-прежнему её пишет, но она скрыта; подзаголовок, в котором
+   ничего, кроме версии, нет, скрывается целиком — заголовок встаёт по центру. */
+.md-topbar-v2__sub .cw-topbar-version { display: none; }
+.md-topbar-v2__sub:not(:has(> :not(.cw-topbar-version))) { display: none; }
 
 @media (max-width: 600px) {
   /* На узком экране меню разворачивается почти во всю ширину: панель
@@ -1495,7 +1509,7 @@ body.cw-root {
     position: fixed; left: 0; right: 0; bottom: 0;
     padding-bottom: calc(var(--cw-space-2) + env(safe-area-inset-bottom, 0px));
   }
-  body:has(> .md-shell .md-bottomnav) {
+  body:has(.md-bottomnav) {
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 }

@@ -738,7 +738,7 @@
         + `<span class="small">${esc([typeLabel, range(slotOf(row))].filter(Boolean).join(' · '))}</span>`
         + (slotOf(row) !== row ? `<span class="small route-was">${esc(t('route_was', { range: range(row) }))}</span>` : '')
         + `${note}</span></button>`
-        + (draft && draft.on ? draftCtl(row) : `<button type="button" class="route-cal md-btn md-btn-outlined md-state-layer" data-route-entry="${id}" title="${esc(t('route_open'))}" aria-label="${esc(t('route_open'))}: ${esc(row.name)}">📆</button>`)
+        + (draft && draft.on ? draftCtl(row) : `<button type="button" class="route-cal md-btn md-btn-outlined md-state-layer" data-route-entry="${id}" title="${esc(t('route_open'))}" aria-label="${esc(t('route_open'))}: ${esc(row.name)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></button>`)
         + `</div>`;
     }
 
@@ -752,8 +752,8 @@
       const b = (dir, sym, key) => `<button type="button" class="route-mv md-btn md-btn-outlined md-state-layer" data-route-move="${dir}" data-id="${id}"${can(dir) ? '' : ' disabled'} title="${esc(t(key))}" aria-label="${esc(t(key))}: ${esc(row.name)}">${sym}</button>`;
       return `<span class="route-ctl">${b(-1, '↑', 'route_up')}${b(1, '↓', 'route_down')}`
         + (past
-          ? `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer is-locked" disabled aria-pressed="true" title="${esc(t('route_past'))}" aria-label="${esc(t('route_past'))}: ${esc(row.name)}">🔒</button></span>`
-          : `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer${locked ? ' is-locked' : ''}" data-route-lock="${id}" aria-pressed="${locked}" title="${esc(t(locked ? 'route_unlock' : 'route_lock'))}" aria-label="${esc(t(locked ? 'route_unlock' : 'route_lock'))}: ${esc(row.name)}">${locked ? '🔒' : '🔓'}</button></span>`);
+          ? `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer is-locked" disabled aria-pressed="true" title="${esc(t('route_past'))}" aria-label="${esc(t('route_past'))}: ${esc(row.name)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button></span>`
+          : `<button type="button" class="route-mv route-lock md-btn md-btn-outlined md-state-layer${locked ? ' is-locked' : ''}" data-route-lock="${id}" aria-pressed="${locked}" title="${esc(t(locked ? 'route_unlock' : 'route_lock'))}" aria-label="${esc(t(locked ? 'route_unlock' : 'route_lock'))}: ${esc(row.name)}">${locked ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.8-1.2"/></svg>'}</button></span>`);
     }
 
     function renderDraftBar() {

@@ -43,7 +43,7 @@ body {
 .arc-item:hover { background: var(--md-surface-container-high); }
 .arc-item:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
 .arc-item__head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.arc-item__title { font: 500 15px/20px var(--md-font-family); }
+.arc-item__title { font: 500 16px/20px var(--md-font-family); }
 .arc-badge {
   display: inline-block; padding: 1px 8px; border-radius: var(--md-radius-full);
   background: var(--md-secondary-container); color: var(--md-on-secondary-container);
@@ -58,10 +58,10 @@ body {
 .arc-summary { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
 .arc-summary li {
   padding: 4px 12px; border-radius: var(--md-radius-full);
-  background: var(--md-surface-container-high); font-size: 13px;
+  background: var(--md-surface-container-high); font-size: 14px;
 }
 .arc-section { display: grid; gap: 8px; }
-.arc-section__title { margin: 0; font: 500 15px/20px var(--md-font-family); }
+.arc-section__title { margin: 0; font: 500 16px/20px var(--md-font-family); }
 .arc-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .arc-row {
   padding: 10px 14px; border: 1px solid var(--md-outline-variant);
@@ -85,7 +85,7 @@ body {
 .cwdoc__meta { font-size: 12px; color: var(--md-on-surface-variant); }
 .cwdoc__subject { margin: 8px 0 0; font-size: 14px; }
 .cwdoc__text { margin-top: 10px; }
-.cwdoc__text summary { cursor: pointer; font-size: 13px; color: var(--md-primary); }
+.cwdoc__text summary { cursor: pointer; font-size: 12px; color: var(--md-primary); }
 .cwdoc__body {
   margin-top: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.5;
   border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs);

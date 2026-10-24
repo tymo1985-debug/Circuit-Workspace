@@ -386,7 +386,7 @@
     $('#screenDirectory').hidden = name !== 'directory';
     Array.prototype.forEach.call(document.querySelectorAll('[data-screen]'), function (btn) {
       var on = btn.dataset.screen === name;
-      btn.classList.toggle('selected', on);
+      btn.classList.toggle('active', on);
       btn.setAttribute('aria-pressed', String(on));
     });
     if (name === 'archive') loadArchive(false);
@@ -1526,9 +1526,12 @@
       markDirty();
     });
 
-    $('#screens').addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-screen]');
-      if (btn) showScreen(btn.dataset.screen);
+    // Боковая (широкий экран) и нижняя (телефон) панели — одни и те же разделы.
+    ['#screens', '#screensBottom'].forEach(function (sel) {
+      $(sel).addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-screen]');
+        if (btn) showScreen(btn.dataset.screen);
+      });
     });
 
     $('#dirSearch').addEventListener('input', function (e) {

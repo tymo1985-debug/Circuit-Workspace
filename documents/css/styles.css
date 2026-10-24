@@ -54,7 +54,7 @@ body {
   border-radius: var(--md-radius-full);
   background: transparent;
   color: var(--md-on-surface);
-  font: 600 13px/1 var(--md-font-family);
+  font: 600 12px/1 var(--md-font-family);
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -78,7 +78,7 @@ body {
 }
 
 .doc-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-.doc-hint { margin: 0 0 12px; font-size: 13px; color: var(--md-on-surface-variant); }
+.doc-hint { margin: 0 0 12px; font-size: 12px; color: var(--md-on-surface-variant); }
 
 @media (max-width: 600px) {
   .doc-toolbar { flex-direction: column; align-items: stretch; margin-bottom: 10px; }
@@ -93,11 +93,6 @@ body {
   .doc-search { flex-basis: auto; max-width: none; }
   #newTypeTplBtn { width: 100%; }
   .doc-filters { margin-bottom: 10px; }
-  .doc-screens {
-    width: 100%; max-width: 100%; min-width: 0;
-    flex-wrap: wrap; overflow: visible;
-  }
-  .doc-screens .md-chip { flex: 0 0 auto; min-height: 44px; }
 }
 
 /* ─── Библиотека ─── */
@@ -105,7 +100,7 @@ body {
 .doc-group { border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); background: var(--md-surface-container-low); overflow: hidden; }
 .doc-group__head {
   display: flex; width: 100%; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer;
-  border: 0; background: none; text-align: left; font: 600 15px/20px var(--md-font-family); color: var(--md-on-surface);
+  border: 0; background: none; text-align: left; font: 600 16px/20px var(--md-font-family); color: var(--md-on-surface);
 }
 .doc-group__head::before {
   content: ''; width: 8px; height: 8px; flex: none; margin: 0 4px 0 2px;
@@ -150,7 +145,7 @@ body {
    «Сопроводительное письмо (собрание)Тело письма · Клиндарий».
    `.doc-row__langs` такого лечения не требует — flex-контейнер сам блочный,
    поэтому ряд языковых меток и раньше вставал на свою строку. */
-.doc-row__name { display: block; font: 500 15px/20px var(--md-font-family); color: var(--md-on-surface); }
+.doc-row__name { display: block; font: 500 16px/20px var(--md-font-family); color: var(--md-on-surface); }
 .doc-row__meta { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-top: 3px; }
 .doc-row__langs { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 
@@ -490,12 +485,14 @@ body {
    правится: карточка снимка не кликабельна целиком и не выглядит кнопкой —
    иначе появлялось бы ожидание «нажму и отредактирую», которого архив не
    выполняет. */
-.doc-screens { display: flex; gap: 8px; margin-bottom: 18px; }
+/* Разделы модуля — общие .md-sidenav / .md-bottomnav (Ф4). Содержимое
+   справа от панели: своя ширина .doc-wrap не нужна сверх колонки. */
+.doc-shell .doc-wrap { min-width: 0; width: 100%; }
 
 .doc-archive { display: grid; gap: 22px; }
 
 .arc-group { display: grid; gap: 10px; }
-.arc-group__title { margin: 0; font: 500 15px/20px var(--md-font-family); color: var(--md-on-surface); }
+.arc-group__title { margin: 0; font: 500 16px/20px var(--md-font-family); color: var(--md-on-surface); }
 .arc-group__meta { margin: -6px 0 2px; font-size: 12px; color: var(--md-on-surface-variant); }
 
 /* Карточку снимка рисует общий shared/docsview.js классами `.cwdoc-*`.
@@ -511,7 +508,7 @@ body {
 .cwdoc__meta { font-size: 12px; color: var(--md-on-surface-variant); }
 .cwdoc__subject { margin: 8px 0 0; font-size: 14px; }
 .cwdoc__text { margin-top: 10px; }
-.cwdoc__text summary { cursor: pointer; font-size: 13px; color: var(--md-primary); }
+.cwdoc__text summary { cursor: pointer; font-size: 12px; color: var(--md-primary); }
 .cwdoc__body {
   margin-top: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.5;
   border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs);
@@ -529,7 +526,7 @@ body {
 /* ── Общий справочник собраний (только просмотр) ───────────────────────── */
 .dir-list { display: grid; gap: 12px; margin-top: 10px; }
 .dir-card { border: 1px solid var(--md-outline-variant); border-radius: 12px; padding: 12px 14px; background: var(--md-surface-container-low); }
-.dir-card__name { margin: 0; font: 600 15px/20px var(--md-font-family); }
+.dir-card__name { margin: 0; font: 600 16px/20px var(--md-font-family); }
 .dir-card__sources { margin: 4px 0 0; font-size: 12px; color: var(--md-on-surface-variant); }
 .dir-card__rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0 0; }
 .dir-card__rows dt { font-size: 12px; color: var(--md-on-surface-variant); }

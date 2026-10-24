@@ -22,7 +22,7 @@
   .app{display:grid;grid-template-columns:280px 1fr;width:100%;min-height:calc(100vh - var(--cw-topbar-h));min-height:calc(100dvh - var(--cw-topbar-h));position:relative;z-index:1}
   .sidebar{background:var(--md-primary-container);color:var(--md-on-primary-container);padding:24px 18px;min-height:calc(100vh - var(--cw-topbar-h));min-height:calc(100dvh - var(--cw-topbar-h));display:flex;flex-direction:column;gap:18px}
   .brand{display:flex;gap:12px;align-items:center}.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:700;overflow:hidden}.menu{display:grid;gap:8px}
-  .nav-btn{appearance:none;border:0;background:transparent;color:var(--md-on-primary-container);padding:12px 14px;border-radius:14px;text-align:left;font-size:15px;cursor:pointer;display:flex;gap:10px;align-items:center}.nav-btn.active,.nav-btn:hover{background:color-mix(in srgb, var(--md-on-primary-container) 12%, transparent)}
+  .nav-btn{appearance:none;border:0;background:transparent;color:var(--md-on-primary-container);padding:12px 14px;border-radius:14px;text-align:left;font-size:14px;cursor:pointer;display:flex;gap:10px;align-items:center}.nav-btn.active,.nav-btn:hover{background:color-mix(in srgb, var(--md-on-primary-container) 12%, transparent)}
   .summary{margin-top:auto;padding:14px;border-radius:16px;background:color-mix(in srgb, var(--md-on-primary-container) 10%, transparent);font-size:14px}
     /* .small красится в --muted — тёмный токен, рассчитанный на светлую
        поверхность. Внутри цветного сайдбара он давал тёмный текст на
@@ -110,14 +110,14 @@
   .route-legend-i{display:inline-flex;gap:6px;align-items:center}
   .route-legend-i i{width:12px;height:12px;border-radius:50%;display:inline-block}
   .route-arrow{background:none;border:0}
-  .route-arrow span{display:flex;width:16px;height:16px;align-items:center;justify-content:center;font-size:13px;line-height:1;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
+  .route-arrow span{display:flex;width:16px;height:16px;align-items:center;justify-content:center;font-size:12px;line-height:1;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
   .route-summary{margin-bottom:10px}
   .route-layout{display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);gap:14px;align-items:start}
   .route-row{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--md-outline-variant)}
   .route-row.is-selected{background:var(--md-surface-variant,#eef0f6)}
   .route-pick{display:flex;flex:1 1 auto;gap:12px;align-items:flex-start;min-width:0;text-align:left;background:none;border:0;padding:10px 4px;cursor:pointer;color:inherit;font:inherit}
   .route-cal{flex:0 0 auto;min-width:40px;padding:6px 8px}
-  .route-n{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;background:#3b6fd8;color:#fff}
+  .route-n{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;background:#3b6fd8;color:#fff}
   .route-n-off{background:none;color:inherit;border:1px dashed var(--md-outline-variant)}
   .route-main{display:flex;flex-direction:column;gap:2px;min-width:0}
   .route-name{font-weight:600}
@@ -154,7 +154,7 @@
   .route-was{color:var(--md-on-surface-variant,#555);font-style:italic}
   .route-opt-note{flex:1 1 100%;color:#1e7b45}
   .route-pin{background:none;border:0}
-  .route-pin span{display:flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#3b6fd8;color:#fff;font-weight:700;font-size:13px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .route-pin span{display:flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;background:#3b6fd8;color:#fff;font-weight:700;font-size:12px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
   .route-pin.is-active span{transform:scale(1.25);box-shadow:0 0 0 3px #111,0 1px 4px rgba(0,0,0,.35)}
   /* R10: перерывы, остановки, «из дома», правила маршрута */
   .route-gap{background:var(--md-surface-container-low,#f6f6fa);flex-wrap:wrap}
@@ -205,11 +205,11 @@
   .calendar-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding:22px 24px 16px;border-bottom:1px solid rgba(216,226,219,.85)}
   .calendar-toolbar-title{min-width:220px;flex:1 1 240px}
   .calendar-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.calendar-nav{display:flex;align-items:center;gap:8px;padding:4px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:999px}.icon-btn{appearance:none;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);color:var(--md-on-surface);width:32px;height:32px;border-radius:999px;cursor:pointer}
-  .calendar-title{margin:0;font-size:22px;overflow-wrap:break-word}.calendar-sub{color:var(--md-on-surface-variant);font-size:13px;margin-top:6px;overflow-wrap:break-word}.legend{display:flex;gap:10px;flex-wrap:wrap;padding:0 24px 14px;color:var(--md-on-surface-variant);font-size:12px;border-bottom:1px solid rgba(216,226,219,.70)}.legend-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant)}
+  .calendar-title{margin:0;font-size:22px;overflow-wrap:break-word}.calendar-sub{color:var(--md-on-surface-variant);font-size:12px;margin-top:6px;overflow-wrap:break-word}.legend{display:flex;gap:10px;flex-wrap:wrap;padding:0 24px 14px;color:var(--md-on-surface-variant);font-size:12px;border-bottom:1px solid rgba(216,226,219,.70)}.legend-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant)}
   .grid-cal{display:grid}
   .month-grid-multi{display:grid;grid-template-columns:1fr 1fr;gap:22px}
   .month-grid-col{min-width:0}
-  .month-grid-title{font-size:15px;font-weight:600;color:var(--md-on-surface);margin-bottom:8px}
+  .month-grid-title{font-size:16px;font-weight:600;color:var(--md-on-surface);margin-bottom:8px}
   .dow-row,.week-row{display:grid;grid-template-columns:46px 1fr}
   .dow-row{background:var(--cal-header-bg);border-bottom:1px solid var(--md-outline-variant)}.dow-corner,.week-num{border-right:1px solid var(--md-outline-variant)}.dow-corner{min-height:34px}.dow-days,.week-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:relative}.dow{min-height:34px;display:flex;align-items:center;justify-content:flex-start;padding:0 6px 0 10px;color:var(--md-on-surface-variant);font-size:12px}.week-row{min-height:84px;border-bottom:1px solid var(--md-outline-variant)}.week-row:last-child{border-bottom:0}.week-num{display:flex;align-items:flex-start;justify-content:center;padding-top:10px;color:var(--md-on-surface-variant);font-size:12px;background:var(--cal-weeknum-bg);min-height:84px}
   .day-cell{position:relative;min-height:112px;padding:6px 8px 6px 10px;border-right:1px solid var(--md-outline-variant)}.day-cell:last-child{border-right:0}.day-cell.inactive{background:var(--cal-inactive-bg)}.day-cell.weekend{background:var(--cal-weekend-bg)}.day-cell.inactive.weekend{background:color-mix(in srgb, var(--md-primary) 4%, transparent)}.day-cell.today .day-num{background:var(--md-primary);color:var(--md-on-primary)}.day-num{display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;border-radius:999px;font-size:12px}.day-month{color:var(--md-on-surface-variant);font-size:11px;margin-left:2px}
@@ -222,11 +222,11 @@
      отрабатывать после каждой перерисовки (см. renderNextVisitCard). */
   #nextVisitPill{display:none;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:12px 14px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
   .nv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:13px;font-weight:600}
+  .nv-countdown{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:600}
   .nv-type{display:inline-flex;padding:4px 10px;border-radius:10px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px;color:var(--md-on-surface-variant)}
   .nv-type:empty{display:none}
   .nv-name{font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
-  .nv-dates{font-size:13px;color:var(--md-on-surface-variant)}
+  .nv-dates{font-size:12px;color:var(--md-on-surface-variant)}
   .nv-flags{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
   .nv-flag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:10px;border:1px solid var(--md-outline-variant);font-size:12px}
   .nv-flag:empty{display:none}
@@ -269,9 +269,9 @@
   .nv-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:10px;align-items:start;width:100%}
   #letterDuePill{display:none;align-items:center;gap:8px;padding:8px 12px;text-align:left;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);color:var(--md-on-surface);font:inherit;cursor:pointer}
   #letterDuePill.is-allsent{cursor:default}
-  .ld-icon{font-size:15px;flex:0 0 auto}
+  .ld-icon{font-size:16px;flex:0 0 auto}
   .ld-body{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 auto}
-  .ld-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ld-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ld-meta{font-size:11px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   /* Статусная строка: цветная точка + короткий текст. Только эта точка и
      текст несут semantic color — сама карточка/фон остаются нейтральными
@@ -322,7 +322,7 @@
   .more-actions .actions-grid{display:grid;gap:8px;margin-top:8px}
   .more-actions .actions-grid .md-btn{height:auto;min-height:44px;padding:8px 18px;justify-content:flex-start;text-align:left;line-height:1.3;white-space:normal}
   .editor-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px}.editor-title{margin:0;font-size:16px}.editor-sub{color:var(--md-on-surface-variant);font-size:12px;margin-top:4px}.editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.editor-grid label{display:grid;gap:6px;font-size:12px;color:var(--md-on-surface-variant)}.editor-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.editor-meta{margin-top:10px;padding:10px 12px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:14px;font-size:12px;color:var(--md-on-surface-variant)}
-  .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-xl);box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--md-on-surface-variant);font-size:13px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--md-outline-variant);border-radius:18px;padding:14px;background:var(--md-surface-container);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--md-primary);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--md-primary) 50%, transparent)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--md-outline-variant);color:var(--md-on-surface-variant);font-size:13px}
+  .modal{position:fixed;inset:0;background:rgba(15,23,18,.42);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px;z-index:1400}.modal[hidden]{display:none}.modal-card{width:min(860px,100%);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-xl);box-shadow:0 24px 60px rgba(0,0,0,.22);padding:20px}.modal-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px}.modal-sub{color:var(--md-on-surface-variant);font-size:12px;margin-top:6px}.pdf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pdf-section{margin-top:14px}.pdf-section h4{margin:0 0 12px;font-size:16px}.pdf-option{border:1px solid var(--md-outline-variant);border-radius:18px;padding:14px;background:var(--md-surface-container);cursor:pointer;text-align:left}.pdf-option.active{border-color:var(--md-primary);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--md-primary) 50%, transparent)}.pdf-option strong{display:block;margin-bottom:6px}.pdf-hint{margin-top:14px;padding:12px 14px;border-radius:16px;border:1px dashed var(--md-outline-variant);color:var(--md-on-surface-variant);font-size:12px}
   .toast-wrap{position:fixed;top:18px;right:18px;display:grid;gap:10px;z-index:1600}.version-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);font-size:12px;color:var(--md-on-surface-variant)}
   .layout-help{margin-top:8px;font-size:12px;color:var(--md-on-surface-variant)} .calendar-layout-select{min-width:170px}
   .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1550;background:var(--md-surface-container-low);border-top:1px solid var(--md-outline-variant);box-shadow:0 -8px 20px rgba(0,0,0,.08);padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));transform:translateZ(0);will-change:transform}
@@ -469,14 +469,14 @@ body::before{display:none !important}
 .sy-month-summary{display:none !important}
  
 /* v9.5.9-year-week-bars: day popover for service-year mini calendar */
-.day-popover{position:fixed;z-index:3200;min-width:260px;max-width:min(340px,calc(100vw - 24px));background:var(--md-surface-container-low);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:18px;box-shadow:0 22px 55px rgba(0,0,0,.22);padding:14px;font-size:13px;line-height:1.35}
+.day-popover{position:fixed;z-index:3200;min-width:260px;max-width:min(340px,calc(100vw - 24px));background:var(--md-surface-container-low);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:18px;box-shadow:0 22px 55px rgba(0,0,0,.22);padding:14px;font-size:14px;line-height:1.35}
 .day-popover[hidden]{display:none !important}
 .day-popover-title{font-weight:800;font-size:14px;margin-bottom:3px}
 .day-popover-meta{color:var(--md-on-surface-variant);font-size:12px;margin-bottom:10px}
 .day-popover-list{display:grid;gap:8px;margin-top:8px}
 .day-popover-event{display:grid;grid-template-columns:10px 1fr;gap:8px;align-items:start;padding:8px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);border-radius:13px}
 .day-popover-dot{width:10px;height:10px;border-radius:999px;margin-top:4px;display:block}
-.day-popover-event strong{display:block;font-size:13px}
+.day-popover-event strong{display:block;font-size:14px}
 .day-popover-event span{display:block;color:var(--md-on-surface-variant);font-size:12px;margin-top:2px}
 .day-popover-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .day-popover-actions .md-btn{padding:8px 10px;border-radius:12px;font-size:12px;box-shadow:none}
@@ -504,7 +504,7 @@ body::before{display:none !important}
 .cwdoc__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .send-control{margin-top:12px;padding:12px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container)}
 .send-control-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
-.send-control-title{font-weight:800;font-size:13px}
+.send-control-title{font-weight:800;font-size:14px}
 .send-control-hint{color:var(--md-on-surface-variant);font-size:11px;margin-top:2px}
 /* Снимок выданного документа в модалке «Документы визита». Текст письма
    приходит из RTE и может содержать длинные неразрывные вставки — без
@@ -525,7 +525,7 @@ body::before{display:none !important}
 .cp-doc-head .cp-doc-date{text-align:right;font-size:12px;color:#556;margin-top:-14px}
 .cp-doc-pagebreak{margin:20px -24px 14px;border-top:1px dashed #bbc;padding:10px 24px 0;
   font:11px/1 system-ui,sans-serif;color:#889}
-.cp-doc-subject{margin-top:10px;font-size:13px;color:var(--md-on-surface-variant)}
+.cp-doc-subject{margin-top:10px;font-size:12px;color:var(--md-on-surface-variant)}
 /* Меню «Создать документ». Абсолютное позиционирование под кнопкой: пункт
    меню — второй и последний клик до предпросмотра. */
 .cp-docmenu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;padding:6px;
@@ -534,9 +534,9 @@ body::before{display:none !important}
 .cp-docmenu button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;
   font-family:inherit;cursor:pointer;padding:9px 11px;border-radius:10px}
 .cp-docmenu button:hover{background:var(--md-surface-container-low)}
-.cp-docmenu-name{display:block;font-weight:700;font-size:13px}
+.cp-docmenu-name{display:block;font-weight:700;font-size:14px}
 .cp-docmenu-sub{display:block;font-size:11px;color:var(--md-on-surface-variant);margin-top:2px}
-.doc-snapshot{padding:10px 12px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.doc-snapshot{padding:10px 12px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);font-size:14px;line-height:1.5;overflow-wrap:anywhere}
 .send-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .send-card{display:grid;gap:6px;padding:10px;border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}
 .send-card.is-pending{border-color:color-mix(in srgb, var(--md-error) 45%, transparent);background:color-mix(in srgb, var(--md-error) 7%, transparent)}
@@ -632,8 +632,8 @@ body::before{display:none !important}
 /* Фильтр «Что печатать» в окне печати (фаза 2, 20.10.2026). Чип — label с
    нативным флажком внутри: цель касания даёт label, состояние — :has(). */
 .pdf-filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
-.pdf-filter-title{margin:14px 0 0;font-size:15px}
-.pdf-filter-label{flex:0 0 132px;font-size:13px;color:var(--md-on-surface-variant)}
+.pdf-filter-title{margin:14px 0 0;font-size:16px}
+.pdf-filter-label{flex:0 0 132px;font-size:12px;color:var(--md-on-surface-variant)}
 .pdf-filter-chip input{margin:0;accent-color:var(--md-primary)}
 .pdf-filter-chip:has(input:checked){background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}
 @media (max-width:767px){.pdf-filter-label{flex-basis:100%}}
@@ -649,6 +649,56 @@ a:where(:not([class])):visited{color:var(--md-primary)}
    здесь только показывается. */
 .profile-summary{display:grid;gap:6px;margin:0 0 12px}
 .profile-summary__row{display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:10px;align-items:baseline}
-.profile-summary__row dt{color:var(--md-on-surface-variant);font-size:13px}
+.profile-summary__row dt{color:var(--md-on-surface-variant);font-size:12px}
 .profile-summary__row dd{margin:0;overflow-wrap:anywhere}
 .profile-summary__none{color:var(--md-on-surface-variant);font-style:italic}
+
+/* ═══ Ф4 «Единая оболочка» (визуальный аудит 24.10.2026) ═══════════════════
+   Одна схема навигации во всех модулях: на широком экране — постоянная
+   боковая панель (как .md-sidenav общего слоя), на телефоне и планшете
+   (≤900px, порог .md-shell__body) — нижняя панель. Выезжающая шторка и
+   кнопка ☰ больше не нужны: раньше на десктопе разделы были только за ☰.
+   Специфичность намеренно выше прежних правил и инжекта calendar-styles.js
+   (тот вставляется в <head> позже и при равной специфичности побеждал бы). */
+/* Широкий экран — правила по умолчанию; ≤900px их перекрывает блок ниже
+   (без min-width: реестр точек — 600/900/1200/1600, «901» в нём нет). */
+body[data-module] .app { grid-template-columns: var(--cw-sidebar-w) minmax(0, 1fr) !important; }
+body[data-module] .mobile-overlay { display: none !important; }
+body[data-module] .bottom-nav { display: none !important; }
+@media all {
+  body[data-module] .app > .sidebar {
+    position: sticky !important; top: var(--cw-topbar-h) !important; left: auto !important; bottom: auto !important;
+    width: auto !important; height: calc(100dvh - var(--cw-topbar-h)) !important; min-height: 0 !important; max-height: none !important;
+    z-index: 1 !important; transition: none !important; box-shadow: none !important; display: flex !important;
+    background: var(--md-surface-container-low) !important; color: var(--md-on-surface) !important;
+    border-right: 1px solid var(--md-outline-variant); padding: 12px 8px !important; overflow: auto;
+  }
+}
+body[data-module] .mobile-menu-btn { display: none !important; }
+/* Пункты боковой панели — как .md-sidenav__item. */
+body[data-module] .sidebar .menu { display: grid; gap: 2px; }
+body[data-module] .sidebar .nav-btn {
+  height: 48px; padding: 0 16px; border-radius: 999px; gap: 12px;
+  color: var(--md-on-surface-variant); font: 500 14px/20px var(--md-font-family);
+}
+body[data-module] .sidebar .nav-btn:hover { background: var(--md-surface-container-high); }
+body[data-module] .sidebar .nav-btn.active { background: var(--cw-module-container); color: var(--cw-module-on-container); }
+body[data-module] .sidebar .summary {
+  background: var(--md-surface-container); color: var(--md-on-surface);
+  border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md);
+}
+@media (max-width: 900px) {
+  body[data-module] .app { grid-template-columns: minmax(0, 1fr) !important; }
+  body[data-module] .app > .sidebar { display: none !important; }
+  body[data-module] .bottom-nav { display: block !important; }
+  body[data-module] .main { padding-bottom: 96px !important; }
+  #cwUpdateBar { bottom: calc(64px + 16px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+/* Нижняя панель — как .md-bottomnav: выделяется «таблетка» под значком,
+   а не вся кнопка в рамке. */
+body[data-module] .bottom-nav { background: var(--md-surface-container); box-shadow: none; }
+body[data-module] .bottom-nav-btn { border: 0 !important; background: transparent !important; padding: 4px 2px; font: 500 11px/16px var(--md-font-family); }
+body[data-module] .bottom-nav-btn .icon { width: 56px; max-width: 100%; height: 28px; border-radius: 999px; display: grid; place-items: center; }
+body[data-module] .bottom-nav-btn.active { color: var(--md-on-surface); }
+body[data-module] .bottom-nav-btn.active .icon { background: var(--cw-module-container); color: var(--cw-module-on-container); }
+body[data-module] .bottom-nav-btn .label { font-size: 11px; }

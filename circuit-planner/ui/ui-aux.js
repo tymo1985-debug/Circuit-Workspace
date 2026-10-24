@@ -120,7 +120,7 @@
       el.textContent = flagText(labelKey, done);
       el.className = `nv-flag ${done ? 'is-done' : 'is-pending'}`;
     };
-    setText(App.els.nextVisitPillDate, `🎯 ${App.utils.countdownText(entry.start, 'days')}`);
+    setText(App.els.nextVisitPillDate, App.utils.countdownText(entry.start, 'days'));
     setText(App.els.nextVisitPillType, App.utils.visitTypeLabel(event?.visitType));
     setText(App.els.nextVisitPillName, entry.title || event?.name || '');
     setText(App.els.nextVisitPillRange, `${App.utils.prettyDate(entry.start)} — ${App.utils.prettyDateYear(entry.end)}`);

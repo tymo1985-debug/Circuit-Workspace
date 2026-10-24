@@ -139,7 +139,7 @@
     }
     if (App.els.fillNumbersBody) {
       App.els.fillNumbersBody.innerHTML = fill.map((item) => `<div class="side-row"><div class="side-label">${esc(item.name)}</div><div class="side-value small">${esc(App.utils.t('fill_numbers_row', { value: item.congNumber }))}</div></div>`)
-        .concat(conflicts.map((item) => `<div class="side-row"><div class="side-label">⚠️ ${esc(item.name)}</div><div class="side-value small">${esc(App.utils.t('fill_numbers_conflict', { inName: item.inName, inField: item.inField }))}</div></div>`))
+        .concat(conflicts.map((item) => `<div class="side-row"><div class="side-label">${esc(item.name)}</div><div class="side-value small">${esc(App.utils.t('fill_numbers_conflict', { inName: item.inName, inField: item.inField }))}</div></div>`))
         .join('');
     }
     App.ui.openModal(App.els.fillNumbersModal);

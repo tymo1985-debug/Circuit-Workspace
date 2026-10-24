@@ -29,18 +29,18 @@
   display: flex; align-items: center; gap: var(--cw-space-2);
   margin-bottom: var(--cw-space-3);
 }
-.j-sec__title { font: 500 15px/20px var(--md-font-family); margin: 0; letter-spacing: 0.1px; }
+.j-sec__title { font: 500 16px/20px var(--md-font-family); margin: 0; letter-spacing: 0.1px; }
 .j-sec__count {
   font: 500 11px/16px var(--md-font-family); letter-spacing: 0.5px;
   padding: 1px 8px; border-radius: var(--md-radius-full);
   background: var(--md-surface-container-highest); color: var(--md-on-surface-variant);
 }
 .j-sec__more {
-  margin-left: auto; font: 500 13px/18px var(--md-font-family); color: var(--md-primary);
+  margin-left: auto; font: 500 12px/18px var(--md-font-family); color: var(--md-primary);
   background: none; border: 0; cursor: pointer; padding: 0;
 }
 .j-sec__hint {
-  font: 400 13px/20px var(--md-font-family); letter-spacing: 0.15px;
+  font: 400 12px/20px var(--md-font-family); letter-spacing: 0.15px;
   color: var(--md-on-surface-variant); margin: 0;
 }
 
@@ -53,7 +53,7 @@ a.j-sec__more:hover, a.j-sec__more:focus-visible { text-decoration: underline; }
   display: inline-flex; align-items: baseline; gap: 6px; min-width: 0;
   padding: 4px 12px; border-radius: var(--md-radius-full);
   background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
-  font: 400 13px/20px var(--md-font-family); letter-spacing: 0.2px; text-decoration: none;
+  font: 400 12px/20px var(--md-font-family); letter-spacing: 0.2px; text-decoration: none;
 }
 a.j-ovstat:hover, a.j-ovstat:focus-visible { background: var(--md-surface-container-highest); }
 .j-ovstat__value { font-weight: 500; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
@@ -155,7 +155,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
    общее правило .md-segmented, только плотность внутри модуля. */
 @media (max-width: 600px) {
   .j-tabs.md-segmented { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .j-tabs.md-segmented button { padding: 0 12px; font-size: 13px; white-space: nowrap; }
+  .j-tabs.md-segmented button { padding: 0 12px; font-size: 14px; white-space: nowrap; }
 }
 
 /* --- Заглушка ещё не реализованного раздела (Задачи/Поиск/Архив) ----------- */
@@ -241,7 +241,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
   height: 32px; min-width: 32px; padding: 0 10px;
   border-radius: var(--md-radius-sm); border: 0; background: transparent;
   color: var(--md-on-surface-variant); cursor: default;
-  font: 500 13px/18px var(--md-font-family);
+  font: 500 12px/18px var(--md-font-family);
   display: inline-flex; align-items: center; gap: 6px;
 }
 .j-tool svg { width: 16px; height: 16px; flex: 0 0 auto; }
@@ -265,7 +265,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 }
 .j-block::before {
   content: "\283F"; position: absolute; left: 2px; top: 2px;
-  color: var(--md-outline); opacity: 0.5; font-size: 13px; line-height: 20px;
+  color: var(--md-outline); opacity: 0.5; font-size: 12px; line-height: 20px;
 }
 .j-block--editable { cursor: text; border-radius: var(--md-radius-sm); }
 .j-block--editable:hover { background: var(--md-surface-container); }
@@ -274,7 +274,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-block--paragraph { font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px; white-space: pre-line; }
 .j-block--list ul { margin: 0; padding-left: 18px; font: 400 14px/22px var(--md-font-family); letter-spacing: 0.25px; }
 .j-block--list li { margin-bottom: 2px; }
-.j-block--quote { margin-left: 26px; padding-left: 12px; font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); white-space: pre-line; }
+.j-block--quote { margin-left: 26px; padding-left: 12px; font: 400 12px/20px var(--md-font-family); color: var(--md-on-surface-variant); white-space: pre-line; }
 .j-block--quote::before { left: -24px; }
 .j-block--quote::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--cw-module); }
 .j-block__tag { margin-left: var(--cw-space-2); vertical-align: 1px; }
@@ -300,7 +300,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 }
 .j-block__input:focus { outline: none; }
 .j-block__input--heading2 { font: 500 16px/24px var(--md-font-family); }
-.j-block__input--quote { font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-block__input--quote { font: 400 12px/20px var(--md-font-family); color: var(--md-on-surface-variant); }
 .j-block__actions {
   display: flex; flex-wrap: wrap; gap: var(--cw-space-2); align-items: center;
   margin: var(--cw-space-3) 0 var(--cw-space-3) 14px;
@@ -309,12 +309,12 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-block__type {
   height: 36px; padding: 0 10px; border-radius: var(--md-radius-full);
   border: 1px solid var(--md-outline-variant); background: var(--md-surface); color: var(--md-on-surface);
-  font: 500 13px/18px var(--md-font-family);
+  font: 500 12px/18px var(--md-font-family);
 }
 .j-editor__foot { margin-left: 14px; }
 .j-editor__foot .md-btn > svg { width: 18px; height: 18px; }
 .j-dialog-error {
-  margin: var(--cw-space-2) 0 0; font: 400 13px/18px var(--md-font-family);
+  margin: var(--cw-space-2) 0 0; font: 400 14px/18px var(--md-font-family);
   color: var(--status-critical, var(--md-error));
 }
 
@@ -370,7 +370,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-hist li:last-child { padding-bottom: 0; }
 .j-hist li:last-child::after { display: none; }
 .j-hist li.is-now::before { background: var(--cw-module); }
-.j-hist__t { margin: 0; font: 400 13px/18px var(--md-font-family); }
+.j-hist__t { margin: 0; font: 400 12px/18px var(--md-font-family); }
 .j-hist__m { margin: 2px 0 0; font: 400 11px/16px var(--md-font-family); letter-spacing: 0.4px; color: var(--md-on-surface-variant); }
 
 /* --- J5: экран «Задачи» ---------------------------------------------------- */
@@ -395,7 +395,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
    внутри только из textContent. */
 .j-search { max-width: none; width: 100%; min-width: 0; height: 40px; padding: 0 var(--cw-space-2) 0 var(--cw-space-4); gap: var(--cw-space-3); }
 .j-search > svg { flex: 0 0 auto; }
-.j-search input { font-size: 15px; line-height: 22px; }
+.j-search input { font-size: 16px; line-height: 22px; }
 .j-search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 .j-search__clear { flex: 0 0 auto; width: 32px; height: 32px; }
 .j-search__filters { margin: var(--cw-space-3) 0 var(--cw-space-3); }
@@ -403,7 +403,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-sres__head { margin-bottom: 0; padding-bottom: var(--cw-space-3); }
 .j-sec .j-sres { padding: var(--cw-space-4) 0 var(--cw-space-5); border-top: 1px solid var(--md-outline-variant); }
 .j-sres:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; border-radius: var(--md-radius-sm); }
-.j-sres__text { font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+.j-sres__text { font-size: 14px; line-height: 22px; overflow-wrap: anywhere; }
 .j-sres .j-row__end { align-self: flex-start; }
 .j-path { margin-top: var(--cw-space-2); gap: 4px 6px; }
 .j-path__sep { display: inline-flex; opacity: 0.7; }
@@ -463,7 +463,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-ptask__due { white-space: nowrap; flex: 0 0 auto; }
 .j-project__foot { margin: var(--cw-space-2) 0 0 -12px; }
 .j-pnodes { margin-top: 0; }
-.j-pnodes .md-chip { min-height: 40px; padding: 0 14px; color: var(--md-on-surface); font-size: 15px; }
+.j-pnodes .md-chip { min-height: 40px; padding: 0 14px; color: var(--md-on-surface); font-size: 14px; }
 .j-pnodes .md-chip svg { width: 18px; height: 18px; }
 .j-pnode--archived { opacity: 0.6; }
 .j-sec__head--rule {
@@ -475,7 +475,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-pitems__empty { padding-top: var(--cw-space-3); }
 .j-pitem__open { cursor: pointer; }
 .j-pitem__open:focus-visible { outline: 2px solid var(--cw-module); outline-offset: 2px; border-radius: var(--md-radius-sm); }
-.j-pitem .j-row__title { font-size: 15px; line-height: 22px; }
+.j-pitem .j-row__title { font-size: 16px; line-height: 22px; }
 .j-pitem .j-row__end { padding-top: 2px; }
 .j-pitem__unlink { cursor: pointer; padding: 3px 10px; }
 .j-pitem__unlink:hover, .j-pitem__unlink:focus-visible { filter: brightness(1.15); }
@@ -507,7 +507,7 @@ a.j-ovrow:hover .j-row__title, a.j-ovrow:focus-visible .j-row__title { text-deco
 .j-letter .md-field { margin-bottom: var(--cw-space-4); }
 .j-letter textarea { min-height: 200px; }
 .j-letter__actions { flex-wrap: wrap; }
-.j-letter__status { margin: var(--cw-space-2) 0 0; min-height: 20px; font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-letter__status { margin: var(--cw-space-2) 0 0; min-height: 20px; font: 400 12px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
 .j-prow .j-row__end .j-tag svg { opacity: 1; width: 12px; height: 12px; }
 .j-block .j-tag--link svg, .j-check .j-tag--link svg { width: 12px; height: 12px; }
 
@@ -548,7 +548,7 @@ span.j-planner__chip--broken { cursor: default; }
 .j-planner__edit { width: 32px; height: 32px; }
 /* Выбор записи Клиндария в диалоге посещения (J9a): кнопка ручного ввода под списком. */
 .j-visit-src__manual { margin: -4px 0 8px; align-self: flex-start; }
-.j-planner__current { margin: var(--cw-space-2) 0 0; font: 500 13px/18px var(--md-font-family); color: var(--md-on-surface); }
+.j-planner__current { margin: var(--cw-space-2) 0 0; font: 500 12px/18px var(--md-font-family); color: var(--md-on-surface); }
 .j-planner__all { display: flex; align-items: center; gap: var(--cw-space-2); margin-top: var(--cw-space-3); font: 400 14px/20px var(--md-font-family); color: var(--md-on-surface-variant); cursor: pointer; }
 .j-planner__radio { border-radius: 50%; }
 
@@ -563,7 +563,7 @@ span.j-planner__chip--broken { cursor: default; }
 .j-protect__warn {
   margin: var(--cw-space-3) 0 0; padding: var(--cw-space-3); text-align: left;
   border-radius: var(--md-radius-md); background: var(--status-important-bg); color: var(--status-important);
-  font: 500 13px/18px var(--md-font-family);
+  font: 500 14px/18px var(--md-font-family);
 }
 .j-protect .j-dialog-error { text-align: left; }
 .j-protect__primary { border-radius: var(--md-radius-full); min-height: 48px; }
@@ -577,13 +577,13 @@ span.j-planner__chip--broken { cursor: default; }
   background: var(--cw-module-container); color: var(--cw-module-on-container);
 }
 .j-protect__mtext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.j-protect__mname { font: 500 15px/20px var(--md-font-family); color: var(--md-on-surface); }
-.j-protect__mhint { font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-protect__mname { font: 500 16px/20px var(--md-font-family); color: var(--md-on-surface); }
+.j-protect__mhint { font: 400 12px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
 .j-protect__on {
   flex: 0 0 auto; padding: 2px 12px; border-radius: var(--md-radius-full);
   background: var(--status-success-bg); color: var(--status-success); font: 600 12px/18px var(--md-font-family);
 }
-.j-protect__foot { margin: var(--cw-space-4) 0 0; text-align: left; font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
+.j-protect__foot { margin: var(--cw-space-4) 0 0; text-align: left; font: 400 12px/18px var(--md-font-family); color: var(--md-on-surface-variant); }
 .j-protect[data-mode="status"] .j-protect__ico { color: var(--status-success); }
 
 /* Замок в шапке: закрыт — цвет модуля, открыт — «успех». */
@@ -710,7 +710,7 @@ span.j-planner__chip--broken { cursor: default; }
 .j-relocate__now { font: 500 11px/16px var(--md-font-family); padding: 1px 8px; border-radius: var(--md-radius-full); background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
 .j-relocate__opt--now { color: var(--md-on-surface-variant); }
 .j-relocate__check { margin: var(--cw-space-3) 0; }
-.j-relocate__line { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 6px; font: 400 13px/18px var(--md-font-family); }
+.j-relocate__line { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 6px; font: 400 14px/18px var(--md-font-family); }
 .j-relocate__line svg { flex: 0 0 auto; margin-top: 1px; }
 .j-relocate__line--ok { color: var(--md-on-surface); }
 .j-relocate__line--ok svg { color: var(--status-success); }

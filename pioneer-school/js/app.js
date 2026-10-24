@@ -33,29 +33,49 @@ function showRoute(route) {
   const target = document.getElementById('route-' + safeRoute);
   if (target) target.classList.remove('hidden');
   $all('.nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.route === safeRoute));
-  syncNavSelect(safeRoute);
+  syncGroupNav(safeRoute);
   if (window.location.hash.slice(1) !== safeRoute) window.location.hash = safeRoute;
   renderRoute(safeRoute);
 }
 
-/* Выпадающий список разделов для телефона строится из .nav при каждом показе
-   экрана: подписи берутся из уже переведённых кнопок, поэтому смена языка
-   (PSI18n.init → showRoute) обновляет и список. */
-function syncNavSelect(route) {
-  const select = document.getElementById('navSelect');
-  if (!select) return;
-  let html = '', open = false;
+/* Нижняя панель групп (≤900px, Ф4). Группы — это подписи .nav-group-label
+   и кнопки разделов под каждой из них; отдельного списка в коде нет, поэтому
+   новый раздел в .nav сам попадает в нужную группу. */
+function navGroups() {
+  const groups = [];
   [...document.querySelectorAll('.nav > *')].forEach((el) => {
-    if (el.classList.contains('nav-group-label')) {
-      if (open) html += '</optgroup>';
-      html += `<optgroup label="${esc(el.textContent.trim())}">`; open = true;
-    } else if (el.dataset.route) {
-      html += `<option value="${esc(el.dataset.route)}">${esc(el.textContent.trim())}</option>`;
-    }
+    if (el.classList.contains('nav-group-label')) groups.push([]);
+    else if (el.dataset.route && groups.length) groups[groups.length - 1].push(el);
   });
-  if (open) html += '</optgroup>';
-  select.innerHTML = html;
-  select.value = route;
+  return groups;
+}
+function syncGroupNav(route) {
+  const groups = navGroups();
+  document.querySelectorAll('#psGroupNav [data-group]').forEach((btn) => {
+    const g = groups[+btn.dataset.group] || [];
+    btn.classList.toggle('active', g.some((el) => el.dataset.route === route));
+  });
+  closeGroupSheet();
+}
+function closeGroupSheet() {
+  const sheet = document.getElementById('psGroupSheet');
+  if (sheet && !sheet.hidden) {
+    sheet.hidden = true;
+    document.querySelectorAll('#psGroupNav [aria-expanded]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+  }
+}
+function openGroupSheet(btn) {
+  const sheet = document.getElementById('psGroupSheet');
+  const g = navGroups()[+btn.dataset.group] || [];
+  if (g.length === 1) { showRoute(g[0].dataset.route); return; }
+  if (!sheet.hidden && sheet.dataset.group === btn.dataset.group) { closeGroupSheet(); return; }
+  const current = (document.querySelector('.nav-item.active') || {}).dataset?.route;
+  sheet.innerHTML = g.map((el) => `<button type="button" class="md-menu__item${el.dataset.route === current ? ' active' : ''}" role="menuitem" data-route="${esc(el.dataset.route)}">${esc(el.textContent.trim())}</button>`).join('');
+  sheet.dataset.group = btn.dataset.group;
+  sheet.hidden = false;
+  document.querySelectorAll('#psGroupNav [data-group]').forEach((b) => b.setAttribute('aria-expanded', String(b === btn)));
+  const first = sheet.querySelector('.md-menu__item');
+  if (first) first.focus();
 }
 
 async function renderRoute(route) {
@@ -1453,7 +1473,8 @@ window.addEventListener('DOMContentLoaded', () => {
   /* ЗАЩИТА ОБНОВЛЕНИЯ: при смешанном поколении кэша сюда может попасть старый
      shared/sender.js без ready(). Он синхронный и уже готов — не падаем. */
   if (window.CWSender && typeof window.CWSender.ready === 'function') window.CWSender.ready();
-  $('#version-sub').textContent = `v${APP_VERSION} · S-255-U`;
+  // Версия — в меню «⋮» (shared/nav.js); здесь — скрытое поле, как у всех модулей.
+  $('#moduleVersion').textContent = `v${APP_VERSION}`;
   // Язык поднимаем ДО первого showRoute(): экраны строятся в JS, и язык должен
   // быть известен раньше первой отрисовки. Перерисовку при смене языка делает
   // тот же showRoute — статическую разметку переводит CWI18n.apply().
@@ -1479,7 +1500,16 @@ window.addEventListener('DOMContentLoaded', () => {
     if (current) showRoute(current.id.replace('route-', ''));
   });
   $all('.nav-item').forEach((btn) => btn.addEventListener('click', () => showRoute(btn.dataset.route)));
-  document.getElementById('navSelect')?.addEventListener('change', (e) => showRoute(e.target.value));
+  document.getElementById('psGroupNav')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-group]');
+    if (btn) { e.stopPropagation(); openGroupSheet(btn); }
+  });
+  document.getElementById('psGroupSheet')?.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-route]');
+    if (item) showRoute(item.dataset.route);
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('#psGroupSheet')) closeGroupSheet(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGroupSheet(); });
   initBackup();
 
   // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).

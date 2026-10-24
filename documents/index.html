@@ -50,7 +50,7 @@
     <div class="md-topbar-v2__titles">
       <p class="md-topbar-v2__title" data-i18n="module.documents.title">Документы и данные</p>
       <p class="md-topbar-v2__sub">
-        <span id="moduleVersion"></span>
+        <span id="moduleVersion" class="cw-topbar-version"></span>
         <span class="md-savestatus" id="saveStatus"></span>
       </p>
     </div>
@@ -62,17 +62,20 @@
   </div>
 </header>
 
+<!-- Разделы модуля: что БУДЕТ напечатано (шаблоны), что УЖЕ напечатано
+     (документы — не меняются никогда) и общий справочник. Ф4 «Единая
+     оболочка»: на широком экране — боковая панель, на телефоне — нижняя
+     (те же кнопки data-screen; переключает их showScreen()). -->
+<span class="sr-only" id="screensLabel" data-i18n="doc.screens_label">Раздел модуля</span>
+<div class="md-shell__body doc-shell">
+  <nav class="md-sidenav doc-screens" id="screens" aria-labelledby="screensLabel">
+    <div class="md-sidenav__group" data-i18n="module.documents.title">Документы и данные</div>
+    <button type="button" class="md-sidenav__item active" data-screen="library" aria-pressed="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg><span data-i18n="doc.tab_library">Шаблоны</span></button>
+    <button type="button" class="md-sidenav__item" data-screen="archive" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7V5a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2h-2"/><path d="M15 21H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h7l4 4v8a2 2 0 0 1-1 2z"/><path d="m7 15 2 2 4-4"/></svg><span data-i18n="doc.tab_documents">Документы</span></button>
+    <button type="button" class="md-sidenav__item" data-screen="directory" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22v-6h6v6"/></svg><span data-i18n="cong.btn.groups">Собрания / группы</span></button>
+  </nav>
 <div class="doc-wrap">
 
-  <!-- Два раздела модуля: что БУДЕТ напечатано (шаблоны) и что УЖЕ напечатано
-       (архив). Разделены намеренно: в библиотеке текст правится и меняется,
-       в архиве — не меняется никогда. -->
-  <nav class="doc-screens" id="screens" role="group" aria-labelledby="screensLabel">
-    <button type="button" class="md-chip selected" data-screen="library" aria-pressed="true" data-i18n="doc.tab_library">Шаблоны</button>
-    <button type="button" class="md-chip" data-screen="archive" aria-pressed="false" data-i18n="doc.tab_documents">Документы</button>
-    <button type="button" class="md-chip" data-screen="directory" aria-pressed="false" data-i18n="cong.btn.groups">Собрания / группы</button>
-  </nav>
-  <span class="sr-only" id="screensLabel" data-i18n="doc.screens_label">Раздел модуля</span>
 
   <!-- ═══════════ Библиотека ═══════════ -->
   <section id="screenLibrary">
@@ -278,6 +281,12 @@
   </section>
 
 </div>
+</div>
+<nav class="md-bottomnav doc-screens" id="screensBottom" aria-labelledby="screensLabel">
+  <button type="button" class="md-bottomnav__item active" data-screen="library" aria-pressed="true"><span class="md-bottomnav__ind"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7z"/><path d="M9 13h6M9 17h4"/></svg></span><span data-i18n="doc.tab_library">Шаблоны</span></button>
+  <button type="button" class="md-bottomnav__item" data-screen="archive" aria-pressed="false"><span class="md-bottomnav__ind"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7V5a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2h-2"/><path d="M15 21H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h7l4 4v8a2 2 0 0 1-1 2z"/><path d="m7 15 2 2 4-4"/></svg></span><span data-i18n="doc.tab_documents">Документы</span></button>
+  <button type="button" class="md-bottomnav__item" data-screen="directory" aria-pressed="false"><span class="md-bottomnav__ind"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22v-6h6v6"/></svg></span><span data-i18n="cong.btn.groups">Собрания / группы</span></button>
+</nav>
 
 <script src="../shared/nav.js"></script>
 <script src="../shared/update.js"></script>

@@ -51,17 +51,11 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   overflow-y: auto;
 }
 
-/* Ниже 900px сайдбар перестаёт быть колонкой и становится обычным блоком
-   над содержимым: 260px из 360px ширины телефона под навигацию отдать нельзя. */
+/* Ниже 900px боковой панели нет: разделы — в нижней панели групп
+   (#psGroupNav, Ф4 «Единая оболочка»), как у остальных модулей. */
 @media (max-width: 900px) {
   .app-shell { flex-direction: column; }
-  .sidebar {
-    width: auto; position: static; height: auto;
-    border-right: 0; border-bottom: 1px solid var(--md-outline-variant);
-  }
-  .nav { flex-direction: row; flex-wrap: wrap; gap: var(--cw-space-1); }
-  .nav-group-label { width: 100%; margin: var(--cw-space-2) var(--cw-space-1) 2px; }
-  .sidebar-footer { display: none; }
+  .sidebar { display: none; }
 }
 
 .nav {
@@ -243,7 +237,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   flex-direction: row !important;
   align-items: center;
   gap: 8px !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 
@@ -309,7 +303,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   color: var(--md-on-secondary-container);
   padding: 3px 10px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: 12px;
 }
 .lesson-teacher { font-size: 12px; color: var(--md-on-surface-variant); }
 .lesson-done { margin-left: auto; }
@@ -321,40 +315,29 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   margin-top: 8px;
   border-radius: 0 6px 6px 0;
 }
-.media-label { font-size: 13px; font-weight: 500; }
+.media-label { font-size: 12px; font-weight: 500; }
 .media-cue { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
 
 .simple-list { padding-left: 18px; font-size: 14px; }
 
 @media (max-width: 900px) {
-  .app-shell { flex-direction: column; }
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
-    top: auto; /* общий `top: var(--cw-topbar-h)` для sticky сдвигал бы relative-меню вниз */
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .nav { flex-direction: row; flex-wrap: wrap; }
-  .nav-group-label { width: 100%; margin: 10px 8px 4px; }
   .content { padding: 24px 18px 60px; }
-  .sidebar-footer { display: none; }
 }
 
-/* Телефон: меню разделов — выпадающий список (аудит 08, п.5). */
-.nav-select { display: none; }
-@media (max-width: 600px) {
-  .sidebar .nav { display: none; }
-  .nav-select {
-    display: block; width: 100%; min-height: 44px;
-    padding: 8px 12px; border-radius: 12px;
-    border: 1px solid var(--md-outline-variant);
-    background: var(--md-surface-container); color: var(--md-on-surface);
-    font: 500 15px/20px var(--md-font-family);
-  }
+/* Нижняя панель групп и список разделов группы (Ф4). Подпись группы может
+   быть длинной («Во время школы», немецкий) — две строки вместо обрезки. */
+.ps-groupnav .md-bottomnav__item > span:last-child {
+  white-space: normal; text-align: center; line-height: 14px;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
 }
+.ps-groupsheet {
+  position: fixed; top: auto; left: 8px; right: 8px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  max-width: none; max-height: 60vh; overflow: auto;
+}
+.ps-groupsheet .md-menu__item.active { background: var(--cw-module-container); color: var(--cw-module-on-container); }
+.ps-groupsheet { display: none; }
+@media (max-width: 900px) { .ps-groupsheet:not([hidden]) { display: grid; } }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
@@ -467,7 +450,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 }
 .export-col-check {
   display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-  border: 1px solid var(--md-outline-variant); border-radius: 8px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--md-outline-variant); border-radius: 8px; font-size: 14px; cursor: pointer;
 }
 .export-col-check input { accent-color: var(--md-primary); }
 

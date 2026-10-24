@@ -29,8 +29,20 @@
  * Если модуль имеет собственную нижнюю мобильную навигацию (как Клиндарий),
  * класс "cw-has-bottom-nav" на <body> поднимает запасной FAB над ней.
  *
- * КНОПКА КОПИИ МОДУЛЯ. Рядом с кнопкой возврата встраивается кнопка
- * «Копия модуля» — она сохраняет ТОЛЬКО данные текущего модуля. Общий слой
+ * МЕНЮ МОДУЛЯ «⋮» (визуальный аудит 24.10.2026, Ф4). Версия модуля и
+ * «Копия модуля» — редкие действия, им не место на самом дорогом месте шапки
+ * рядом с кнопкой возврата. Обе живут в меню «⋮» в конце шапки:
+ *  - у модуля своего «⋮» нет — скрипт заводит его сам (.md-menu в
+ *    .md-topbar-v2__actions, поведение — открыть, клик мимо, Esc);
+ *  - свой «⋮» есть и его панель статична — панель помечается
+ *    `data-cw-module-menu`, и пункты дописываются в её конец;
+ *  - панель перерисовывается модулем (Журнал) — модуль сам зовёт
+ *    `CWNav.appendModuleItems(panel)` после каждой перерисовки.
+ * Номер версии в подзаголовке шапки помечен классом `.cw-topbar-version` и
+ * скрыт стилем: модули по-прежнему пишут его туда (на это опираются
+ * проверки), но видно его теперь в меню.
+ *
+ * «Копия модуля» сохраняет ТОЛЬКО данные текущего модуля. Общий слой
  * (язык, отправитель, общая база) в неё не входит: он принадлежит хабу, там же
  * делается полная копия. Кнопка появляется, только если подключён
  * shared/backup.js и модуль есть в его реестре, поэтому подключение файла
@@ -129,34 +141,152 @@
     return (window.CWI18n && window.CWI18n.t(key)) || fallback;
   }
 
-  function makeBackupButton() {
-    var id = moduleId();
-    if (!window.CWBackup || !window.CWBackup.MODULES[id]) return null;
+  var MORE_ICON =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="1.4"/>' +
+    '<circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>';
+  var INFO_ICON =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 
+  function moduleVersion() {
+    var m = window.CW_MODULES && window.CW_MODULES[moduleId()];
+    return m && m.version ? 'v' + m.version : '';
+  }
+
+  function closePanel(panel) {
+    if (!panel) return;
+    panel.hidden = true;
+    var host = panel.closest('.md-menu');
+    var trigger = host && host.querySelector('[aria-expanded]');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  /* Пункты меню модуля: «Копия модуля» (если модуль есть в реестре копий)
+     и строка версии. Возвращает фрагмент — его можно дописать в любую
+     .md-menu__panel, в том числе в перерисованную модулем. */
+  function moduleItems(panel) {
+    var frag = document.createDocumentFragment();
+    var id = moduleId();
+    var nodes = [];
+
+    var sep = document.createElement('div');
+    sep.className = 'md-menu__sep cw-module-menu__part';
+    sep.setAttribute('role', 'separator');
+
+    if (window.CWBackup && window.CWBackup.MODULES[id]) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'cwBackupBtn';
+      btn.className = 'md-menu__item cw-module-menu__part';
+      btn.setAttribute('role', 'menuitem');
+      btn.innerHTML = BACKUP_ICON + '<span></span>';
+      var text = btn.querySelector('span');
+      var paint = function () { text.textContent = label('backup.module', 'Копия модуля'); };
+      paint();
+      btn.addEventListener('click', function () {
+        btn.disabled = true;
+        closePanel(panel);
+        window.CWBackup.saveModule(id)
+          .then(function () { btn.title = label('backup.module_done', 'Копия модуля сохранена'); })
+          .catch(function (e) { console.error('CWBackup: копия модуля не удалась', e); })
+          .then(function () { btn.disabled = false; });
+      });
+      if (window.CWI18n) window.CWI18n.onChange(paint);
+      nodes.push(btn);
+    }
+
+    var ver = moduleVersion();
+    if (ver) {
+      var row = document.createElement('div');
+      row.className = 'md-menu__meta cw-module-menu__part';
+      row.innerHTML = INFO_ICON + '<span></span>';
+      var vText = row.querySelector('span');
+      var paintVer = function () { vText.textContent = label('backup.col_version', 'Версия') + ' ' + ver; };
+      paintVer();
+      if (window.CWI18n) window.CWI18n.onChange(paintVer);
+      nodes.push(row);
+    }
+
+    if (!nodes.length) return frag;
+    if (panel && panel.querySelector('.md-menu__item, .md-menu__meta')) frag.appendChild(sep);
+    nodes.forEach(function (n) { frag.appendChild(n); });
+    return frag;
+  }
+
+  function appendModuleItems(panel) {
+    if (!panel) return;
+    Array.prototype.forEach.call(panel.querySelectorAll('.cw-module-menu__part'), function (n) { n.remove(); });
+    panel.appendChild(moduleItems(panel));
+  }
+
+  /* Своё «⋮», когда у модуля его нет. Поведение — минимальное общее:
+     открыть/закрыть, клик мимо, Esc с возвратом фокуса. */
+  function makeModuleMenu(actions) {
+    var host = document.createElement('div');
+    host.className = 'md-menu cw-module-menu';
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.id = 'cwBackupBtn';
-    btn.className = 'cw-home-btn';
-    btn.innerHTML = BACKUP_ICON;
-    var title = label('backup.module', 'Копия модуля');
-    btn.title = title;
-    btn.setAttribute('aria-label', title);
-    btn.addEventListener('click', function () {
-      btn.disabled = true;
-      window.CWBackup.saveModule(id)
-        .then(function () { btn.title = label('backup.module_done', 'Копия модуля сохранена'); })
-        .catch(function (e) { console.error('CWBackup: копия модуля не удалась', e); })
-        .then(function () { btn.disabled = false; });
+    btn.className = 'md-icon-btn';
+    btn.id = 'cwModuleMenuBtn';
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML = MORE_ICON;
+    var paint = function () {
+      var t = label('common.more', 'Ещё');
+      btn.title = t; btn.setAttribute('aria-label', t);
+    };
+    paint();
+    if (window.CWI18n) window.CWI18n.onChange(paint);
+    var panel = document.createElement('div');
+    panel.className = 'md-menu__panel';
+    panel.id = 'cwModuleMenu';
+    panel.setAttribute('role', 'menu');
+    panel.hidden = true;
+    host.appendChild(btn);
+    host.appendChild(panel);
+    appendModuleItems(panel);
+    if (!panel.children.length) return null;
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = panel.hidden;
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) { var first = panel.querySelector('.md-menu__item'); if (first) first.focus(); }
     });
-    if (window.CWI18n) {
-      window.CWI18n.onChange(function () {
-        var next = label('backup.module', 'Копия модуля');
-        btn.title = next;
-        btn.setAttribute('aria-label', next);
-      });
-    }
-    return btn;
+    document.addEventListener('click', function (e) {
+      if (!panel.hidden && !host.contains(e.target)) closePanel(panel);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !panel.hidden) { closePanel(panel); btn.focus(); }
+    });
+    actions.appendChild(host);
+    return host;
   }
+
+  function injectModuleMenu() {
+    var bar = document.querySelector('.md-topbar-v2');
+    if (!bar || document.getElementById('cwModuleMenuBtn')) return;
+    var own = document.querySelector('[data-cw-module-menu]');
+    if (own) { appendModuleItems(own); return; }
+    if (document.querySelector('[data-cw-module-menu-dynamic]')) return; // модуль зовёт appendModuleItems сам
+    var actions = bar.querySelector('.md-topbar-v2__actions');
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.className = 'md-topbar-v2__actions';
+      if (!bar.querySelector('.md-topbar-v2__spacer')) {
+        var spacer = document.createElement('span');
+        spacer.className = 'md-topbar-v2__spacer';
+        bar.appendChild(spacer);
+      }
+      bar.appendChild(actions);
+    }
+    makeModuleMenu(actions);
+  }
+
+  window.CWNav = { appendModuleItems: appendModuleItems };
 
   function injectFab() {
     document.body.appendChild(makeLink('cw-home-fab'));
@@ -186,8 +316,7 @@
       slot.node.insertBefore(link, slot.node.firstChild);
     }
 
-    var backup = makeBackupButton();
-    if (backup && link.parentNode) link.parentNode.insertBefore(backup, link.nextSibling);
+    injectModuleMenu();
   }
 
   function start() { inject(true); }
