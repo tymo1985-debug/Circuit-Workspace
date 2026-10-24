@@ -81,7 +81,7 @@ const cold = await page.evaluate(() => {
     count: scripts.length,
     globals: ['jspdf', 'pdfjsLib', 'XLSX', 'PDFLib', 'fontkit',
       'PdfExport', 'PdfImport', 'PdfFormExport', 'XlsxExport',
-      'PDF_FONT_DEJAVU_SANS', 'PDF_FORM_FONT_B64']
+      'PDF_FONT_NOTO_SANS']
       .filter((n) => typeof window[n] !== 'undefined'),
     loader: typeof window.CWPdfStack !== 'undefined' && typeof window.PSPdf !== 'undefined',
   };
@@ -95,10 +95,10 @@ ok('загрузчик на месте', cold.loader);
 /* --- 2. Наборы догружаются и не грузятся дважды -------------------------- */
 console.log('\n2. Догрузка наборов');
 for (const [kind, names] of Object.entries({
-  pdf: ['jspdf', 'PDF_FONT_DEJAVU_SANS', 'PdfExport'],
+  pdf: ['jspdf', 'PDF_FONT_NOTO_SANS', 'PdfExport'],
   import: ['pdfjsLib', 'PdfImport'],
   excel: ['XLSX', 'XlsxExport'],
-  form: ['PDFLib', 'fontkit', 'PDF_FORM_FONT_B64', 'PdfFormExport'],
+  form: ['PDFLib', 'fontkit', 'PDF_FONT_NOTO_SANS', 'PdfFormExport'],
 })) {
   const r = await page.evaluate(async ([k, ns]) => {
     const before = document.querySelectorAll('script').length;

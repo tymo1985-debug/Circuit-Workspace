@@ -25,7 +25,12 @@ Vanilla HTML / CSS / JavaScript, без фреймворков и без шаг�
 
 - **Хранение:** IndexedDB как целевой общий слой (`shared/db.js`), localStorage
   как легаси-хранилище внутри модулей.
-- **PDF:** jsPDF + jspdf-autotable, встроенные base64-шрифты для кириллицы;
+- **Шрифт:** один на всё приложение — Noto Sans (SIL OFL 1.1): интерфейс
+  (`shared/fonts/noto-sans-*.woff2`), бумага (`.cw-paper`, окно печати
+  `shared/print.js`) и встроенный шрифт PDF (`shared/fonts/noto-sans-pdf-*.js`,
+  `scripts/build-pdf-font-subset.mjs`). Шрифты Microsoft (Aptos) не
+  встраиваются и не распространяются — лицензия этого не позволяет.
+- **PDF:** jsPDF + jspdf-autotable, встроенный base64-шрифт для кириллицы;
   pdf.js для импорта. Модуль «Назначения» PDF не собирает — он печатает HTML
   штатным `window.print()`.
 - **Офлайн:** service worker у хаба и отдельный у каждого модуля.

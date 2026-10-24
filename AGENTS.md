@@ -235,7 +235,7 @@ Thinking:     On / Off
 Открывать, только если задача прямо про сам файл.
 
 - `shared/vendor/**` — минифицированные библиотеки, 3,8 МБ. Хеши — `sri-lock.json`.
-- `**/fonts/**.js` — base64-шрифты (Клиндарий 4 × ~290 КБ, Школа 2 файла).
+- `shared/fonts/*.js` — base64-шрифт PDF Noto Sans (4 × ~95 КБ, общий для всех модулей).
   Пересобираются `scripts/build-pdf-font-subset.mjs`.
 - `circuit-planner/forms/s302-form.js` — 730 КБ, две строки, base64-PDF бланка
   S-302. Дороже, чем весь этот файл целиком.

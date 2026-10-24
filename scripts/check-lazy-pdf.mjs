@@ -280,7 +280,7 @@ LAZY.forEach((id) => {
      трёх без такой же явной причины нельзя.
 
      Congress — осознанное исключение: его batch PDF — текстовый лист из уже
-     собранного letterHTML, ему нужны только jsPDF и общий шрифт DejaVu.
+     собранного letterHTML, ему нужны только jsPDF и общий шрифт Noto Sans.
      Подмешивать autotable ради порога значило бы грузить мёртвый код. */
   const minFiles = id === 'congress-project' ? 2 : 3;
   ok('в списках догрузки есть файлы', files.length >= minFiles, 'найдено ' + files.length);

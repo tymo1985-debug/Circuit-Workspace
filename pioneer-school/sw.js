@@ -60,12 +60,21 @@ const ASSETS = [
   './i18n/doc.js',
   './js/i18n.js',
   './js/doclang.js',
-  '../shared/fonts/roboto-latin-400-normal.woff2',
-  '../shared/fonts/roboto-latin-500-normal.woff2',
-  '../shared/fonts/roboto-cyrillic-400-normal.woff2',
-  '../shared/fonts/roboto-cyrillic-500-normal.woff2',
-  '../shared/fonts/roboto-latin-700-normal.woff2',
-  '../shared/fonts/roboto-cyrillic-700-normal.woff2',
+  '../shared/fonts/noto-sans-latin-400-normal.woff2',
+  '../shared/fonts/noto-sans-latin-ext-400-normal.woff2',
+  '../shared/fonts/noto-sans-cyrillic-400-normal.woff2',
+  '../shared/fonts/noto-sans-latin-500-normal.woff2',
+  '../shared/fonts/noto-sans-latin-ext-500-normal.woff2',
+  '../shared/fonts/noto-sans-cyrillic-500-normal.woff2',
+  '../shared/fonts/noto-sans-latin-700-normal.woff2',
+  '../shared/fonts/noto-sans-latin-ext-700-normal.woff2',
+  '../shared/fonts/noto-sans-cyrillic-700-normal.woff2',
+  '../shared/fonts/noto-sans-latin-400-italic.woff2',
+  '../shared/fonts/noto-sans-latin-ext-400-italic.woff2',
+  '../shared/fonts/noto-sans-cyrillic-400-italic.woff2',
+  '../shared/fonts/noto-sans-latin-700-italic.woff2',
+  '../shared/fonts/noto-sans-latin-ext-700-italic.woff2',
+  '../shared/fonts/noto-sans-cyrillic-700-italic.woff2',
   './js/pdfstack.js',
   './js/db.js',
   './js/app.js',
@@ -93,8 +102,7 @@ const ASSETS = [
   './js/register-page.js',
   // Шрифты для PDF: встраиваются в сами PDF-файлы (кириллица в бланке и в
   // интерактивной анкете), поэтому нужны офлайн.
-  '../shared/fonts/dejavu-sans-subset.js',
-  './js/export/fonts/dejavu-form-b64.js',
+  '../shared/fonts/noto-sans-pdf-regular.js',
   // ВСЁ НИЖЕ ДОГРУЖАЕТСЯ ПО КНОПКЕ (30.08.2026, находка N-3), но в прекэше
   // обязано лежать: файл, который тянет js/pdfstack.js, невидим для
   // check-shared-precache.mjs — тот разбирает разметку, а в разметке этих

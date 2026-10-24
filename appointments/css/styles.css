@@ -105,13 +105,7 @@ body {
 /* --- Письмо ---------------------------------------------------------
    Отдельный масштаб: это документ, а не элемент интерфейса, поэтому
    типографика здесь не следует шкале MD3. */
-.letter {
-  display: block;
-  max-width: 820px; margin: 0 auto; padding: 44px 52px;
-  background: #ffffff; color: #1a1a1a;
-  border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md);
-  font: 400 15px/1.6 var(--md-font-family);
-}
+.letter { display: block; }   /* лист — .cw-paper.cw-paper--a4 общего слоя (Ф6) */
 .letter-sender { text-align: right; white-space: pre-line; }
 .letter-date { margin-top: 18px; text-align: center; font-weight: 500; }
 .letter-addressee { margin-top: 20px; text-transform: uppercase; }

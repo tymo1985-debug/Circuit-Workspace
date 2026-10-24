@@ -14,7 +14,7 @@
 | `ui/archive-year.js` | ~14 КБ | Архив: A3 — срез года → конверт → `CWArchive.put`, кнопка в настройках, баннер-предложение; A5 — «Убрать год» и восстановление по `#archive-restore=` (порядок шагов — шапка файла, `docs/db-migration/05-archive-schema.md` §13). Проверка — `scripts/check-archive-year.mjs` |
 | `i18n/dict.js` | 188 КБ | только `grep` по ключу, никогда целиком |
 | `forms/s302-form.js` | 730 КБ | **не открывать** — две строки base64-PDF |
-| `fonts/*.js` | 4 × ~290 КБ | **не открывать** — base64-шрифты Aptos |
+| `../shared/fonts/noto-sans-pdf-*.js` | 4 × ~95 КБ | **не открывать** — base64-шрифт PDF Noto Sans (общий) |
 
 ## Карта `app.js`
 

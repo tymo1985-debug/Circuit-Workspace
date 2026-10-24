@@ -5,9 +5,10 @@ import { t } from "./i18n.js";
 
 /* PDF собирается ТЕКСТОМ (решение Алекса 21.10.2026, п.26 аудита): раньше лист
    растрировался через html2canvas — текст не выделялся, файлы были тяжёлыми, а
-   граница страницы могла разрезать строку пополам. Шрифт — общий субсет DejaVu
-   (одно начертание; жирный рисуется обводкой контура). */
-const STACK={tag:"Конгрессы",FONTS:[],SETS: {batch:['../shared/vendor/jspdf.umd.min.js','../shared/fonts/dejavu-sans-subset.js']},onError(){alert(t("cong.batch.pdf_failed"))}};
+   граница страницы могла разрезать строку пополам. Шрифт — общий шрифт PDF
+   Noto Sans, обычный и настоящий жирный (Ф6 визуального аудита 24.10.2026;
+   прежде — DejaVu одним начертанием, жирный рисовался обводкой контура). */
+const STACK={tag:"Конгрессы",FONTS:[],SETS: {batch:['../shared/vendor/jspdf.umd.min.js','../shared/fonts/noto-sans-pdf-regular.js','../shared/fonts/noto-sans-pdf-bold.js']},onError(){alert(t("cong.batch.pdf_failed"))}};
 /* Геометрия .letter-page (794×1123 px, поля 92/100/70) в пунктах A4: 1 px = 0,75 pt. */
 const PT=0.75,PAGE={width:595.28,height:841.89},PAD={top:92*PT,side:100*PT,bottom:70*PT};
 /* Тот же набор глифов, что в субсете шрифта: символ вне набора jsPDF молча
@@ -68,7 +69,7 @@ function letterRuns(article){
 }
 
 async function renderLetterPdf(html){
-  if(!self.CWPdfStack||!await self.CWPdfStack.ensure(STACK,"batch")||!self.jspdf||!self.PDF_FONT_DEJAVU_SANS)throw new Error("PDF stack unavailable");
+  if(!self.CWPdfStack||!await self.CWPdfStack.ensure(STACK,"batch")||!self.jspdf||!self.PDF_FONT_NOTO_SANS||!self.PDF_FONT_NOTO_SANS_BOLD)throw new Error("PDF stack unavailable");
   let host=document.createElement("div");
   host.style.cssText="position:fixed;left:-10000px;top:0;width:794px;pointer-events:none";
   host.innerHTML=html;document.body.appendChild(host);
@@ -77,17 +78,20 @@ async function renderLetterPdf(html){
     if(!article)throw new Error("Letter HTML unavailable");
     let px=parseFloat(article.style.fontSize)||17,size=px*PT,lineH=size*1.32,paraGap=14*PT,headerGap=8*PT;
     let doc=new self.jspdf.jsPDF({unit:"pt",format:"a4",orientation:"portrait"});
-    doc.addFileToVFS("DejaVuSans.ttf",self.PDF_FONT_DEJAVU_SANS);
-    doc.addFont("DejaVuSans.ttf","DejaVuSans","normal");
-    doc.setFont("DejaVuSans","normal");doc.setFontSize(size);doc.setTextColor(0);doc.setDrawColor(0);doc.setLineWidth(size*0.035);
+    doc.addFileToVFS("NotoSans.ttf",self.PDF_FONT_NOTO_SANS);
+    doc.addFont("NotoSans.ttf","NotoSans","normal");
+    doc.addFileToVFS("NotoSans-Bold.ttf",self.PDF_FONT_NOTO_SANS_BOLD);
+    doc.addFont("NotoSans-Bold.ttf","NotoSans","bold");
+    doc.setFont("NotoSans","normal");doc.setFontSize(size);doc.setTextColor(0);doc.setDrawColor(0);doc.setLineWidth(size*0.035);
     let left=PAD.side,right=PAGE.width-PAD.side,width=right-left,bottom=PAGE.height-PAD.bottom,y=PAD.top;
-    let w=x=>doc.getTextWidth(x);
+    /* Ширина — тем начертанием, которым токен будет нарисован. */
+    let w=tok=>{doc.setFont("NotoSans",tok.bold?"bold":"normal");return doc.getTextWidth(tok.text)};
     letterRuns(article).forEach(para=>{
       /* Слова с признаком жирного; пробелы остаются отдельными токенами, чтобы
          ширина строки совпадала с тем, что рисуется. */
       let lines=[[]],lineW=0;
       let push=(tok)=>{
-        let tw=w(tok.text);
+        let tw=w(tok);
         if(/^\s+$/.test(tok.text)){if(!lines[lines.length-1].length)return;lines[lines.length-1].push(tok);lineW+=tw;return}
         if(lineW+tw>width&&lines[lines.length-1].length){
           let cur=lines[lines.length-1];while(cur.length&&/^\s+$/.test(cur[cur.length-1].text))cur.pop();
@@ -102,10 +106,11 @@ async function renderLetterPdf(html){
       lines.forEach(line=>{
         while(line.length&&/^\s+$/.test(line[line.length-1].text))line.pop();
         if(y+lineH>bottom){doc.addPage("a4","portrait");y=PAD.top}
-        let total=line.reduce((n,tok)=>n+w(tok.text),0),x=para.header?right-total:left;
+        let total=line.reduce((n,tok)=>n+w(tok),0),x=para.header?right-total:left;
         line.forEach(tok=>{
-          if(!/^\s+$/.test(tok.text))doc.text(tok.text,x,y,{baseline:"top",renderingMode:tok.bold?"fillThenStroke":"fill"});
-          x+=w(tok.text);
+          let tw=w(tok);
+          if(!/^\s+$/.test(tok.text))doc.text(tok.text,x,y,{baseline:"top"});
+          x+=tw;
         });
         y+=lineH;
       });

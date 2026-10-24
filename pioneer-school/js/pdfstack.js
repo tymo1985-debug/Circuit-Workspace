@@ -32,8 +32,8 @@ const PSPdf = {
   tag: 'Школа пионеров',
 
   /* FONTS общего списка у Школы нет: шрифты у трактов разные (у бланка и
-     писем — DejaVu Sans, у интерактивной анкеты — свой субсет для /DR), и
-     общий список тянул бы лишние 96 КБ в каждый набор. */
+     писем и интерактивной анкеты — Noto Sans regular, у импорта и Excel
+     шрифта нет), и общий список тянул бы лишние ~90 КБ в каждый набор. */
   FONTS: [],
 
   SETS: {
@@ -42,7 +42,7 @@ const PSPdf = {
        обе бумаги собирает один и тот же PdfExport. */
     pdf: [
       '../shared/vendor/jspdf.umd.min.js',
-      '../shared/fonts/dejavu-sans-subset.js',
+      '../shared/fonts/noto-sans-pdf-regular.js',
       'js/export/pdfExport.js',
     ],
     /* Импорт PDF: pdf.js плюс разборщик таблиц. Воркер здесь НЕ перечислен —
@@ -61,7 +61,7 @@ const PSPdf = {
     form: [
       '../shared/vendor/pdf-lib.min.js',
       '../shared/vendor/fontkit.umd.min.js',
-      'js/export/fonts/dejavu-form-b64.js',
+      '../shared/fonts/noto-sans-pdf-regular.js',
       'js/export/pdfFormExport.js',
     ],
   },

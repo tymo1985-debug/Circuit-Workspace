@@ -351,19 +351,13 @@ body {
   background: transparent; color: var(--md-on-surface);
 }
 .ed__area { font: 400 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
-.ed__rte { font: 400 15px/1.5 var(--md-font-family); overflow-wrap: anywhere; }
+.ed__rte { font: var(--cw-paper-font); overflow-wrap: anywhere; }
 .ed__area:focus, .ed__rte:focus { outline: none; border: 2px solid var(--md-primary); }
 .ed__rte div { margin: 0 0 10px; }
 
-/* Предпросмотр — лист бумаги: белый и с засечками независимо от темы
-   интерфейса. Документ печатают на белом, и он не должен «темнеть» вместе с
-   приложением. */
-.ed__preview {
-  min-height: 320px; padding: 26px 30px;
-  border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-xs);
-  background: #ffffff; color: #111111;
-  font: 400 15px/1.5 Georgia, 'Times New Roman', serif;
-}
+/* Предпросмотр — лист A4 общего слоя (.cw-paper.cw-paper--a4, Ф6): белый
+   независимо от темы, тот же шрифт, что в PDF и в окне печати. */
+.ed__preview { min-height: 320px; }
 .ed__preview p { margin: 0 0 12px; }
 .ed__preview div { margin: 0 0 10px; }
 

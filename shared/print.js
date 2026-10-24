@@ -59,6 +59,34 @@
 (function (global) {
   'use strict';
 
+  /* ═══ Шрифт бумаги (визуальный аудит 24.10.2026, Ф6) ════════════════════
+     Окно печати — отдельный документ без общих стилей, поэтому шрифт
+     объявляется здесь же. Адрес файлов — от адреса самого print.js
+     (окно, открытое через open('') + write, разрешает относительные пути
+     по-разному в разных движках). Те же файлы, что у интерфейса: они в
+     прекэше всех модулей, печать работает офлайн. */
+  var FONT_BASE = (function () {
+    try {
+      var cur = document.currentScript && document.currentScript.src;
+      return new URL('fonts/', cur || new URL('../shared/print.js', location.href)).href;
+    } catch (_) { return '../shared/fonts/'; }
+  })();
+  var FONT_CSS = (function () {
+    var ranges = {
+      'latin': 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212',
+      'latin-ext': 'U+0100-024F,U+1E00-1EFF,U+20A0-20AB,U+20AD-20C0,U+2113',
+      'cyrillic': 'U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116',
+    };
+    var out = [];
+    [['400', 'normal'], ['700', 'normal'], ['400', 'italic'], ['700', 'italic']].forEach(function (f) {
+      Object.keys(ranges).forEach(function (sub) {
+        out.push("@font-face{font-family:'Noto Sans';font-style:" + f[1] + ';font-weight:' + f[0]
+          + ";src:url('" + FONT_BASE + 'noto-sans-' + sub + '-' + f[0] + '-' + f[1] + ".woff2') format('woff2');unicode-range:" + ranges[sub] + '}');
+      });
+    });
+    return out.join('');
+  })();
+
   /* ═══ Печать отдельного документа ═══════════════════════════════════════ */
 
   /**
@@ -73,7 +101,9 @@
    */
   var BASE_CSS = [
     '*{box-sizing:border-box}',
-    'body{font:13.5px/1.62 Georgia,"Times New Roman",serif;color:#16251d;margin:28mm 20mm}',
+    /* Шрифт бумаги — Noto Sans, как в интерфейсе и в PDF (Ф6; прежде Georgia).
+       Кегль 14px — ступень общей шкалы (прежде 13,5px). */
+    "body{font:14px/1.6 'Noto Sans',system-ui,sans-serif;color:#16251d;margin:28mm 20mm}",
     'h1{font-size:16px;margin:0 0 18px}',
     'pre{font:inherit;white-space:pre-wrap}',
     /* Разрыв страницы между вложениями письма. Нулевая высота — элемент
@@ -194,6 +224,22 @@
        ожидание: это запасной путь, а не основной. */
     function afterLoad() {
       if (done) return;
+      /* Сначала шрифты: `load` не ждёт веб-шрифтов, и первая страница ушла
+         бы на печать запасным шрифтом. Ожидание ограничено страховкой ниже. */
+      try {
+        var fonts = win.document.fonts;
+        if (fonts && typeof fonts.load === 'function' && !afterLoad.fontsWaited) {
+          afterLoad.fontsWaited = true;
+          /* `ready` сам по себе может разрешиться раньше, чем раскладка
+             запросит шрифт, — поэтому начертания запрашиваются явно. */
+          var probe = 'Aa Бб Ćć';
+          Promise.all([
+            fonts.load("400 14px 'Noto Sans'", probe),
+            fonts.load("700 14px 'Noto Sans'", probe),
+          ]).then(function () { return fonts.ready; }).then(afterLoad, afterLoad);
+          return;
+        }
+      } catch (_) {}
       try {
         if (typeof win.requestAnimationFrame === 'function') {
           win.requestAnimationFrame(function () { win.requestAnimationFrame(fire); });
@@ -232,7 +278,7 @@
       return false;
     }
 
-    var css = BASE_CSS + pageRule(o.page) + (o.css || '');
+    var css = FONT_CSS + BASE_CSS + pageRule(o.page) + (o.css || '');
     var html = '<!DOCTYPE html><html lang="' + escapeText(resolveLang(o.lang)) + '">'
       + '<head><meta charset="utf-8">'
       + '<title>' + escapeText(o.title) + '</title>'

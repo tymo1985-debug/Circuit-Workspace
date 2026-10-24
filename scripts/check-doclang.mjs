@@ -188,7 +188,7 @@ console.log('\n4. Шрифт и санитайзер PDF');
   // Каждый символ русской колонки словаря документов обязан быть в шрифте:
   // иначе jsPDF молча обрежет всю строку.
   const { ctx } = makeEnv();
-  const b64 = readFileSync('shared/fonts/dejavu-sans-subset.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
+  const b64 = readFileSync('shared/fonts/noto-sans-pdf-regular.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
   ok('субсет шрифта не пустой', b64.length > 10000);
   const docSrc = readFileSync(PS + '/i18n/doc.js', 'utf8');
   const strings = [...docSrc.matchAll(/':\s*'((?:[^'\\]|\\.)*)'/g)].map((x) => x[1]);
@@ -345,11 +345,11 @@ console.log('\n9. Сквозная проверка PDF: текст доезжа
   //   «Szkoła zgłoszenie ćwiczenia» → 24 из 27
   //   «Школа № 12» → 9 из 10 (пропадал №)
   const { jsPDF } = await import('jspdf');
-  const b64 = readFileSync('shared/fonts/dejavu-sans-subset.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
+  const b64 = readFileSync('shared/fonts/noto-sans-pdf-regular.js', 'utf8').match(/[A-Za-z0-9+/=]{500,}/)[0];
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  doc.addFileToVFS('DejaVuSans.ttf', b64);
-  doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
-  doc.setFont('DejaVuSans');
+  doc.addFileToVFS('NotoSans.ttf', b64);
+  doc.addFont('NotoSans.ttf', 'NotoSans', 'normal');
+  doc.setFont('NotoSans');
   doc.setFontSize(12);
 
   const probes = [
@@ -374,9 +374,9 @@ console.log('\n9. Сквозная проверка PDF: текст доезжа
   const docSrc2 = readFileSync(PS + '/i18n/doc.js', 'utf8');
   const all = [...docSrc2.matchAll(/':\s*'((?:[^'\\]|\\.)*)'/g)].map((x) => x[1]).filter((x) => x.length);
   const doc2 = new jsPDF({ unit: 'pt', format: 'a4' });
-  doc2.addFileToVFS('DejaVuSans.ttf', b64);
-  doc2.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
-  doc2.setFont('DejaVuSans');
+  doc2.addFileToVFS('NotoSans.ttf', b64);
+  doc2.addFont('NotoSans.ttf', 'NotoSans', 'normal');
+  doc2.setFont('NotoSans');
   doc2.setFontSize(8);
   all.forEach((t, i) => { if (i % 90 === 0) doc2.addPage(); doc2.text(t, 20, 20 + (i % 90) * 9); });
   const raw2 = Buffer.from(doc2.output('arraybuffer')).toString('latin1');

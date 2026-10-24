@@ -32,7 +32,7 @@ const PdfFormExport = {
   async generate(config, schema) {
     if (!window.PDFLib) throw new Error('Библиотека pdf-lib не загрузилась — обновите страницу.');
     if (!window.fontkit) throw new Error('Библиотека fontkit не загрузилась — обновите страницу.');
-    if (!window.PDF_FORM_FONT_B64) throw new Error('Шрифт для PDF-анкеты не загрузился.');
+    if (!window.PDF_FONT_NOTO_SANS) throw new Error('Шрифт для PDF-анкеты не загрузился.');
 
     const { PDFDocument, PDFName, PDFString, rgb } = window.PDFLib;
     const doc = await PDFDocument.create();
@@ -40,7 +40,7 @@ const PdfFormExport = {
 
     // subset: false — принципиально. Если урезать шрифт под уже использованные
     // символы, пионер не сможет напечатать буквы, которых не было в шаблоне.
-    const font = await doc.embedFont(this._b64ToUint8(window.PDF_FORM_FONT_B64), { subset: false });
+    const font = await doc.embedFont(this._b64ToUint8(window.PDF_FONT_NOTO_SANS), { subset: false });
 
     const state = {
       doc, font, rgb, PDFName, PDFString,

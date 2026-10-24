@@ -1,6 +1,7 @@
 // pdfExport.js — генерация PDF-отчётов (jsPDF)
-// Весь текст — настоящим текстом встроенного шрифта DejaVu (общий субсет,
-// shared/fonts/dejavu-sans-subset.js). Раньше списки и формуляры рисовались
+// Весь текст — настоящим текстом встроенного шрифта Noto Sans (общий шрифт PDF
+// всего приложения, shared/fonts/noto-sans-pdf-regular.js; до Ф6 визуального
+// аудита 24.10.2026 — субсет DejaVu). Раньше списки и формуляры рисовались
 // построчно картинками через canvas: текст не выделялся, файлы были тяжёлыми
 // (список из 12 учащихся — 424 КБ). Решение Алекса 21.10.2026, п.26 аудита.
 
@@ -23,7 +24,7 @@ const PdfExport = {
     const jsPDF = this._requireJsPdf();
     const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: orientation || 'portrait' });
     this._ensureCyrillicFont(doc);
-    doc.setFont('DejaVuSans', 'normal');
+    doc.setFont('NotoSans', 'normal');
     doc.setTextColor(20);
     return doc;
   },
@@ -200,7 +201,7 @@ const PdfExport = {
   },
 
   // ---------- Печатный бланк регистрации (для рассылки пионерам) ----------
-  // Как и весь файл, бланк набран встроенным шрифтом DejaVu Sans (субсет).
+  // Как и весь файл, бланк набран встроенным шрифтом Noto Sans (субсет).
   //
   // Важное ограничение (проверено на практике): сделать этот PDF по-настоящему
   // интерактивным (с полями, которые пионер печатает прямо в Adobe/Preview)
@@ -214,17 +215,17 @@ const PdfExport = {
   // PDF навсегда оставался true, а addFont() регистрирует шрифт в КОНКРЕТНОМ
   // экземпляре jsPDF. Второй бланк за ту же сессию (без перезагрузки страницы)
   // молча уходил на встроенный `times`, и кириллица в нём ломалась.
-  // Воспроизведено на jsPDF 2.5.1: setFont('DejaVuSans') во втором документе
+  // Воспроизведено на jsPDF 2.5.1: setFont(<встроенный>) во втором документе
   // пишет в консоль «Unable to look up font label» и возвращает `times`.
   _ensureCyrillicFont(doc) {
     var list = typeof doc.getFontList === 'function' ? doc.getFontList() : null;
-    if (list && list.DejaVuSans) return;
-    if (!window.PDF_FONT_DEJAVU_SANS) throw new Error('Шрифт для PDF-бланка не загрузился.');
-    doc.addFileToVFS('DejaVuSans.ttf', window.PDF_FONT_DEJAVU_SANS);
-    doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+    if (list && list.NotoSans) return;
+    if (!window.PDF_FONT_NOTO_SANS) throw new Error('Шрифт для PDF-бланка не загрузился.');
+    doc.addFileToVFS('NotoSans.ttf', window.PDF_FONT_NOTO_SANS);
+    doc.addFont('NotoSans.ttf', 'NotoSans', 'normal');
   },
 
-  // Шрифт бланка урезан (см. shared/fonts/dejavu-sans-subset.js) до ASCII +
+  // Шрифт бланка урезан (см. scripts/build-pdf-font-subset.mjs) до ASCII +
   // Latin-1 Supplement + Latin Extended-A + всей кириллицы + пунктуации. Любой
   // символ ВНЕ этого набора (например, «·», emoji, стрелки) не отрисуется — и,
   // что важнее, jsPDF при этом обрежет ВЕСЬ текстовый вызов начиная с этого
@@ -247,14 +248,14 @@ const PdfExport = {
   _checkbox(doc, x, y, label, size = 9) {
     doc.setDrawColor(90);
     doc.rect(x, y - size + 2, size, size);
-    doc.setFont('DejaVuSans');
+    doc.setFont('NotoSans');
     doc.setFontSize(11);
     doc.setTextColor(20);
     doc.text(this._sanitizeForFont(label), x + size + 4, y);
   },
 
   _sectionTitle(doc, y, text) {
-    doc.setFont('DejaVuSans');
+    doc.setFont('NotoSans');
     doc.setFontSize(13);
     doc.setTextColor(20);
     doc.text(this._sanitizeForFont(text), 40, y);
@@ -276,7 +277,7 @@ const PdfExport = {
   //   две строки, вызывающий код должен знать об этом, иначе следующий
   //   элемент ляжет поверх.
   _label(doc, x, y, text, size = 11, maxWidth = 0) {
-    doc.setFont('DejaVuSans');
+    doc.setFont('NotoSans');
     doc.setFontSize(size);
     doc.setTextColor(20);
     const safe = this._sanitizeForFont(text);
@@ -326,7 +327,7 @@ const PdfExport = {
     const RIGHT = 555;
     let cursor = 0;
     for (const item of items) {
-      doc.setFont('DejaVuSans');
+      doc.setFont('NotoSans');
       doc.setFontSize(11);
       const width = size + 4 + doc.getTextWidth(this._sanitizeForFont(item.label)) + 18;
       let x = Math.max(item.x, cursor);
@@ -364,7 +365,7 @@ const PdfExport = {
     const yes = opt('attending', 'yes');
     const no = opt('attending', 'no');
 
-    doc.setFont('DejaVuSans');
+    doc.setFont('NotoSans');
     doc.setFontSize(18);
     doc.setTextColor(20);
     /* Перенос по maxWidth занимает несколько строк: сдвиг считаем по их числу,
@@ -449,7 +450,7 @@ const PdfExport = {
     doc.setDrawColor(210);
     doc.line(40, y, 555, y);
     y += 20;
-    doc.setFont('DejaVuSans');
+    doc.setFont('NotoSans');
     doc.setFontSize(10.5);
     doc.setTextColor(70);
     const closingLines = doc.splitTextToSize(this._sanitizeForFont(D('doc.ps.reg.closing')), 515);
@@ -488,9 +489,9 @@ const PdfExport = {
   // Своя вёрстка, а не buildDocument(): у письма заголовок по центру и
   // абзацы из шаблона.
   //
-  // ЖИРНОГО НАЧЕРТАНИЯ НЕТ. Субсет DejaVu собран только в normal
+  // ЖИРНОГО НАЧЕРТАНИЯ НЕТ. В набор Школы грузится только normal
   // (scripts/build-pdf-font-subset.mjs), второе начертание удвоило бы вес
-  // модуля. Поэтому `**` из текста вычищаются: показать звёздочки в готовом
+  // набора. Поэтому `**` из текста вычищаются: показать звёздочки в готовом
   // письме хуже, чем потерять выделение (решение Алекса 14.08.2026).
   _stripBold(str) {
     return String(str ?? '').replace(/\*\*/g, '');
@@ -519,10 +520,10 @@ const PdfExport = {
     // Шрифт и кегль переустанавливаются после КАЖДОГО addPage(): jsPDF не
     // переносит их на новую страницу сам, и второй лист письма печатался бы
     // встроенным шрифтом — то есть без кириллицы.
-    const setBody = () => { doc.setFont('DejaVuSans'); doc.setFontSize(11.5); doc.setTextColor(20); };
+    const setBody = () => { doc.setFont('NotoSans'); doc.setFontSize(11.5); doc.setTextColor(20); };
 
     if (title) {
-      doc.setFont('DejaVuSans');
+      doc.setFont('NotoSans');
       doc.setFontSize(14);
       doc.setTextColor(20);
       doc.splitTextToSize(this._sanitizeForFont(this._stripBold(title)), maxWidth).forEach((line) => {

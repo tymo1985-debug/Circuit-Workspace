@@ -1,41 +1,35 @@
 #!/usr/bin/env node
 /**
- * Пересборка субсета DejaVu Sans для ПЛОСКИХ PDF Школы пионеров
- * (`shared/fonts/dejavu-sans-subset.js`, глобаль
- * `window.PDF_FONT_DEJAVU_SANS`, встраивается в jsPDF через addFileToVFS).
+ * Пересборка встроенного шрифта PDF — Noto Sans, четыре начертания
+ * (`shared/fonts/noto-sans-pdf-*.js`, глобали `window.PDF_FONT_NOTO_SANS`,
+ * `…_BOLD`, `…_ITALIC`, `…_BOLDITALIC`; встраиваются в jsPDF через
+ * addFileToVFS и в pdf-lib через embedFont).
  *
- * ЗАЧЕМ ЭТОТ СКРИПТ. Первая сборка субсета покрывала только ASCII + кириллицу
- * + десяток знаков пунктуации — 364 кодпоинта. Пока документы Школы были
- * только по-русски, этого хватало. С подключением `shared/doclang.js`
- * (языки документа ru/uk/en/pl/de) выяснилось, что в шрифте нет НИ ОДНОГО
- * из ł ż ą ę ś ć ń ó ź ä ö ü ß — то есть польский и немецкий бланк молча
- * печатались бы как «Szko-a» вместо «Szkoła».
+ * ПОЧЕМУ NOTO SANS (визуальный аудит 24.10.2026, Ф6, решение Алекса). Один
+ * шрифт во всём приложении — в интерфейсе и на бумаге. Прежде PDF Клиндария
+ * печатались Aptos (шрифт Microsoft: распространять, конвертировать и
+ * встраивать в приложения лицензия не разрешает — файлы удалены), а Школы и
+ * Конгрессов — DejaVu Sans. Noto Sans — свободная лицензия SIL OFL 1.1, того
+ * же автора, что и Aptos (Стив Мэттесон), с полной кириллицей.
  *
  * ЗАПУСК:
  *   pip install fonttools
- *   node scripts/build-pdf-font-subset.mjs
+ *   npm pack @expo-google-fonts/noto-sans@0.4.2 && tar xzf expo-google-fonts-noto-sans-0.4.2.tgz
+ *   NOTO_SRC=./package node scripts/build-pdf-font-subset.mjs
  *
- * ПЯТЬ НЕОЧЕВИДНЫХ МОМЕНТОВ:
- *
- * 1. Версия исходного шрифта критична. Прежний субсет собран из DejaVu 2.37;
- *    сборка из другой версии может сдвинуть advance width и переверстать
- *    готовые бланки. Скрипт сверяет version исходника и падает при
- *    расхождении — не «предупреждает», а именно падает.
- *
- * 2. Формат — TTF, а не woff2. jsPDF умеет только TTF/OTF; woff2 он примет
- *    молча и отрисует пустоту.
- *
- * 3. --no-subset-tables=... не нужен, а вот --desubroutinize и --no-hinting
- *    нужны: хинтинг в PDF не используется, но занимает место.
- *
- * 4. Латиница берётся целыми блоками (Latin-1 Supplement + Latin Extended-A),
- *    а не по списку «нужных сейчас» букв. Список неизбежно разойдётся с
- *    реальными переводами, а разница в размере — единицы килобайт.
- *
- * 5. Расширение набора глифов бессмысленно без синхронной правки
- *    `_sanitizeForFont()` в `js/export/pdfExport.js`: она заменяет на «-»
- *    всё, что вне её whitelist, ДО того как строка дойдёт до шрифта.
- *    Скрипт проверяет, что whitelist покрывает новый набор.
+ * НЕОЧЕВИДНОЕ:
+ * 1. Версия исходника критична — другая версия может сдвинуть ширины глифов
+ *    и переверстать готовые бланки. Скрипт падает при расхождении.
+ * 2. Формат — TTF: jsPDF умеет только TTF/OTF, woff2 он примет молча и
+ *    отрисует пустоту.
+ * 3. Таблицы GPOS/GSUB/GDEF выброшены: jsPDF их не читает, а это треть веса.
+ *    По той же причине нет комбинируемых диакритик — только готовые буквы.
+ * 4. Латиница и кириллица — целыми блоками, а не по списку «нужных сейчас»
+ *    букв: список разойдётся с реальными переводами и текстами писем.
+ * 5. Расширяя набор глифов, синхронно расширить `_sanitizeForFont()` в
+ *    `pioneer-school/js/export/pdfExport.js` и `FONT_SAFE` в
+ *    `congress-project/js/batch-pdf.js`: они заменяют на «-» всё, что вне
+ *    whitelist, ДО шрифта (jsPDF на неизвестном глифе обрезает строку).
  */
 
 import { execFileSync } from "node:child_process";
@@ -43,34 +37,23 @@ import { mkdtempSync, writeFileSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SRC = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-const EXPECTED_VERSION = "Version 2.37";
-const OUT = "shared/fonts/dejavu-sans-subset.js";
-const SANITIZER = "pioneer-school/js/export/pdfExport.js";
-
-/**
- * Диапазоны субсета. Менять здесь — и сразу же в `_sanitizeForFont()`.
- *   ASCII            — латиница, цифры, базовые знаки
- *   Latin-1 Suppl.   — ä ö ü ß é à ç ñ « » и т.д. (de, en, es)
- *   Latin Extended-A — ł ż ą ę ś ć ń ź ő ū (pl, и запас на остальные)
- *   Cyrillic         — весь блок целиком: ru + uk (і ї є ґ) + запас
- *   пунктуация       — тире, кавычки, многоточие, №
- */
-const RANGES = [
-  "U+0020-007E",
-  "U+00A0-00FF",
-  "U+0100-017F",
-  "U+0400-04FF",
-  "U+2013-2014",
-  "U+2018-201E",
-  "U+2026",
-  "U+2116",
+const SRC = process.env.NOTO_SRC || "./package";
+const EXPECTED_VERSION = "Version 2.015";
+const STYLES = [
+  ["400Regular", "regular", "PDF_FONT_NOTO_SANS"],
+  ["700Bold", "bold", "PDF_FONT_NOTO_SANS_BOLD"],
+  ["400Regular_Italic", "italic", "PDF_FONT_NOTO_SANS_ITALIC"],
+  ["700Bold_Italic", "bolditalic", "PDF_FONT_NOTO_SANS_BOLDITALIC"],
 ];
+/**
+ *   ASCII, Latin-1, Latin Extended-A/B — de, en, pl и запас (ș ț и т.п.)
+ *   Cyrillic          — весь блок: ru, uk (і ї є ґ) и запас
+ *   General Punctuation — тире, кавычки, многоточие, неразрывные пробелы
+ *   € ₴ ₽ № ™ −
+ */
+const RANGES = ["U+0020-007E", "U+00A0-024F", "U+0400-04FF", "U+2000-206F", "U+20AC", "U+20B4", "U+20BD", "U+2116", "U+2122", "U+2212"];
 
 const tmp = mkdtempSync(join(tmpdir(), "cw-pdffont-"));
-const ttf = join(tmp, "subset.ttf");
-
-// Шаг 1 — сверить версию исходника: молчаливый сдвиг метрик хуже, чем падение.
 const checkSrc = `
 import sys
 from fontTools.ttLib import TTFont
@@ -78,62 +61,35 @@ f = TTFont(sys.argv[1])
 v = f["name"].getDebugName(5)
 if v != sys.argv[2]:
     sys.exit("Исходный шрифт %r, ожидался %r — метрики могут разойтись" % (v, sys.argv[2]))
-print("исходник:", v, "unitsPerEm:", f["head"].unitsPerEm)
 `;
-execFileSync("python3", ["-c", checkSrc, SRC, EXPECTED_VERSION], { stdio: "inherit" });
-
-// Шаг 2 — собственно субсет.
-execFileSync(
-  "pyftsubset",
-  [
-    SRC,
-    `--output-file=${ttf}`,
-    `--unicodes=${RANGES.join(",")}`,
-    "--no-hinting",
-    "--desubroutinize",
-    "--drop-tables+=DSIG",
-  ],
-  { stdio: "inherit" },
-);
-
-// Шаг 3 — проверка: контрольные буквы всех пяти языков должны быть в cmap.
 const checkOut = `
 import sys
 from fontTools.ttLib import TTFont
 f = TTFont(sys.argv[1])
 cmap = set(f.getBestCmap())
-probes = "łżąęśćńóźäöüßÄÖÜéàçñіїєґйщыэ№«»—…"
+probes = "łżąęśćńóźäöüßÄÖÜéàçñіїєґйщыэ№«»—…“”„’"
 missing = [c for c in probes if ord(c) not in cmap]
 if missing:
     sys.exit("В субсете нет глифов: " + " ".join(missing))
-print("глифов в субсете:", len(cmap))
+print("  глифов:", len(cmap))
 `;
-execFileSync("python3", ["-c", checkOut, ttf], { stdio: "inherit" });
 
-// Шаг 4 — записать как base64 в JS-обёртку (комментарий шапки сохраняем).
-const b64 = readFileSync(ttf).toString("base64");
-writeFileSync(
-  OUT,
-  [
-    "// Шрифт DejaVu Sans, урезанный (scripts/build-pdf-font-subset.mjs) до",
-    "// ASCII + Latin-1 Supplement + Latin Extended-A + всей кириллицы + пунктуации.",
-    "// Источник: DejaVuSans.ttf 2.37 (свободная лицензия, Bitstream Vera/DejaVu).",
-    "// Используется для встраивания в плоские PDF-бланки, где нужен настоящий",
-    "// (не растровый) текст на ru/uk/en/pl/de.",
-    "//",
-    "// НЕ ПРАВИТЬ РУКАМИ: пересобирается скриптом. Расширяя набор глифов, синхронно",
-    "// расширить whitelist в _sanitizeForFont() — иначе новые буквы станут дефисами.",
-    `window.PDF_FONT_DEJAVU_SANS = "${b64}";`,
+for (const [dir, name, global] of STYLES) {
+  const src = join(SRC, dir, `NotoSans_${dir}.ttf`);
+  const ttf = join(tmp, `${name}.ttf`);
+  const out = `shared/fonts/noto-sans-pdf-${name}.js`;
+  execFileSync("python3", ["-c", checkSrc, src, EXPECTED_VERSION], { stdio: "inherit" });
+  execFileSync("pyftsubset", [src, `--output-file=${ttf}`, `--unicodes=${RANGES.join(",")}`,
+    "--no-hinting", "--desubroutinize", "--drop-tables+=DSIG,GPOS,GSUB,GDEF", "--layout-features="], { stdio: "inherit" });
+  execFileSync("python3", ["-c", checkOut, ttf], { stdio: "inherit" });
+  const b64 = readFileSync(ttf).toString("base64");
+  writeFileSync(out, [
+    `// Noto Sans ${name} (${EXPECTED_VERSION}), урезанный scripts/build-pdf-font-subset.mjs`,
+    "// до латиницы (до Latin Extended-B), кириллицы и пунктуации. Лицензия SIL OFL 1.1",
+    "// (shared/fonts/OFL-NotoSans.txt). Встраивается в PDF всех модулей.",
+    "// НЕ ПРАВИТЬ РУКАМИ: пересобирается скриптом.",
+    `window.${global} = "${b64}";`,
     "",
-  ].join("\n"),
-);
-
-// Шаг 5 — предупредить, если санитайзер отстал от шрифта.
-const sanitizer = readFileSync(SANITIZER, "utf8");
-for (const needed of ["\\u00A0-\\u017F", "\\u0400-\\u04FF", "\\u2116"]) {
-  if (!sanitizer.includes(needed)) {
-    console.warn(`ВНИМАНИЕ: в _sanitizeForFont() нет диапазона ${needed} — новые глифы не дойдут до PDF`);
-  }
+  ].join("\n"));
+  console.log(`готово: ${out}, ${statSync(out).size} байт`);
 }
-
-console.log(`готово: ${OUT}, ${statSync(OUT).size} байт (ttf ${statSync(ttf).size} байт)`);

@@ -8,16 +8,15 @@
 |---|---:|---|
 | `js/app.js` | 67 КБ | целиком допустимо |
 | `i18n/dict.js` | 141 КБ | только `grep` по ключу |
-| `../shared/fonts/dejavu-sans-subset.js` | 70 КБ | **не открывать** — base64 |
-| `js/export/fonts/dejavu-form-b64.js` | 93 КБ | **не открывать** — base64 |
+| `../shared/fonts/noto-sans-pdf-*.js` | ~90 КБ | **не открывать** — base64 |
 
 ## Особенности модуля
 
 - **Версия в ДВУХ местах**: `js/app.js` и `sw.js` (`APP_VERSION`). Обе поднимать
   вместе, иначе `check-versions.mjs` завалит гейт.
 - Cache-first: правка `shared/*` требует патч-бампа.
-- Шрифт — субсет DejaVu Sans, 586 глифов, пересобирается
-  `scripts/build-pdf-font-subset.mjs` из DejaVu 2.37. **Урезанный шрифт молча
+- Шрифт PDF — субсет Noto Sans (общий для всех модулей, Ф6), 900 глифов,
+  пересобирается `scripts/build-pdf-font-subset.mjs`. **Урезанный шрифт молча
   обрезает строку** на символе вне субсета — см. `docs/journal/traps.md`.
 - Интерактивные PDF-формы с кириллицей — только через pdf-lib, не jsPDF.
 - «Язык документа» (`shared/doclang.js`) подключён целиком с v1.9.0.

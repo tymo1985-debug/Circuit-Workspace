@@ -12,7 +12,7 @@
  * Выбирается самый просторный уровень, при котором всё ещё помещается
  * на одну страницу — и только затем формируется финальный документ.
  *
- * Используется встроенный TTF-шрифт Aptos (поддерживает кириллицу
+ * Используется встроенный TTF-шрифт Noto Sans (общий шрифт PDF; кириллица
  * и немецкие умляуты), чтобы русский, украинский и немецкий текст
  * корректно отображался в PDF без "квадратиков" вместо букв.
  *
@@ -32,7 +32,7 @@
   const WHITE = [255, 255, 255];
   const TEXT_DARK = [30, 34, 44];
 
-  const FONT_NAME = 'Aptos';
+  const FONT_NAME = 'NotoSans';
 
   /** Полчасовые интервалы 08:00–20:00 — те же подсказки, что и в интерфейсе. */
   const SERVICE_TIME_OPTIONS = (() => {
@@ -105,14 +105,14 @@
 
   /** Регистрирует встроенный кириллический шрифт в jsPDF (нужно на каждый экземпляр документа). */
   function registerFonts(doc) {
-    if (!window.APTOS_REGULAR_B64 || !window.APTOS_BOLD_B64) {
-      console.warn('Шрифт Aptos не найден — кириллица может отображаться некорректно.');
+    if (!window.PDF_FONT_NOTO_SANS || !window.PDF_FONT_NOTO_SANS_BOLD) {
+      console.warn('Шрифт Noto Sans не найден — кириллица может отображаться некорректно.');
       return;
     }
-    doc.addFileToVFS('Aptos.ttf', window.APTOS_REGULAR_B64);
-    doc.addFont('Aptos.ttf', FONT_NAME, 'normal');
-    doc.addFileToVFS('Aptos-Bold.ttf', window.APTOS_BOLD_B64);
-    doc.addFont('Aptos-Bold.ttf', FONT_NAME, 'bold');
+    doc.addFileToVFS('NotoSans.ttf', window.PDF_FONT_NOTO_SANS);
+    doc.addFont('NotoSans.ttf', FONT_NAME, 'normal');
+    doc.addFileToVFS('NotoSans-Bold.ttf', window.PDF_FONT_NOTO_SANS_BOLD);
+    doc.addFont('NotoSans-Bold.ttf', FONT_NAME, 'bold');
     doc.setFont(FONT_NAME, 'normal');
   }
 

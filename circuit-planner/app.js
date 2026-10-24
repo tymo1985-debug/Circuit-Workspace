@@ -254,14 +254,14 @@
      */
     pdf: {
       FONTS: [
-        'fonts/fonts-aptos-regular.js',
-        'fonts/fonts-aptos-bold.js',
-        'fonts/fonts-aptos-italic.js',
-        'fonts/fonts-aptos-bolditalic.js',
+        '../shared/fonts/noto-sans-pdf-regular.js',
+        '../shared/fonts/noto-sans-pdf-bold.js',
+        '../shared/fonts/noto-sans-pdf-italic.js',
+        '../shared/fonts/noto-sans-pdf-bolditalic.js',
       ],
       SETS: {
         /* Письмо и «просто текст на бумаге»: jsPDF, таблицы, все четыре
-           начертания Aptos. */
+           начертания Noto Sans (общий шрифт PDF, Ф6 визуального аудита). */
         letter: [
           '../shared/vendor/jspdf.umd.min.js',
           '../shared/vendor/jspdf.plugin.autotable.min.js',
@@ -3513,14 +3513,15 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         if (!window.jspdf) { App.utils.toast(App.utils.t('pdf_not_loaded')); return null; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-        const FONT = 'Aptos';
-        if (window.APTOS_REGULAR_B64) { doc.addFileToVFS('Aptos.ttf', window.APTOS_REGULAR_B64); doc.addFont('Aptos.ttf', FONT, 'normal'); }
-        if (window.APTOS_BOLD_B64) { doc.addFileToVFS('Aptos-Bold.ttf', window.APTOS_BOLD_B64); doc.addFont('Aptos-Bold.ttf', FONT, 'bold'); }
-        if (window.APTOS_ITALIC_B64) { doc.addFileToVFS('Aptos-Italic.ttf', window.APTOS_ITALIC_B64); doc.addFont('Aptos-Italic.ttf', FONT, 'italic'); }
-        if (window.APTOS_BOLDITALIC_B64) { doc.addFileToVFS('Aptos-BoldItalic.ttf', window.APTOS_BOLDITALIC_B64); doc.addFont('Aptos-BoldItalic.ttf', FONT, 'bolditalic'); }
-        const hasRealBold = !!window.APTOS_BOLD_B64;
-        const hasRealItalic = !!window.APTOS_ITALIC_B64;
-        const hasRealBoldItalic = !!window.APTOS_BOLDITALIC_B64;
+        // Общий шрифт PDF — Noto Sans (shared/fonts/noto-sans-pdf-*.js, Ф6).
+        const FONT = 'NotoSans';
+        if (window.PDF_FONT_NOTO_SANS) { doc.addFileToVFS('NotoSans.ttf', window.PDF_FONT_NOTO_SANS); doc.addFont('NotoSans.ttf', FONT, 'normal'); }
+        if (window.PDF_FONT_NOTO_SANS_BOLD) { doc.addFileToVFS('NotoSans-Bold.ttf', window.PDF_FONT_NOTO_SANS_BOLD); doc.addFont('NotoSans-Bold.ttf', FONT, 'bold'); }
+        if (window.PDF_FONT_NOTO_SANS_ITALIC) { doc.addFileToVFS('NotoSans-Italic.ttf', window.PDF_FONT_NOTO_SANS_ITALIC); doc.addFont('NotoSans-Italic.ttf', FONT, 'italic'); }
+        if (window.PDF_FONT_NOTO_SANS_BOLDITALIC) { doc.addFileToVFS('NotoSans-BoldItalic.ttf', window.PDF_FONT_NOTO_SANS_BOLDITALIC); doc.addFont('NotoSans-BoldItalic.ttf', FONT, 'bolditalic'); }
+        const hasRealBold = !!window.PDF_FONT_NOTO_SANS_BOLD;
+        const hasRealItalic = !!window.PDF_FONT_NOTO_SANS_ITALIC;
+        const hasRealBoldItalic = !!window.PDF_FONT_NOTO_SANS_BOLDITALIC;
         doc.setFont(FONT, 'normal');
         const margin = 54, pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
         const bottomLimit = pageH - margin - 16;
@@ -4276,13 +4277,13 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
           const bytes = Uint8Array.from(atob(window.S302_FORM_B64), (c) => c.charCodeAt(0));
           const pdfDoc = await window.PDFLib.PDFDocument.load(bytes);
           // The form's own built-in field font has no Cyrillic glyphs — text typed into its fields
-          // would render as blank boxes. Embed the same Aptos font used elsewhere in the app so the
+          // would render as blank boxes. Embed the same Noto Sans font used elsewhere in the app so the
           // filled-in text (Ukrainian/Russian names, dates) actually displays correctly.
           let customFont = null;
-          if (window.fontkit && window.APTOS_REGULAR_B64) {
+          if (window.fontkit && window.PDF_FONT_NOTO_SANS) {
             try {
               pdfDoc.registerFontkit(window.fontkit);
-              const fontBytes = Uint8Array.from(atob(window.APTOS_REGULAR_B64), (c) => c.charCodeAt(0));
+              const fontBytes = Uint8Array.from(atob(window.PDF_FONT_NOTO_SANS), (c) => c.charCodeAt(0));
               customFont = await pdfDoc.embedFont(fontBytes, { subset: true });
             } catch (err) { console.warn(App.utils.t('s302_font_failed'), err); }
           }

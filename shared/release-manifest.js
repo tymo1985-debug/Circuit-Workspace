@@ -1,13 +1,13 @@
 self.CW_RELEASE = {
-  version: '0.46.0',
+  version: '0.47.0',
   changes: [
-    { module: 'hub', version: '0.46.0', note: 'Блок «Сегодня»: идущее или ближайшее посещение и ближайший конгресс; в шапке одна кнопка «Настройки»' },
-    { module: 'circuit-planner', version: '9.121.0', note: 'Ближайшие посещения показываются на главной хаба' },
-    { module: 'congress-project', version: '4.52.0', note: 'Ближайший конгресс показывается на главной хаба' },
-    { module: 'pioneer-school', version: '1.17.1', technical: true },
-    { module: 'appointments', version: '5.5.212', technical: true },
-    { module: 'documents', version: '1.13.1', technical: true },
-    { module: 'journal', version: '0.30.15', technical: true },
-    { module: 'archive', version: '0.4.7', technical: true },
+    { module: 'hub', version: '0.47.0', note: 'Один шрифт во всём приложении и на бумаге — Noto Sans' },
+    { module: 'circuit-planner', version: '9.122.0', note: 'Письма, формуляр визита и S-302 — шрифтом Noto Sans' },
+    { module: 'pioneer-school', version: '1.18.0', note: 'Бланки, списки и письма — шрифтом Noto Sans' },
+    { module: 'congress-project', version: '4.53.0', note: 'Письма в PDF — шрифтом Noto Sans с настоящим жирным' },
+    { module: 'documents', version: '1.14.0', note: 'Предпросмотр документа — лист A4' },
+    { module: 'appointments', version: '5.6.0', note: 'Письмо — лист A4 тем же шрифтом, что и всё приложение' },
+    { module: 'journal', version: '0.30.16', technical: true },
+    { module: 'archive', version: '0.4.8', technical: true },
   ],
 };
