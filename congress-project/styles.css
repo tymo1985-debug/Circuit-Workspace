@@ -116,9 +116,12 @@ label.icon-text-btn {
   border-radius: var(--md-radius-md);
   white-space: pre-wrap
 }
+/* clip, а не hidden: hidden делает html/body контейнером прокрутки, и
+   position:sticky шапки начинал отсчитываться от body — шапка уезжала
+   вместе с программой (визуальный аудит 24.10.2026, Д1). */
 html, body {
   max-width: 100%;
-  overflow-x: hidden
+  overflow-x: clip
 }
 .layout {
   display: grid;
@@ -134,10 +137,12 @@ html, body {
   padding: 16px;
   min-width: 0
 }
+/* Колонка ниже шапки на высоту окна МИНУС поля .layout (16 + 16): без
+   вычета пустой экран прокручивался на 32 px (визуальный аудит, Д6). */
 .sidebar {
-  height: calc(100vh - var(--cw-topbar-h));
+  height: calc(100vh - var(--cw-topbar-h) - 32px);
   position: sticky;
-  top: var(--cw-topbar-h);
+  top: calc(var(--cw-topbar-h) + 16px);
   overflow: auto
 }
 .workspace {
@@ -1197,7 +1202,7 @@ dialog {
      <dialog> нет собственного width/max-width НИГДЕ в этом файле — только у
      его ребёнка .modal (width:96vw). <dialog> рендерится в top layer браузера
      со своим отдельным алгоритмом авто-размера, не как обычный блочный
-     потомок страницы; html,body{overflow-x:hidden} на него не действует,
+     потомок страницы; html,body{overflow-x:clip} на него не действует,
      поэтому если авто-ширина диалога не совпадает 1-в-1 с шириной .modal на
      конкретной версии WebView/Chrome, диалог остаётся без внешнего потолка
      вообще. vw — всегда от viewport, не от родителя, поэтому это жёсткая
@@ -2310,10 +2315,22 @@ body.cong-empty .mobile-fab { display: none !important }
 /* Холст в цвет body: при коротком содержимом низ экрана на телефоне был
    цвета html (--md-surface) — светлая полоса под страницей (аудит 08, п.14). */
 html:root { background: var(--md-surface-container); }
-/* body не ниже экрана: html и body с overflow-x:hidden делают body
-   прокручиваемым контейнером, и всё, что выходит за его нижний край
-   (меню «⋮» на коротком экране), обрезалось. */
+/* body не ниже экрана: при прежнем overflow-x:hidden body был
+   прокручиваемым контейнером, и всё, что выходило за его нижний край
+   (меню «⋮» на коротком экране), обрезалось. С clip это не грозит, но
+   короткий экран по-прежнему должен закрашиваться цветом body. */
 body { min-height: 100vh; min-height: 100dvh; }
 /* «Импорт JSON» — <label> (внутри file-input), общее правило label ставило
    его колонкой: иконка над подписью. В меню — строкой, как остальные пункты. */
 label.md-menu__item { flex-direction: row; font-weight: 400; color: var(--md-on-surface) }
+
+/* Лист «Письмо — настройки и шаблон»: на телефоне общая лента .actions
+   прокручивается вбок без полосы, и «Сбросить письмо» оказывался за правым
+   краем листа (визуальный аудит 24.10.2026, Д2). Здесь кнопок три —
+   переносим их строками. */
+.settings-dialog-body .actions {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  margin: 0;
+  padding: 0
+}

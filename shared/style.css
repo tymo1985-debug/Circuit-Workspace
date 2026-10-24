@@ -598,7 +598,11 @@ body.cw-root {
 .md-field label {
   position: absolute; left: 12px; top: 18px;
   padding: 0 4px;
-  background: var(--md-surface);
+  /* В покое подпись лежит внутри поля и фон ей не нужен: залитая
+     --md-surface, она рисовала плашку на экранах с фоном
+     surface-container (визуальный аудит 24.10.2026, Д3). Фон нужен только
+     поднятой подписи — он перекрывает рамку поля. */
+  background: transparent;
   color: var(--md-on-surface-variant);
   font: 400 16px/16px var(--md-font-family);
   transition: all var(--md-dur-short) var(--md-ease-standard);
@@ -613,6 +617,7 @@ body.cw-root {
 .md-field input:not(:placeholder-shown) ~ label,
 .md-field textarea:focus ~ label,
 .md-field textarea:not(:placeholder-shown) ~ label {
+  background: var(--md-surface);
   top: -8px; font-size: 12px; line-height: 16px; letter-spacing: 0.4px;
 }
 .md-field input:focus ~ label, .md-field textarea:focus ~ label { color: var(--md-primary); }
