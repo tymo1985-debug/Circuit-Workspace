@@ -23,7 +23,7 @@
 }
 body {
   margin: 0;
-  background: var(--md-surface-container);
+  background: var(--md-surface);
   color: var(--md-on-surface);
   font: 400 14px/20px var(--md-font-family);
   letter-spacing: .25px
@@ -2312,9 +2312,9 @@ body.cong-empty .table-wrap,
 body.cong-empty #congressSettingsBtn,
 body.cong-empty .mobile-fab { display: none !important }
 
-/* Холст в цвет body: при коротком содержимом низ экрана на телефоне был
-   цвета html (--md-surface) — светлая полоса под страницей (аудит 08, п.14). */
-html:root { background: var(--md-surface-container); }
+/* Холст и body одного цвета — --md-surface из общего слоя (визуальный
+   аудит 24.10.2026, Ф1), поэтому отдельное правило для html не нужно
+   (прежняя светлая полоса под страницей — аудит 08, п.14). */
 /* body не ниже экрана: при прежнем overflow-x:hidden body был
    прокручиваемым контейнером, и всё, что выходило за его нижний край
    (меню «⋮» на коротком экране), обрезалось. С clip это не грозит, но

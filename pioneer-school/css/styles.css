@@ -18,7 +18,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--md-surface-container);
+  background: var(--md-surface);
   color: var(--md-on-surface);
   font-family: var(--md-font-family);
   -webkit-font-smoothing: antialiased;
@@ -136,7 +136,9 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 
 .panel {
-  background: var(--md-surface-container-lowest);
+  /* Карточка — на ступень выше фона (Ф1). lowest в тёмной теме темнее
+     фона: панели и счётчики проваливались почти в чёрный. */
+  background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
   border-radius: var(--md-radius-md);
   padding: 20px 22px;
@@ -177,7 +179,7 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 
 .stat-card {
-  background: var(--md-surface-container-lowest);
+  background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
   border-radius: var(--md-radius-md);
   padding: 18px;

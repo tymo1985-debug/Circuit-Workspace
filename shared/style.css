@@ -97,11 +97,13 @@ html {
   background: var(--md-surface);
   overscroll-behavior-y: none;
 }
-/* Модули с оболочкой .md-shell красят холст в её цвет: при растяжении
-   (Android overscroll stretch) у низа/боков виден фон html, и он обязан
-   совпадать с оболочкой и нижней навигацией, иначе видна светлая полоса. */
-html:has(body > .md-shell) { background: var(--md-surface-container); }
-body.cw-root:has(> .md-shell) { background: var(--md-surface-container); }
+/* Фон экрана во всех модулях — --md-surface (визуальный аудит 24.10.2026,
+   Ф1): карточка на ступень выше (surface-container-low), лист и диалог —
+   ещё выше. Раньше шесть модулей стояли на surface-container, и в тёмной
+   теме карточки оказывались темнее фона. Отдельные правила для холста
+   под .md-shell больше не нужны: html, body и оболочка одного цвета, и при
+   растяжении (Android overscroll stretch) полосы не видно. */
+body { margin: 0; }
 
 body.cw-root {
   margin: 0;
@@ -909,7 +911,7 @@ body.cw-root {
      этот минимум — потомки обязаны ужиматься сами. Профилактика: на текущей
      раскладке ни один модуль этот предел не пробивает. */
   grid-template-columns: minmax(0, 1fr);
-  background: var(--md-surface-container);
+  background: var(--md-surface);
   color: var(--md-on-surface);
   font-family: var(--md-font-family);
 }
@@ -933,6 +935,9 @@ body.cw-root {
   position: sticky;
   top: 0;
   z-index: var(--cw-z-topbar);
+  /* Не сжиматься: у Клиндария body — flex-колонка, и шапка ужималась до
+     51 px, а measureTopbarHeight() закреплял сжатую высоту в --cw-topbar-h. */
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: var(--cw-space-3);

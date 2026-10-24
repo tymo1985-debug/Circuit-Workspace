@@ -14,7 +14,7 @@
  * и при подключении через importScripts() в service worker'е — поэтому один
  * и тот же файл можно безопасно подключать в обоих местах.
  */
-self.CW_VERSION = '0.45.1';
+self.CW_VERSION = '0.45.2';
 
 /**
  * Реестр модулей хаба.
@@ -35,15 +35,15 @@ self.CW_VERSION = '0.45.1';
 // module.<id>.title (shared/i18n/common.js) и существует ровно там —
 // в одном месте и для плитки хаба, и для шапки самого модуля.
 self.CW_MODULES = {
-  'congress-project': { title: 'Конгрессы', version: '4.51.2', worker: 'congress-project/service-worker.js' },
-  'circuit-planner':  { title: 'Клиндарий', version: '9.119.3', worker: 'circuit-planner/sw.js' },
-  'pioneer-school':   { title: 'Школа пионеров', version: '1.16.3', worker: 'pioneer-school/sw.js' },
-  'appointments':     { title: 'Назначения', version: '5.5.207', worker: 'appointments/sw.js' },
-  'documents':        { title: 'Документы и данные', version: '1.12.79', worker: 'documents/sw.js' },
+  'congress-project': { title: 'Конгрессы', version: '4.51.3', worker: 'congress-project/service-worker.js' },
+  'circuit-planner':  { title: 'Клиндарий', version: '9.119.4', worker: 'circuit-planner/sw.js' },
+  'pioneer-school':   { title: 'Школа пионеров', version: '1.16.4', worker: 'pioneer-school/sw.js' },
+  'appointments':     { title: 'Назначения', version: '5.5.208', worker: 'appointments/sw.js' },
+  'documents':        { title: 'Документы и данные', version: '1.12.80', worker: 'documents/sw.js' },
   /* Журнал — J1–J9 завершены; J-Final держит security/session-инварианты,
      интеграции и финальную приёмку. Правила — journal/AGENTS.md. */
-  'journal':          { title: 'Журнал', version: '0.30.10', worker: 'journal/sw.js' },
+  'journal':          { title: 'Журнал', version: '0.30.11', worker: 'journal/sw.js' },
   /* Архив — шаг A2 трека «Архив» (05.10.2026): страница просмотра конвертов
      служебных годов и конгрессов. Правила — archive/AGENTS.md. */
-  'archive':          { title: 'Архив', version: '0.4.2', worker: 'archive/sw.js' },
+  'archive':          { title: 'Архив', version: '0.4.3', worker: 'archive/sw.js' },
 };

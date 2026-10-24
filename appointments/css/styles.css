@@ -16,7 +16,7 @@
 
 body {
   margin: 0;
-  background: var(--md-surface-container);
+  background: var(--md-surface);
   color: var(--md-on-surface);
   font: 400 14px/20px var(--md-font-family);
 }
