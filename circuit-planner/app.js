@@ -4398,7 +4398,7 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
             <div>
               <strong>${App.utils.escapeHtml(event.name)}</strong>
               <div class="small">${App.utils.escapeHtml(event.schedule || App.utils.t('no_schedule'))}</div>
-              <div class="small">${event.address ? `<a href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${App.utils.escapeHtml(event.address)}</a>` : App.utils.escapeHtml(App.utils.t('no_address'))}</div>
+              <div class="small">${event.address ? `<a href="${App.utils.mapUrl(event.address)}" target="_blank" rel="noopener noreferrer">${App.utils.escapeHtml(event.address)}</a>` : App.utils.escapeHtml(App.utils.t('no_address'))}</div>
               ${contactLine}
             </div>
             <div class="pill-row${isCard ? '' : ''}" style="${isCard ? 'display:flex;gap:8px;flex-wrap:wrap' : 'display:grid;gap:8px;justify-items:end'}">
@@ -4454,7 +4454,10 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
         }
         if (App.els.eventsViewListBtn) { App.els.eventsViewListBtn.textContent = App.utils.t('events_view_list'); App.els.eventsViewListBtn.setAttribute('aria-pressed', String(viewMode === 'list')); App.els.eventsViewListBtn.classList.toggle('md-btn-filled', viewMode === 'list'); App.els.eventsViewListBtn.classList.toggle('md-btn-outlined', viewMode !== 'list'); }
         if (App.els.eventsViewCardsBtn) { App.els.eventsViewCardsBtn.textContent = App.utils.t('events_view_cards'); App.els.eventsViewCardsBtn.setAttribute('aria-pressed', String(viewMode === 'cards')); App.els.eventsViewCardsBtn.classList.toggle('md-btn-filled', viewMode === 'cards'); App.els.eventsViewCardsBtn.classList.toggle('md-btn-outlined', viewMode !== 'cards'); }
-        document.querySelectorAll('[data-edit-event]').forEach((btn) => btn.addEventListener('click', () => {
+        /* Ссылка внутри строки (адрес на карте) открывает свою вкладку, а не
+           редактор. Раньше это делал inline onclick, который запрещает CSP. */
+        document.querySelectorAll('[data-edit-event]').forEach((btn) => btn.addEventListener('click', (e) => {
+          if (e.target.closest('a')) return;
           App.actions.openEventEditorFor(btn.dataset.editEvent);
         }));
       },

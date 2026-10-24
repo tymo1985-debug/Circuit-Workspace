@@ -19,6 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { hubSource } from './lib/hub-source.mjs';
 
 let JSDOM;
 try { ({ JSDOM } = await import('jsdom')); } catch (e) {
@@ -26,7 +27,7 @@ try { ({ JSDOM } = await import('jsdom')); } catch (e) {
 }
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const HTML = hubSource(ROOT);
 const m = HTML.match(/\/\* HUB-ORDER:BEGIN[\s\S]*?\/\* HUB-ORDER:END \*\//);
 if (!m) { console.log('FAIL: блок HUB-ORDER не найден в index.html'); process.exit(1); }
 const BLOCK = m[0];

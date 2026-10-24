@@ -23,6 +23,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import vm from 'node:vm';
+import { hubSource } from './lib/hub-source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = readFileSync(join(ROOT, 'shared/update.js'), 'utf8')
@@ -32,7 +33,7 @@ const SRC = readFileSync(join(ROOT, 'shared/update.js'), 'utf8')
   .replace('var ACTIVATE_TIMEOUT_MS = 6000;', 'var ACTIVATE_TIMEOUT_MS = 500;')
   .replace('var VERIFY_TIMEOUT_MS = 10000;', 'var VERIFY_TIMEOUT_MS = 240;')
   .replace('var VERIFY_POLL_MS = 250;', 'var VERIFY_POLL_MS = 10;');
-const HUB = readFileSync(join(ROOT, 'index.html'), 'utf8');
+const HUB = hubSource(ROOT);
 
 let failed = 0;
 const ok = (label, cond, extra) => {

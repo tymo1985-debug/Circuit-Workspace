@@ -21,6 +21,8 @@ const CACHE_NAME = CACHE_PREFIX + self.CW_VERSION;
 const SHELL_FILES = [
   './',
   './index.html',
+  './hub.js',
+  './hub.css',
   './manifest.json',
   './shared/style.css',
   './shared/db.js',

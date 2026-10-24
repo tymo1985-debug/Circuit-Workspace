@@ -31,7 +31,7 @@ const PdfImport = {
     };
 
     const buf = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    const pdf = await window.pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
 
     const allRows = [];
     const verticalLines = [];

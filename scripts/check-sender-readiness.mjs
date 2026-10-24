@@ -20,6 +20,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { hubSource } from './lib/hub-source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -82,7 +83,7 @@ console.log('\nCircuit Planner и Конгрессы: adopt() call site (C2 — 
 /* ── 8/9. Хаб как писатель, все 6 оболочек wired ─────────────────────────── */
 console.log('\nВсе 6 оболочек: sender подключён и wired на готовность');
 {
-  const hub = read('index.html');
+  const hub = hubSource(ROOT);
   ok('хаб пишет sender (CWSender.set) — учтён как 6-й consumer/writer',
     /CWSender\.set\(patch\)/.test(hub));
   /* Форма вызова допускает защиту совместимости: старый sender без ready()
@@ -180,7 +181,7 @@ console.log('\nЗащита апгрейда со смешанным кэшем'
 {
   /* A. Новый потребитель не должен падать, встретив pre-C1 sender без ready(). */
   const consumers = [
-    ['хаб', 'index.html'],
+    ['хаб', 'hub.js'],
     ['Клиндарий', 'circuit-planner/app.js'],
     ['Конгрессы', 'congress-project/js/main.js'],
     ['Школа', 'pioneer-school/js/app.js'],

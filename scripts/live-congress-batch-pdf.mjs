@@ -40,6 +40,9 @@ await page.evaluate(async()=>{
   state.newC("Live Congress","Prague","2026-10-10",tasks);
   state.store.st.settings.font="Georgia, serif";state.store.st.settings.fontSize="18";
   state.flushNow("live-batch-test");
+  /* Конгресс заведён мимо интерфейса — перерисовать, иначе остаётся пустое
+     состояние «Создайте первый конгресс» и меню печати скрыто (аудит 08, п.1). */
+  (await import("./js/render.js")).render();
 });
 
 await page.evaluate(()=>{self.showDirectoryPicker=async()=>({getFileHandle:async name=>({createWritable:async()=>{let bytes=[];return{write(data){bytes=Array.from(data)},close(){return self.__liveWritePdf(name,bytes)},abort(){bytes=[]}}}})})});

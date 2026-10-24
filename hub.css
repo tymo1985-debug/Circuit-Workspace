@@ -1,0 +1,908 @@
+/* Circuit Workspace — hub.css
+   Стили главной страницы хаба. Вынесены из inline <style> index.html ради
+   Content-Security-Policy (CSP, 24.10.2026): общая политика страниц не
+   разрешает inline-скрипты, а стилям хаба отдельный файл даёт кэш и порядок. */
+/* Шапка (вариант C, 28.09.2026): логотип и три круглые иконки. Заголовок
+   и подзаголовок остаются в DOM для скринридера, визуально их заменяет
+   строка статуса над сеткой (.cw-mhead); версия ушла в её мета-строку. */
+.cw-hub-header {
+  position: relative;
+  z-index: 1;
+  padding: 28px 0 8px;
+}
+.cw-hub-header h1, .cw-hub-header p, .cw-hub-header .cw-version {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.cw-hub-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cw-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cw-logo__mark {
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+}
+.cw-logo__text {
+  font-family: var(--md-font-family);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.cw-logo__text span { color: var(--md-primary); }
+/* --- Переключатель языка -------------------------------------------
+   Нативный <select>: на мобильных он открывает системный список выбора,
+   который удобнее и доступнее любого самописного меню. Стилизуем только
+   оболочку, стрелку рисуем сами (штатная стрелка не наследует цвет). */
+/* Ряд инструментов не помещался на узком экране: два селекта, кнопка
+   проверки обновлений и плашка версии в сумме шире 320-360px, а ряд не
+   переносился — правый край (версия) уезжал за пределы экрана и был
+   недоступен. Перенос строк + прижатие вправо: содержимое больше не
+   обрезается ни при какой ширине, а блок остаётся на своей стороне шапки. */
+.cw-hub-header__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+/* Иконки без текста: круглая кнопка с одной иконкой (глобус / солнце),
+   значение видно только в открытом системном списке — сам select
+   закрашивает текст в прозрачный, а <option> красится отдельно (ниже),
+   так что в нативном меню варианты по-прежнему читаемы. Стрелка убрана —
+   это уже не «поле с выбором», а иконка-кнопка. */
+.cw-lang {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cw-lang__icon {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px; height: 16px;
+  pointer-events: none;
+  color: var(--md-outline);
+}
+.cw-lang__select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 32px; height: 32px;
+  padding: 0;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 999px;
+  background: var(--md-surface-container);
+  color: transparent;
+  text-align: center;
+  text-indent: -9999px;
+  font: 500 12px/16px var(--md-font-family);
+  cursor: pointer;
+}
+.cw-lang__select:hover { border-color: var(--md-primary); }
+.cw-lang__select:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 2px;
+}
+/* Список опций рисует ОС — на тёмном фоне системная палитра может дать
+   белый текст на белом. Задаём цвета явно; text-indent/color родителя на
+   <option> не наследуется в открытом системном списке. */
+.cw-lang__select option { background: var(--md-surface-container-low); color: var(--md-on-surface); text-indent: 0; }
+
+/* --- Кнопка проверки обновлений ------------------------------------
+   Заменяет Shift+Cmd+R и обход всех модулей по очереди: GitHub Pages —
+   один origin, поэтому со страницы хаба видны регистрации service worker'ов
+   всех четырёх модулей, и одна кнопка форсирует проверку каждому.
+   Геометрия совпадает с .cw-lang__select (высота 32, скругление 999),
+   чтобы блок инструментов читался одной линией. */
+.cw-update-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 999px;
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+  font: 500 12px/16px var(--md-font-family);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+.cw-update-btn:hover { border-color: var(--md-primary); }
+.cw-update-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+.cw-update-btn[disabled] { opacity: .6; cursor: progress; }
+.cw-update-btn__icon { width: 16px; height: 16px; color: var(--md-outline); }
+/* Вращение только на время проверки. prefers-reduced-motion уважаем:
+   статичная иконка + заблокированная кнопка сами по себе показывают,
+   что идёт работа. */
+.cw-update-btn[disabled] .cw-update-btn__icon { animation: cw-spin 1s linear infinite; }
+@keyframes cw-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cw-update-btn[disabled] .cw-update-btn__icon { animation: none; }
+}
+/* Подпись видна только скринридеру: кнопка — круглая иконка, как язык
+   и тема (вариант C). Доступное имя — aria-label. */
+.cw-update-btn__label { display: none; }
+@media (max-width: 560px) {
+  /* Логотип и инструменты уже не умещаются в одну строку: отдаём
+     инструментам отдельную строку целиком и выравниваем по правому краю. */
+  .cw-hub-header__tools { flex: 1 1 100%; }
+  /* Плашка версии раньше сама не помещалась в этот ряд рядом с двумя
+     select'ами и кнопкой обновления и уезжала на СВОЮ, третью строку —
+     шапка становилась заметно выше. Теперь оба select'а — иконки
+     фиксированной ширины (32px), текст не рисуется вовсе, так что ряд
+     (язык + тема + обновление + версия) остаётся на одной строке при
+     любой ширине от 320px без отдельного мобильного сужения. */
+  .cw-hub-header__tools { gap: 6px; }
+  .cw-lang__select, .cw-update-btn { min-width: 44px; min-height: 44px; }
+  .cw-update-btn { min-width: 44px; justify-content: center; }
+}
+
+/* --- Плата модулей (вариант C, 28.09.2026) ---
+   Декоративная шина (ствол, рёбра, площадки) снята: плитки стали
+   компактными и стоят одним рядом, линии больше ничего не соединяли.
+   Число колонок для широкого экрана ставит скрипт от числа плиток:
+   до шести модулей — все в один ряд, дальше — без ряда из одной плитки. */
+.cw-board {
+  position: relative;
+  /* Выше подвала (.cw-footer, z-index 1): иначе меню «⋮» копирования,
+     вылезающее за карточку, просвечивало текстом подвала. */
+  z-index: 2;
+  padding: 16px 0 64px;
+  --cw-gap: 14px;
+  --cw-row-gap: 14px;
+  --cw-cols: var(--cw-cols-wide, 6);
+}
+/* Ступени — от читаемой ширины компактной плитки (~150px). Ниже 600px
+   (блок телефона дальше по файлу) одна колонка; ступень «2 колонки» на
+   601–700px убрана 05.10.2026 — плитка в три колонки там ≥ 180px. */
+@media (max-width: 1000px) { .cw-board { --cw-cols: 3; } }
+
+/* --- Ярус ------------------------------------------------------------
+   Два яруса: рабочие модули (у каждого своя страница, своя версия, свой
+   service worker) и система (действия и настройки самого хаба, без своей
+   версии). Подпись рабочего яруса скрыта визуально — её роль играет
+   строка статуса над сеткой. */
+.cw-tier { position: relative; }
+.cw-tier--work { padding-bottom: 28px; }
+.cw-tier--work > .cw-tier__label {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.cw-tier__label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px;
+  font: 500 13px/20px var(--md-font-family);
+  letter-spacing: 0.5px;
+  color: var(--md-outline);
+}
+/* Подпись «Система» остаётся видимой: карточки там — не модули. */
+.cw-tier--system .cw-tier__label { margin-bottom: 10px; }
+.cw-tier__count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+/* Группы внутри рабочего яруса — точка расширения. Пока группа одна,
+   заголовок не рисуется (его просто нет в разметке); при семи и более
+   модулях добавляется второй .cw-group со своим .cw-group__label, и
+   каждая группа получает собственные рёбра от того же ствола. Стили
+   заголовка объявлены заранее, чтобы добавление группы было правкой
+   разметки, а не вёрстки. */
+.cw-group + .cw-group { margin-top: 32px; }
+.cw-group__label {
+  margin: 0 0 12px;
+  font: 500 14px/20px var(--md-font-family);
+  letter-spacing: 0.15px;
+  color: var(--md-on-surface-variant);
+}
+
+/* Системный ярус живёт на своей ступени колонок: карточки там широкие,
+   четыре в ряд им не нужны. Значение ставит скрипт от числа карточек
+   (сейчас одна → одна колонка), медиазапрос ниже перекрывает его на узком
+   экране. */
+.cw-grid--settings { --cw-cols: 2; }
+@media (max-width: 900px) { .cw-grid--settings { --cw-cols: 1; } }
+
+/* Экран «Настройки» (#settings): показывается классом на <body>, без
+   перезагрузки. На нём скрыты рабочий ярус и панель порядка плиток. */
+.cw-settings { display: none; padding: 8px 0 32px; }
+.cw-view-settings .cw-settings { display: block; }
+.cw-view-settings .cw-order-bar,
+.cw-view-settings .cw-tier--work,
+.cw-view-settings .cw-hub-hint { display: none; }
+.cw-settings__head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 12px; }
+.cw-settings__head h2 { margin: 0; font: 500 22px/28px var(--md-font-family); color: var(--md-on-surface); }
+.cw-settings__jump {
+  position: sticky; top: 0; z-index: 20; display: flex; gap: 8px;
+  overflow-x: auto; scrollbar-width: none; padding: 8px 0 10px; margin-bottom: 8px;
+  background: var(--md-background);
+}
+.cw-settings__jump::-webkit-scrollbar { display: none; }
+.cw-chip {
+  flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px;
+  border: 1px solid var(--md-outline-variant); border-radius: 999px; white-space: nowrap;
+  background: var(--md-surface-container); color: var(--md-on-surface);
+  font: 500 13px/16px var(--md-font-family); text-decoration: none;
+}
+.cw-chip:hover { border-color: var(--md-primary); }
+.cw-chip.is-active { background: var(--md-primary); color: var(--md-on-primary); border-color: var(--md-primary); }
+.cw-chip:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+.cw-settings__group { scroll-margin-top: 64px; }
+.cw-settings__group + .cw-settings__group { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--md-outline-variant); }
+.cw-settings__group-title { margin: 0 0 12px; font: 500 16px/24px var(--md-font-family); color: var(--md-on-surface); }
+#appearanceCard select { width: 100%; }
+@media (max-width: 600px) { .cw-chip { min-height: 44px; } }
+
+.cw-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--cw-cols), minmax(0, 1fr));
+  column-gap: var(--cw-gap);
+  row-gap: var(--cw-row-gap);
+  align-items: stretch;
+}
+
+/* Гридовый элемент — ссылка, а карточка лежит внутри неё. При
+   display:block карточка не тянулась до высоты строки, и плитки
+   расходились по высоте на величину лишней строки описания (~20px).
+   flex + flex:1 растягивает карточку на всю ячейку. */
+.cw-tile-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  border-radius: var(--cw-radius);
+}
+.cw-tile-link:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 3px;
+}
+
+.cw-tile {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  /* Компактная плитка (вариант C): иконка, название, точка + версия.
+     Описание остаётся в DOM для скринридера, на телефоне — строкой. */
+  padding: 16px;
+  min-height: 0;
+}
+.cw-tile__icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--md-primary) 14%, transparent);
+  margin-bottom: 12px;
+  color: var(--md-primary);
+}
+/* Цвет иконки наследуется от .cw-tile__icon (currentColor в разметке),
+   а не задаётся хексом в каждом <svg> — тема остаётся управляемой. */
+.cw-tile__icon svg { width: 19px; height: 19px; }
+.cw-tile h2 {
+  font: 500 14px/20px var(--md-font-family);
+  letter-spacing: 0;
+  margin: 0 0 8px;
+  /* Две строки вместо обрезки: «Документы и данные» не помещалось. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.cw-tile__footer { margin-top: auto; }
+.cw-tile p {
+  color: var(--md-on-surface-variant);
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.cw-tile__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* Бейдж без подложки: точка статуса + версия. Слово «работает» скрыто —
+   у всех модулей оно одно и то же и не несло различия. */
+.cw-tile__badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: 0; padding: 0;
+  color: var(--md-on-surface-variant);
+  font: 400 12px/16px var(--md-font-family);
+}
+.cw-tile__badge [data-i18n="status.live"] { display: none; }
+.cw-tile__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+  flex: 0 0 auto;
+}
+.cw-tile__ver { font-variant-numeric: tabular-nums; }
+
+/* Подъём карточки — только там, где есть настоящий курсор: на тач-экране
+   :hover «залипает» после тапа и плитка остаётся приподнятой. */
+@media (hover: none) {
+  .cw-tile-link .cw-card:hover {
+    transform: none;
+    box-shadow: var(--cw-shadow-sm);
+    border-color: var(--md-outline-variant);
+  }
+}
+/* Видимый фокус для навигации с клавиатуры: раньше плитки фокусировались
+   без какого-либо визуального отклика. */
+.cw-tile-link:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 3px;
+}
+
+/* Подпись селекта нужна скринридеру, но визуально её роль выполняет
+   иконка глобуса. */
+.cw-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Системная карточка ----------------------------------------------
+   Анатомия намеренно ДРУГАЯ, чем у плитки модуля: плитка вертикальная
+   (иконка сверху, ссылка целиком), системная карточка — широкая строка
+   (иконка слева, содержимое справа, не ссылка). Разная форма — самый
+   сильный сигнал различия ярусов: он не зависит ни от цвета, ни от темы.
+   Поверхность утоплена на ступень (surface-container-low вместо
+   surface-container), тени и подъёма на hover нет — это фундамент,
+   а не инструмент. */
+.cw-syscard {
+  position: relative;
+  display: block;
+  padding: 20px 24px;
+  background: var(--md-surface-container-low);
+  box-shadow: none;
+}
+/* .cw-card поднимает карточку на hover — но системная карточка никуда не
+   ведёт, поднимать её значит обещать переход, которого нет. */
+.cw-syscard:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--md-outline-variant);
+}
+/* Иконка стоит в строке заголовка, а не отдельной колонкой слева.
+   Колонка забирала 64px у ВСЕГО содержимого, а не только у заголовка:
+   при двух карточках в ряду тело сжималось до 373px, и две кнопки
+   резервного копирования (408px вместе) переставали помещаться в строку.
+   В строке заголовка та же иконка не стоит ничего. */
+.cw-syscard__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.cw-syscard__icon {
+  flex: 0 0 auto;
+  width: 48px; height: 48px;
+  border-radius: var(--cw-radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--md-surface-container);
+  border: 1px solid var(--md-outline-variant);
+  /* Не --md-primary, как у модулей: системный ярус не претендует
+     на внимание. */
+  color: var(--md-on-surface-variant);
+}
+.cw-syscard__icon svg { width: 24px; height: 24px; }
+.cw-syscard__head h3 {
+  font: 500 16px/24px var(--md-font-family);
+  letter-spacing: 0.15px;
+  margin: 0;
+}
+
+/* Строка состояния: точка + возраст копии. Точка того же размера, что
+   .cw-tile__dot у модулей — экран остаётся однородным. Цвет НЕ единственный
+   носитель смысла: текст рядом говорит то же самое словами, поэтому
+   состояние читается и при дальтонизме, и в чёрно-белой печати. */
+.cw-syscard__state {
+  display: flex; align-items: center; gap: 8px;
+  margin: 6px 0 0;
+  font: 400 13px/20px var(--md-font-family);
+  color: var(--md-on-surface-variant);
+}
+.cw-syscard__dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--status-normal);
+}
+.cw-syscard--ok    .cw-syscard__dot { background: var(--status-success); }
+.cw-syscard--warn  .cw-syscard__dot { background: var(--status-important); }
+.cw-syscard--alert .cw-syscard__dot { background: var(--status-critical); }
+.cw-syscard--alert .cw-syscard__state { color: var(--status-critical); }
+
+/* Красный статус получает дополнительно тонкую полосу слева — но ВНУТРИ
+   карточки, а не border-left: односторонняя рамка ломает скругление углов.
+   Заливать карточку целиком не нужно ни при каком статусе: просроченная
+   копия — это напоминание, а не авария. */
+.cw-syscard--alert { padding-left: 32px; }
+.cw-syscard--alert::before {
+  content: "";
+  position: absolute;
+  left: 12px; top: 20px; bottom: 20px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--status-critical);
+}
+
+/* --- Резервное копирование -------------------------------------------- */
+.cw-syscard__hint { color: var(--md-on-surface-variant); font: 400 13px/20px var(--md-font-family); margin: 10px 0 0; }
+.cw-backup__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+/* Кнопка «Подготовить» офлайн-карточки — видна только когда нужна, поэтому
+   не уходит в меню «⋮», как действия копирования на телефоне. */
+.cw-offline__actions { display: flex; margin-top: 10px; }
+.cw-offline__actions .cw-btn[hidden] { display: none; }
+/* Кнопки карточки «Диагностика»: копирование всегда, очистка — когда есть что чистить. */
+.cw-errors__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.cw-errors__actions .cw-btn[hidden] { display: none; }
+/* #backupGuardBtn ("Повернутися до стану перед відновленням") — самый
+   длинный из трёх ярлыков в .cw-backup__actions. Базовый .cw-btn ниже
+   держит white-space:nowrap и не имеет max-width — на узких экранах это
+   заставляет именно ЭТУ кнопку раздвигаться по ширине своего текста в одну
+   строку, шире карточки, а flex-wrap:wrap переносит только целые кнопки на
+   новую строку, но не может сжать одну кнопку ниже её принудительно
+   нерушимой ширины. Правка сделана только для этого контейнера и только
+   на mobile — трогать общий .cw-btn нельзя: остальные кнопки хаба
+   («Сохранить всё», «Восстановить из файла») рассчитаны на короткие
+   однострочные подписи и должны остаться как есть везде за пределами
+   этой карточки. */
+@media (max-width: 560px) {
+  .cw-backup__actions .cw-btn {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 40px;
+    padding: 10px 18px;
+    white-space: normal;
+    text-align: left;
+  }
+}
+
+/* Кнопки хаба. Локальные правила НУЖНЫ: общий .cw-btn из shared/style.css
+   имеет другой радиус, другой вес шрифта и не ограничивает размер иконки —
+   без этих строк значки уезжают на свои 24px, а подписи ломаются на две
+   строки. Геометрия совпадает с .cw-lang__select шапки (скругление 999),
+   чтобы органы управления читались одной семьёй. */
+/* `display` у класса кнопки перебивает `display:none` браузерного правила
+   для [hidden] — атрибут молча перестаёт работать, и скрытая кнопка видна.
+   Правило по классу, а не по id: ловушка общая для всех кнопок хаба. */
+.cw-btn[hidden] { display: none; }
+.cw-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 18px;
+  border-radius: 999px; border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container); color: var(--md-on-surface);
+  font: 500 14px/20px var(--md-font-family); cursor: pointer;
+  white-space: nowrap;
+}
+.cw-btn:hover { border-color: var(--md-primary); background: var(--md-surface-container); }
+.cw-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+.cw-btn--primary { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
+.cw-btn--primary:hover { background: var(--md-primary); }
+.cw-btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+.cw-backup__table { width: 100%; border-collapse: collapse; font: 400 13px/20px var(--md-font-family); }
+.cw-backup__table th {
+  text-align: left; color: var(--md-outline); font-weight: 500;
+  padding: 6px 8px; border-bottom: 1px solid var(--md-outline-variant);
+}
+.cw-backup__table td { padding: 8px; border-bottom: 1px solid var(--md-outline-variant); }
+.cw-backup__table td:last-child, .cw-backup__table th:last-child { text-align: right; white-space: nowrap; }
+.cw-backup__never { color: var(--md-outline); }
+.cw-backup__status { margin: 12px 0 0; font: 400 13px/20px var(--md-font-family); color: var(--md-on-surface-variant); min-height: 20px; }
+
+/* Таблица по модулям — под раскрытием: она нужна редко, а на главном экране
+   постоянно занимала пять строк. Диалог здесь был бы лишним механизмом
+   (в хабе нет ни одного), <details> ничего не прячет безвозвратно и
+   работает без скрипта. */
+.cw-disclose { margin-top: 16px; }
+.cw-disclose > summary {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer; list-style: none;
+  font: 500 13px/20px var(--md-font-family);
+  color: var(--md-on-surface-variant);
+  border-radius: var(--cw-radius-sm);
+}
+.cw-disclose > summary::-webkit-details-marker { display: none; }
+.cw-disclose > summary:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 3px; }
+.cw-disclose > summary::before {
+  content: "";
+  width: 0; height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s ease;
+}
+.cw-disclose[open] > summary::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .cw-disclose > summary::before { transition: none; }
+}
+.cw-disclose .cw-backup__table { margin-top: 12px; }
+@media (max-width: 560px) {
+  .cw-backup__table { table-layout: fixed; }
+  .cw-backup__table th, .cw-backup__table td { overflow-wrap: anywhere; }
+  .cw-backup__table td:last-child, .cw-backup__table th:last-child { white-space: normal; }
+}
+
+/* --- Форма в системной карточке ---------------------------------------
+   Две колонки на широком экране, одна на узком. Поля подписаны словами,
+   а не только иконкой: в шапке хаба у селекта языка подписи нет вовсе,
+   и это терпимо для двух общеизвестных органов управления, но не для
+   шести полей документа. */
+.cw-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.cw-form__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cw-form__field--wide { grid-column: 1 / -1; }
+.cw-form__field[hidden] { display: none; }
+.cw-profile-retry { margin: 0; }
+.cw-profile-retry:has(> [hidden]) { display: none; }
+.cw-profile-status { margin: 0; color: var(--md-on-surface-variant); font: 400 13px/18px var(--md-font-family); }
+.cw-form__label {
+  font: 400 12px/16px var(--md-font-family);
+  letter-spacing: 0.4px;
+  color: var(--md-outline);
+}
+.cw-form select,
+.cw-form input,
+.cw-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--cw-radius-sm);
+  background: var(--md-surface-container-lowest);
+  color: var(--md-on-surface);
+  font: 400 14px/20px var(--md-font-family);
+}
+.cw-form textarea { resize: vertical; min-height: 60px; }
+.cw-form input:hover, .cw-form textarea:hover { border-color: var(--md-outline); }
+.cw-form input:focus-visible,
+.cw-form textarea:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 2px;
+  border-color: var(--md-primary);
+}
+@media (max-width: 900px) { .cw-form { grid-template-columns: 1fr; } }
+
+/* --- Шапка письма: показываем ровно то, что напечатается --------------
+   Строка состояния говорит, заполнено ли; этот блок говорит, ЧЕМ именно.
+   Без него человек узнаёт состав шапки только из готового документа. */
+.cw-sender-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--cw-radius-sm);
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-lowest);
+}
+.cw-sender-preview p {
+  margin: 0;
+  font: 400 13px/20px var(--md-font-family);
+  color: var(--md-on-surface);
+}
+.cw-sender-preview p:first-child { font-weight: 500; }
+.cw-sender-preview__missing {
+  margin-top: 8px !important;
+  color: var(--md-outline) !important;
+  font-size: 12px !important;
+}
+
+.cw-footer {
+  position: relative; z-index: 1;
+  padding: 24px 0 48px;
+  text-align: center;
+  color: var(--md-outline);
+  font-size: 12.5px;
+}
+
+/* --- Порядок плиток (хаб 0.41.67) -------------------------------------
+   Режим включается явно: вне него плитки ведут себя как раньше, и
+   случайное перетаскивание при обычном открытии модуля невозможно.
+   Перетаскивание берётся только за ручку (touch-action: none только на
+   ней), поэтому прокрутка страницы пальцем по плитке не ломается. */
+.cw-order-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.cw-order-bar__hint {
+  flex: 1 1 240px;
+  margin: 0;
+  font: 400 13px/18px var(--md-font-family);
+  color: var(--md-on-surface-variant);
+}
+.cw-order-bar__hint[hidden], .cw-order-bar [hidden] { display: none; }
+.cw-order-item { position: relative; }
+.cw-order-ctl {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--cw-radius-sm);
+  background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+}
+.cw-order-ctl button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px; min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--cw-radius-sm);
+  background: transparent;
+  color: var(--md-on-surface);
+  cursor: pointer;
+}
+.cw-order-ctl button:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 1px; }
+.cw-order-ctl button:disabled { opacity: 0.35; cursor: default; }
+.cw-order-ctl svg { width: 20px; height: 20px; }
+.cw-order-ctl .cw-order-handle { cursor: grab; touch-action: none; }
+.cw-ordering .cw-order-item > :not(.cw-order-ctl) { pointer-events: none; }
+.cw-ordering .cw-order-item { outline: 2px dashed var(--md-outline-variant); outline-offset: 2px; border-radius: var(--cw-radius); }
+.cw-order-item.is-dragging { opacity: 0.6; outline-color: var(--md-primary); }
+.cw-ordering .is-dragging .cw-order-handle { cursor: grabbing; }
+.cw-ordering, body.cw-order-dragging { user-select: none; -webkit-user-select: none; }
+
+/* --- Мобильная главная (≤600px) ----------------------------------------
+   Утверждённый концепт 27.09.2026: компактная шапка, модули — строками,
+   пояснение — одной подсказкой под списком. Блок стоит В КОНЦЕ <style>
+   намеренно: у его правил та же специфичность, что у базовых .cw-tile /
+   .cw-tier, и при размещении выше они перекрывались базой (так и
+   случилось в 0.41.83 — правка не сработала). Рёбра шины JS продолжает
+   строить, на телефоне они просто не показываются. */
+.cw-order-short, .cw-order-short__icon { display: none; }
+
+/* Строка статуса (вариант C, 28.09.2026) — на всех ширинах, а не только
+   на телефоне: заголовок «Инструменты района», мета «N модулей · vX»,
+   справа кнопка порядка. Заменяет hero-блок шапки. */
+.cw-order-bar {
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 8px 16px;
+  margin: 0 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+.cw-mhead { min-width: 0; flex: 1 1 auto; }
+.cw-mhead__title { margin: 0; font: 500 22px/28px var(--md-font-family); color: var(--md-on-surface); }
+.cw-mhead__meta { margin: 4px 0 0; font: 400 13px/18px var(--md-font-family); color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.cw-order-bar__hint { flex-basis: 100%; order: 3; }
+.cw-order-bar .cw-btn { height: 36px; padding: 0 14px; font-size: 13px; gap: 6px; }
+/* Вне режима порядка кнопка — круглая иконка «стрелки вверх-вниз», как
+   органы управления шапки; подпись остаётся доступным именем. В режиме
+   порядка видна подпись «Готово». */
+#orderToggle[aria-pressed="false"] { width: 36px; padding: 0; justify-content: center; }
+#orderToggle[aria-pressed="false"] .cw-order-short__icon { display: inline; width: 18px; height: 18px; flex: 0 0 auto; }
+#orderToggle[aria-pressed="false"] #orderToggleLabel {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.cw-backup-nudge {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+  margin: 0 0 14px; padding: 10px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--status-critical) 10%, var(--md-surface));
+  border: 1px solid color-mix(in srgb, var(--status-critical) 35%, transparent);
+  color: var(--md-on-surface); text-decoration: none;
+  font: 500 13px/18px var(--md-font-family);
+}
+.cw-backup-nudge[hidden], .cw-view-settings .cw-backup-nudge { display: none; }
+.cw-backup-nudge.is-warn {
+  background: color-mix(in srgb, var(--status-important) 10%, var(--md-surface));
+  border-color: color-mix(in srgb, var(--status-important) 35%, transparent);
+}
+.cw-backup-nudge svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--status-critical); }
+.cw-backup-nudge.is-warn svg { color: var(--status-important); }
+.cw-backup-nudge__text { flex: 1 1 14em; }
+.cw-backup-nudge__go { color: var(--md-primary); white-space: nowrap; }
+.cw-backup-nudge:hover .cw-backup-nudge__go, .cw-backup-nudge:focus-visible .cw-backup-nudge__go { text-decoration: underline; }
+.cw-hub-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--md-primary) 8%, transparent);
+  color: var(--md-on-surface-variant);
+  font: 400 12px/16px var(--md-font-family);
+}
+.cw-hub-hint svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--md-primary); margin-top: 1px; }
+
+@media (max-width: 600px) {
+  .cw-container { padding: 0 16px; }
+
+  /* Шапка: логотип и инструменты в одну строку, версия уходит в мета-строку. */
+  .cw-hub-header { padding: 16px 0 4px; }
+  .cw-hub-header__top { flex-wrap: nowrap; gap: 8px; }
+  /* Размеры логотипа тянутся от ширины экрана: на 320px логотип 28px +
+     текст 16px и три кнопки по 44px в одну строку не помещались — текст
+     заезжал под кнопку языка. Кнопки держат обязательные 44px, сжимается
+     только логотип. Без новой контрольной точки — реестр 600/900/… */
+  .cw-logo { gap: clamp(6px, 2vw, 8px); min-width: 0; }
+  .cw-logo__mark { width: clamp(24px, 7.5vw, 28px); height: clamp(24px, 7.5vw, 28px); }
+  .cw-logo__text { font-size: clamp(13px, 4.2vw, 16px); white-space: nowrap; }
+  .cw-hub-header__tools { flex: 0 0 auto; flex-wrap: nowrap; gap: clamp(4px, 1.5vw, 6px); }
+
+  /* Строка «Инструменты района / 6 модулей · vX» + кнопка «Порядок». */
+  .cw-board { padding-top: 8px; --cw-row-gap: 6px; --cw-cols: 1; }
+  .cw-order-bar { align-items: center; gap: 8px; margin: 0 0 12px; padding-bottom: 0; border-bottom: 0; }
+  .cw-mhead__title { font: 500 16px/22px var(--md-font-family); }
+  .cw-mhead__meta { margin-top: 2px; font-size: 12px; line-height: 16px; }
+  .cw-order-bar .cw-btn { height: auto; padding: 6px 12px; font-size: 12px; }
+  #orderToggle[aria-pressed="false"] { width: auto; padding: 6px 12px; }
+  #orderToggle[aria-pressed="false"] .cw-order-short,
+  #orderToggle[aria-pressed="false"] .cw-order-short__icon { display: inline; }
+  #orderToggle[aria-pressed="false"] .cw-order-short__icon { width: 14px; height: 14px; }
+  /* Длинная подпись остаётся доступным именем кнопки — скрыта визуально. */
+  #orderToggle[aria-pressed="false"] #orderToggleLabel {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  .cw-tier--work { padding-bottom: 24px; }
+
+  /* Плитка → строка: иконка | название+описание | точка+версия | шеврон. */
+  .cw-tile {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto 10px;
+    grid-template-areas:
+      "icon title  status chev"
+      "icon desc   status chev";
+    column-gap: 10px;
+    align-items: center;
+    padding: 10px;
+    min-height: 0;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+  .cw-tile::after {
+    content: "";
+    grid-area: chev;
+    width: 7px; height: 7px;
+    border-top: 1.5px solid var(--md-outline);
+    border-right: 1.5px solid var(--md-outline);
+    transform: rotate(45deg);
+    justify-self: start;
+  }
+  .cw-tile__icon {
+    grid-area: icon;
+    width: 38px; height: 38px;
+    margin: 0;
+    border: 0;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--md-primary) 14%, transparent);
+  }
+  .cw-tile__icon svg { width: 19px; height: 19px; }
+  .cw-tile h2 { grid-area: title; margin: 0; font: 500 14px/20px var(--md-font-family); letter-spacing: 0; align-self: end; }
+  /* На телефоне описание возвращается строкой под названием. */
+  .cw-tile p {
+    grid-area: desc;
+    position: static; width: auto; height: auto; clip: auto;
+    margin: 1px 0 0;
+    font: 400 12px/16px var(--md-font-family);
+    letter-spacing: 0;
+    align-self: start;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cw-tile__footer { grid-area: status; }
+  .cw-tile__badge { gap: 4px; font: 400 11px/16px var(--md-font-family); }
+  .cw-tile-link { border-radius: 12px; }
+
+  .cw-hub-hint { margin-top: 10px; padding: 8px 10px; font-size: 11px; line-height: 15px; }
+}
+/* --- Системные карточки: компактная строка (вариант Б телефона 27.09.2026,
+   с 28.09.2026 — на всех ширинах, вариант C главной) ---------------------
+   Карточка — строка: иконка | заголовок + состояние | «⋮». Кнопки
+   копирования живут в меню «⋮» (тот же .cw-backup__actions, открытый
+   поверх), пояснение и таблица — по пункту «Подробнее по модулям».
+   «Отправитель» — та же строка, форма по-прежнему за «Изменить данные». */
+.cw-sysmenu-btn, .cw-sysmenu-only { display: none; }
+
+  .cw-syscard {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    column-gap: 10px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+  .cw-syscard > * { grid-column: 1 / -1; }
+  .cw-syscard__head { display: contents; }
+  .cw-syscard__icon {
+    grid-column: 1; grid-row: 1 / span 2;
+    width: 38px; height: 38px;
+    border: 0; border-radius: 10px;
+  }
+  .cw-syscard__icon svg { width: 19px; height: 19px; }
+  .cw-syscard__head h3 { grid-column: 2; grid-row: 1; font: 500 14px/20px var(--md-font-family); letter-spacing: 0; align-self: end; }
+  .cw-syscard > .cw-syscard__state { grid-column: 2; grid-row: 2; margin: 1px 0 0; gap: 5px; font: 400 12px/16px var(--md-font-family); align-self: start; }
+  .cw-syscard__dot { width: 6px; height: 6px; }
+  .cw-syscard--alert { padding-left: 18px; }
+  .cw-syscard--alert::before { left: 7px; top: 12px; bottom: 12px; }
+
+  .cw-sysmenu-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    grid-column: 3; grid-row: 1 / span 2;
+    width: 44px; height: 44px; padding: 0;
+    border: 1px solid var(--md-outline-variant); border-radius: 999px;
+    background: var(--md-surface-container); color: var(--md-on-surface);
+    cursor: pointer;
+  }
+  .cw-sysmenu-btn svg { width: 18px; height: 18px; }
+  .cw-sysmenu-btn:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+  .cw-sysmenu-btn[aria-expanded="true"] { border-color: var(--md-primary); }
+
+  .cw-syscard .cw-syscard__hint, .cw-sender-preview { display: none; }
+  .cw-syscard.is-details .cw-syscard__hint { display: block; }
+  #backupCard > .cw-disclose { display: none; }
+  #backupCard > .cw-disclose[open] { display: block; }
+  #senderCard > .cw-disclose { margin-top: 8px; }
+  .cw-backup__status { margin-top: 6px; min-height: 0; }
+  .cw-backup__status:empty { display: none; }
+
+  /* Меню действий: всплывает под «⋮», поверх следующей карточки. */
+  .cw-backup__actions { display: none; }
+  #backupCard.is-menu-open .cw-backup__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: absolute;
+    z-index: 5;
+    top: 56px; right: 8px;
+    width: min(260px, calc(100% - 16px));
+    margin: 0;
+    padding: 4px;
+    border: 1px solid var(--md-outline-variant);
+    border-radius: 12px;
+    background: var(--md-surface-container-high);
+    box-shadow: var(--cw-shadow);
+  }
+  #backupCard .cw-backup__actions .cw-btn {
+    width: 100%;
+    min-height: 44px;
+    height: auto;
+    padding: 10px 12px;
+    justify-content: flex-start;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--md-on-surface);
+    font: 500 13px/18px var(--md-font-family);
+    white-space: normal;
+    text-align: left;
+  }
+  #backupCard .cw-backup__actions .cw-btn[hidden] { display: none; }
+  #backupCard .cw-backup__actions .cw-btn--primary { color: var(--md-primary); }
+  #backupCard .cw-backup__actions .cw-btn svg { color: var(--md-primary); }
+  #backupCard .cw-backup__actions .cw-sysmenu-only { display: flex; }
+  #backupCard .cw-backup__actions .cw-sysmenu-only svg { color: var(--md-on-surface-variant); }

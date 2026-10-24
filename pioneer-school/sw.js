@@ -87,6 +87,8 @@ const ASSETS = [
   './js/export/xlsxExport.js',
   './js/modules/registrationSchema.js',
   './js/modules/registrationForm.js',
+  './js/register-init.js',
+  './js/register-page.js',
   // Шрифты для PDF: встраиваются в сами PDF-файлы (кириллица в бланке и в
   // интерактивной анкете), поэтому нужны офлайн.
   '../shared/fonts/dejavu-sans-subset.js',

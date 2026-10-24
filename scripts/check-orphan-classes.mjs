@@ -41,6 +41,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { hubSource } from './lib/hub-source.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,7 +49,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
    в самой разметке, и потому единственная, где вырезанный блок не оставляет
    следа в отдельном .css-файле. Модули добавляются сюда по мере надобности. */
 const PAGES = [
-  { html: 'index.html', css: ['index.html', 'shared/style.css', 'shared/update.js', 'shared/theme.js'] },
+  { html: 'index.html', css: ['index.html', 'hub.css', 'shared/style.css', 'shared/update.js', 'shared/theme.js'] },
 ];
 
 const IGNORE = new Set(['cw-sr-only']);
@@ -56,7 +57,7 @@ const IGNORE = new Set(['cw-sr-only']);
 let failed = 0;
 
 for (const page of PAGES) {
-  const html = fs.readFileSync(path.join(ROOT, page.html), 'utf8');
+  const html = page.html === 'index.html' ? hubSource(ROOT) : fs.readFileSync(path.join(ROOT, page.html), 'utf8');
 
   const used = new Set();
   for (const m of html.matchAll(/\sclass="([^"]+)"/g)) {
