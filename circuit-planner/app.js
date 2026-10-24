@@ -187,10 +187,12 @@
          считают месяцы напрямую от него, и трогать их не потребовалось. */
       serviceYearStartMonth: (typeof self !== 'undefined' && self.CWServiceYear) ? self.CWServiceYear.START_MONTH : 8,
       navItems: [
-        { id: 'calendar', icon: '📆', tKey: 'nav_calendar' },
-        { id: 'events', icon: '🎯', tKey: 'nav_events' },
-        { id: 'route', icon: '🗺️', tKey: 'nav_route' },
-        { id: 'settings', icon: '⚙️', tKey: 'nav_settings' }
+        // Линейные SVG вместо эмодзи (визуальный аудит 24.10.2026, Ф3):
+        // эмодзи на каждой системе рисуются своим художником и спорят с палитрой.
+        { id: 'calendar', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>', tKey: 'nav_calendar' },
+        { id: 'events', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M10 21v-5h4v5"/></svg>', tKey: 'nav_events' },
+        { id: 'route', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>', tKey: 'nav_route' },
+        { id: 'settings', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>', tKey: 'nav_settings' }
       ],
       layoutPresets: [
         { value: 'classic', labelKey: 'layout_classic' }, { value: 'compact', labelKey: 'layout_compact' }, { value: 'spacious', labelKey: 'layout_spacious' }

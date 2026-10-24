@@ -294,6 +294,11 @@
 /* Цвет иконки наследуется от .cw-tile__icon (currentColor в разметке),
    а не задаётся хексом в каждом <svg> — тема остаётся управляемой. */
 .cw-tile__icon svg { width: 19px; height: 19px; }
+/* Плитка модуля несёт его фирменный значок — тот же, что в иконке
+   приложения (визуальный аудит 24.10.2026, Ф3). У значка своя подложка,
+   поэтому подкладка .cw-tile__icon под ним снимается. */
+.cw-tile__icon:has(> .cw-tile__brand) { background: none; width: 40px; height: 40px; }
+.cw-tile__brand { display: block; width: 40px; height: 40px; border-radius: 10px; }
 .cw-tile h2 {
   font: 500 14px/20px var(--md-font-family);
   letter-spacing: 0;
@@ -803,6 +808,7 @@
     background: color-mix(in srgb, var(--md-primary) 14%, transparent);
   }
   .cw-tile__icon svg { width: 19px; height: 19px; }
+  .cw-tile__icon:has(> .cw-tile__brand) { background: none; width: 40px; height: 40px; }
   .cw-tile h2 { grid-area: title; margin: 0; font: 500 14px/20px var(--md-font-family); letter-spacing: 0; align-self: end; }
   /* На телефоне описание возвращается строкой под названием. */
   .cw-tile p {

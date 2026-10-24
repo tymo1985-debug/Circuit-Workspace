@@ -569,10 +569,12 @@ body::before{display:none !important}
 @media (max-width:600px){.sy-week-row{min-height:52px}.sy-period-bar{font-size:8px;height:14px;line-height:14px;padding:0 5px;top:calc(21px + (var(--bar-lane) * 15px))}}
 
     /* --- Общая шапка модуля (дизайн-система) ---------------------------
-       Логотип Клиндария — цветной SVG, поэтому подложке маркера фон не нужен:
-       она бы спорила с собственными цветами знака. */
-    .md-topbar-v2__mark{background:transparent}
-    .md-topbar-v2__mark > svg{width:26px;height:26px}
+       Маркер — общий линейный символ модуля (Ф3), без своих правил.
+       Значки навигации и панели календаря — SVG вместо эмодзи. */
+    .nav-btn .icon,.bottom-nav-btn .icon{display:inline-flex}
+    .nav-btn .icon svg,.bottom-nav-btn .icon svg{width:20px;height:20px}
+    .mobile-menu-btn--icon svg,.toolbar-more-trigger svg{width:20px;height:20px}
+    .ld-icon{display:inline-flex}.ld-icon svg{width:16px;height:16px}
     /* Экранный заголовок (.topbar) остаётся внутри .main и продолжает
        работать как раньше — measureTopbarHeight() меряет именно его. */
 
