@@ -702,3 +702,25 @@ body[data-module] .bottom-nav-btn .icon { width: 56px; max-width: 100%; height: 
 body[data-module] .bottom-nav-btn.active { color: var(--md-on-surface); }
 body[data-module] .bottom-nav-btn.active .icon { background: var(--cw-module-container); color: var(--cw-module-on-container); }
 body[data-module] .bottom-nav-btn .label { font-size: 11px; }
+
+/* Правая панель календаря: быстрые действия в шапке + подъём до верхних
+   виджетов (01.11.2026, вариант A). «Редактировать», письмо и S-302 видны
+   сразу; остальное — выпадающее меню «⋯» поверх сведений, а не лента внутри
+   прокрутки панели. */
+.side-quick-actions{position:relative;display:flex;align-items:center;gap:8px;margin:6px 0 10px}
+.side-quick-actions>#detailEditBtn{flex:1 1 auto;min-width:0}
+.side-quick-actions>.md-btn,.side-quick-actions .more-actions{flex:none}
+.side-quick-actions .side-quick-icon{width:40px;min-width:40px;height:40px;padding:0;justify-content:center;border-radius:var(--md-radius-full)}
+.side-quick-actions .side-quick-s302{padding:0 12px}
+.side-quick-actions .more-actions{margin:0}
+.side-quick-actions .more-actions>summary{display:inline-flex;align-items:center;font-size:18px;line-height:1;background:transparent;color:var(--md-on-surface-variant)}
+.side-quick-actions .more-actions[open]>summary{margin:0;background:var(--md-surface-container-high)}
+.side-quick-actions .more-actions>.actions-grid{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;margin:0;padding:8px;background:var(--md-surface-container-high);border:1px solid var(--md-outline-variant);border-radius:var(--md-radius-lg);box-shadow:var(--md-elevation-2)}
+.side-quick-actions .actions-grid a.md-btn{text-decoration:none}
+.side-quick-actions .actions-sep{border:0;border-top:1px solid var(--md-outline-variant);margin:2px 4px;width:auto}
+@media (min-width:1181px){
+  /* #calendarLayout> — перебить .calendar-side из ensureCalendarViewStyles(),
+     которая инжектируется позже этого файла. */
+  #calendarLayout>.calendar-side{margin-top:calc(-1 * var(--calendar-side-raise, 0px)) !important;top:calc(var(--cw-topbar-h, 64px) + 12px) !important;max-height:calc(100dvh - var(--calendar-side-raised-top, var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px))) - 12px) !important;z-index:1201}
+  #archiveProposal{max-width:calc(100% - var(--calendar-side-width) - var(--calendar-layout-gap))}
+}

@@ -1,13 +1,12 @@
 self.CW_RELEASE = {
-  version: '0.47.0',
+  version: '0.47.1',
   changes: [
-    { module: 'hub', version: '0.47.0', note: 'Один шрифт во всём приложении и на бумаге — Noto Sans' },
-    { module: 'circuit-planner', version: '9.122.0', note: 'Письма, формуляр визита и S-302 — шрифтом Noto Sans' },
-    { module: 'pioneer-school', version: '1.18.0', note: 'Бланки, списки и письма — шрифтом Noto Sans' },
-    { module: 'congress-project', version: '4.53.0', note: 'Письма в PDF — шрифтом Noto Sans с настоящим жирным' },
-    { module: 'documents', version: '1.14.0', note: 'Предпросмотр документа — лист A4' },
-    { module: 'appointments', version: '5.6.0', note: 'Письмо — лист A4 тем же шрифтом, что и всё приложение' },
-    { module: 'journal', version: '0.30.16', technical: true },
-    { module: 'archive', version: '0.4.8', technical: true },
+    { module: 'circuit-planner', version: '9.123.0', note: 'Панель записи календаря: действия сразу в шапке, панель поднята к верхним карточкам' },
+    { module: 'congress-project', version: '4.53.1', technical: true },
+    { module: 'pioneer-school', version: '1.18.1', technical: true },
+    { module: 'documents', version: '1.14.1', technical: true },
+    { module: 'appointments', version: '5.6.1', technical: true },
+    { module: 'journal', version: '0.30.17', technical: true },
+    { module: 'archive', version: '0.4.9', technical: true },
   ],
 };

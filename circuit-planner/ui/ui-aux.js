@@ -80,6 +80,32 @@
         if (top > 0) document.documentElement.style.setProperty('--calendar-side-top', `${top}px`);
       }
     }
+    measureCalendarSideRaise();
+  }
+  /* Правая панель календаря на ширине ≥1181px поднимается до верхних
+     виджетов (.nv-row): --calendar-side-raise — на сколько поднять,
+     --calendar-side-raised-top — где её верх оказался (от него считается
+     max-height, чтобы панель целиком помещалась в окно). Мерить можно только
+     у верха страницы: .topbar липкий, и после прокрутки расстояние между
+     ним и календарём уже не настоящее. Прокручивается здесь body, а не
+     window, поэтому проверяются оба. Повторные замеры — от ResizeObserver
+     (высота шапки, баннер архива, появление экрана календаря). */
+  function measureCalendarSideRaise() {
+    const root = document.documentElement;
+    const layout = document.getElementById('calendarLayout');
+    const nv = document.getElementById('nvRow');
+    if (!measureCalendarSideRaise.ro && 'ResizeObserver' in window) {
+      const ro = new ResizeObserver(() => window.requestAnimationFrame(measureCalendarSideRaise));
+      [document.querySelector('.topbar'), layout, document.getElementById('archiveProposal')].forEach((el) => { if (el) ro.observe(el); });
+      measureCalendarSideRaise.ro = ro;
+    }
+    const scrolled = Math.max(window.scrollY || 0, root.scrollTop || 0, document.body ? document.body.scrollTop : 0);
+    if (!layout || !nv || !layout.offsetParent || scrolled > 4) return;
+    const nvTop = nv.getBoundingClientRect().top;
+    const raise = nv.offsetHeight ? Math.max(0, Math.round(layout.getBoundingClientRect().top - nvTop)) : 0;
+    root.style.setProperty('--calendar-side-raise', `${raise}px`);
+    if (raise) root.style.setProperty('--calendar-side-raised-top', `${Math.round(nvTop)}px`);
+    else root.style.removeProperty('--calendar-side-raised-top');
   }
   function renderNextVisitCard() {
     const pill = App.els.nextVisitPill || document.getElementById('nextVisitPill');
