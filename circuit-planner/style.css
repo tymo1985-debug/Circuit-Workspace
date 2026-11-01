@@ -721,6 +721,11 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
 @media (min-width:1181px){
   /* #calendarLayout> — перебить .calendar-side из ensureCalendarViewStyles(),
      которая инжектируется позже этого файла. */
-  #calendarLayout>.calendar-side{margin-top:calc(-1 * var(--calendar-side-raise, 0px)) !important;top:calc(var(--cw-topbar-h, 64px) + 12px) !important;max-height:calc(100dvh - var(--calendar-side-raised-top, var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px))) - 12px) !important;z-index:1201}
+  #calendarLayout>.calendar-side{--cp-side-top:var(--calendar-side-raised-top, var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px)));margin-top:calc(-1 * var(--calendar-side-raise, 0px)) !important;top:var(--cp-side-top) !important;height:calc(100dvh - var(--cp-side-top) - 12px);max-height:calc(100dvh - var(--cp-side-top) - 12px) !important;z-index:1201}
+  /* Панель — колонка на всю высоту окна, а не по содержимому (01.11.2026,
+     9.123.1): короткая запись больше не «висит» над пустотой. Липкий верх
+     совпадает с поднятым началом, поэтому высота одна и та же и до
+     прокрутки, и после. Длинное содержимое прокручивается внутри, как раньше. */
+  #calendarLayout>.calendar-side>.calendar-details-card{min-height:100%;box-sizing:border-box}
   #archiveProposal{max-width:calc(100% - var(--calendar-side-width) - var(--calendar-layout-gap))}
 }
