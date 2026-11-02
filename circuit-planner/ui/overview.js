@@ -74,46 +74,48 @@
     </button>`;
   }
 
-  // «Сделать»: срочное по правилам окна напоминаний, затем ближайшее письмо,
-  // для которого срок ещё не наступил («Скоро · с 6 нояб.»).
+  // «Сделать» (вариант А, 03.11.2026): две закреплённые строки — следующее
+  // неотправленное письмо и следующий неотправленный S-302. Письмо имеет
+  // окно «пора» (letterReminderDays), S-302 от дней не зависит (решение
+  // Алекса). Кандидаты — те же визиты, что в окне «S302/письма»: тип визита
+  // задан, начало не раньше чем 3 дня назад.
   function todoBlock() {
     const today = day0(new Date());
-    const tasks = [];
-    App.data.getUpcomingReminders().forEach((r) => {
-      const urgency = r.daysUntil <= 0 ? 'overdue' : 'due';
-      if (r.needsLetter) tasks.push({ id: r.id, kind: 'letter', title: r.title, start: r.start, end: r.end, urgency });
-      if (r.needsS302) tasks.push({ id: r.id, kind: 's302', title: r.title, start: r.start, end: r.end, urgency });
-    });
     const windowDays = App.utils.letterReminderDays();
-    const soon = (App.state.app.entries || [])
+    const visits = (App.state.app.entries || [])
       .map((entry) => ({ entry, event: App.data.getEventById(entry.eventId), start: App.utils.parseLocalDate(entry.start) }))
-      .filter(({ entry, event, start }) => event?.visitType && start && !entry?.flags?.letter && Math.round((start - today) / DAY) > windowDays)
-      .sort((a, b) => a.start - b.start)[0];
-    if (soon) {
-      const from = new Date(soon.start); from.setDate(from.getDate() - windowDays);
-      tasks.push({ id: soon.entry.id, kind: 'letter', title: soon.entry.title || soon.event?.name || t('event'), start: soon.entry.start, end: soon.entry.end, urgency: 'soon', from });
+      .filter(({ event, start }) => event?.visitType && start && Math.round((day0(start) - today) / DAY) >= -3)
+      .sort((a, b) => a.start - b.start);
+    const titleOf = (v) => v.entry.title || v.event?.name || t('event');
+    const letter = visits.find((v) => !v.entry?.flags?.letter) || null;
+    const s302 = visits.filter((v) => !v.entry?.flags?.f302);
+    const row = (kind, v, chipClass, chipText, extra = '') => `<li><button type="button" class="ov-task" data-ov-open="entry:${App.utils.escapeAttr(v.entry.id)}" data-ov-date="${App.utils.escapeAttr(v.entry.start)}">
+        <span class="ov-task-icon is-${chipClass}" aria-hidden="true">${kind === 'letter' ? ICON_MAIL : ICON_DOC}</span>
+        <span class="ov-task-body"><span class="ov-task-kind">${esc(t(kind === 'letter' ? 'ov_next_letter' : 'ov_next_s302'))}</span>
+        <span class="ov-task-title">${esc(titleOf(v))}</span>
+        <span class="ov-task-meta">${esc(range(App.utils.parseLocalDate(v.entry.start), App.utils.parseLocalDate(v.entry.end)))}</span>
+        <span class="ov-chips"><span class="ov-chip is-${chipClass}">${esc(chipText)}</span>${extra}</span></span>
+      </button></li>`;
+    const done = (key) => `<li><p class="ov-ok">${ICON_CHECK}${esc(t(key))}</p></li>`;
+    let letterRow = done('all_letters_sent');
+    if (letter) {
+      const days = Math.round((day0(letter.start) - today) / DAY);
+      if (days <= 0) letterRow = row('letter', letter, 'overdue', t('ov_overdue'));
+      else if (days <= windowDays) letterRow = row('letter', letter, 'due', t('ov_due'));
+      else { const from = new Date(letter.start); from.setDate(from.getDate() - windowDays); letterRow = row('letter', letter, 'soon', t('ov_soon_from', { date: App.utils.prettyDate(from) })); }
     }
-    const urgentCount = tasks.filter((x) => x.urgency !== 'soon').length;
-    const shown = tasks.slice(0, 4);
-    const rest = tasks.length - shown.length;
-    const statusText = (task) => {
-      if (task.urgency === 'overdue') return t('ov_overdue');
-      if (task.urgency === 'due') return t('ov_due');
-      return t('ov_soon_from', { date: App.utils.prettyDate(task.from) });
-    };
-    const rows = shown.map((task) => `<li><button type="button" class="ov-task" data-ov-open="entry:${App.utils.escapeAttr(task.id)}" data-ov-date="${App.utils.escapeAttr(task.start)}">
-        <span class="ov-task-icon is-${task.urgency}" aria-hidden="true">${task.kind === 'letter' ? ICON_MAIL : ICON_DOC}</span>
-        <span class="ov-task-body"><span class="ov-task-title">${esc(t(task.kind === 'letter' ? 'letter_short' : 's302_short'))} · ${esc(task.title)}</span>
-        <span class="ov-task-meta">${esc(range(App.utils.parseLocalDate(task.start), App.utils.parseLocalDate(task.end)))}</span>
-        <span class="ov-chip is-${task.urgency}">${esc(statusText(task))}</span></span>
-      </button></li>`).join('');
-    const footer = !urgentCount
-      ? `<p class="ov-ok">${ICON_CHECK}${esc(t(tasks.length ? 'ov_rest_done' : 'ov_all_done'))}</p>`
-      : (rest > 0 ? `<button type="button" class="ov-more" data-ov-reminders>${esc(t('ov_more', { n: rest }))}</button>` : '');
+    let s302Row = done('ov_s302_all_sent');
+    if (s302.length) {
+      const first = s302[0];
+      const overdue = Math.round((day0(first.start) - today) / DAY) <= 0;
+      const more = s302.length > 1 ? `<span class="ov-chip">${esc(t('ov_s302_unsent', { n: s302.length }))}</span>` : '';
+      s302Row = row('s302', first, overdue ? 'overdue' : 'due', t(overdue ? 'ov_overdue' : 'needs_sending'), more);
+    }
+    const listBtn = s302.length > 1 || letter ? `<button type="button" class="ov-more" data-ov-reminders>${esc(t('ov_open_list'))}</button>` : '';
     return `<section class="ov-card" aria-label="${App.utils.escapeAttr(t('ov_todo'))}">
-      <span class="ov-card-head"><span class="ov-label">${esc(t('ov_todo'))}</span>${urgentCount ? `<span class="ov-count">${urgentCount}</span>` : ''}</span>
-      ${rows ? `<ul class="ov-tasks">${rows}</ul>` : ''}
-      ${footer}
+      <span class="ov-card-head"><span class="ov-label">${esc(t('ov_todo'))}</span></span>
+      <ul class="ov-tasks">${letterRow}${s302Row}</ul>
+      ${listBtn}
     </section>`;
   }
 
@@ -160,7 +162,7 @@
 
   function bindOverview(root) {
     root.querySelectorAll('[data-ov-open]').forEach((btn) => btn.addEventListener('click', () => openFromOverview(btn.dataset.ovOpen, btn.dataset.ovDate)));
-    root.querySelector('[data-ov-reminders]')?.addEventListener('click', () => document.getElementById('checkRemindersBtnMain')?.click());
+    root.querySelector('[data-ov-reminders]')?.addEventListener('click', () => App.ui.openRemindersModal());
   }
 
   // Правая колонка календаря: обзор вместо пустых «деталей».

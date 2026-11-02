@@ -765,7 +765,6 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
 .ov-progress{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px}
 .ov-progress span{height:4px;border-radius:2px;background:var(--md-surface-container-highest)}
 .ov-progress span.on{background:var(--md-primary)}
-.ov-count{min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
 .ov-tasks,.ov-agenda{list-style:none;margin:0;padding:0;display:grid}
 .ov-task{display:flex;gap:10px;align-items:flex-start;width:100%;padding:8px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ov-tasks li+li .ov-task{border-top:1px solid var(--md-outline-variant)}
@@ -776,7 +775,9 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
 .ov-task-title{font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .ov-task-meta{font-size:12px;color:var(--md-on-surface-variant)}
 .ov-ok{display:flex;align-items:center;gap:6px;margin:0;padding-top:8px;border-top:1px solid var(--md-outline-variant);color:var(--status-success);font-size:12px;font-weight:600}
-.ov-tasks:empty+.ov-ok,.ov-card-head+.ov-ok{border-top:0;padding-top:0}
+.ov-tasks .ov-ok{border-top:0;padding:8px 0}
+.ov-tasks li+li .ov-ok{border-top:1px solid var(--md-outline-variant)}
+.ov-task-kind{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
 .ov-more{align-self:flex-start;min-height:36px;padding:0 12px;border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-primary);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
 .ov-agenda button{display:grid;grid-template-columns:minmax(84px,auto) 10px minmax(0,1fr);align-items:center;gap:10px;width:100%;min-height:40px;padding:6px 0;border:0;border-top:1px solid var(--md-outline-variant);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ov-agenda li:first-child button{border-top:0}
@@ -816,3 +817,17 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
   #calendarLayout>.calendar-side.is-overview{display:none !important}
 }
 @media print{#calendar.cp-month-view #monthLabel{display:block !important}#calendarYearSelect{display:none !important}}
+
+/* Календарь на всю высоту окна (03.11.2026, вариант 1): карточка месяца
+   тянется до низа, как правая колонка, недели делят высоту поровну — нижние
+   края совпадают при 4, 5 и 6 неделях. min-height, а не height: месяц с
+   плотными полосами по-прежнему растёт вниз. Вид «служебный год» и ширина
+   ниже 1181 px — прежние. */
+@media (min-width:1181px){
+  #calendar.cp-month-view .calendar-shell{display:flex;flex-direction:column;min-height:calc(100dvh - var(--calendar-side-top, calc(var(--topbar-h, 88px) + 10px)) - 12px);box-sizing:border-box}
+  #calendar.cp-month-view #calendarGrid{flex:1 1 auto;display:flex;flex-direction:column}
+  #calendar.cp-month-view #calendarGrid>.grid-cal,#calendar.cp-month-view .month-grid-col>.grid-cal{flex:1 1 auto;display:flex;flex-direction:column}
+  #calendar.cp-month-view #calendarGrid .week-row{flex:1 1 0}
+  #calendar.cp-month-view #calendarGrid>.month-grid-multi{flex:1 1 auto}
+  #calendar.cp-month-view .month-grid-col{display:flex;flex-direction:column}
+}
