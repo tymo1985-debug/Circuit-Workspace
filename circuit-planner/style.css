@@ -729,3 +729,89 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
   #calendarLayout>.calendar-side>.calendar-details-card{min-height:100%;box-sizing:border-box}
   #archiveProposal{max-width:calc(100% - var(--calendar-side-width) - var(--calendar-layout-gap))}
 }
+
+/* ── Вариант B «Обзор» (02.11.2026, ui/overview.js) ─────────────────────────
+   Правая колонка календаря: «Обзор», пока ничего не выбрано; детали — с
+   кнопкой «← Обзор». Карточки над календарём (#nvRow) и «Быстрый статус»
+   скрыты: их содержимое теперь в обзоре. Цвета статусов: зелёный — сделано,
+   янтарный — пора/скоро, красный — просрочено; цвет события — только точка
+   и мягкая полоса в календаре. */
+#nvRow[hidden],#appRoot .sidebar .summary[hidden]{display:none !important}
+#countdownUnitSelect{display:none !important}
+.side-back-btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;margin:-6px 0 6px -8px;padding:0 14px 0 10px;border:0;border-radius:999px;background:transparent;color:var(--md-primary);font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+.side-back-btn[hidden]{display:none}
+.side-back-btn:hover{background:color-mix(in srgb, var(--md-primary) 8%, transparent)}
+.calendar-details-card.is-overview #calendarSideMeta{display:none}
+#calendarSideCountdown{display:flex;flex-wrap:wrap;gap:6px;font-weight:400}
+.ov-root{display:grid;gap:12px}
+.ov-date{margin:0;color:var(--md-on-surface-variant);font-size:12px}
+.ov-date-solo{margin-top:-4px}
+.ov-card{display:flex;flex-direction:column;gap:8px;width:100%;box-sizing:border-box;padding:14px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);text-align:left;font:inherit}
+.ov-card-btn{cursor:pointer}
+.ov-card-btn:hover{border-color:color-mix(in srgb, var(--md-primary) 45%, var(--md-outline-variant))}
+.ov-card-btn:focus-visible,.ov-task:focus-visible,.ov-agenda button:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
+.ov-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ov-label{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--md-primary)}
+.ov-title{font-size:16px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.ov-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--md-on-surface-variant)}
+.ov-dot{display:inline-block;flex:none;width:9px;height:9px;border-radius:50%;background:var(--ov-c, var(--md-primary))}
+.ov-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px;font-weight:600;line-height:1.35;white-space:nowrap}
+.ov-chip.is-now{background:var(--md-primary-container);color:var(--md-on-primary-container)}
+.ov-chip.is-done{background:var(--status-success-bg);color:var(--status-success)}
+.ov-chip.is-pending,.ov-chip.is-overdue{background:var(--md-error-container);color:var(--md-on-error-container)}
+.ov-chip.is-due,.ov-chip.is-soon{background:color-mix(in srgb, #c77700 18%, transparent);color:color-mix(in srgb, #c77700 70%, var(--md-on-surface))}
+.ov-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ov-progress{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px}
+.ov-progress span{height:4px;border-radius:2px;background:var(--md-surface-container-highest)}
+.ov-progress span.on{background:var(--md-primary)}
+.ov-count{min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.ov-tasks,.ov-agenda{list-style:none;margin:0;padding:0;display:grid}
+.ov-task{display:flex;gap:10px;align-items:flex-start;width:100%;padding:8px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ov-tasks li+li .ov-task{border-top:1px solid var(--md-outline-variant)}
+.ov-task-icon{flex:none;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
+.ov-task-icon.is-overdue{background:var(--md-error-container);color:var(--md-on-error-container)}
+.ov-task-icon.is-due,.ov-task-icon.is-soon{background:color-mix(in srgb, #c77700 18%, transparent);color:color-mix(in srgb, #c77700 70%, var(--md-on-surface))}
+.ov-task-body{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.ov-task-title{font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.ov-task-meta{font-size:12px;color:var(--md-on-surface-variant)}
+.ov-ok{display:flex;align-items:center;gap:6px;margin:0;padding-top:8px;border-top:1px solid var(--md-outline-variant);color:var(--status-success);font-size:12px;font-weight:600}
+.ov-tasks:empty+.ov-ok,.ov-card-head+.ov-ok{border-top:0;padding-top:0}
+.ov-more{align-self:flex-start;min-height:36px;padding:0 12px;border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-primary);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.ov-agenda button{display:grid;grid-template-columns:minmax(84px,auto) 10px minmax(0,1fr);align-items:center;gap:10px;width:100%;min-height:40px;padding:6px 0;border:0;border-top:1px solid var(--md-outline-variant);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ov-agenda li:first-child button{border-top:0}
+.ov-agenda-date{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}
+.ov-agenda-name{font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-agenda-type{color:var(--md-on-surface-variant)}
+#overview #overviewRoot{max-width:640px;margin:0 auto}
+/* «Документы» — строка на документ вместо двух карточек. */
+.send-rows{display:grid;gap:6px}
+.send-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 10px;border-radius:12px;background:var(--md-surface-container-low);cursor:pointer}
+.send-row input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--md-primary)}
+.send-row-label{flex:1;font-size:14px;font-weight:600}
+.send-row-state{padding:3px 9px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap}
+.send-row.is-done .send-row-state{background:var(--status-success-bg);color:var(--status-success)}
+.send-row.is-pending .send-row-state{background:var(--md-error-container);color:var(--md-on-error-container)}
+/* Полосы событий — мягкий тон цвета события с тёмным текстом (в тёмной теме —
+   светлым); выбранная — с обводкой. Без color-mix остаётся прежняя заливка. */
+@supports (background:color-mix(in srgb, red 50%, blue)){
+  #calendarGrid .event-bar{background:color-mix(in srgb, var(--bar-c, var(--md-primary)) 22%, var(--md-surface-container-lowest)) !important;color:color-mix(in srgb, var(--bar-c, var(--md-primary)) 62%, var(--md-on-surface)) !important;font-weight:600;box-shadow:none}
+}
+#calendarGrid .event-bar.is-selected{outline:2px solid var(--md-primary);outline-offset:1px;z-index:3}
+/* Шапка месяца в одну строку (шире 900 px): «Ноябрь 2026 ▾ · ‹ Сегодня › ·
+   служебный год · ⋮». Выбор месяца — сам заголовок; дубли (h3 и строка
+   диапазона дат) скрыты только в виде «месяц» — вид «служебный год» прежний. */
+@media not all and (max-width:900px){
+  #calendar.cp-month-view .calendar-toolbar{display:flex !important;flex-wrap:wrap;align-items:center;gap:8px 10px !important}
+  #calendar.cp-month-view .calendar-controls{display:contents !important}
+  #calendar.cp-month-view #calendarYearSelect{order:1;width:auto !important;min-height:44px;padding:4px 30px 4px 8px;border:0;border-radius:12px;background-color:transparent;box-shadow:none;font-size:1.25rem;font-weight:700;color:var(--md-on-surface);cursor:pointer}
+  #calendar.cp-month-view .calendar-nav{order:2}
+  #calendar.cp-month-view .calendar-toolbar-title{order:3;flex:1 1 auto;min-width:0;display:flex;justify-content:flex-end}
+  #calendar.cp-month-view #monthLabel,#calendar.cp-month-view #calendarRangeLabel{display:none}
+  #calendar.cp-month-view #calendarServiceYearLabel{padding:4px 10px;border-radius:8px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px;font-weight:600}
+  #calendar.cp-month-view .toolbar-more{order:4}
+  [data-screen="overview"]{display:none !important}
+}
+@media (max-width:900px){
+  #calendarLayout>.calendar-side.is-overview{display:none !important}
+}
+@media print{#calendar.cp-month-view #monthLabel{display:block !important}#calendarYearSelect{display:none !important}}

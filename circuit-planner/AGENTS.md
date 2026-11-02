@@ -12,6 +12,7 @@
 | `index.html` | 55,4 КБ | по секции; CSS вынесен в `style.css` (31.08.2026) |
 | `style.css` | 41,8 КБ | стили модуля — правь здесь, не в разметке |
 | `ui/archive-year.js` | ~14 КБ | Архив: A3 — срез года → конверт → `CWArchive.put`, кнопка в настройках, баннер-предложение; A5 — «Убрать год» и восстановление по `#archive-restore=` (порядок шагов — шапка файла, `docs/db-migration/05-archive-schema.md` §13). Проверка — `scripts/check-archive-year.mjs` |
+| `ui/overview.js` | ~12 КБ | «Обзор» (вариант B, 02.11.2026): правая колонка календаря без выбора и экран `#overview` на ≤900 px; только вычисление поверх `buildCalendarItemsForMonth`/`getUpcomingReminders`, своих данных нет |
 | `i18n/dict.js` | 188 КБ | только `grep` по ключу, никогда целиком |
 | `forms/s302-form.js` | 730 КБ | **не открывать** — две строки base64-PDF |
 | `../shared/fonts/noto-sans-pdf-*.js` | 4 × ~95 КБ | **не открывать** — base64-шрифт PDF Noto Sans (общий) |

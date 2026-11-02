@@ -43,6 +43,7 @@ const APP_SHELL_URLS = [
   './ui/doc-templates.js',
   './ui/modals.js',
   './ui/ui-aux.js',
+  './ui/overview.js',
   './ui/ui-toggles.js',
   './ui/map.js',
   './ui/archive-year.js',
