@@ -2764,6 +2764,28 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
            мимо и Escape. Глобальный слушатель ставится один раз. */
         const sideMore = App.els.calendarSideDetails.querySelector('.more-actions');
         sideMore?.querySelector('.actions-grid')?.addEventListener('click', (e) => { if (e.target.closest('.actions-grid > .md-btn')) sideMore.removeAttribute('open'); });
+        /* Меню не должно уходить под нижнюю навигацию телефона, за край окна или
+           прокручиваемой панели (02.11.2026): места снизу мало — открывается
+           вверх; не влезает ни туда, ни туда — ограничивается по высоте и
+           прокручивается внутри. */
+        sideMore?.addEventListener('toggle', () => {
+          const grid = sideMore.querySelector('.actions-grid'); if (!grid) return;
+          sideMore.classList.remove('is-up'); grid.style.maxHeight = '';
+          if (!sideMore.open) return;
+          const gap = 8;
+          const row = sideMore.closest('.side-quick-actions').getBoundingClientRect();
+          let top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw-topbar-h')) || 0;
+          let bottom = window.innerHeight;
+          const nav = document.querySelector('.bottom-nav');
+          if (nav && getComputedStyle(nav).display !== 'none') { const r = nav.getBoundingClientRect(); if (r.height) bottom = Math.min(bottom, r.top); }
+          const pane = sideMore.closest('.calendar-side');
+          if (pane && getComputedStyle(pane).overflowY !== 'visible') { const r = pane.getBoundingClientRect(); top = Math.max(top, r.top); bottom = Math.min(bottom, r.bottom); }
+          const below = bottom - row.bottom - gap * 2, above = row.top - top - gap * 2, need = grid.scrollHeight;
+          const up = need > below && above > below;
+          sideMore.classList.toggle('is-up', up);
+          const room = Math.max(120, up ? above : below);
+          if (need > room) grid.style.maxHeight = `${Math.floor(room)}px`;
+        });
         if (!App.ui._sideMoreBound) {
           App.ui._sideMoreBound = true;
           document.addEventListener('click', (e) => { const open = document.querySelector('.side-quick-actions .more-actions[open]'); if (open && !open.contains(e.target)) open.removeAttribute('open'); });
