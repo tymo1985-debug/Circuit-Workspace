@@ -759,8 +759,9 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
 .ov-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px;font-weight:600;line-height:1.35;white-space:nowrap}
 .ov-chip.is-now{background:var(--md-primary-container);color:var(--md-on-primary-container)}
 .ov-chip.is-done{background:var(--status-success-bg);color:var(--status-success)}
-.ov-chip.is-pending,.ov-chip.is-overdue{background:var(--md-error-container);color:var(--md-on-error-container)}
-.ov-chip.is-due,.ov-chip.is-soon{background:color-mix(in srgb, #c77700 18%, transparent);color:color-mix(in srgb, #c77700 70%, var(--md-on-surface))}
+.ov-chip.is-pending,.ov-chip.is-overdue,.ov-chip.is-urgent{background:var(--md-error-container);color:var(--md-on-error-container)}
+.ov-chip.is-early{background:var(--status-success-bg);color:var(--status-success)}
+.ov-chip.is-todo{background:color-mix(in srgb, #c77700 18%, transparent);color:color-mix(in srgb, #c77700 70%, var(--md-on-surface))}
 .ov-chips{display:flex;flex-wrap:wrap;gap:6px}
 .ov-progress{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px}
 .ov-progress span{height:4px;border-radius:2px;background:var(--md-surface-container-highest)}
@@ -769,8 +770,9 @@ body[data-module] .bottom-nav-btn .label { font-size: 11px; }
 .ov-task{display:flex;gap:10px;align-items:flex-start;width:100%;padding:8px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .ov-tasks li+li .ov-task{border-top:1px solid var(--md-outline-variant)}
 .ov-task-icon{flex:none;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
-.ov-task-icon.is-overdue{background:var(--md-error-container);color:var(--md-on-error-container)}
-.ov-task-icon.is-due,.ov-task-icon.is-soon{background:color-mix(in srgb, #c77700 18%, transparent);color:color-mix(in srgb, #c77700 70%, var(--md-on-surface))}
+.ov-task-icon.is-overdue,.ov-task-icon.is-urgent{background:var(--md-error-container);color:var(--md-on-error-container)}
+.ov-task-icon.is-early{background:var(--status-success-bg);color:var(--status-success)}
+.ov-task-icon.is-todo{background:color-mix(in srgb, #c77700 18%, transparent);color:color-mix(in srgb, #c77700 70%, var(--md-on-surface))}
 .ov-task-body{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
 .ov-task-title{font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .ov-task-meta{font-size:12px;color:var(--md-on-surface-variant)}

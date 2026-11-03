@@ -100,16 +100,20 @@
     let letterRow = done('all_letters_sent');
     if (letter) {
       const days = Math.round((day0(letter.start) - today) / DAY);
+      /* Правило 60 дней (как прежняя карточка письма, 31.08.2026): дальше
+         порога — зелёное «Ещё рано · до отправки N дней», в пределах порога —
+         красное «Пора отправить письмо · через N дней», визит начался —
+         «Просрочено». Порог — letterReminderDays() (по умолчанию 60). */
       if (days <= 0) letterRow = row('letter', letter, 'overdue', t('ov_overdue'));
-      else if (days <= windowDays) letterRow = row('letter', letter, 'due', t('ov_due'));
-      else { const from = new Date(letter.start); from.setDate(from.getDate() - windowDays); letterRow = row('letter', letter, 'soon', t('ov_soon_from', { date: App.utils.prettyDate(from) })); }
+      else if (days <= windowDays) letterRow = row('letter', letter, 'urgent', `${t('needs_sending_now')} · ${App.utils.countdownText(letter.entry.start, 'days')}`);
+      else { const left = days - windowDays; letterRow = row('letter', letter, 'early', `${t('letter_soon')} · ${t('days_until_send', { value: left, label: App.utils.pluralUnit(left, 'day') })}`); }
     }
     let s302Row = done('ov_s302_all_sent');
     if (s302.length) {
       const first = s302[0];
       const overdue = Math.round((day0(first.start) - today) / DAY) <= 0;
       const more = s302.length > 1 ? `<span class="ov-chip">${esc(t('ov_s302_unsent', { n: s302.length }))}</span>` : '';
-      s302Row = row('s302', first, overdue ? 'overdue' : 'due', t(overdue ? 'ov_overdue' : 'needs_sending'), more);
+      s302Row = row('s302', first, overdue ? 'overdue' : 'todo', t(overdue ? 'ov_overdue' : 'needs_sending'), more);
     }
     const listBtn = s302.length > 1 || letter ? `<button type="button" class="ov-more" data-ov-reminders>${esc(t('ov_open_list'))}</button>` : '';
     return `<section class="ov-card" aria-label="${App.utils.escapeAttr(t('ov_todo'))}">
