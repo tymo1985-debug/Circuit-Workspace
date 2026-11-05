@@ -176,7 +176,15 @@
   .route-legend-i i.route-legend-dot{width:18px;height:0;border-radius:0;border-top:2px dotted var(--md-on-surface-variant,#555)}
   .route-legend-stop{color:#546e7a}
   .route-rules{margin-top:14px;border-top:1px solid var(--md-outline-variant);padding-top:10px}
-  .route-rules summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+  .route-rules summary{cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:12px;list-style:none;-webkit-tap-highlight-color:transparent}
+  .route-rules summary::-webkit-details-marker{display:none}
+  .route-rules summary::after{content:"";flex:0 0 auto;margin-left:auto;width:8px;height:8px;border-right:2px solid var(--md-on-surface-variant,#555);border-bottom:2px solid var(--md-on-surface-variant,#555);transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+  .route-rules[open] summary::after{transform:translateY(2px) rotate(-135deg)}
+  .route-rules summary:hover{background:var(--md-surface-container)}
+  .route-rules summary:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
+  .route-rules[open] summary{margin-bottom:4px}
+  .route-rules > #routeRules{padding:0 12px 4px}
+  @media (prefers-reduced-motion:reduce){.route-rules summary::after{transition:none}}
   .route-rules-hint{color:var(--md-on-surface-variant,#555);margin:4px 0 8px}
   .route-rules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
   .route-rule{display:flex;flex-direction:column;gap:4px}
