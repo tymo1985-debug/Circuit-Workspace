@@ -335,5 +335,6 @@ console.log('R10: данные и подключение');
   for (const m of src.matchAll(/t\('(route_[a-zA-Z_]+)'\s*[,)]/g)) if (dict.split(`'cp.${m[1]}':`).length - 1 !== 5) ok(false, `ключ cp.${m[1]} из route.js во всех 5 языках`);
 }
 
+ok(/function fitAll\(/.test(src) && src.includes("t('route_fit_all')") && src.includes("map.on('moveend', syncFitBtn)"), 'Карта: кнопка «Весь район» — общий вид периода, бледная в общем виде');
 if (failed) { console.error(`\nПровалено: ${failed}`); process.exit(1); }
 console.log('\nOK');

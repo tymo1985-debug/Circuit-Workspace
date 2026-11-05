@@ -615,6 +615,7 @@
     let map = null, pinsLayer = null, lineLayer = null, arrowLayer = null, tileLayer = null;
     let legSegs = [];          // R9: отрезки текущей линии для стрелок направления
     let drawnSig = '', fittedYear = null, tileError = false, leafletPromise = null;
+    let fitPts = [], fitBtn = null; // «Весь район»: точки общего вида и кнопка на карте
     let pts = [];              // точки маршрута (дом + строки с координатами)
     const legMemo = new Map(); // кэш дорожных отрезков в памяти вкладки
     let legByRow = new Map();  // id строки → отрезок, ведущий в неё
@@ -973,7 +974,7 @@
       drawnSig = sig;
       pinsLayer.clearLayers(); lineLayer.clearLayers(); arrowLayer.clearLayers(); legSegs = [];
       const visitsOnMap = pts.filter((r) => !r.home).concat(trips.map((tr) => tr[1]));
-      if (!visitsOnMap.length) { setMapNote(t('map_no_coords')); return; }
+      if (!visitsOnMap.length) { fitPts = []; syncFitBtn(); setMapNote(t('map_no_coords')); return; }
       if (!tileError) setMapNote('');
       if (ghost && ghost.length > 1) L.polyline(ghost.map((r) => [r.lat, r.lng]), { color: '#7a7f8c', weight: 2, opacity: 0.8, dashArray: '6 6', interactive: false }).addTo(lineLayer);
       // R9: отрезок — цвета месяца точки, куда он ведёт; R10: путь через дом — пунктиром
@@ -1005,12 +1006,50 @@
         m.on('click', () => select(r.id, false));
         m.addTo(pinsLayer);
       });
+      fitPts = visitsOnMap.concat(homePt ? [homePt] : []).map((r) => [r.lat, r.lng]);
       if (fittedYear !== scope()) {
         fittedYear = scope();
-        const all = visitsOnMap.concat(homePt ? [homePt] : []);
-        if (all.length === 1) map.setView([all[0].lat, all[0].lng], 10);
-        else map.fitBounds(all.map((r) => [r.lat, r.lng]), { padding: [28, 28] });
+        fitAll();
       }
+      syncFitBtn();
+    }
+
+    /* «Весь район»: общий вид всех посещений периода, дома и остановок —
+       тот же расчёт, что при открытии периода. Только вид карты, выбор не трогает. */
+    const FIT_PAD = [28, 28];
+    function fitAll() {
+      if (!map || !fitPts.length) return;
+      if (fitPts.length === 1) map.setView(fitPts[0], 10);
+      else map.fitBounds(fitPts, { padding: FIT_PAD });
+    }
+    function atOverview() {
+      if (!map || !fitPts.length) return true;
+      if (fitPts.length === 1) return map.getZoom() === 10 && map.getBounds().contains(fitPts[0]);
+      const b = L.latLngBounds(fitPts);
+      return map.getZoom() === map.getBoundsZoom(b, false, L.point(FIT_PAD[0] * 2, FIT_PAD[1] * 2)) && map.getBounds().contains(b);
+    }
+    function syncFitBtn() {
+      if (!fitBtn) return;
+      const idle = atOverview();
+      fitBtn.classList.toggle('is-idle', idle);
+      fitBtn.setAttribute('aria-disabled', String(idle));
+    }
+    function addFitControl() {
+      const Ctl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd() {
+          const bar = L.DomUtil.create('div', 'leaflet-bar route-fit-ctl');
+          const label = t('route_fit_all');
+          bar.innerHTML = `<button type="button" class="route-fit-btn" title="${esc(label)}" aria-label="${esc(label)}">`
+            + '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+          fitBtn = bar.firstChild;
+          L.DomEvent.disableClickPropagation(bar);
+          L.DomEvent.disableScrollPropagation(bar);
+          L.DomEvent.on(fitBtn, 'click', (e) => { L.DomEvent.preventDefault(e); fitAll(); });
+          return bar;
+        },
+      });
+      new Ctl().addTo(map);
     }
 
     function ensureMap() {
@@ -1028,6 +1067,10 @@
           arrowLayer = L.layerGroup().addTo(map);
           pinsLayer = L.layerGroup().addTo(map);
           map.on('zoomend', drawArrows);
+          map.on('moveend', syncFitBtn);
+          addFitControl();
+          // клавиша 0 на карте в фокусе — тот же общий вид
+          el.addEventListener('keydown', (e) => { if (e.key === '0' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); fitAll(); } });
         }
         map.invalidateSize();
         drawMap();
