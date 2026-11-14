@@ -141,6 +141,8 @@
       'doc.var.school.registrationDeadline': 'Срок подачи анкеты',
       'doc.var.school.registrationEmail': 'Email для анкеты',
       'doc.var.school.registrationWhatsapp': 'WhatsApp для анкеты',
+      'doc.var.school.pioneerList': 'Список пионеров (по строке)',
+      'doc.var.school.pioneerCount': 'Число пионеров',
 
       'doc.lang_columns_label': 'Языковые версии документа',
       'doc.lang_empty': 'перевода нет',
@@ -281,6 +283,8 @@
       'doc.var.school.registrationDeadline': 'Строк подання анкети',
       'doc.var.school.registrationEmail': 'Email для анкети',
       'doc.var.school.registrationWhatsapp': 'WhatsApp для анкети',
+      'doc.var.school.pioneerList': 'Список піонерів (по рядку)',
+      'doc.var.school.pioneerCount': 'Кількість піонерів',
 
       'doc.lang_columns_label': 'Мовні версії документа',
       'doc.lang_empty': 'перекладу немає',
@@ -419,6 +423,8 @@
       'doc.var.school.registrationDeadline': 'Registration deadline',
       'doc.var.school.registrationEmail': 'Registration email',
       'doc.var.school.registrationWhatsapp': 'Registration WhatsApp',
+      'doc.var.school.pioneerList': 'List of pioneers (one per line)',
+      'doc.var.school.pioneerCount': 'Number of pioneers',
 
       'doc.lang_columns_label': 'Document language versions',
       'doc.lang_empty': 'no translation',
@@ -557,6 +563,8 @@
       'doc.var.school.registrationDeadline': 'Termin zgłoszenia',
       'doc.var.school.registrationEmail': 'E-mail do zgłoszeń',
       'doc.var.school.registrationWhatsapp': 'WhatsApp do zgłoszeń',
+      'doc.var.school.pioneerList': 'Lista pionierów (po jednym w wierszu)',
+      'doc.var.school.pioneerCount': 'Liczba pionierów',
 
       'doc.lang_columns_label': 'Wersje językowe dokumentu',
       'doc.lang_empty': 'brak tłumaczenia',
@@ -695,6 +703,8 @@
       'doc.var.school.registrationDeadline': 'Anmeldefrist',
       'doc.var.school.registrationEmail': 'E-Mail für die Anmeldung',
       'doc.var.school.registrationWhatsapp': 'WhatsApp für die Anmeldung',
+      'doc.var.school.pioneerList': 'Liste der Pioniere (je Zeile)',
+      'doc.var.school.pioneerCount': 'Anzahl der Pioniere',
 
       'doc.lang_columns_label': 'Sprachversionen des Dokuments',
       'doc.lang_empty': 'keine Übersetzung',

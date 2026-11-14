@@ -20,7 +20,7 @@ function esc(value) {
 }
 
 const ROUTES = ['dashboard', 'anketa', 'assignment', 'registration', 'substitutes', 'students',
-  'textbooks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup',
+  'dispatch', 'textbooks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup',
   'docsarchive'];
 const DEFAULT_ROUTE = 'dashboard';
 
@@ -105,6 +105,7 @@ async function renderRouteInner(route) {
     case 'registration': return renderRegistration();
     case 'substitutes': return renderSubstitutes();
     case 'students': return renderStudents();
+    case 'dispatch': return renderDispatch();
     case 'textbooks': return renderTextbooks();
     case 'schedule': return renderSchedule();
     case 'practical': return renderPractical();
@@ -1277,6 +1278,202 @@ async function openExportPicker() {
     ExcelExport.downloadStudentsCsv(students, cols, await getClassesById());
   };
   $('#export-close-btn').onclick = closeModal;
+}
+
+// ---------- РАССЫЛКА (Ф3) ----------
+// Экран «0 · Мастер-макет › Dispatch». Решения Алекса 14.11.2026: пакет —
+// ZIP с отдельными PDF; «Напомнить» — готовый текст старейшинам (WhatsApp,
+// почта, копирование); «письмо отправлено» — только кнопкой; срок ответа —
+// срок формуляра с правкой по собранию. Логика и хранение — Dispatch.
+
+let dispatchSelected = null;
+
+function dispatchDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(String(iso) + 'T00:00:00');
+  return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString(document.documentElement.lang || 'ru');
+}
+
+function dispatchContact(group) {
+  const rec = group.record;
+  if (!rec) return '';
+  return [rec.contactName, rec.contactPhone, rec.contactEmail].filter(Boolean).join(' · ');
+}
+
+function dispatchAnswersChip(group) {
+  const count = `${group.responded} / ${group.total}`;
+  if (group.overdue) return `<span class="ps-dispatch-chip ps-dispatch-chip--bad">${esc(T('ps.dispatch.overdue_chip', { n: count }))}</span>`;
+  const mod = group.complete ? 'ok' : (group.sent ? 'warn' : 'idle');
+  return `<span class="ps-dispatch-chip ps-dispatch-chip--${mod}">${esc(count)}</span>`;
+}
+
+async function renderDispatch() {
+  const [students, state, config] = await Promise.all([Students.list(), Dispatch.getState(), Registration.getConfig()]);
+  const groups = Dispatch.groups(students, state, config);
+  const orphans = Dispatch.orphans(students);
+
+  $('#dispatch-hint').textContent = orphans.length ? T('ps.dispatch.orphans', { n: orphans.length }) : '';
+  $('#dispatch-zip-all').disabled = !groups.some((g) => g.invitees.length);
+  $('#dispatch-zip-all').onclick = () => downloadDispatchZip(groups.filter((g) => g.invitees.length), true);
+  $('#dispatch-remind-all').disabled = !groups.some((g) => g.overdue);
+  $('#dispatch-remind-all').onclick = () => openDispatchReminder(groups.filter((g) => g.overdue));
+
+  if (!groups.length) {
+    $('#dispatch-table').innerHTML = `<p class="hint">${esc(T('ps.dispatch.empty'))}</p>`;
+    $('#dispatch-detail').innerHTML = '';
+    $('#dispatch-detail').hidden = true;
+    return;
+  }
+  $('#dispatch-detail').hidden = false;
+  if (!groups.some((g) => g.key === dispatchSelected)) dispatchSelected = groups[0].key;
+
+  $('#dispatch-table').innerHTML = `<div class="ps-dispatch__scroll"><table class="md-table md-table--cards ps-dispatch-table">
+    <thead><tr>
+      <th>${esc(T('ps.dispatch.col_cong'))}</th><th>${esc(T('ps.dispatch.col_count'))}</th>
+      <th>${esc(T('ps.dispatch.col_contact'))}</th><th>${esc(T('ps.dispatch.col_sent'))}</th>
+      <th>${esc(T('ps.dispatch.col_deadline'))}</th><th>${esc(T('ps.dispatch.col_answers'))}</th>
+    </tr></thead>
+    <tbody>${groups.map((g) => `<tr class="${g.key === dispatchSelected ? 'ps-dispatch-row--sel' : ''}">
+      <td data-label="${esc(T('ps.dispatch.col_cong'))}"><button type="button" class="md-btn md-btn-text dispatch-pick" data-ro-allow data-key="${esc(g.key)}" aria-pressed="${g.key === dispatchSelected}">${esc(g.name)}</button></td>
+      <td data-label="${esc(T('ps.dispatch.col_count'))}">${g.invitees.length}</td>
+      <td data-label="${esc(T('ps.dispatch.col_contact'))}">${g.record ? esc(dispatchContact(g) || '—') : `<span class="ps-reason">${esc(T('ps.dispatch.no_contact'))}</span>`}</td>
+      <td data-label="${esc(T('ps.dispatch.col_sent'))}">${esc(dispatchDate(g.entry.sentAt))}</td>
+      <td data-label="${esc(T('ps.dispatch.col_deadline'))}">${esc(dispatchDate(g.deadline))}</td>
+      <td data-label="${esc(T('ps.dispatch.col_answers'))}">${dispatchAnswersChip(g)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+
+  $all('.dispatch-pick').forEach((btn) => {
+    btn.onclick = () => { dispatchSelected = btn.dataset.key; renderDispatch(); };
+  });
+
+  renderDispatchDetail(groups.find((g) => g.key === dispatchSelected), config);
+}
+
+function renderDispatchDetail(group, config) {
+  const el = $('#dispatch-detail');
+  const n = group.invitees.length;
+  const contact = dispatchContact(group);
+  const sentBlock = group.sent
+    ? `<p class="ps-dispatch__status">${esc(T('ps.dispatch.sent_on', { date: dispatchDate(group.entry.sentAt) }))}
+        ${group.entry.remindedAt ? `<span class="ps-reason">${esc(T('ps.dispatch.reminded_on', { date: dispatchDate(group.entry.remindedAt) }))}</span>` : ''}</p>
+       <div class="ps-dispatch-actions">
+         ${group.complete ? '' : `<button type="button" class="md-btn md-btn-tonal" id="dispatch-remind">${esc(T('ps.dispatch.remind'))}</button>`}
+         <button type="button" class="md-btn md-btn-text" id="dispatch-unmark">${esc(T('ps.dispatch.unmark'))}</button>
+       </div>`
+    : `<div class="ps-dispatch-actions ps-dispatch-actions--end">
+         <label class="field"><span>${esc(T('ps.dispatch.sent_date'))}</span><input type="date" id="dispatch-sent-date" value="${esc(DateUtils.todayIso())}"></label>
+         <button type="button" class="md-btn md-btn-tonal" id="dispatch-mark" ${n ? '' : 'disabled'}>${esc(T('ps.dispatch.mark_sent'))}</button>
+       </div>`;
+
+  el.innerHTML = `
+    <h3>${esc(T('ps.dispatch.package', { name: group.name }))}</h3>
+    ${n ? `<ul class="ps-dispatch__docs">
+      <li>${esc(T('ps.dispatch.item_elders', { n }))}</li>
+      <li>${esc(T('ps.dispatch.item_invites', { n }))}</li>
+      <li>${esc(T('ps.dispatch.item_forms', { n }))}</li>
+    </ul>` : `<p class="hint">${esc(T('ps.dispatch.no_invitees'))}</p>`}
+    <p class="hint">${esc(contact ? T('ps.dispatch.contact', { contact }) : T('ps.dispatch.contact_missing'))}</p>
+    <label class="field"><span>${esc(T('ps.dispatch.deadline_label'))}</span>
+      <input type="date" id="dispatch-deadline" value="${esc(group.entry.deadline || '')}"></label>
+    <p class="hint">${esc(config.deadline ? T('ps.dispatch.deadline_default', { date: dispatchDate(config.deadline) }) : T('ps.dispatch.deadline_none'))}</p>
+    <div class="ps-dispatch-actions">
+      <button type="button" class="md-btn md-btn-outlined" id="dispatch-preview" data-ro-allow ${n ? '' : 'disabled'}>${esc(T('ps.dispatch.preview'))}</button>
+      <button type="button" class="md-btn md-btn-filled" id="dispatch-zip" data-ro-allow ${n ? '' : 'disabled'}>${esc(T('ps.dispatch.zip'))}</button>
+    </div>
+    <p class="hint" id="dispatch-status" role="status"></p>
+    ${sentBlock}`;
+
+  $('#dispatch-deadline').onchange = async (e) => { await Dispatch.setDeadline(group, e.target.value); renderDispatch(); };
+  $('#dispatch-preview').onclick = async () => {
+    const names = group.invitees.map((s) => Students.fullName(s));
+    const doc = await Letters.buildFor(Letters.ELDERS, await Letters.congregationData(group, names, { deadline: group.deadline }));
+    if (!doc) return alert(T('ps.docs.build_failed'));
+    openModal(`<h2>${esc(doc.title)}</h2><div class="doc-paper" id="doc-paper"></div>
+      <div class="modal-close-row"><button class="md-btn md-btn-text" id="doc-close-btn">${esc(T('common.close'))}</button></div>`);
+    $('#doc-paper').textContent = doc.body;
+    $('#doc-close-btn').onclick = closeModal;
+  };
+  $('#dispatch-zip').onclick = () => downloadDispatchZip([group], false);
+  if ($('#dispatch-mark')) {
+    $('#dispatch-mark').onclick = async () => {
+      await Dispatch.markSent(group, $('#dispatch-sent-date').value);
+      renderDispatch();
+    };
+  }
+  if ($('#dispatch-unmark')) {
+    $('#dispatch-unmark').onclick = async () => {
+      if (!confirm(T('ps.dispatch.unmark_confirm'))) return;
+      await Dispatch.unmarkSent(group);
+      renderDispatch();
+    };
+  }
+  if ($('#dispatch-remind')) $('#dispatch-remind').onclick = () => openDispatchReminder([group]);
+  applyReadOnly('dispatch');
+}
+
+async function downloadDispatchZip(groups, all) {
+  const status = $('#dispatch-status');
+  if (status) status.textContent = T('ps.dispatch.building');
+  try {
+    const files = [];
+    const docs = [];
+    for (const group of groups) {
+      const pack = await Dispatch.packageFiles(group, group.name);
+      if (!pack) { if (status) status.textContent = ''; return; }
+      files.push(...pack.files);
+      docs.push(...pack.docs);
+    }
+    // Имя архива — латиницей: кириллицу в атрибуте download часть браузеров
+    // заменяет на «download» (проверено живым прогоном). Внутри архива
+    // папка собрания названа полностью.
+    const number = !all && groups[0].record && String(groups[0].record.congNumber || '').replace(/[^0-9A-Za-z-]+/g, '');
+    const name = all ? 'pioneer-school-packages.zip' : `pioneer-school-package${number ? '-' + number : ''}.zip`;
+    PSZip.download(PSZip.build(files), name);
+    Dispatch.snapshot(docs);
+    if (status) status.textContent = '';
+  } catch (error) {
+    console.error(error);
+    if (status) status.textContent = '';
+    alert(T('ps.dispatch.zip_failed', { error: error.message }));
+  }
+}
+
+async function openDispatchReminder(groups) {
+  if (!groups.length) return alert(T('ps.dispatch.no_overdue'));
+  const items = [];
+  for (const group of groups) {
+    const doc = await Dispatch.reminder(group);
+    if (!doc) return alert(T('ps.docs.build_failed'));
+    items.push({ group, doc, links: Dispatch.links(group, doc) });
+  }
+  openModal(`
+    <h2>${esc(T('ps.dispatch.doc_reminder'))}</h2>
+    ${items.map((it, i) => `<section class="ps-dispatch-remind">
+      <h3>${esc(it.group.name)}</h3>
+      <div class="doc-paper" id="dispatch-remind-text-${i}"></div>
+      <div class="ps-dispatch-actions">
+        ${it.links.whatsapp ? `<a class="md-btn md-btn-tonal dispatch-send" data-i="${i}" href="${esc(it.links.whatsapp)}" target="_blank" rel="noopener">${esc(T('ps.dispatch.whatsapp'))}</a>` : ''}
+        ${it.links.email ? `<a class="md-btn md-btn-tonal dispatch-send" data-i="${i}" href="${esc(it.links.email)}">${esc(T('ps.dispatch.email'))}</a>` : ''}
+        <button type="button" class="md-btn md-btn-outlined dispatch-copy" data-i="${i}">${esc(T('ps.dispatch.copy'))}</button>
+      </div>
+    </section>`).join('')}
+    <div class="modal-close-row"><button class="md-btn md-btn-text" id="doc-close-btn">${esc(T('common.close'))}</button></div>`);
+
+  items.forEach((it, i) => { $('#dispatch-remind-text-' + i).textContent = it.doc.body; });
+  const done = async (i) => {
+    await Dispatch.markReminded(items[i].group);
+    Letters.snapshotFor(items[i].doc, { entity: Letters.REMINDER.entity, id: items[i].group.key, title: items[i].group.name }, 'manual', false);
+  };
+  $all('.dispatch-send').forEach((a) => { a.addEventListener('click', () => done(Number(a.dataset.i))); });
+  $all('.dispatch-copy').forEach((btn) => {
+    btn.onclick = async () => {
+      const i = Number(btn.dataset.i);
+      try { await navigator.clipboard.writeText(items[i].doc.body); } catch (e) { return alert(e.message); }
+      btn.textContent = T('ps.dispatch.copied');
+      done(i);
+    };
+  });
+  $('#doc-close-btn').onclick = () => { closeModal(); renderDispatch(); };
 }
 
 // ---------- TEXTBOOKS ----------

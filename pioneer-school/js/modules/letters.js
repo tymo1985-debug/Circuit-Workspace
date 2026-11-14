@@ -20,12 +20,28 @@
 const Letters = {
   MODULE: 'pioneer-school',
 
-  /** Единственный документ фазы 6. Появится второй — здесь будет список. */
+  /** Письмо пионеру (фаза 6). */
   INVITATION: {
     id: 'sys.school.student.invitation',
     context: 'school.student.invitation',
     entity: 'student',
     titleKey: 'ps.docs.invitation_title'
+  },
+
+  /* Ф3 «Рассылка» (14.11.2026): письма совету старейшин собрания. Список
+     пионеров — переменная {{school.pioneerList}} внутри письма, а не
+     отдельный файл: «письмо + один список» старейшинам. */
+  ELDERS: {
+    id: 'sys.school.congregation.letter',
+    context: 'school.congregation.letter',
+    entity: 'congregation',
+    titleKey: 'ps.dispatch.doc_elders'
+  },
+  REMINDER: {
+    id: 'sys.school.congregation.reminder',
+    context: 'school.congregation.reminder',
+    entity: 'congregation',
+    titleKey: 'ps.dispatch.doc_reminder'
   },
 
   /** Подключён ли общий слой шаблонов. Без него документов у модуля нет. */
@@ -56,24 +72,37 @@ const Letters = {
    * как запись базы, `assignment` и `registrationConfig` — он знает только
    * имена полей из реестра, и привести одно к другому обязан модуль.
    */
-  async data(student) {
-    const [assignment, config] = await Promise.all([Assignment.get(), Registration.getConfig()]);
+  async data(student, overrides = {}) {
     const values = student.values || {};
     return {
+      ...(await this.schoolData(overrides)),
       student: {
         firstName: values.firstName || '',
         lastName: values.lastName || '',
         congregation: values.congregation || '',
         email: values.email || '',
         phone: values.phone || ''
-      },
+      }
+    };
+  },
+
+  /**
+   * Общая часть данных: школа, служебное. overrides.deadline — срок ответа
+   * конкретного собрания (Ф3); без него — срок из настроек формуляра.
+   * `sender` намеренно не передаём: движок сам подставит общий слой
+   * (shared/sender.js). У Школы нет и не нужно своего экрана отправителя —
+   * это тот же районный старейшина, что подписывает письма в Клиндарии.
+   */
+  async schoolData(overrides = {}) {
+    const [assignment, config] = await Promise.all([Assignment.get(), Registration.getConfig()]);
+    return {
       school: {
         startDate: this.date(assignment.startDate),
         endDate: this.date(assignment.endDate),
         place: assignment.location || '',
         teacherA: assignment.teacherA || '',
         teacherB: assignment.teacherB || '',
-        registrationDeadline: this.date(config.deadline),
+        registrationDeadline: this.date(overrides.deadline || config.deadline),
         registrationEmail: config.email || '',
         registrationWhatsapp: config.whatsapp || ''
       },
@@ -81,10 +110,30 @@ const Letters = {
         today: this.date(new Date().toISOString()),
         lang: PSDocLang.get()
       }
-      // `sender` намеренно не передаём: движок сам подставит общий слой
-      // (shared/sender.js). У Школы нет и не нужно своего экрана отправителя —
-      // это тот же районный старейшина, что подписывает письма в Клиндарии.
     };
+  },
+
+  /**
+   * Данные письма собранию (Ф3). group — из Dispatch.groups(); names —
+   * пионеры, которых перечисляет письмо (всё приглашение или только те, кто
+   * ещё не ответил, — решает вызывающий).
+   */
+  async congregationData(group, names, overrides = {}) {
+    const base = await this.schoolData(overrides);
+    const rec = group.record || {};
+    const number = rec.congNumber || '';
+    base.school.pioneerList = names.map((name, i) => `${i + 1}. ${name}`).join('\n');
+    base.school.pioneerCount = String(names.length);
+    base.congregation = {
+      name: group.name || '',
+      number,
+      numberSuffix: number ? ` (${number})` : '',
+      address: rec.address || '',
+      contactName: rec.contactName || '',
+      contactPhone: rec.contactPhone || '',
+      contactEmail: rec.contactEmail || ''
+    };
+    return base;
   },
 
   /** Человеческое имя документа — для заголовка, архива и имени файла. */
@@ -105,16 +154,20 @@ const Letters = {
    * @returns {Promise<Object|null>} null — общий слой недоступен либо у шаблона
    *   нет ни одной непустой колонки перевода.
    */
-  async build(student) {
+  async build(student, overrides = {}) {
+    return this.buildFor(this.INVITATION, await this.data(student, overrides));
+  },
+
+  /** Сборка любого документа модуля по описанию (INVITATION/ELDERS/REMINDER). */
+  async buildFor(def, data) {
     if (!this.available()) return null;
     const lang = PSDocLang.get();
-    const picked = CWTemplates.text(this.INVITATION.context, lang);
+    const picked = CWTemplates.text(def.context, lang);
     if (!picked) return null;
-    const data = await this.data(student);
     return {
       templateId: picked.id,
-      context: this.INVITATION.context,
-      title: this.title(),
+      context: def.context,
+      title: T(def.titleKey),
       // ФАКТИЧЕСКИЙ язык, а не запрошенный: при пустой колонке перевода
       // CWTemplates отдаёт первый непустой, и записать сюда запрошенный
       // значило бы пометить русское письмо как «pl».
@@ -140,6 +193,11 @@ const Letters = {
    * ронять его из-за истории нельзя.
    */
   async snapshot(doc, student, reason, edited) {
+    return this.snapshotFor(doc, { entity: this.INVITATION.entity, id: student.id, title: this.studentName(student) }, reason, edited);
+  },
+
+  /** Снимок с произвольной ссылкой: ref = { entity, id, title }. */
+  async snapshotFor(doc, ref, reason, edited) {
     if (!doc || !this.archiveAvailable()) return null;
     try {
       return await CWDocs.save({
@@ -152,8 +210,8 @@ const Letters = {
         body: doc.body,
         pages: [],
         edited: !!edited,
-        ref: { module: this.MODULE, entity: this.INVITATION.entity, id: student.id },
-        entityTitle: this.studentName(student),
+        ref: { module: this.MODULE, entity: ref.entity, id: ref.id },
+        entityTitle: ref.title,
         data: doc.data,
         reason: reason || 'manual'
       });

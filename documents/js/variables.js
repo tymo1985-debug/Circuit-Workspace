@@ -91,6 +91,8 @@
     'school.registrationDeadline':  'doc.var.school.registrationDeadline',
     'school.registrationEmail':     'doc.var.school.registrationEmail',
     'school.registrationWhatsapp':  'doc.var.school.registrationWhatsapp',
+    'school.pioneerList':           'doc.var.school.pioneerList',
+    'school.pioneerCount':          'doc.var.school.pioneerCount',
   };
 
   /* Поля реестра, которые НЕ показываются в picker'е. См. обоснование в

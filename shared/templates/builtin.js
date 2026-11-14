@@ -200,6 +200,70 @@
       },
     },
 
+    /* Ф3 «Рассылка» (14.11.2026) — письма совету старейшин собрания.
+       Список пионеров — {{school.pioneerList}} (готовые строки «1. Фамилия
+       Имя»): в письме — все приглашённые, в напоминании — только те, от кого
+       ещё нет ответа. Срок {{school.registrationDeadline}} здесь — срок ответа
+       собрания (свой или срок формуляра), см. pioneer-school/js/modules/dispatch.js. */
+    {
+      id: 'sys.school.congregation.letter',
+      context: 'school.congregation.letter',
+      module: 'pioneer-school',
+      format: 'text',
+      title: 'Письмо совету старейшин о Школе пионерского служения',
+      translations: {
+        ru: {
+          subject: null,
+          body: "Совету старейшин собрания {{congregation.name}}{{congregation.numberSuffix}}\n\nДорогие братья!\n\nС радостью сообщаю, что следующие пионеры вашего собрания приглашены на Школу пионерского служения:\n\n{{school.pioneerList}}\n\nДаты: {{school.startDate}} — {{school.endDate}}\nМесто: {{school.place}}\n\nК письму приложены приглашение и формуляр для каждого пионера. Пожалуйста, передайте их пионерам. Заполненный формуляр нужно отправить до {{school.registrationDeadline}} на {{school.registrationEmail}} или через WhatsApp {{school.registrationWhatsapp}}.\n\nБлагодарю вас за помощь.\n\nВаш брат,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        uk: {
+          subject: null,
+          body: "Раді старійшин збору {{congregation.name}}{{congregation.numberSuffix}}\n\nДорогі брати!\n\nРадий повідомити, що такі піонери вашого збору запрошені до Школи піонерського служіння:\n\n{{school.pioneerList}}\n\nДати: {{school.startDate}} — {{school.endDate}}\nМісце: {{school.place}}\n\nДо листа додано запрошення і формуляр для кожного піонера. Будь ласка, передайте їх піонерам. Заповнений формуляр потрібно надіслати до {{school.registrationDeadline}} на {{school.registrationEmail}} або через WhatsApp {{school.registrationWhatsapp}}.\n\nДякую вам за допомогу.\n\nВаш брат,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        en: {
+          subject: null,
+          body: "To the body of elders of the {{congregation.name}}{{congregation.numberSuffix}} Congregation\n\nDear Brothers,\n\nI am pleased to let you know that the following pioneers of your congregation have been invited to attend the Pioneer Service School:\n\n{{school.pioneerList}}\n\nDates: {{school.startDate}} — {{school.endDate}}\nLocation: {{school.place}}\n\nAn invitation and a form for each pioneer are attached. Please pass them on to the pioneers. The completed form should be sent by {{school.registrationDeadline}} to {{school.registrationEmail}} or via WhatsApp at {{school.registrationWhatsapp}}.\n\nThank you for your help.\n\nYour brother,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        pl: {
+          subject: null,
+          body: "Do grona starszych zboru {{congregation.name}}{{congregation.numberSuffix}}\n\nDrodzy Bracia!\n\nZ przyjemnością informuję, że następujący pionierzy waszego zboru zostali zaproszeni na Kurs Służby Pionierskiej:\n\n{{school.pioneerList}}\n\nTerminy: {{school.startDate}} — {{school.endDate}}\nMiejsce: {{school.place}}\n\nDo listu dołączono zaproszenie i formularz dla każdego pioniera. Proszę, przekażcie je pionierom. Wypełniony formularz należy wysłać do {{school.registrationDeadline}} na adres {{school.registrationEmail}} lub przez WhatsApp na {{school.registrationWhatsapp}}.\n\nDziękuję za pomoc.\n\nWasz brat,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        de: {
+          subject: null,
+          body: "An die Ältestenschaft der Versammlung {{congregation.name}}{{congregation.numberSuffix}}\n\nLiebe Brüder,\n\nich freue mich, euch mitzuteilen, dass folgende Pioniere eurer Versammlung zur Pionierdienstschule eingeladen sind:\n\n{{school.pioneerList}}\n\nZeitraum: {{school.startDate}} — {{school.endDate}}\nOrt: {{school.place}}\n\nFür jeden Pionier liegen eine Einladung und ein Formular bei. Bitte gebt sie an die Pioniere weiter. Das ausgefüllte Formular ist bis {{school.registrationDeadline}} an {{school.registrationEmail}} oder über WhatsApp an {{school.registrationWhatsapp}} zu senden.\n\nVielen Dank für eure Hilfe.\n\nEuer Bruder\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+      },
+    },
+    {
+      id: 'sys.school.congregation.reminder',
+      context: 'school.congregation.reminder',
+      module: 'pioneer-school',
+      format: 'text',
+      title: 'Напоминание совету старейшин о формулярах Школы пионеров',
+      translations: {
+        ru: {
+          subject: null,
+          body: "Дорогие братья собрания {{congregation.name}}!\n\nНапоминаю о Школе пионерского служения ({{school.startDate}} — {{school.endDate}}). Формуляр нужно отправить до {{school.registrationDeadline}}, но от следующих пионеров он ещё не получен:\n\n{{school.pioneerList}}\n\nПожалуйста, напомните им отправить формуляр на {{school.registrationEmail}} или через WhatsApp {{school.registrationWhatsapp}}.\n\nСпасибо!\nВаш брат,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        uk: {
+          subject: null,
+          body: "Дорогі брати збору {{congregation.name}}!\n\nНагадую про Школу піонерського служіння ({{school.startDate}} — {{school.endDate}}). Формуляр потрібно надіслати до {{school.registrationDeadline}}, але від таких піонерів його ще не отримано:\n\n{{school.pioneerList}}\n\nБудь ласка, нагадайте їм надіслати формуляр на {{school.registrationEmail}} або через WhatsApp {{school.registrationWhatsapp}}.\n\nДякую!\nВаш брат,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        en: {
+          subject: null,
+          body: "Dear Brothers of the {{congregation.name}} Congregation,\n\nThis is a reminder about the Pioneer Service School ({{school.startDate}} — {{school.endDate}}). The form is due by {{school.registrationDeadline}}, but we have not yet received it from the following pioneers:\n\n{{school.pioneerList}}\n\nPlease remind them to send the form to {{school.registrationEmail}} or via WhatsApp at {{school.registrationWhatsapp}}.\n\nThank you!\nYour brother,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        pl: {
+          subject: null,
+          body: "Drodzy Bracia ze zboru {{congregation.name}}!\n\nPrzypominam o Kursie Służby Pionierskiej ({{school.startDate}} — {{school.endDate}}). Formularz należy wysłać do {{school.registrationDeadline}}, ale od następujących pionierów jeszcze go nie otrzymaliśmy:\n\n{{school.pioneerList}}\n\nProszę, przypomnijcie im o wysłaniu formularza na adres {{school.registrationEmail}} lub przez WhatsApp na {{school.registrationWhatsapp}}.\n\nDziękuję!\nWasz brat,\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+        de: {
+          subject: null,
+          body: "Liebe Brüder der Versammlung {{congregation.name}},\n\nich erinnere an die Pionierdienstschule ({{school.startDate}} — {{school.endDate}}). Das Formular ist bis {{school.registrationDeadline}} fällig, von folgenden Pionieren ist es aber noch nicht eingegangen:\n\n{{school.pioneerList}}\n\nBitte erinnert sie daran, das Formular an {{school.registrationEmail}} oder über WhatsApp an {{school.registrationWhatsapp}} zu senden.\n\nVielen Dank!\nEuer Bruder\n{{sender.name}}\n{{sender.code}}\n{{sender.phone1}}\n{{sender.email}}",
+        },
+      },
+    },
+
     {
       id: 'sys.visit.congregation.salutation',
       context: 'visit.congregation.salutation',

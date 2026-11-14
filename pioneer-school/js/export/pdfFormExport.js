@@ -29,7 +29,10 @@ const PdfFormExport = {
     return (typeof PSDocLang !== 'undefined') ? PSDocLang.date(iso) : String(iso);
   },
 
-  async generate(config, schema) {
+  // prefill (Ф3) — { [ключ текстового поля]: значение }: формуляр в пакете
+  // собранию приходит с уже вписанными именем и собранием. Пионер может
+  // исправить их сам — поле остаётся обычным редактируемым.
+  async generate(config, schema, prefill = null) {
     if (!window.PDFLib) throw new Error('Библиотека pdf-lib не загрузилась — обновите страницу.');
     if (!window.fontkit) throw new Error('Библиотека fontkit не загрузилась — обновите страницу.');
     if (!window.PDF_FONT_NOTO_SANS) throw new Error('Шрифт для PDF-анкеты не загрузился.');
@@ -47,7 +50,8 @@ const PdfFormExport = {
       page: doc.addPage([this.PAGE_W, this.PAGE_H]),
       y: this.PAGE_H - 50,
       form: doc.getForm(),
-      fieldCount: 0
+      fieldCount: 0,
+      prefill: prefill || {}
     };
 
     this._drawHeader(state, config);
@@ -197,6 +201,8 @@ const PdfFormExport = {
     // Размер шрифта задаётся ПОСЛЕ addToPage: запись /DA, которую он правит,
     // создаётся только при размещении поля на странице.
     tf.setFontSize(11);
+    const preset = state.prefill[field.key];
+    if (preset) tf.setText(String(preset));
     state.fieldCount++;
     state.y -= boxHeight + 14;
 

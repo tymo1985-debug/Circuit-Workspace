@@ -152,6 +152,10 @@
         registrationDeadline:   { aliases: [], example: '20 вересня 2026 р.' },
         registrationEmail:      { aliases: [], example: 'school@example.com' },
         registrationWhatsapp:   { aliases: [], example: '+48 000 000 000' },
+        /* Ф3 «Рассылка» (14.11.2026): письма совету старейшин. Готовые
+           строки «1. Фамилия Имя», по одной на пионера, и их число. */
+        pioneerList:            { aliases: [], example: '1. Коваль Олена\n2. Петренко Іван' },
+        pioneerCount:           { aliases: [], example: '2' },
       },
     },
 

@@ -95,6 +95,8 @@ const ASSETS = [
   './js/modules/afterSchool.js',
   './js/modules/signLanguage.js',
   './js/modules/letters.js',
+  './js/utils/zip.js',
+  './js/modules/dispatch.js',
   './js/export/pdfExport.js',
   './js/export/pdfFormExport.js',
   './js/export/excelExport.js',

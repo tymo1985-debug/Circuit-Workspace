@@ -50,7 +50,8 @@
   var NAMESPACES_BY_MODULE = {
     'congress-project': ['sender', 'congress', 'assignment', 'doc'],
     'circuit-planner': ['sender', 'congregation', 'visit', 'doc'],
-    'pioneer-school': ['sender', 'student', 'school', 'doc'],
+    /* Ф3: письма совету старейшин получают и {{congregation.*}}. */
+    'pioneer-school': ['sender', 'student', 'school', 'congregation', 'doc'],
     /* Журнал (J9b) передаёт только { project }; отправителя он не
        подключает, поэтому {{sender.*}} там не подставился бы — не предлагаем. */
     'journal': ['project', 'doc'],

@@ -54,6 +54,7 @@
       <button data-i18n="ps.ui.registraciya_uchaschihsya" class="nav-item" data-route="registration">Регистрация учащихся</button>
       <button data-i18n="ps.ui.zamestiteli" class="nav-item" data-route="substitutes">Заместители</button>
       <button data-i18n="ps.ui.uchaschiesya" class="nav-item" data-route="students">Учащиеся</button>
+      <button data-i18n="ps.dispatch.title" class="nav-item" data-route="dispatch">Рассылка</button>
       <button data-i18n="ps.ui.uchebniki" class="nav-item" data-route="textbooks">Учебники</button>
 
       <div data-i18n="ps.ui.vo_vremya_shkoly" class="nav-group-label">Во время школы</div>
@@ -322,6 +323,23 @@
       </div>
     </section>
 
+    <!-- Ф3 «Рассылка» (14.11.2026): пакет собранию, сроки, напоминания. -->
+    <section id="route-dispatch" class="route hidden">
+      <header class="route-header">
+        <h1 data-i18n="ps.dispatch.title">Рассылка</h1>
+        <p data-i18n="ps.dispatch.sub" class="route-sub">Пакет каждому собранию: письмо старейшинам со списком, приглашение и формуляр каждому пионеру</p>
+      </header>
+      <div class="ps-dispatch-actions">
+        <button data-i18n="ps.dispatch.remind_overdue" class="md-btn md-btn-outlined" id="dispatch-remind-all">Напомнить просроченным</button>
+        <button data-i18n="ps.dispatch.zip_all" class="md-btn md-btn-filled" id="dispatch-zip-all">Скачать все пакеты</button>
+      </div>
+      <p class="hint" id="dispatch-hint"></p>
+      <div class="ps-dispatch">
+        <div class="panel ps-dispatch__list" id="dispatch-table"></div>
+        <div class="panel ps-dispatch__detail" id="dispatch-detail"></div>
+      </div>
+    </section>
+
     <section id="route-textbooks" class="route hidden">
       <header class="route-header">
         <h1 data-i18n="ps.ui.uchebniki">Учебники</h1>
@@ -539,6 +557,8 @@
 <script src="js/modules/afterSchool.js"></script>
 <script src="js/modules/signLanguage.js"></script>
 <script src="js/modules/letters.js"></script>
+<script src="js/utils/zip.js"></script>
+<script src="js/modules/dispatch.js"></script>
 <script src="js/modules/registrationSchema.js"></script>
 <!-- excelExport.js остаётся на старте: три из четырёх его выгрузок — чистый
      CSV и обязаны работать без библиотек. Настоящий .xlsx уехал в набор

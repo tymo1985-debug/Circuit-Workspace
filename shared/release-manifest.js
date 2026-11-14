@@ -1,12 +1,11 @@
 self.CW_RELEASE = {
-  version: '0.47.10',
+  version: '0.47.11',
   changes: [
-    { module: 'pioneer-school', version: '1.20.0', note: 'Формуляр пионера: собрание, отметка WhatsApp, причина при «не приду» обязательна, несколько языков учебника, особые потребности; заполненная PDF-анкета загружается прямо в карточку пионера' },
-    { module: 'congress-project', version: '4.53.10', technical: true },
-    { module: 'circuit-planner', version: '9.125.5', technical: true },
-    { module: 'documents', version: '1.14.10', technical: true },
-    { module: 'appointments', version: '5.6.10', technical: true },
-    { module: 'journal', version: '0.30.26', technical: true },
-    { module: 'archive', version: '0.4.18', technical: true },
+    { module: 'pioneer-school', version: '1.21.0', note: 'Рассылка по собраниям: пакет ZIP (письмо старейшинам со списком, приглашение и формуляр с вписанным именем каждому пионеру), срок ответа, отметка «письмо отправлено», напоминание старейшинам через WhatsApp или почту' },
+    { module: 'documents', version: '1.14.11', note: 'Новые шаблоны: письмо и напоминание совету старейшин о Школе пионеров; переменные списка пионеров' },
+    { module: 'congress-project', version: '4.53.11', technical: true },
+    { module: 'appointments', version: '5.6.11', technical: true },
+    { module: 'journal', version: '0.30.27', technical: true },
+    { module: 'archive', version: '0.4.19', technical: true },
   ],
 };

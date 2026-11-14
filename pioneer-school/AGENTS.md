@@ -57,6 +57,17 @@
   существующим пионером — только по выбору пользователя.
 - Проверка — `scripts/check-pioneer-form.mjs`.
 
+## Рассылка (Ф3, 14.11.2026) — инварианты
+
+- Состояние — meta-ключ `dispatch` школы: `{ [groupKey]: { sentAt, deadline,
+  remindedAt } }`; группа — `congregationId` или `name:<название>`. Логика —
+  только `js/modules/dispatch.js`.
+- «Письмо отправлено» — только кнопкой (`Dispatch.markSent`); снятие отметки
+  возвращает в «Приглашён» лишь `letterSent`. Пакет — только `isExpected()`.
+- Тексты писем старейшинам — шаблоны общего слоя
+  (`sys.school.congregation.letter` / `.reminder`), правятся в «Документах».
+- Проверка — `scripts/check-pioneer-dispatch.mjs`.
+
 ## Открытая работа: N-3
 
 Ленивая догрузка библиотек. Четыре именованных набора: `pdf`, `import`,
