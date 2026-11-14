@@ -587,6 +587,9 @@ input[type=text], input[type=number], input[type=date], select, textarea {
 /* Метки и чекбоксы карточки — в строку (общее правило label здесь колонкой). */
 label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surface); }
 .ps-card [hidden] { display: none; }
+/* Ф2: «Причина» в ручном вводе регистрации скрыта, пока не выбрано «Нет»;
+   display:flex у label выше перебил бы атрибут hidden. */
+.form-grid label[hidden] { display: none; }
 /* Узкий телефон: ширину выбора школы держит общее правило шапки
    (shared/style.css, 7.5rem), кнопка «Школы…» — только значок. */
 @media (max-width: 600px) {

@@ -29,8 +29,12 @@
 // Типы полей:
 //   text | email | tel | textarea — текстовый ввод
 //   radio      — выбор одного варианта (в PDF: radio group, на вебе: «таблетки»)
-//   checkboxes — выбор нескольких вариантов (в PDF: независимые checkbox)
-// showIf: { field, equals } — поле показывается/поясняется только при условии.
+//   checkboxes — выбор нескольких вариантов (в PDF: независимые checkbox
+//                `<key>_<value>`); значение в записи — массив. required —
+//                «отмечен хотя бы один».
+//   check      — одна галочка «да» (в PDF: checkbox `<key>`); в записи 'yes' или ''.
+// showIf: { field, equals } — для radio; { field, includes } — для checkboxes.
+//   Поле показывается/поясняется только при условии.
 //   На вебе такое поле становится обязательным, пока видимо, и очищается,
 //   когда скрывается: иначе причина неявки уехала бы в письмо у того, кто
 //   сперва выбрал «Нет», потом передумал.
@@ -44,8 +48,21 @@
 // онлайн-форма, интерактивный PDF и печатный бланк — берут `heading`.
 // Та же логика, по которой 14.08.2026 из словаря уехали двоеточия.
 
+// ВЕРСИЯ 2 (Ф2, 14.11.2026): собрание, «номер есть в WhatsApp», несколько
+// языков учебника (`languages` — массив, вместо одного `language`), особые
+// потребности. Записи версии 1 и PDF-анкеты, разосланные до Ф2, читаются:
+// одиночный `language` — это `languages` из одного элемента (languagesOf()).
+// Ключи полей — контракт с IndexedDB, резервной копией и именами полей PDF;
+// переименовывать нельзя.
+
 const RegistrationSchema = {
-  version: 1,
+  version: 2,
+
+  // Языки учебника в анкете. Ключ 'other' раскрывает поле languageOther.
+  // Только ru/uk/de — решение Алекса 14.11.2026; остальные добавляются по
+  // потребности (ключ + подпись doc.ps.reg.opt.lang.<код> на 5 языках).
+  // Ответы старых анкет с другим кодом (pl) читаются: подпись — сам код.
+  LANGUAGE_OPTIONS: ['ru', 'uk', 'de', 'other'],
 
   get sections() {
     const yesNo = [
@@ -64,13 +81,17 @@ const RegistrationSchema = {
         fields: [
           { key: 'lastName', label: D('doc.ps.field.lastName'), type: 'text', required: true, autocomplete: 'family-name' },
           { key: 'firstName', label: D('doc.ps.field.firstName'), type: 'text', required: true, autocomplete: 'given-name' },
-          { key: 'address', label: D('doc.ps.field.address'), type: 'text', required: true, autocomplete: 'street-address', pdfWidth: 'full' },
-          { key: 'email', label: D('doc.ps.field.email'), type: 'email', required: true, autocomplete: 'email' },
+          // Собрание — текстом: справочника собраний (CWDirectory) на телефоне
+          // пионера нет. Сопоставление со справочником — при переносе в
+          // карточку (Registration.applyToStudent).
+          { key: 'congregation', label: D('doc.ps.field.congregation'), type: 'text', required: true, autocomplete: 'off' },
           {
             key: 'phone', label: D('doc.ps.reg.field.phone'), type: 'tel', required: true, autocomplete: 'tel',
-            placeholder: '+000 00 000 00 00',
-            hint: D('doc.ps.reg.hint.phone')
-          }
+            placeholder: '+000 00 000 00 00'
+          },
+          { key: 'phoneWhatsapp', label: D('doc.ps.reg.field.phoneWhatsapp'), type: 'check' },
+          { key: 'email', label: D('doc.ps.field.email'), type: 'email', required: true, autocomplete: 'email' },
+          { key: 'address', label: D('doc.ps.field.address'), type: 'text', required: true, autocomplete: 'street-address', pdfWidth: 'full' }
         ]
       },
       {
@@ -82,8 +103,10 @@ const RegistrationSchema = {
             label: D('doc.ps.reg.field.attending'),
             options: yesNo
           },
+          // required — пока поле видимо (RegistrationForm.wire): при «Нет»
+          // причина обязательна. Звёздочка видна и на бумаге.
           {
-            key: 'attendReason', type: 'textarea', label: D('doc.ps.reg.field.attendReason'),
+            key: 'attendReason', type: 'textarea', required: true, label: D('doc.ps.reg.field.attendReason'),
             showIf: { field: 'attending', equals: 'no' }, pdfWidth: 'full', pdfLines: 2, rows: 2
           }
         ]
@@ -107,18 +130,12 @@ const RegistrationSchema = {
         title: D('doc.ps.reg.section.textbook'),
         fields: [
           {
-            key: 'language', type: 'radio', required: true, label: D('doc.ps.field.language'),
-            options: [
-              { value: 'ru', label: D('doc.ps.reg.opt.lang.ru') },
-              { value: 'uk', label: D('doc.ps.reg.opt.lang.uk') },
-              { value: 'pl', label: D('doc.ps.reg.opt.lang.pl') },
-              { value: 'de', label: D('doc.ps.reg.opt.lang.de') },
-              { value: 'other', label: D('doc.ps.reg.opt.lang.other') }
-            ]
+            key: 'languages', type: 'checkboxes', required: true, label: D('doc.ps.reg.field.languages'),
+            options: this.LANGUAGE_OPTIONS.map((code) => ({ value: code, label: D('doc.ps.reg.opt.lang.' + code) }))
           },
           {
             key: 'languageOther', type: 'text', label: D('doc.ps.reg.field.languageOther'),
-            showIf: { field: 'language', equals: 'other' }
+            showIf: { field: 'languages', includes: 'other' }
           },
           {
             key: 'format', type: 'checkboxes', label: D('doc.ps.reg.field.format'),
@@ -128,6 +145,16 @@ const RegistrationSchema = {
               { value: 'pdf', label: D('doc.ps.reg.opt.format.pdf') },
               { value: 'epub', label: D('doc.ps.reg.opt.format.epub') }
             ]
+          }
+        ]
+      },
+      {
+        id: 'needs',
+        title: D('doc.ps.field.specialNeeds'),
+        fields: [
+          {
+            key: 'specialNeeds', type: 'textarea', pdfWidth: 'full', pdfLines: 2, rows: 2,
+            label: D('doc.ps.reg.field.specialNeeds')
           }
         ]
       },
@@ -146,6 +173,9 @@ const RegistrationSchema = {
 
   get closingText() { return D('doc.ps.reg.closing'); },
 
+  // Подсказка браузера у обязательной группы галочек (RegistrationForm.wire).
+  get groupRequiredText() { return D('doc.ps.reg.pick_one'); },
+
   allFields() {
     return this.sections.flatMap((s) => s.fields);
   },
@@ -161,10 +191,51 @@ const RegistrationSchema = {
   },
 
   labelForValue(key, value) {
-    const f = this.fieldByKey(key);
+    // Записи версии 1 хранили один язык под ключом `language`.
+    const f = this.fieldByKey(key === 'language' ? 'languages' : key);
     if (!f || !f.options) return value;
     const opt = f.options.find((o) => o.value === value);
     return opt ? opt.label : value;
+  },
+
+  // Значение условия showIf: radio — equals, checkboxes — includes.
+  conditionValue(showIf) {
+    return showIf.equals !== undefined ? showIf.equals : showIf.includes;
+  },
+
+  // Выполнено ли условие showIf для записи (значение — строка или массив).
+  conditionMet(showIf, value) {
+    const want = this.conditionValue(showIf);
+    return Array.isArray(value) ? value.includes(want) : value === want;
+  },
+
+  // Запись из пар [ключ, значение] (FormData веба, поля PDF): checkboxes
+  // собираются в массив, остальное — строкой. Незнакомые ключи пропускаются.
+  recordFromEntries(entries) {
+    const record = {};
+    this.allFields().forEach((f) => { if (f.type === 'checkboxes') record[f.key] = []; });
+    for (const [key, value] of entries) {
+      const f = this.fieldByKey(key);
+      if (!f) continue;
+      if (f.type === 'checkboxes') { if (!record[key].includes(value)) record[key].push(value); }
+      else record[key] = typeof value === 'string' ? value.trim() : value;
+    }
+    return record;
+  },
+
+  // Коды языков учебника из записи любой версии: v2 — массив `languages`,
+  // v1 — одиночный `language`.
+  languagesOf(record) {
+    if (!record) return [];
+    if (Array.isArray(record.languages)) return record.languages.slice();
+    return record.language ? [record.language] : [];
+  },
+
+  // Языки для показа и документов: 'other' → то, что пионер вписал.
+  languageLabels(record) {
+    return this.languagesOf(record).map((code) => (code === 'other'
+      ? (record.languageOther || D('doc.ps.reg.opt.lang.other_lower'))
+      : this.labelForValue('languages', code)));
   }
 };
 

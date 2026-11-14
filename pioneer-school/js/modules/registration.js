@@ -16,8 +16,12 @@ const Registration = {
   // вычислялся один раз при загрузке скрипта. Язык, выбранный позже, до этих
   // подписей уже не доходил — таблица регистраций оставалась на языке первой
   // загрузки. Та же ловушка, что со справочными требованиями в anketa.js.
-  get LANGUAGE_LABELS() {
-    return { ru: T('ps.ui.russkiy'), uk: T('ps.ui.ukrainskiy'), pl: T('ps.ui.polskiy'), de: T('ps.ui.nemeckiy'), other: T('ps.ui.drugoy') };
+  // Языки учебника для таблицы — на языке интерфейса (Intl через
+  // Students.languageName); записи v1 и v2 читаются одинаково.
+  languageText(reg) {
+    return RegistrationSchema.languagesOf(reg)
+      .map((code) => (code === 'other' ? (reg.languageOther || T('ps.ui.drugoy')) : Students.languageName(code)))
+      .join(', ');
   },
   get FORMAT_LABELS() {
     return { print: T('ps.reg.pechatnyy_ekzemplyar'), jwpub: T('ps.reg.elektronnyy_jwpub'), pdf: 'PDF', epub: 'EPUB' };
@@ -52,6 +56,8 @@ const Registration = {
     if (!reg.firstName || !reg.firstName.trim()) errors.push(T('ps.stud.ukazhite_imya'));
     if (!reg.email || !reg.email.trim()) errors.push(T('ps.reg.enter_email'));
     if (!reg.phone || !reg.phone.trim()) errors.push(T('ps.reg.enter_phone'));
+    // Ф2: «Не приду» без причины не принимается — причина нужна для S-253.
+    if (reg.attending === 'no' && !String(reg.attendReason || '').trim()) errors.push(T('ps.reg.enter_reason'));
     return errors;
   },
 
@@ -75,50 +81,148 @@ const Registration = {
     return 'standard';
   },
 
-  async convertToStudent(reg) {
+  // ---------- Ф2: заполненная анкета → карточка пионера ----------
+
+  // Регистрация из заполненной PDF-анкеты. Без validate(): анкету заполнял
+  // пионер, и пустой email не повод потерять остальные ответы — недочёты
+  // показываются после переноса в карточку (applyToStudent → warnings).
+  async saveImported(record, fileName) {
+    const reg = {
+      ...record,
+      id: DB.uid(),
+      source: 'pdf',
+      sourceFile: fileName || '',
+      schemaVersion: RegistrationSchema.version,
+      submittedAt: new Date().toISOString()
+    };
+    await DB.put('registrations', reg);
+    return reg;
+  },
+
+  _nameKey(last, first) {
+    const n = (x) => String(x || '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase().replace(/ё/g, 'е');
+    return n(last) + '|' + n(first);
+  },
+
+  // Пионер этой школы с теми же фамилией и именем — обычно тот, кого
+  // пригласили по списку филиала и кто теперь вернул анкету.
+  async findStudentMatch(reg) {
+    const key = this._nameKey(reg.lastName, reg.firstName);
+    const list = await Students.list();
+    return list.find((s) => this._nameKey(s.values.lastName, s.values.firstName) === key) || null;
+  },
+
+  // Языки учебника для модели пионера: коды + то, что вписано в «Другой».
+  textbookLanguagesOf(reg) {
+    const codes = RegistrationSchema.languagesOf(reg).filter((c) => c !== 'other');
+    const other = RegistrationSchema.languagesOf(reg).includes('other') || reg.languageOther
+      ? Students.parseLanguages(reg.languageOther) : [];
+    return [...codes, ...other].filter((l, i, arr) => l && arr.indexOf(l) === i);
+  },
+
+  async _ensureColumns() {
     // На случай, если организатор удалил один из стандартных столбцов —
     // убеждаемся, что нужные столбцы существуют, прежде чем записывать значения.
     await Students.ensureColumn('congregation', { label: T('ps.ph.sobranie'), type: 'text' });
     await Students.ensureColumn('email', { label: 'Email', type: 'text' });
     await Students.ensureColumn('phone', { label: T('ps.ui.telefon'), type: 'text' });
+    await Students.ensureColumn('phoneWhatsapp', { label: T('ps.reg.whatsapp_col'), labelKey: 'ps.reg.whatsapp_col', type: 'select', options: Students.YES_NO_OPTIONS });
     await Students.ensureColumn('address', { label: T('ps.stud.adres_prozhivaniya'), type: 'text' });
     await Students.ensureColumn('transport', { label: T('ps.ui.est_avtomobil'), type: 'select', options: Students.YES_NO_OPTIONS });
     await Students.ensureColumn('lodging', { label: T('ps.ui.nuzhen_nochleg'), type: 'select', options: Students.YES_NO_OPTIONS });
+    await Students.ensureColumn('specialNeeds', { label: T('ps.reg.special_needs'), labelKey: 'ps.reg.special_needs', type: 'textarea' });
     await Students.ensureColumn('notes', { label: T('ps.stud.dop_svedeniya'), type: 'textarea' });
+  },
 
-    // Ф1: ответ формуляра раскладывается в поля модели пионера (students.js).
-    const language = reg.language === 'other' ? (reg.languageOther || '') : (reg.language || '');
+  /**
+   * Ответы анкеты → карточка пионера (поля модели Ф1).
+   * @param {Object} reg — запись регистрации
+   * @param {string|null} studentId — обновить этого пионера; null — новый
+   * @returns {{ student: Object, warnings: string[] }}
+   *
+   * ОБНОВЛЕНИЕ НЕ СТИРАЕТ: пустой ответ анкеты оставляет то, что уже было в
+   * карточке. Статус меняется только у тех, кто ещё не на школе
+   * (attended / notAttended — итог школы, анкета его не переписывает).
+   */
+  async applyToStudent(reg, studentId = null) {
+    await this._ensureColumns();
+    const warnings = [];
     const directory = (typeof CWDirectory !== 'undefined' && CWDirectory.ready && reg.congregation)
       ? CWDirectory.byName(reg.congregation) : null;
-    const student = {
-      id: DB.uid(),
-      classId: null,
-      values: {
-        lastName: reg.lastName,
-        firstName: reg.firstName,
-        congregation: reg.congregation || '',
-        textbookFormat: this.mapFormatToStudentCategory(reg.format),
-        email: reg.email || '',
-        phone: reg.phone || '',
-        address: reg.address || '',
-        transport: reg.transport || '',
-        lodging: reg.lodging || '',
-        notes: reg.notes || ''
-      },
-      model: Students.MODEL,
-      origin: 'branchList',
-      status: reg.attending === 'no' ? 'wontCome' : (reg.attending === 'yes' ? 'willCome' : 'invited'),
-      statusReason: reg.attending === 'no' ? T('ps.pioneer.reason_from_form') : '',
-      gender: '',
-      congregationId: directory ? directory.id : null,
-      relations: [],
-      textbookLanguages: Students.parseLanguages(language),
-      previousInvites: [],
-      fromRegistrationId: reg.id
+    // Пустой справочник — не недочёт анкеты: название остаётся текстом.
+    if (reg.congregation && typeof CWDirectory !== 'undefined' && CWDirectory.ready && !directory
+      && CWDirectory.all().length) {
+      warnings.push(T('ps.reg.import.no_congregation', { name: reg.congregation }));
+    }
+    const languages = this.textbookLanguagesOf(reg);
+    if (!languages.length) warnings.push(T('ps.reg.import.no_language'));
+    let reason = String(reg.attendReason || '').trim();
+    if (reg.attending === 'no' && !reason) {
+      reason = T('ps.reg.import.reason_missing');
+      warnings.push(T('ps.reg.import.no_reason'));
+    }
+    const answered = {
+      lastName: reg.lastName,
+      firstName: reg.firstName,
+      congregation: directory ? directory.name : reg.congregation,
+      email: reg.email,
+      phone: reg.phone,
+      phoneWhatsapp: reg.phoneWhatsapp === 'yes' ? 'yes' : '',
+      address: reg.address,
+      transport: reg.transport,
+      lodging: reg.lodging,
+      specialNeeds: reg.specialNeeds,
+      notes: reg.notes,
+      textbookFormat: (reg.format || []).length ? this.mapFormatToStudentCategory(reg.format) : ''
     };
-    await Students.save(student);
+    const values = {};
+    Object.keys(answered).forEach((k) => {
+      const v = answered[k];
+      if (v !== undefined && v !== null && String(v).trim() !== '') values[k] = String(v).trim();
+    });
+    const nextStatus = reg.attending === 'no' ? 'wontCome' : (reg.attending === 'yes' ? 'willCome' : null);
+
+    let student;
+    if (studentId) {
+      const current = (await Students.list()).find((s) => s.id === studentId);
+      if (!current) throw new Error(T('ps.pioneer.err.not_found'));
+      delete values.lastName;
+      delete values.firstName;
+      const patch = { values };
+      if (directory) patch.congregationId = directory.id;
+      if (languages.length) patch.textbookLanguages = languages;
+      if (nextStatus && !['attended', 'notAttended'].includes(current.status)) {
+        patch.status = nextStatus;
+        patch.statusReason = nextStatus === 'wontCome' ? reason : '';
+      }
+      student = await Students.saveCard(studentId, patch);
+    } else {
+      student = {
+        id: DB.uid(),
+        classId: null,
+        values: { textbookFormat: 'standard', ...values },
+        model: Students.MODEL,
+        origin: 'branchList',
+        status: nextStatus || 'invited',
+        statusReason: nextStatus === 'wontCome' ? reason : '',
+        gender: '',
+        congregationId: directory ? directory.id : null,
+        relations: [],
+        textbookLanguages: languages,
+        previousInvites: [],
+        fromRegistrationId: reg.id
+      };
+      await Students.save(student);
+    }
     reg.convertedToStudentId = student.id;
     await DB.put('registrations', reg);
+    return { student, warnings };
+  },
+
+  // Кнопка «В учащиеся» в таблице регистраций — прежний вход, теперь через
+  // applyToStudent (новый пионер).
+  async convertToStudent(reg) {
+    const { student } = await this.applyToStudent(reg, null);
     return student;
   }
 };

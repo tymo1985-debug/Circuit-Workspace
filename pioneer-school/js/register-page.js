@@ -63,46 +63,35 @@
   const successBanner = document.getElementById('success-banner');
   const shareRow = document.getElementById('share-row');
 
-  // Сбор данных формы в одну запись — нужен и при отправке, и при выгрузке PDF
-  // до отправки, поэтому вынесен из обработчика submit.
+  // Сбор данных формы в одну запись. Группы галочек (языки, формат) — массивы:
+  // это знает схема (recordFromEntries), а не список имён здесь.
   function collectRecord() {
-    const formData = new FormData(form);
-    const record = {};
-    for (const [key, value] of formData.entries()) {
-      if (key === 'format') {
-        record.format = record.format || [];
-        record.format.push(value);
-      } else {
-        record[key] = value;
-      }
-    }
-    return record;
+    return RegistrationSchema.recordFromEntries(new FormData(form).entries());
   }
 
   // Текст письма/сообщения, которое уходит районному старейшине.
   // Подписи вариантов — из схемы анкеты: она единственный источник и уже
-  // на языке документа. Прежняя версия брала их из модуля Registration,
-  // который на этой странице вообще не загружался (см. комментарий у
-  // <script> ниже) — и обработчик отправки падал на этой самой строке.
+  // на языке документа.
   function buildSummaryText(record) {
     const opt = (field, value) => (value ? RegistrationSchema.labelForValue(field, value) : '');
-    const lang = record.language === 'other'
-      ? (record.languageOther || D('doc.ps.reg.opt.lang.other_lower'))
-      : (opt('language', record.language) || record.language);
+    const langs = RegistrationSchema.languageLabels(record).join(', ');
     const formats = (record.format || []).map((f) => opt('format', f) || f).join(', ');
     const reason = record.attending === 'no'
       ? ` (${D('doc.ps.sum.reason')}: ${record.attendReason || '-'})`
       : '';
+    const wa = record.phoneWhatsapp === 'yes' ? ` (${D('doc.ps.pdf.contact.whatsapp')})` : '';
     return `${D('doc.ps.sum.title')}
 ${D('doc.ps.sum.fullname')}: ${record.lastName} ${record.firstName}
-${D('doc.ps.field.address')}: ${record.address || '-'}
+${D('doc.ps.field.congregation')}: ${record.congregation || '-'}
+${D('doc.ps.field.phone')}: ${record.phone || '-'}${wa}
 ${D('doc.ps.field.email')}: ${record.email || '-'}
-${D('doc.ps.field.phone')}: ${record.phone || '-'}
+${D('doc.ps.field.address')}: ${record.address || '-'}
 ${D('doc.ps.field.attending')}: ${opt('attending', record.attending) || '-'}${reason}
 ${D('doc.ps.field.transport')}: ${opt('transport', record.transport) || '-'}
 ${D('doc.ps.field.lodging')}: ${opt('lodging', record.lodging) || '-'}
-${D('doc.ps.field.language')}: ${lang || '-'}
+${D('doc.ps.field.language')}: ${langs || '-'}
 ${D('doc.ps.field.format')}: ${formats || '-'}
+${D('doc.ps.field.specialNeeds')}: ${record.specialNeeds || '-'}
 ${D('doc.ps.field.notes')}: ${record.notes || '-'}`;
   }
 
@@ -113,6 +102,7 @@ ${D('doc.ps.field.notes')}: ${record.notes || '-'}`;
       return;
     }
     const record = collectRecord();
+    record.schemaVersion = RegistrationSchema.version;
     record.id = 'reg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     record.submittedAt = new Date().toISOString();
 

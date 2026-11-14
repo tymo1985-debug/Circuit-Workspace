@@ -132,10 +132,30 @@ const PdfFormExport = {
     // Подпись поля (для условных полей — с пояснением, когда его заполнять)
     let label = field.label || '';
     if (field.showIf) {
-      const parentLabel = window.RegistrationSchema.labelForValue(field.showIf.field, field.showIf.equals);
+      const S = window.RegistrationSchema;
+      const parentLabel = S.labelForValue(field.showIf.field, S.conditionValue(field.showIf));
       label = `${label} ${D('doc.ps.reg.cond_hint', { option: parentLabel })}`;
     }
     if (field.required) label += ' *';
+
+    if (field.type === 'check') {
+      // Одна галочка с подписью справа (Ф2: «номер есть в WhatsApp»).
+      this._ensureSpace(state, 26);
+      const box = 12;
+      const cb = state.form.createCheckBox(this._fieldName(field.key));
+      cb.addToPage(state.page, {
+        x: this.MARGIN, y: state.y - 2, width: box, height: box,
+        borderWidth: 0.7, borderColor: state.rgb(0.62, 0.6, 0.55),
+        backgroundColor: state.rgb(0.99, 0.985, 0.97)
+      });
+      state.fieldCount++;
+      this._wrapLines(state, label, 10.5, contentWidth - box - 5).forEach((line) => {
+        this._text(state, line, { x: this.MARGIN + box + 5, size: 10.5 });
+        state.y -= 14;
+      });
+      state.y -= 8;
+      return;
+    }
 
     if (field.type === 'radio' || field.type === 'checkboxes') {
       this._ensureSpace(state, 46);
@@ -308,6 +328,56 @@ const PdfFormExport = {
     // Просим просмотрщик перестроить внешний вид полей по нашим DR/DA —
     // страхует на случай, если он игнорирует заранее сгенерированные appearance.
     acro.set(PDFName.of('NeedAppearances'), doc.context.obj(true));
+  },
+
+  // ---------- Чтение ЗАПОЛНЕННОЙ анкеты (Ф2, 14.11.2026) ----------
+  // Живёт рядом с генератором намеренно: имена полей PDF (_fieldName,
+  // `<key>_<value>` у групп галочек, экспортное значение радиокнопки = ключ
+  // варианта) — контракт между тем, кто пишет, и тем, кто читает.
+  //
+  // Читает по схеме, а не по списку имён: поле, которого в файле нет (анкета
+  // разослана до Ф2), просто пропускается. Одна поправка на старые анкеты —
+  // язык учебника был одной радиогруппой `language`; он становится
+  // `languages` из одного элемента.
+  //
+  // @returns {{ record: Object, filled: number }} filled — сколько полей
+  //   анкеты в файле заполнено; 0 у пустой или чужой формы.
+  async readFilled(bytes, schema) {
+    if (!window.PDFLib) throw new Error('Библиотека pdf-lib не загрузилась — обновите страницу.');
+    const doc = await window.PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+    const form = doc.getForm();
+    const names = new Set(form.getFields().map((f) => f.getName()));
+    const get = (name, kind) => {
+      if (!names.has(name)) return null;
+      try { return form['get' + kind](name); } catch (e) { return null; }
+    };
+    const entries = [];
+    schema.allFields().forEach((field) => {
+      const name = this._fieldName(field.key);
+      if (field.type === 'radio') {
+        const g = get(name, 'RadioGroup');
+        const v = g && g.getSelected();
+        if (v) entries.push([field.key, String(v)]);
+      } else if (field.type === 'checkboxes') {
+        (field.options || []).forEach((opt) => {
+          const cb = get(this._fieldName(field.key + '_' + opt.value), 'CheckBox');
+          if (cb && cb.isChecked()) entries.push([field.key, opt.value]);
+        });
+      } else if (field.type === 'check') {
+        const cb = get(name, 'CheckBox');
+        if (cb && cb.isChecked()) entries.push([field.key, 'yes']);
+      } else {
+        const tf = get(name, 'TextField');
+        const v = tf && tf.getText();
+        if (v && String(v).trim()) entries.push([field.key, String(v)]);
+      }
+    });
+    // Анкета версии 1: один язык радиогруппой `language`.
+    const legacy = get('language', 'RadioGroup');
+    const legacyValue = legacy && legacy.getSelected();
+    if (legacyValue) entries.push(['languages', String(legacyValue)]);
+
+    return { record: schema.recordFromEntries(entries), filled: entries.length, fields: names.size };
   },
 
   async download(config, schema) {

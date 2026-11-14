@@ -55,8 +55,6 @@ const EXCEPTIONS = {
     'то же, что monthNames: недостающий язык закрывает Intl, а не таблица',
   'appointments/js/app.js:DOC_LOCALE':
     'языки ДОКУМЕНТА Назначений — три (DOC_LANGS строкой выше), а не пять языков интерфейса; карта локалей обязана совпадать с DOC_LANGS, а не с интерфейсом',
-  'pioneer-school/js/modules/registration.js:LANGUAGE_LABELS':
-    'это языки УЧЕНИКА в анкете (ru/uk/pl/de/other), предметные данные, а не локали интерфейса; английского среди них нет намеренно',
   'congress-project/js/plan.js:PRINT_LABELS':
     'заголовки ПЕЧАТНОГО плана — на языке писем Конгрессов (CWDocLang: uk/ru/de), а не на пяти языках интерфейса; экранная таблица переводится словарём (решение Алекса, аудит 08, п.8)',
   'shared/templates/builtin.js:translations':

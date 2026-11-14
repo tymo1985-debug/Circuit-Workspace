@@ -419,19 +419,36 @@ async function renderRegistration() {
       email: $('#reg-email').value,
       phone: $('#reg-phone').value,
       address: $('#reg-address').value,
+      congregation: $('#reg-congregation').value.trim(),
       attending: $('#reg-attending').value,
+      attendReason: $('#reg-attending').value === 'no' ? $('#reg-reason').value.trim() : '',
       transport: $('#reg-transport').value,
       lodging: $('#reg-lodging').value,
-      language: $('#reg-language').value,
+      languages: [$('#reg-language').value],
+      specialNeeds: $('#reg-special-needs').value.trim(),
       notes: $('#reg-notes').value,
-      format: []
+      format: [],
+      schemaVersion: RegistrationSchema.version
     };
     try {
       await Registration.save(reg);
-      ['#reg-lastname', '#reg-firstname', '#reg-email', '#reg-phone', '#reg-address', '#reg-notes'].forEach((s) => $(s).value = '');
+      ['#reg-lastname', '#reg-firstname', '#reg-email', '#reg-phone', '#reg-address', '#reg-congregation', '#reg-reason', '#reg-special-needs', '#reg-notes'].forEach((s) => $(s).value = '');
       renderRegistrationsTable(await Registration.list());
       renderDashboard();
     } catch (e) { alert(e.message); }
+  };
+
+  // Причина — только при «Нет» (Ф2: тогда она обязательна, см. validate).
+  const syncManualReason = () => { $('#reg-reason-wrap').hidden = $('#reg-attending').value !== 'no'; };
+  $('#reg-attending').onchange = syncManualReason;
+  syncManualReason();
+
+  // Ф2: заполненная PDF-анкета → регистрация → карточка пионера.
+  $('#import-filled-pdf-btn').onclick = () => $('#import-filled-pdf-input').click();
+  $('#import-filled-pdf-input').onchange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (file) await importFilledRegistrationPdf(file);
   };
 
   $('#export-reg-pdf').onclick = async () => {
@@ -441,6 +458,64 @@ async function renderRegistration() {
   $('#export-reg-csv').onclick = async () => ExcelExport.downloadRegistrations(await Registration.list());
 
   renderRegistrationsTable(await Registration.list());
+}
+
+// Ф2: импорт заполненной PDF-анкеты. Совпадение по фамилии и имени с
+// пионером этой школы — спросить: обновить его карточку или завести нового.
+// Молча не сливаем: однофамильцы и ошибки в имени бывают.
+async function importFilledRegistrationPdf(file) {
+  const status = $('#import-filled-pdf-status');
+  status.textContent = '';
+  let parsed;
+  try {
+    if (!(await PSPdf.ensure('form'))) return;
+    parsed = await PdfFormExport.readFilled(await file.arrayBuffer(), RegistrationSchema);
+  } catch (err) {
+    status.textContent = T('ps.reg.import.failed', { error: err.message });
+    return;
+  }
+  if (!parsed.fields) { status.textContent = T('ps.reg.import.not_form'); return; }
+  const record = parsed.record;
+  if (!String(record.lastName || '').trim() || !String(record.firstName || '').trim()) {
+    status.textContent = T('ps.reg.import.empty');
+    return;
+  }
+  const match = await Registration.findStudentMatch(record);
+  const choice = match ? await askImportTarget(Students.fullName(match)) : 'create';
+  if (choice === 'cancel') return;
+  try {
+    const reg = await Registration.saveImported(record, file.name);
+    const { student, warnings } = await Registration.applyToStudent(reg, choice === 'update' ? match.id : null);
+    status.textContent = T('ps.reg.import.done', { name: Students.fullName(student) })
+      + (warnings.length ? ' ' + T('ps.reg.import.check', { list: warnings.join('; ') }) : '');
+    renderRegistrationsTable(await Registration.list());
+    renderDashboard();
+    await openPioneerCard(student.id);
+  } catch (err) {
+    status.textContent = T('ps.reg.import.failed', { error: err.message });
+  }
+}
+
+function askImportTarget(name) {
+  return new Promise((resolve) => {
+    openModal(`
+      <h2>${T('ps.reg.import.match_title')}</h2>
+      <p>${esc(T('ps.reg.import.match_text', { name }))}</p>
+      <div class="modal-close-row">
+        <button type="button" class="md-btn md-btn-text" data-choice="cancel">${T('ps.app.otmena')}</button>
+        <button type="button" class="md-btn md-btn-outlined" data-choice="create">${T('ps.reg.import.create')}</button>
+        <button type="button" class="md-btn md-btn-filled" data-choice="update">${T('ps.reg.import.update')}</button>
+      </div>
+    `);
+    const root = $('#active-modal');
+    root.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-choice]');
+      if (e.target.id === 'active-modal') { resolve('cancel'); return; }
+      if (!btn) return;
+      closeModal();
+      resolve(btn.dataset.choice);
+    });
+  });
 }
 
 function renderRegistrationsTable(list) {
@@ -468,7 +543,7 @@ function renderRegistrationsTable(list) {
       <td data-label="${esc(L.contacts)}">${esc(r.email || '')}<br>${esc(r.phone || '')}</td>
       <td data-label="${esc(L.attending)}">${esc(Registration.YES_NO_LABELS[r.attending] || '—')}${r.attending === 'no' && r.attendReason ? ' — ' + esc(r.attendReason) : ''}</td>
       <td data-label="${esc(L.transport)}">${esc(T('ps.app.reg_transport', { car: Registration.YES_NO_LABELS[r.transport] || '—', lodging: Registration.YES_NO_LABELS[r.lodging] || '—' }))}</td>
-      <td data-label="${esc(L.book)}">${esc(Registration.LANGUAGE_LABELS[r.language] || r.language || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
+      <td data-label="${esc(L.book)}">${esc(Registration.languageText(r) || '—')}${(r.format || []).length ? ' · ' + r.format.map((f) => esc(Registration.FORMAT_LABELS[f] || f)).join(', ') : ''}</td>
       <td class="md-table__rowactions">
         ${r.convertedToStudentId ? '' : `<button class="md-btn md-btn-text convert-reg" data-id="${esc(r.id)}" style="color:var(--md-primary);">${T('ps.app.v_uchaschiesya')}</button>`}
         <button class="md-btn md-btn-text remove-reg" data-id="${esc(r.id)}">${T('ps.app.udalit')}</button>

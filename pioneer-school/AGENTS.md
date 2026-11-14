@@ -20,8 +20,10 @@
   обрезает строку** на символе вне субсета — см. `docs/journal/traps.md`.
 - Интерактивные PDF-формы с кириллицей — только через pdf-lib, не jsPDF.
 - «Язык документа» (`shared/doclang.js`) подключён целиком с v1.9.0.
-- Структура анкеты описана **дважды**: `js/modules/registrationSchema.js` и
-  `register.html`. Меняешь состав вопросов — правь оба.
+- Структура анкеты описана **дважды**: `js/modules/registrationSchema.js`
+  (онлайн-форма и интерактивный PDF строятся из неё) и ручная раскладка
+  печатного бланка `pdfExport.downloadRegistrationBlankForm`. Меняешь состав
+  вопросов — правь оба.
 
 ## Школы года (Ф1, 14.11.2026) — инварианты
 
@@ -42,6 +44,18 @@
   `Students.saveCard()` / `remove()` — они взаимные.
 - Проверка — `scripts/check-pioneer-schools.mjs`; подробности —
   `docs/journal/db.md` (14.11.2026).
+
+## Формуляр (Ф2, 14.11.2026) — инварианты
+
+- Ключи полей анкеты — контракт с IndexedDB, копиями и именами полей PDF
+  (`<key>`, у групп галочек `<key>_<value>`). Генератор и разборщик PDF —
+  в одном файле `js/export/pdfFormExport.js` (`generate` / `readFilled`).
+- Языки учебника — массив `languages`; записи и анкеты v1 с одиночным
+  `language` читать только через `RegistrationSchema.languagesOf()`.
+- Анкета → карточка — только `Registration.applyToStudent()`: пустой ответ
+  не стирает карточку, `attended`/`notAttended` не переписываются, слияние с
+  существующим пионером — только по выбору пользователя.
+- Проверка — `scripts/check-pioneer-form.mjs`.
 
 ## Открытая работа: N-3
 

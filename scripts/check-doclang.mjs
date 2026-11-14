@@ -117,7 +117,7 @@ console.log('\n2. Схема анкеты следует языку докуме
   ok('номера разделов нет в словаре', !/^\d/.test(s.sections[0].title), s.sections[0].title);
   ok('heading нумерует разделы', s.sections[0].heading === '1. Личные данные', s.sections[0].heading);
   ok('нумерация сквозная и по порядку',
-    s.sections.map((x) => x.number).join() === '1,2,3,4,5,6', s.sections.map((x) => x.number).join());
+    s.sections.map((x) => x.number).join() === '1,2,3,4,5,6,7', s.sections.map((x) => x.number).join());
   ok('подпись Да', s.labelForValue('attending', 'yes') === 'Да');
   ok('ключи опций не переведены', s.fieldByKey('attending').options.map((o) => o.value).join() === 'yes,no');
   ok('ключи формата не переведены', s.fieldByKey('format').options.map((o) => o.value).join() === 'print,jwpub,pdf,epub');
@@ -279,9 +279,33 @@ console.log('\n6. Живой прогон публичной страницы');
 
   ok('обязательные поля помечены звёздочкой',
     w.document.querySelectorAll('#reg-fields .required-mark').length === schema.allFields().filter((f) => f.required).length);
-  ok('язык учебника — «таблетки», а не select',
+  // Ф2: языков учебника может быть несколько — группа галочек, не select.
+  ok('языки учебника — галочки, а не select',
     !w.document.querySelector('#reg-fields select')
-    && w.document.querySelectorAll('input[name="language"][type="radio"]').length === 5);
+    && w.document.querySelectorAll('input[name="languages"][type="checkbox"]').length === schema.LANGUAGE_OPTIONS.length);
+
+  // «Хотя бы один язык»: у HTML нет required для группы — его держит wire().
+  const langBoxes = [...w.document.querySelectorAll('input[name="languages"]')];
+  ok('без языка форма невалидна', langBoxes[0].validity.customError === true);
+  langBoxes[2].checked = true; sync();
+  ok('один язык — валидно', langBoxes[0].validity.customError === false);
+  const otherBlock = w.document.getElementById('languageOther-block');
+  ok('«Другой язык» скрыт, пока не отмечен', otherBlock && !otherBlock.classList.contains('show'));
+  langBoxes.find((b) => b.value === 'other').checked = true; sync();
+  ok('«Другой язык» раскрывается по галочке (showIf.includes)', otherBlock.classList.contains('show'));
+  langBoxes.forEach((b) => { b.checked = false; }); sync();
+  ok('снятие галочек снова делает форму невалидной', langBoxes[0].validity.customError === true);
+
+  ok('WhatsApp — одиночная галочка', w.document.querySelectorAll('input[name="phoneWhatsapp"][type="checkbox"]').length === 1);
+  ok('собрание — обязательное поле', w.document.querySelector('[name="congregation"]').required === true);
+
+  // Запись собирается схемой: группы — массивы, лишние ключи отбрасываются.
+  const rec = schema.recordFromEntries([['lastName', ' Новак '], ['languages', 'ru'], ['languages', 'cs'], ['format', 'pdf'], ['phoneWhatsapp', 'yes'], ['junk', 'x']]);
+  ok('recordFromEntries: массивы и обрезка',
+    rec.lastName === 'Новак' && rec.languages.join() === 'ru,cs' && rec.format.join() === 'pdf' && rec.phoneWhatsapp === 'yes' && !('junk' in rec),
+    JSON.stringify(rec));
+  ok('languagesOf читает запись v1', schema.languagesOf({ language: 'de' }).join() === 'de');
+  ok('languagesOf читает запись v2', schema.languagesOf({ languages: ['ru', 'cs'] }).join() === 'ru,cs');
 
   // Условные поля: скрыты, пока условие не выполнено.
   const reasonBlock = w.document.getElementById('attendReason-block');

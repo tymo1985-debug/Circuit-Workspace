@@ -50,6 +50,11 @@ const RegistrationForm = {
     wrap.className = conditional ? 'conditional' : 'field';
     if (conditional) wrap.id = field.key + '-block';
 
+    if (field.type === 'check') {
+      // Одиночная галочка: подпись справа от квадратика, как у вариантов.
+      wrap.appendChild(this._check(field));
+      return wrap;
+    }
     const group = field.type === 'radio' || field.type === 'checkboxes';
     wrap.appendChild(group ? this._groupLabel(field) : this._label(field));
     wrap.appendChild(this._control(field));
@@ -144,6 +149,23 @@ const RegistrationForm = {
     return row;
   },
 
+  // Тип 'check' (Ф2): одно «да». Не отмечено — поля в FormData нет.
+  _check(field) {
+    const label = document.createElement('label');
+    label.className = 'check-card';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = field.key;
+    input.name = field.key;
+    input.value = 'yes';
+    const span = document.createElement('span');
+    span.textContent = field.label || '';
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(' '));
+    label.appendChild(span);
+    return label;
+  },
+
   _checkCards(field) {
     const grid = document.createElement('div');
     grid.className = 'format-grid';
@@ -172,20 +194,31 @@ const RegistrationForm = {
   // При скрытии значение ОЧИЩАЕТСЯ. Прежняя разметочная версия этого не делала,
   // и у того, кто сначала выбрал «Нет», написал причину, а потом передумал,
   // причина неявки уезжала в письмо старейшине вместе с ответом «Да».
+  //
+  // «Хотя бы один» у обязательной группы галочек (языки учебника, Ф2):
+  // у HTML нет required для группы checkbox, поэтому первой галочке ставится
+  // setCustomValidity — reportValidity() покажет подсказку у группы.
   wire(form, schema) {
     const conditionals = schema.allFields().filter((f) => f.showIf);
+    const groups = schema.allFields().filter((f) => f.type === 'checkboxes' && f.required);
     const sync = () => {
       conditionals.forEach((field) => {
         const block = form.querySelector('#' + field.key + '-block');
         const control = form.querySelector('[name="' + field.key + '"]');
         if (!block || !control) return;
-        const show = this._valueOf(form, field.showIf.field) === field.showIf.equals;
+        const show = schema.conditionMet(field.showIf, this._valueOf(form, field.showIf.field));
         block.classList.toggle('show', show);
         control.required = show;
         if (!show) control.value = '';
       });
+      groups.forEach((field) => {
+        const boxes = form.querySelectorAll('[name="' + field.key + '"]');
+        if (!boxes.length || typeof boxes[0].setCustomValidity !== 'function') return;
+        const any = [...boxes].some((b) => b.checked);
+        boxes[0].setCustomValidity(any ? '' : (schema.groupRequiredText || ''));
+      });
     };
-    const triggers = new Set(conditionals.map((f) => f.showIf.field));
+    const triggers = new Set(conditionals.map((f) => f.showIf.field).concat(groups.map((f) => f.key)));
     triggers.forEach((name) => {
       form.querySelectorAll('[name="' + name + '"]').forEach((el) => {
         el.addEventListener('change', sync);
@@ -195,12 +228,15 @@ const RegistrationForm = {
     return sync;
   },
 
-  // Значение поля по имени: у переключателей — выбранный вариант, у остальных
-  // — содержимое элемента.
+  // Значение поля по имени: у переключателей — выбранный вариант, у группы
+  // галочек — массив отмеченных, у остальных — содержимое элемента.
   _valueOf(form, name) {
     const els = form.querySelectorAll('[name="' + name + '"]');
     if (!els.length) return '';
     const first = els[0];
+    if (first.type === 'checkbox' && els.length > 1) {
+      return [...els].filter((el) => el.checked).map((el) => el.value);
+    }
     if (first.type === 'radio' || first.type === 'checkbox') {
       const checked = form.querySelector('[name="' + name + '"]:checked');
       return checked ? checked.value : '';

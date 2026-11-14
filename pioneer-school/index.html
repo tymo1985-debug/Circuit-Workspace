@@ -164,8 +164,12 @@
         <div class="btn-row">
           <button data-i18n="ps.ui.sohranit_nastroyki" class="md-btn md-btn-filled" id="save-reg-config-btn">Сохранить настройки</button>
           <button data-i18n="ps.ui.sgenerirovat_pdf_anketu" class="md-btn md-btn-filled" id="generate-interactive-pdf-btn">Сгенерировать PDF-анкету</button>
+          <button data-i18n="ps.reg.import_pdf" class="md-btn md-btn-outlined" id="import-filled-pdf-btn">Загрузить заполненную анкету</button>
+          <input type="file" id="import-filled-pdf-input" accept="application/pdf,.pdf" hidden>
         </div>
         <p class="hint" id="pdf-form-status"></p>
+        <p data-i18n="ps.reg.import_hint" class="hint">Пионер вернул заполненную PDF-анкету? Загрузите её — ответы попадут в список регистраций и в карточку пионера.</p>
+        <p class="hint" id="import-filled-pdf-status" role="status"></p>
       </div>
 
       <details class="panel">
@@ -186,18 +190,21 @@
           <label>Email <input type="text" id="reg-email"></label>
           <label><span data-i18n="ps.ui.telefon">Телефон</span><input type="text" id="reg-phone"></label>
           <label><span data-i18n="ps.ui.adres">Адрес</span><input type="text" id="reg-address"></label>
+          <label><span data-i18n="ps.ph.sobranie">Собрание</span><input type="text" id="reg-congregation"></label>
           <label><span data-i18n="ps.ui.budet_prisutstvovat">Будет присутствовать</span><select id="reg-attending"><option data-i18n="ps.ui.da" value="yes">Да</option><option data-i18n="ps.ui.net" value="no">Нет</option></select>
           </label>
+          <label id="reg-reason-wrap"><span data-i18n="ps.pioneer.f.reason">Причина</span><input type="text" id="reg-reason"></label>
           <label><span data-i18n="ps.ui.est_avtomobil">Есть автомобиль</span><select id="reg-transport"><option data-i18n="ps.ui.da" value="yes">Да</option><option data-i18n="ps.ui.net" value="no">Нет</option></select>
           </label>
           <label><span data-i18n="ps.ui.nuzhen_nochleg">Нужен ночлег</span><select id="reg-lodging"><option data-i18n="ps.ui.da" value="yes">Да</option><option data-i18n="ps.ui.net" value="no">Нет</option></select>
           </label>
           <label><span data-i18n="ps.ui.yazyk_uchebnika">Язык учебника</span><select id="reg-language">
               <option data-i18n="ps.ui.russkiy" value="ru">Русский</option><option data-i18n="ps.ui.ukrainskiy" value="uk">Украинский</option>
-              <option data-i18n="ps.ui.polskiy" value="pl">Польский</option><option data-i18n="ps.ui.nemeckiy" value="de">Немецкий</option><option data-i18n="ps.ui.drugoy" value="other">Другой</option>
+              <option data-i18n="ps.ui.nemeckiy" value="de">Немецкий</option><option data-i18n="ps.ui.drugoy" value="other">Другой</option>
             </select>
           </label>
         </div>
+        <label><span data-i18n="ps.reg.special_needs">Особые потребности</span><textarea id="reg-special-needs" rows="2"></textarea></label>
         <label><span data-i18n="ps.ui.dopolnitelnye_svedeniya">Дополнительные сведения</span><textarea id="reg-notes" rows="2"></textarea></label>
         <button data-i18n="ps.ui.dobavit_registraciyu" class="md-btn md-btn-filled" id="add-registration-btn">Добавить регистрацию</button>
       </div>

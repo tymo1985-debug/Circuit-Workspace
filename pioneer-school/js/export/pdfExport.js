@@ -186,15 +186,19 @@ const PdfExport = {
   },
 
   async downloadRegistrations(registrations) {
+    const S = window.RegistrationSchema;
     const lines = registrations.map((r) => {
       const attending = this._optLabel('attending', r.attending) || '—';
       const reason = r.attending === 'no' && r.attendReason ? ` (${D('doc.ps.regs.reason')}: ${r.attendReason})` : '';
-      const lang = this._optLabel('language', r.language) || r.language || '—';
+      const lang = (S ? S.languageLabels(r).join(', ') : '') || '—';
       const formats = (r.format || []).map((f) => this._optLabel('format', f) || f).join(', ');
-      return `${r.lastName} ${r.firstName} — ${D('doc.ps.regs.phone')}: ${r.phone || '—'} — ${D('doc.ps.regs.email')}: ${r.email || '—'} — ` +
+      const cong = r.congregation ? ` (${r.congregation})` : '';
+      const wa = r.phoneWhatsapp === 'yes' ? ` (${D('doc.ps.pdf.contact.whatsapp')})` : '';
+      return `${r.lastName} ${r.firstName}${cong} — ${D('doc.ps.regs.phone')}: ${r.phone || '—'}${wa} — ${D('doc.ps.regs.email')}: ${r.email || '—'} — ` +
         `${D('doc.ps.regs.attending')}: ${attending}${reason} — ${D('doc.ps.regs.car')}: ${this._optLabel('transport', r.transport) || '—'} — ` +
         `${D('doc.ps.regs.lodging')}: ${this._optLabel('lodging', r.lodging) || '—'} — ${D('doc.ps.regs.language')}: ${lang}` +
-        `${formats ? ' — ' + D('doc.ps.regs.format') + ': ' + formats : ''}`;
+        `${formats ? ' — ' + D('doc.ps.regs.format') + ': ' + formats : ''}` +
+        `${r.specialNeeds ? ' — ' + D('doc.ps.field.specialNeeds') + ': ' + r.specialNeeds : ''}`;
     });
     const doc = await this.buildDocument(D('doc.ps.regs.title'), lines);
     doc.save('registrations.pdf');
@@ -384,10 +388,14 @@ const PdfExport = {
     this._labelLine(doc, 40, y, D('doc.ps.field.lastName'), 100, 200);
     this._labelLine(doc, 320, y, D('doc.ps.field.firstName'), 360, 195);
     y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.field.address'), 155, 400);
+    this._labelLine(doc, 40, y, D('doc.ps.field.congregation'), 110, 445);
     y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.field.email'), 90, 220);
-    this._labelLine(doc, 330, y, D('doc.ps.reg.field.phone'), 445, 110);
+    this._labelLine(doc, 40, y, D('doc.ps.reg.field.phone'), 160, 200);
+    y = this._checkboxRow(doc, y, [{ x: 380, label: D('doc.ps.pdf.contact.whatsapp') }]);
+    y += 26;
+    this._labelLine(doc, 40, y, D('doc.ps.field.email'), 90, 465);
+    y += 26;
+    this._labelLine(doc, 40, y, D('doc.ps.field.address'), 155, 400);
     y += 34;
 
     // 2. Участие
@@ -415,19 +423,22 @@ const PdfExport = {
 
     // 5. Учебник
     y = this._sectionTitle(doc, y, this._sectionHeading('textbook'));
-    y = this._label(doc, 40, y, this._withColon(D('doc.ps.field.language')), 11, 515);
+    // Ф2: языков может быть несколько — подпись говорит об этом сама.
+    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.languages')), 11, 515);
     y += 20;
     y = this._checkboxRow(doc, y, [
-      { x: 40, label: opt('language', 'ru') }, { x: 140, label: opt('language', 'uk') },
-      { x: 250, label: opt('language', 'pl') }, { x: 340, label: opt('language', 'de') },
-      { x: 430, label: this._withColon(D('doc.ps.reg.opt.lang.other')) }
+      { x: 40, label: opt('languages', 'ru') }, { x: 140, label: opt('languages', 'uk') },
+      { x: 250, label: opt('languages', 'de') }
     ]);
+    y += 20;
+    y = this._checkboxRow(doc, y, [{ x: 40, label: this._withColon(D('doc.ps.reg.opt.lang.other')) }]);
     // Линия начинается после подписи ряда, а не с жёсткой координаты.
     // ОГРАНИЧЕНИЕ: если перевод подписи длинный (немецкое «Andere Sprache:»
     // дотягивается до 553), места на строке не остаётся и линия не рисуется
     // вовсе — это лучше, чем линия поверх букв, но поле для ответа при этом
     // пропадает. Всплывёт, когда придут переводы; отмечено в TODO.md.
-    const otherStart = Math.max(475, (this._lastCheckboxRowEnd || 0) - 12);
+    // С Ф2 «Другой» стоит в своём ряду, и линии хватает места при любом переводе.
+    const otherStart = Math.max(110, (this._lastCheckboxRowEnd || 0) - 12);
     if (555 > otherStart + 20) this._answerLine(doc, otherStart, y + 2, 555 - otherStart);
     y += 26;
     y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.format')), 11, 515);
@@ -438,7 +449,16 @@ const PdfExport = {
     ]);
     y += 34;
 
-    // 6. Дополнительные сведения
+    // 6. Особые потребности (Ф2)
+    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+    y = this._sectionTitle(doc, y, this._sectionHeading('needs'));
+    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.specialNeeds')), 10.5, 515);
+    y += 20;
+    for (let i = 0; i < 2; i++) { this._answerLine(doc, 40, y, 515); y += 22; }
+    y += 6;
+
+    // 7. Дополнительные сведения
+    if (y > pageHeight - 130) { doc.addPage(); y = 50; }
     y = this._sectionTitle(doc, y, this._sectionHeading('extra'));
     y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.notes')), 10.5, 515);
     y += 20;

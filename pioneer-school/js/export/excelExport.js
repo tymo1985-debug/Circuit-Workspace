@@ -74,21 +74,26 @@ const ExcelExport = {
     // часть подписей общая со всеми документами и живёт в `doc.ps.field.*`,
     // своими у выгрузки остались только те, которых больше нигде нет.
     const headers = [
-      'doc.ps.field.lastName', 'doc.ps.field.firstName', 'doc.ps.field.phone',
+      'doc.ps.field.lastName', 'doc.ps.field.firstName', 'doc.ps.field.congregation',
+      'doc.ps.field.phone', 'doc.ps.pdf.contact.whatsapp',
       'doc.ps.field.email', 'doc.ps.field.address', 'doc.ps.field.attending',
       'doc.ps.csv.reason', 'doc.ps.field.transport', 'doc.ps.field.lodging',
       'doc.ps.csv.language', 'doc.ps.csv.languageOther', 'doc.ps.field.format',
-      'doc.ps.field.notes', 'doc.ps.csv.submittedAt',
+      'doc.ps.field.specialNeeds', 'doc.ps.field.notes', 'doc.ps.csv.submittedAt',
     ].map((key) => D(key));
+    const S = window.RegistrationSchema;
     const rows = registrations.map((r) => [
-      r.lastName, r.firstName, r.phone, r.email, r.address,
+      r.lastName, r.firstName, r.congregation || '', r.phone,
+      r.phoneWhatsapp === 'yes' ? this._optLabel('attending', 'yes') : '',
+      r.email, r.address,
       this._optLabel('attending', r.attending) || r.attending || '',
       r.attendReason || '',
       this._optLabel('transport', r.transport) || r.transport || '',
       this._optLabel('lodging', r.lodging) || r.lodging || '',
-      this._optLabel('language', r.language) || r.language || '',
+      S ? S.languagesOf(r).filter((c) => c !== 'other').map((c) => this._optLabel('languages', c) || c).join('; ') : '',
       r.languageOther || '',
       (r.format || []).map((f) => this._optLabel('format', f) || f).join('; '),
+      r.specialNeeds || '',
       r.notes || '',
       r.submittedAt || ''
     ]);
