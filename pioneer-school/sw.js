@@ -55,6 +55,8 @@ const ASSETS = [
   '../shared/templates/builtin.js',
   '../shared/templates.js',
   '../shared/documents.js',
+  // Ф1: собрание пионера выбирается из общего справочника.
+  '../shared/directory.js',
   '../shared/print.js',
   './i18n/dict.js',
   './i18n/doc.js',
@@ -85,6 +87,7 @@ const ASSETS = [
   './js/modules/registration.js',
   './js/modules/substitutes.js',
   './js/modules/students.js',
+  './js/modules/schools.js',
   './js/modules/pdfImport.js',
   './js/modules/textbooks.js',
   './js/modules/practical.js',

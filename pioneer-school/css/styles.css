@@ -538,3 +538,66 @@ input[type=text], input[type=number], input[type=date], select, textarea {
   z-index: var(--cw-z-toast);
 }
 @media print { .ps-toast-wrap { display: none !important; } }
+
+/* ---------- Школы и карточка пионера (Ф1, 14.11.2026) ---------- */
+.ps-school-switch { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ps-school-select {
+  max-width: 280px; min-height: 40px; font: inherit; font-size: 14px;
+  color: var(--md-on-surface); background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md); padding: 6px 10px;
+}
+.ps-school-banner {
+  margin: 0 0 16px; padding: 10px 14px; border-radius: var(--md-radius-md);
+  background: var(--status-important-bg); color: var(--status-important); font-size: 14px;
+}
+.ps-school-list { display: grid; gap: 10px; margin: 14px 0 20px; }
+.ps-school-row {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 12px 14px; border: 1px solid var(--md-outline-variant); border-radius: var(--md-radius-md);
+}
+.ps-school-row.is-current { border-color: var(--md-primary); }
+.ps-school-row__main, .ps-school-row__side { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ps-school-lang { display: flex; flex-direction: row; align-items: center; gap: 6px; font-size: 14px; }
+.ps-status {
+  display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: var(--md-radius-full);
+  background: var(--status-normal-bg); color: var(--status-normal); white-space: nowrap;
+}
+.ps-status--willCome, .ps-status--attended { background: var(--status-success-bg); color: var(--status-success); }
+.ps-status--wontCome, .ps-status--notAttended { background: var(--status-critical-bg); color: var(--status-critical); }
+.ps-status--letterSent { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.ps-reason { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
+.ps-chip {
+  display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--md-radius-full);
+  border: 1px solid var(--md-outline-variant); color: var(--md-on-surface-variant);
+}
+.ps-card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.ps-card { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ps-card h3 { margin: 18px 0 6px; font-size: 16px; }
+.ps-radio-row, .ps-card-langs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.ps-card-langs { margin-top: 14px; }
+.ps-card-langs input[type="text"] { flex: 1 1 200px; }
+.ps-inline { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.ps-prev-invite {
+  margin: 0 0 10px; padding: 8px 12px; border-radius: var(--md-radius-md);
+  background: var(--status-important-bg); color: var(--status-important); font-size: 14px;
+}
+.ps-error { color: var(--md-error); min-height: 1em; margin: 10px 0 0; }
+.ps-school-manage { display: inline-flex; align-items: center; gap: 6px; }
+.ps-school-manage .icon { width: 18px; height: 18px; }
+/* Метки и чекбоксы карточки — в строку (общее правило label здесь колонкой). */
+label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surface); }
+.ps-card [hidden] { display: none; }
+/* Узкий телефон: ширину выбора школы держит общее правило шапки
+   (shared/style.css, 7.5rem), кнопка «Школы…» — только значок. */
+@media (max-width: 600px) {
+  /* Процентный max-width общего правила не ограничивает вклад в ширину
+     обёртки — без явного значения обёртка брала ширину длинного варианта
+     и выдавливала заголовок модуля. */
+  .md-topbar-v2__actions .ps-school-select { max-width: 7.5rem; }
+  .ps-school-manage { padding-inline: 10px; min-width: 44px; justify-content: center; }
+  .ps-school-manage__text {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+}
+@media print { .ps-school-switch, .ps-school-banner { display: none !important; } }

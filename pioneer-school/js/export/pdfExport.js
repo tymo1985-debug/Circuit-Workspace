@@ -59,7 +59,7 @@ const PdfExport = {
     const cols = columns && columns.length ? columns : await Students.getColumns();
     const byKey = (k) => cols.find((c) => c.key === k);
     const value = (s, k) => { const c = byKey(k); return c ? this._formatValue(c, (s.values || {})[k]) : ''; };
-    const active = students.filter((s) => (s.values || {}).status !== 'withdrawn');
+    const active = students.filter((s) => Students.isExpected(s));
     const label = (k, fallback) => { const c = byKey(k); return c ? (Students.label ? Students.label(c) : c.label) : fallback; };
     const head = ['№', `${label('lastName', '')} ${label('firstName', '')}`.trim(), D('doc.ps.list.class'), label('phone', 'Tel.'), label('email', 'E-mail')];
     const rows = active.map((s, i) => [
@@ -116,7 +116,7 @@ const PdfExport = {
     y = this._para(doc, D('doc.ps.form.student_title', { name: fullName }), marginX, y, { size: 15, gap: 8 });
     if (classLabel) y = this._para(doc, `${D('doc.ps.list.class')}: ${classLabel}`, marginX, y, { size: 11, gap: 8 });
     for (const col of columns) {
-      const value = this._formatValue(col, (student.values || {})[col.key]) || '—';
+      const value = this._formatValue(col, Students.cellValue(student, col)) || '—';
       y = this._para(doc, `${col.label}: ${value}`, marginX, y, { size: 11.5, gap: 5 });
     }
     return y;

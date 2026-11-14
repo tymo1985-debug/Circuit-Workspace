@@ -44,7 +44,7 @@ const ExcelExport = {
   _buildStudentAoa(students, columns, classesById) {
     const headers = [...columns.map((c) => c.label), D('doc.ps.list.class')];
     const rows = students.map((s) => [
-      ...columns.map((c) => this._formatValue(c, (s.values || {})[c.key])),
+      ...columns.map((c) => this._formatValue(c, Students.cellValue(s, c))),
       classesById && classesById[s.classId] ? classesById[s.classId].name : ''
     ]);
     return { headers, rows };

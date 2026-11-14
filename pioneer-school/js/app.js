@@ -81,6 +81,7 @@ function openGroupSheet(btn) {
 async function renderRoute(route) {
   try {
     await renderRouteInner(route);
+    applyReadOnly(route);
   } catch (error) {
     // Раньше любой сбой рендера экрана оставлял пустую область без единого
     // сообщения (промис отклонялся в никуда). Теперь ошибка видна.
@@ -290,7 +291,7 @@ async function renderAssignmentDocMenu() {
 
   const fill = async () => {
     const students = (await Students.list())
-      .filter((s) => (s.values || {}).status !== 'withdrawn');
+      .filter((s) => Students.isExpected(s));
     if (!students.length) {
       menu.innerHTML = `<div class="doc-menu-empty">${esc(T('ps.docs.no_students'))}</div>`;
       return;
@@ -763,7 +764,7 @@ async function renderStudents() {
     const cls = await DB.list('classes');
     const byId = Object.fromEntries(cls.map((c) => [c.id, c]));
     if (!(await PSPdf.ensure('pdf'))) return;
-    await PdfExport.downloadAllStudentFormulaires(st, cols, byId);
+    await PdfExport.downloadAllStudentFormulaires(st, Students.exportColumns(cols), byId);
   };
 }
 
@@ -852,23 +853,28 @@ function renderColumnsManager(columns) {
 
 function renderStudentsTableHead(columns) {
   const head = $('#students-table-head');
-  head.innerHTML = columns.map((c) => `<th>${esc(Students.label(c))}</th>`).join('') + `<th>${T('ps.app.klass')}</th><th></th>`;
+  head.innerHTML = columns.map((c) => `<th>${esc(Students.label(c))}</th>`).join('')
+    + `<th>${esc(T('ps.pioneer.f.origin'))}</th><th>${esc(T('ps.pioneer.f.status'))}</th><th>${T('ps.app.klass')}</th><th></th>`;
 }
 
 function renderStudentsTable(students, classes, columns) {
   const classById = Object.fromEntries(classes.map((c) => [c.id, c]));
   const tbody = $('#students-table tbody');
   if (!students.length) {
-    tbody.innerHTML = `<tr><td colspan="${columns.length + 2}" class="hint">${T('ps.app.uchaschihsya_poka_net')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${columns.length + 4}" class="hint">${T('ps.app.uchaschihsya_poka_net')}</td></tr>`;
     return;
   }
   tbody.innerHTML = students.map((s) => {
     const cells = columns.map((c) => `<td>${renderFieldInput(c, (s.values || {})[c.key], 'row-' + s.id)}</td>`).join('');
     const classOptions = '<option value="">—</option>' + classes.map((cl) => `<option value="${esc(cl.id)}" ${cl.id === s.classId ? 'selected' : ''}>${esc(cl.name)}</option>`).join('');
+    const reason = Students.REASON_REQUIRED.includes(s.status) && s.statusReason ? `<span class="ps-reason">${esc(s.statusReason)}</span>` : '';
     return `<tr data-student-id="${esc(s.id)}">
       ${cells}
+      <td>${esc(Students.originLabel(s.origin))}</td>
+      <td><span class="ps-status ps-status--${esc(s.status)}">${esc(Students.statusLabel(s.status))}</span>${reason}</td>
       <td><select class="row-class-select" data-id="${esc(s.id)}">${classOptions}</select></td>
       <td>
+        <button class="md-btn md-btn-text row-card" data-id="${esc(s.id)}" style="color:var(--md-primary);">${T('ps.pioneer.card')}</button>
         <button class="md-btn md-btn-text row-doc" data-id="${esc(s.id)}" style="color:var(--md-primary);">${T('ps.docs.document')}</button>
         <button class="md-btn md-btn-text row-formulaire" data-id="${esc(s.id)}" style="color:var(--md-primary);">${T('ps.app.formulyar')}</button>
         <button class="md-btn md-btn-text remove-student" data-id="${esc(s.id)}">${T('ps.app.udalit')}</button>
@@ -891,6 +897,9 @@ function renderStudentsTable(students, classes, columns) {
         if (!student) return;
         student.values = student.values || {};
         student.values[c.key] = input.value;
+        // Название собрания правят вручную — связь со справочником снимается,
+        // иначе снимок и карточка справочника разошлись бы молча.
+        if (c.key === 'congregation') student.congregationId = null;
         try {
           await Students.save(student);
         } catch (e) {
@@ -901,7 +910,7 @@ function renderStudentsTable(students, classes, columns) {
           input.value = ((stored && stored.values) || {})[c.key] ?? '';
           return;
         }
-        if (c.key === 'textbookFormat' || c.key === 'status') renderDashboard();
+        if (c.key === 'textbookFormat') renderDashboard();
       };
       input.addEventListener(input.tagName === 'SELECT' ? 'change' : 'blur', handler);
     });
@@ -914,6 +923,10 @@ function renderStudentsTable(students, classes, columns) {
       student.classId = sel.value || null;
       await Students.save(student);
     };
+  });
+
+  $all('.row-card', tbody).forEach((btn) => {
+    btn.onclick = () => openPioneerCard(btn.dataset.id);
   });
 
   $all('.remove-student', tbody).forEach((btn) => {
@@ -939,7 +952,7 @@ function renderStudentsTable(students, classes, columns) {
       if (!student) return;
       const cls = classById[student.classId];
       if (!(await PSPdf.ensure('pdf'))) return;
-      await PdfExport.downloadStudentFormulaire(student, columns, cls ? cls.name : '');
+      await PdfExport.downloadStudentFormulaire(student, Students.exportColumns(columns), cls ? cls.name : '');
     };
   });
 }
@@ -1139,7 +1152,7 @@ async function confirmPdfImport(existingColumns) {
 
 // ---------- EXPORT PICKER ----------
 async function openExportPicker() {
-  const columns = await Students.getColumns();
+  const columns = Students.exportColumns(await Students.getColumns());
   const saved = await DB.getMeta('studentExportColumns', columns.map((c) => c.key));
   openModal(`
     <h2>${T('ps.app.eksport_spiska_uchaschihsya')}</h2>
@@ -1457,11 +1470,319 @@ function initBackup() {
       const dump = JSON.parse(text);
       await DB.importAll(dump);
       alert(T('ps.app.dannye_vosstanovleny'));
+      renderSchoolSwitch();
       showRoute('dashboard');
     } catch (err) {
       alert(T('ps.app.backup_read_failed', { error: err.message }));
     }
   };
+}
+
+// ---------- ШКОЛЫ (Ф1) ----------
+// Переключатель в шапке, окно «Школы», баннер и режим «только чтение».
+// Правила — js/modules/schools.js, хранение — js/db.js.
+
+// Экраны, которые в завершённой школе остаются живыми: копия всей базы и
+// архив выданных документов к данным школы не относятся.
+const RO_EXEMPT_ROUTES = ['backup', 'docsarchive'];
+// Кнопки и поля, которые только читают: документы, печать, выгрузка.
+const RO_ALLOW = '[id^="export-"], #assignment-doc-btn, #assignment-doc-menu button, #generate-interactive-pdf-btn, '
+  + '#download-reg-blank-pdf, #open-export-picker-btn, #doc-language, .row-card, .row-doc, .row-formulaire, [data-ro-allow]';
+
+function applyReadOnly(route) {
+  const ro = DB.isReadOnly();
+  document.body.classList.toggle('ps-readonly', ro);
+  const section = document.getElementById('route-' + route);
+  if (!section) return;
+  const lock = ro && !RO_EXEMPT_ROUTES.includes(route);
+  section.querySelectorAll('input, select, textarea, button').forEach((el) => {
+    if (lock && !el.matches(RO_ALLOW)) {
+      if (!el.disabled) { el.disabled = true; el.dataset.roLocked = '1'; }
+    } else if (el.dataset.roLocked) {
+      el.disabled = false;
+      delete el.dataset.roLocked;
+    }
+  });
+}
+
+function schoolLanguageOptions(selected) {
+  const codes = Students.LANGUAGE_PRESETS.slice();
+  if (selected && !codes.includes(selected)) codes.push(selected);
+  return codes.map((code) => `<option value="${esc(code)}" ${code === selected ? 'selected' : ''}>${esc(Students.languageName(code))}</option>`).join('');
+}
+
+function renderSchoolSwitch() {
+  const select = document.getElementById('ps-school-select');
+  if (!select) return;
+  const current = Schools.current();
+  select.innerHTML = Schools.list().slice().reverse()
+    .map((school) => `<option value="${esc(school.id)}" ${current && school.id === current.id ? 'selected' : ''}>${esc(Schools.fullLabel(school))}</option>`)
+    .join('');
+  const banner = document.getElementById('ps-school-banner');
+  if (banner) {
+    const ro = current && current.completed;
+    banner.hidden = !ro;
+    banner.textContent = ro ? T('ps.school.banner_readonly', { school: Schools.label(current) }) : '';
+  }
+  document.body.classList.toggle('ps-readonly', !!(current && current.completed));
+}
+
+function rerenderCurrentRoute() {
+  renderSchoolSwitch();
+  const current = $all('.route').find((el) => !el.classList.contains('hidden'));
+  showRoute(current ? current.id.replace('route-', '') : DEFAULT_ROUTE);
+}
+
+async function switchSchool(schoolId) {
+  await Schools.switchTo(schoolId);
+  closeModal();
+  rerenderCurrentRoute();
+}
+
+function openSchoolsModal() {
+  const list = Schools.list();
+  const current = Schools.current();
+  const open = Schools.openSchool();
+  const rows = list.slice().reverse().map((school) => {
+    const isCurrent = current && school.id === current.id;
+    const actions = [];
+    if (!isCurrent) actions.push(`<button type="button" class="md-btn md-btn-text" data-school-open="${esc(school.id)}">${T('ps.school.open')}</button>`);
+    if (!school.completed) actions.push(`<button type="button" class="md-btn md-btn-outlined" data-school-complete="${esc(school.id)}">${T('ps.school.complete')}</button>`);
+    if (Schools.canReopen(school)) actions.push(`<button type="button" class="md-btn md-btn-text" data-school-reopen="${esc(school.id)}">${T('ps.school.reopen')}</button>`);
+    const lang = school.completed
+      ? `<span class="hint">${esc(T('ps.school.language'))}: ${esc(Students.languageName(school.language))}</span>`
+      : `<label class="ps-school-lang">${esc(T('ps.school.language'))} <select data-school-lang="${esc(school.id)}">${schoolLanguageOptions(school.language)}</select></label>`;
+    return `<div class="ps-school-row${isCurrent ? ' is-current' : ''}">
+      <div class="ps-school-row__main">
+        <b>${esc(Schools.label(school))} · ${esc(school.year)}</b>
+        <span class="ps-status ${school.completed ? 'ps-status--attended' : 'ps-status--willCome'}">${esc(Schools.stateLabel(school))}</span>
+        ${isCurrent ? `<span class="hint">${esc(T('ps.school.current'))}</span>` : ''}
+      </div>
+      <div class="ps-school-row__side">${lang}<span class="btn-row">${actions.join('')}</span></div>
+    </div>`;
+  }).join('');
+
+  const createBlock = open
+    ? `<p class="hint">${esc(T('ps.school.create_blocked', { school: Schools.label(open) }))}</p>`
+    : `<div class="inline-form">
+        <label>${esc(T('ps.school.new_language'))} <select id="ps-new-school-lang">${schoolLanguageOptions((current && current.language) || 'ru')}</select></label>
+        <input type="text" id="ps-new-school-lang-other" placeholder="${esc(T('ps.school.language_other_ph'))}" aria-label="${esc(T('ps.school.language_other_ph'))}">
+        <button type="button" class="md-btn md-btn-filled" id="ps-new-school-btn">${T('ps.school.create')}</button>
+      </div>`;
+
+  openModal(`
+    <h2>${T('ps.school.title')}</h2>
+    <p class="hint">${T('ps.school.hint')}</p>
+    <div class="ps-school-list">${rows}</div>
+    <h3>${T('ps.school.new')}</h3>
+    ${createBlock}
+    <div class="modal-close-row"><button type="button" class="md-btn md-btn-outlined" id="ps-schools-close">${T('ps.app.zakryt')}</button></div>
+  `);
+
+  const box = $('#active-modal');
+  $('#ps-schools-close').onclick = closeModal;
+  $all('[data-school-open]', box).forEach((btn) => { btn.onclick = () => switchSchool(btn.dataset.schoolOpen); });
+  $all('[data-school-complete]', box).forEach((btn) => {
+    btn.onclick = async () => {
+      const school = list.find((x) => x.id === btn.dataset.schoolComplete);
+      if (!confirm(T('ps.school.complete_confirm', { school: Schools.label(school) }))) return;
+      await Schools.complete(school.id);
+      openSchoolsModal();
+      rerenderCurrentRoute();
+    };
+  });
+  $all('[data-school-reopen]', box).forEach((btn) => {
+    btn.onclick = async () => {
+      const school = list.find((x) => x.id === btn.dataset.schoolReopen);
+      if (!confirm(T('ps.school.reopen_confirm', { school: Schools.label(school) }))) return;
+      try { await Schools.reopen(school.id); } catch (e) { return alert(e.message); }
+      openSchoolsModal();
+      rerenderCurrentRoute();
+    };
+  });
+  $all('[data-school-lang]', box).forEach((sel) => {
+    sel.onchange = async () => {
+      try { await Schools.setLanguage(sel.dataset.schoolLang, sel.value); } catch (e) { return alert(e.message); }
+      renderSchoolSwitch();
+    };
+  });
+  const createBtn = $('#ps-new-school-btn');
+  if (createBtn) {
+    createBtn.onclick = async () => {
+      const other = $('#ps-new-school-lang-other').value.trim();
+      const language = other || $('#ps-new-school-lang').value;
+      try {
+        const school = await Schools.create({ language });
+        await switchSchool(school.id);
+      } catch (e) { alert(e.message); }
+    };
+  }
+}
+
+async function initSchools() {
+  await DB.ready();
+  if (typeof CWDirectory !== 'undefined') {
+    // Справочник собраний — общий слой; без него карточка честно работает
+    // с названием текстом (CWDirectory.ready остаётся false).
+    Promise.resolve(CWDirectory.init()).catch((error) => console.warn('pioneer-school: справочник собраний недоступен', error));
+  }
+  renderSchoolSwitch();
+  const select = document.getElementById('ps-school-select');
+  if (select) select.onchange = () => switchSchool(select.value);
+  const manage = document.getElementById('ps-school-manage');
+  if (manage) manage.onclick = openSchoolsModal;
+}
+
+// ---------- КАРТОЧКА ПИОНЕРА (Ф1, экран 1 без истории) ----------
+async function openPioneerCard(studentId) {
+  const [students, classes] = await Promise.all([Students.list(), DB.list('classes')]);
+  const student = students.find((s) => s.id === studentId);
+  if (!student) return;
+  const school = Schools.current();
+  const ro = DB.isReadOnly();
+  const others = students.filter((s) => s.id !== studentId);
+  const nameOf = (id) => { const o = students.find((s) => s.id === id); return o ? Students.fullName(o) : '—'; };
+  const cls = classes.find((c) => c.id === student.classId);
+  const directory = (typeof CWDirectory !== 'undefined' && CWDirectory.ready) ? CWDirectory.all() : [];
+  const suggested = !student.congregationId && student.values.congregation && directory.length
+    ? CWDirectory.byName(student.values.congregation) : null;
+  const congId = student.congregationId || (suggested ? suggested.id : '');
+  let relations = (student.relations || []).map((r) => ({ ...r }));
+
+  const presets = Students.LANGUAGE_PRESETS.slice();
+  if (school && school.language && !presets.includes(school.language)) presets.push(school.language);
+  const langs = student.textbookLanguages || [];
+  const otherLangs = langs.filter((l) => !presets.includes(l));
+  const optionList = (values, fn, selected) => values.map((v) => `<option value="${esc(v)}" ${v === selected ? 'selected' : ''}>${esc(fn.call(Students, v))}</option>`).join('');
+  const directoryOptions = `<option value="">${esc(T('ps.pioneer.cong_none'))}</option>` + directory
+    .slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'))
+    .map((c) => `<option value="${esc(c.id)}" ${c.id === congId ? 'selected' : ''}>${esc(c.name)}${c.congNumber ? ' · ' + esc(c.congNumber) : ''}</option>`).join('');
+  const open = Schools.openSchool();
+  const canReinvite = ro && open && open.id !== (school && school.id) && student.status !== 'attended';
+
+  openModal(`
+    <h2>${esc(Students.fullName(student))}</h2>
+    <div class="ps-card-chips">
+      ${student.gender ? `<span class="ps-chip">${esc(Students.genderLabel(student.gender))}</span>` : ''}
+      ${student.values.congregation ? `<span class="ps-chip">${esc(student.values.congregation)}</span>` : ''}
+      ${cls ? `<span class="ps-chip">${esc(cls.name)}</span>` : ''}
+      <span class="ps-status ps-status--${esc(student.status)}">${esc(Students.statusLabel(student.status))}</span>
+    </div>
+    ${(student.previousInvites || []).map((p) => `<p class="ps-prev-invite">${esc(Students.previousInviteText(p))}</p>`).join('')}
+    <fieldset class="ps-card" ${ro ? 'disabled' : ''}>
+      <div class="form-grid">
+        <label>${T('ps.pioneer.f.origin')}<select id="pc-origin">${optionList(Students.ORIGINS, Students.originLabel, student.origin)}</select></label>
+        <label>${T('ps.pioneer.f.status')}<select id="pc-status">${optionList(Students.STATUSES, Students.statusLabel, student.status)}</select></label>
+        <label id="pc-reason-wrap">${T('ps.pioneer.f.reason')} *<input type="text" id="pc-reason" value="${esc(student.statusReason || '')}"></label>
+        <div class="ps-radio-row" role="radiogroup" aria-label="${esc(T('ps.pioneer.f.gender'))}">
+          <span>${T('ps.pioneer.f.gender')}</span>
+          ${Students.GENDERS.map((g) => `<label class="ps-inline"><input type="radio" name="pc-gender" value="${g}" ${student.gender === g ? 'checked' : ''}> ${esc(Students.genderLabel(g))}</label>`).join('')}
+        </div>
+        <label>${T('ps.pioneer.f.congregation_dir')}<select id="pc-cong-id" ${directory.length ? '' : 'disabled'}>${directoryOptions}</select></label>
+        <label>${T('ps.pioneer.f.congregation_name')}<input type="text" id="pc-cong-name" value="${esc(student.values.congregation || '')}"></label>
+      </div>
+      ${directory.length ? '' : `<p class="hint">${esc(T('ps.pioneer.cong_dir_empty'))}</p>`}
+      ${suggested ? `<p class="hint">${esc(T('ps.pioneer.cong_suggested', { name: suggested.name }))}</p>` : ''}
+      <div class="ps-card-langs" role="group" aria-labelledby="pc-langs-title">
+        <span id="pc-langs-title">${T('ps.pioneer.f.languages')} *</span>
+        ${presets.map((code) => `<label class="ps-inline"><input type="checkbox" class="pc-lang" value="${esc(code)}" ${langs.includes(code) ? 'checked' : ''}> ${esc(Students.languageName(code))}</label>`).join('')}
+        <input type="text" id="pc-lang-other" value="${esc(otherLangs.join(', '))}" placeholder="${esc(T('ps.pioneer.lang_other_ph'))}" aria-label="${esc(T('ps.pioneer.lang_other_ph'))}">
+      </div>
+      <h3>${T('ps.pioneer.f.relations')}</h3>
+      <div id="pc-relations"></div>
+      <div class="inline-form" id="pc-rel-add" ${others.length ? '' : 'hidden'}>
+        <select id="pc-rel-type" aria-label="${esc(T('ps.pioneer.f.relation_type'))}">${optionList(Students.RELATION_TYPES, Students.relationLabel, 'spouse')}</select>
+        <select id="pc-rel-who" aria-label="${esc(T('ps.pioneer.f.relation_who'))}"></select>
+        <button type="button" class="md-btn md-btn-outlined" id="pc-rel-add-btn">${T('ps.pioneer.rel_add')}</button>
+      </div>
+      <p class="hint">${T('ps.pioneer.rel_hint')}</p>
+    </fieldset>
+    <p class="ps-error" id="pc-error" role="alert"></p>
+    <div class="modal-close-row">
+      ${canReinvite ? `<button type="button" class="md-btn md-btn-tonal" id="pc-reinvite">${T('ps.pioneer.reinvite', { school: Schools.label(open) })}</button>` : ''}
+      <button type="button" class="md-btn md-btn-outlined" id="pc-close">${T('ps.app.zakryt')}</button>
+      ${ro ? '' : `<button type="button" class="md-btn md-btn-filled" id="pc-save">${T('ps.pioneer.save')}</button>`}
+    </div>
+  `);
+
+  const syncReason = () => {
+    $('#pc-reason-wrap').hidden = !Students.REASON_REQUIRED.includes($('#pc-status').value);
+  };
+  const syncCong = () => {
+    const sel = $('#pc-cong-id');
+    const rec = sel.value ? directory.find((c) => c.id === sel.value) : null;
+    const input = $('#pc-cong-name');
+    if (rec) input.value = rec.name;
+    input.readOnly = !!rec;
+  };
+  const renderRelations = () => {
+    $('#pc-relations').innerHTML = relations.length
+      ? relations.map((r, i) => `<div class="list-row"><span>${esc(Students.relationLabel(r.type))}: ${esc(nameOf(r.studentId))}</span>${ro ? '' : `<button type="button" class="md-btn md-btn-text" data-rel-remove="${i}">${T('ps.app.udalit')}</button>`}</div>`).join('')
+      : `<p class="hint">${T('ps.pioneer.rel_none')}</p>`;
+    $all('[data-rel-remove]', $('#pc-relations')).forEach((btn) => {
+      btn.onclick = () => { relations.splice(+btn.dataset.relRemove, 1); renderRelations(); };
+    });
+    const free = others.filter((o) => !relations.some((r) => r.studentId === o.id));
+    $('#pc-rel-who').innerHTML = free.map((o) => `<option value="${esc(o.id)}">${esc(Students.fullName(o))}</option>`).join('');
+    $('#pc-rel-add-btn').disabled = ro || !free.length;
+  };
+
+  syncReason();
+  syncCong();
+  renderRelations();
+  $('#pc-status').onchange = syncReason;
+  $('#pc-cong-id').onchange = syncCong;
+  $('#pc-rel-add-btn').onclick = () => {
+    const who = $('#pc-rel-who').value;
+    if (!who) return;
+    relations.push({ type: $('#pc-rel-type').value, studentId: who });
+    renderRelations();
+  };
+  $('#pc-close').onclick = closeModal;
+
+  const reinviteBtn = $('#pc-reinvite');
+  if (reinviteBtn) {
+    reinviteBtn.onclick = async () => {
+      try {
+        await Students.reinvite(school.id, studentId, open.id);
+        $('#pc-error').textContent = '';
+        alert(T('ps.pioneer.reinvited', { name: Students.fullName(student), school: Schools.label(open) }));
+        closeModal();
+      } catch (e) { $('#pc-error').textContent = e.message; }
+    };
+  }
+
+  const saveBtn = $('#pc-save');
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      const checked = $all('.pc-lang').filter((cb) => cb.checked).map((cb) => cb.value);
+      const typed = Students.parseLanguages($('#pc-lang-other').value);
+      const genderEl = document.querySelector('input[name="pc-gender"]:checked');
+      const patch = {
+        origin: $('#pc-origin').value,
+        status: $('#pc-status').value,
+        statusReason: $('#pc-reason').value,
+        gender: genderEl ? genderEl.value : '',
+        congregationId: $('#pc-cong-id').value || null,
+        textbookLanguages: [...checked, ...typed],
+        relations,
+        values: { congregation: $('#pc-cong-name').value.trim() }
+      };
+      try {
+        await Students.saveCard(studentId, patch);
+      } catch (e) {
+        $('#pc-error').textContent = e.message;
+        return;
+      }
+      closeModal();
+      if (!$('#route-students').classList.contains('hidden')) {
+        const [list, cls, cols] = await Promise.all([Students.list(), DB.list('classes'), Students.getColumns()]);
+        renderStudentsTable(list, cls, cols);
+        applyReadOnly('students');
+      }
+      renderDashboard();
+    };
+  }
 }
 
 // ---------- INIT ----------
@@ -1496,6 +1817,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   PSI18n.init(() => {
+    renderSchoolSwitch();
     const current = $all('.route').find((el) => !el.classList.contains('hidden'));
     if (current) showRoute(current.id.replace('route-', ''));
   });
@@ -1512,6 +1834,15 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGroupSheet(); });
   initBackup();
 
+  // Ф1: попытка записи в завершённую школу (кнопка, которую не погасили) —
+  // понятное сообщение вместо «кнопка ничего не сделала».
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason && event.reason.code === 'PS_READONLY') {
+      event.preventDefault();
+      alert(event.reason.message);
+    }
+  });
+
   // Регистрация SW и отслеживание обновлений — общий слой (shared/update.js).
   // Раньше модуль просто регистрировал worker и не следил за обновлениями
   // вовсе: пользователь мог неделями работать на старой оболочке.
@@ -1527,5 +1858,8 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   const initialRoute = (window.location.hash || '#' + DEFAULT_ROUTE).slice(1);
-  showRoute(initialRoute || DEFAULT_ROUTE);
+  // Школа поднимается ДО первого экрана: экраны читают данные выбранной школы.
+  initSchools()
+    .catch((error) => console.error('pioneer-school: школы', error))
+    .then(() => showRoute(initialRoute || DEFAULT_ROUTE));
 });

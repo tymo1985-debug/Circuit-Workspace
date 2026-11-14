@@ -33,6 +33,12 @@
   </div>
   <span class="md-topbar-v2__spacer"></span>
   <div class="md-topbar-v2__actions">
+    <!-- Ф1: выбранная школа. Завершённые — только чтение (js/modules/schools.js). -->
+    <div class="ps-school-switch">
+      <label class="sr-only" for="ps-school-select" data-i18n="ps.school.switch_label">Школа</label>
+      <select id="ps-school-select" class="ps-school-select"></select>
+      <button type="button" class="md-btn md-btn-text ps-school-manage" id="ps-school-manage" aria-label="Школы…" data-i18n-aria-label="ps.school.manage"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg><span class="ps-school-manage__text" data-i18n="ps.school.manage">Школы…</span></button>
+    </div>
   </div>
 </header>
 
@@ -68,6 +74,7 @@
   </aside>
 
   <main class="content">
+    <p id="ps-school-banner" class="ps-school-banner" role="status" hidden></p>
 
     <section id="route-dashboard" class="route">
       <header class="route-header">
@@ -502,6 +509,7 @@
 <script src="../shared/templates/builtin.js"></script>
 <script src="../shared/templates.js"></script>
 <script src="../shared/documents.js"></script>
+<script src="../shared/directory.js"></script>
 <script src="../shared/print.js"></script>
 <script src="../shared/docsview.js"></script>
 <script src="../shared/i18n/common.js"></script>
@@ -517,6 +525,7 @@
 <script src="js/modules/registration.js"></script>
 <script src="js/modules/substitutes.js"></script>
 <script src="js/modules/students.js"></script>
+<script src="js/modules/schools.js"></script>
 <script src="js/modules/textbooks.js"></script>
 <script src="js/modules/practical.js"></script>
 <script src="js/modules/review.js"></script>

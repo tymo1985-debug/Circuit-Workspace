@@ -277,7 +277,7 @@ Service worker хаба обслуживает только точный наб�
 |---|---|---|
 | Конгрессы | localStorage `congress-pwa-v34-speakers` | + резервные копии под `…-backups` |
 | Клиндарий | localStorage `service-year-planner-v9-4-2` | ключ менять нельзя — потеря данных |
-| Школа пионеров | IndexedDB модуля | столбцы учащихся в `studentColumns` |
+| Школа пионеров | IndexedDB модуля | записи привязаны к школе префиксом ключа `<школа>\|<id>` (Ф1); общие — реестр школ и `studentColumns` |
 | Назначения | localStorage `cw-appointments-v1` | своя история названий собраний |
 | Документы | `CWDB.templates` | своих данных нет |
 | Журнал | IndexedDB `circuit-workspace-db` | хранилища `journalNodes`, `journalEntries`, `journalLinks`, `journalMeta`; правила — `journal/AGENTS.md` |

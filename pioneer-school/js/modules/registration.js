@@ -84,9 +84,12 @@ const Registration = {
     await Students.ensureColumn('address', { label: T('ps.stud.adres_prozhivaniya'), type: 'text' });
     await Students.ensureColumn('transport', { label: T('ps.ui.est_avtomobil'), type: 'select', options: Students.YES_NO_OPTIONS });
     await Students.ensureColumn('lodging', { label: T('ps.ui.nuzhen_nochleg'), type: 'select', options: Students.YES_NO_OPTIONS });
-    await Students.ensureColumn('language', { label: T('ps.stud.yazyk_uchebnika_tekstom'), type: 'text' });
     await Students.ensureColumn('notes', { label: T('ps.stud.dop_svedeniya'), type: 'textarea' });
 
+    // Ф1: ответ формуляра раскладывается в поля модели пионера (students.js).
+    const language = reg.language === 'other' ? (reg.languageOther || '') : (reg.language || '');
+    const directory = (typeof CWDirectory !== 'undefined' && CWDirectory.ready && reg.congregation)
+      ? CWDirectory.byName(reg.congregation) : null;
     const student = {
       id: DB.uid(),
       classId: null,
@@ -94,16 +97,23 @@ const Registration = {
         lastName: reg.lastName,
         firstName: reg.firstName,
         congregation: reg.congregation || '',
-        status: reg.attending === 'no' ? 'withdrawn' : 'listed',
         textbookFormat: this.mapFormatToStudentCategory(reg.format),
         email: reg.email || '',
         phone: reg.phone || '',
         address: reg.address || '',
         transport: reg.transport || '',
         lodging: reg.lodging || '',
-        language: reg.language === 'other' ? (reg.languageOther || '') : (this.LANGUAGE_LABELS[reg.language] || ''),
         notes: reg.notes || ''
       },
+      model: Students.MODEL,
+      origin: 'branchList',
+      status: reg.attending === 'no' ? 'wontCome' : (reg.attending === 'yes' ? 'willCome' : 'invited'),
+      statusReason: reg.attending === 'no' ? T('ps.pioneer.reason_from_form') : '',
+      gender: '',
+      congregationId: directory ? directory.id : null,
+      relations: [],
+      textbookLanguages: Students.parseLanguages(language),
+      previousInvites: [],
       fromRegistrationId: reg.id
     };
     await Students.save(student);
