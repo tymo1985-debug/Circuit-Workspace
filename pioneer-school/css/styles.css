@@ -674,3 +674,44 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 .ps-history li { display: flex; gap: 12px; }
 .ps-history b { flex: none; min-width: 88px; font-weight: 500; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
 @media print { .ps-tabs, .ps-ov-filterbox, #ov-now-go { display: none !important; } }
+
+/* ---------- Классы и учебники (Ф5, 15.11.2026) ---------- */
+.ps-cls-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.ps-cls-tools .hint { flex: 1 1 100%; margin: 0; font-style: normal; font-size: 14px; }
+.ps-cls-count { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.ps-cls-count input { width: 88px; }
+.ps-cls-preview { border-color: var(--md-primary); }
+.ps-cls-preview p { margin: 0 0 8px; }
+.ps-cls-preview .btn-row { margin-top: 0; }
+.ps-cls-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; margin-bottom: 16px; align-items: start; }
+.ps-cls-card {
+  background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.ps-cls-card--none { border-style: dashed; }
+.ps-cls-card--new { border-color: var(--md-primary); }
+.ps-cls-card__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.ps-cls-card__head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.ps-cls-card__head .hint, .ps-cls-card > .hint { margin: 0; font-style: normal; font-size: 12px; }
+.ps-cls-card__head .cls-name { flex: 1 1 140px; min-width: 0; font-weight: 600; }
+.ps-cls-teachers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+.ps-cls-teachers label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ps-cls-members, .ps-cls-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ps-cls-member {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 8px;
+  border-radius: var(--md-radius-sm); background: var(--md-surface-container); font-size: 14px;
+}
+.ps-cls-member .ov-open { padding-inline: 4px; min-height: 44px; text-align: left; }
+.ps-cls-member small { color: var(--md-on-surface-variant); font-size: 12px; }
+.ps-cls-member .cls-move { margin-left: auto; max-width: 140px; min-height: 40px; }
+.ps-cls-member--new { outline: 2px solid var(--md-primary); outline-offset: -2px; }
+.ps-cls-group { border: 1px dashed var(--status-success); border-radius: var(--md-radius-md); padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.ps-cls-group__label { font-size: 12px; color: var(--status-success); padding-left: 4px; }
+.ps-tb-head { flex-wrap: wrap; gap: 10px; }
+.ps-tb-head h3 { margin: 0; }
+.ps-tb-basis { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+#tb-table th.num, #tb-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+#tb-table .tb-stock { width: 72px; text-align: right; }
+.ps-tb-total th, .ps-tb-total td { font-weight: 700; border-top: 1px solid var(--md-outline-variant); }
+.ps-tb-flags { margin-top: 12px; }
+@media print { .ps-cls-tools, .ps-cls-preview, .cls-move, .cls-remove { display: none !important; } }

@@ -243,8 +243,9 @@ async function renderDashboard() {
   ]);
   const groups = Dispatch.groups(students, state, config);
   const school = Schools.current();
+  const orderQty = Textbooks.compute({ students, classes, order, schoolLanguage: Students._schoolLanguage() }).total.order;
   const { stages, current } = PSOverview.stages({
-    anketa, substitutes, assignment, students, groups, orphans: Dispatch.orphans(students), classes, order, school
+    anketa, substitutes, assignment, students, groups, orphans: Dispatch.orphans(students), classes, orderQty, school
   });
   const cur = stages.find((st) => st.key === current);
 
@@ -269,7 +270,6 @@ async function renderDashboard() {
       </div>
       <button type="button" class="md-btn md-btn-filled" id="ov-now-go" data-ro-allow>${esc(T('ps.stage.go', { screen: navLabel(route) }))}</button>`;
     $('#ov-now-go').onclick = () => {
-      if (cur.key === 'classes') studentsTab = 'edit';
       if (cur.key === 'list') studentsTab = 'overview';
       showRoute(route);
     };
@@ -995,26 +995,12 @@ async function renderStudents() {
 
   renderStudentFormFields(columns);
   renderClassSelect(classes);
-  renderClassesList(classes);
   renderColumnsManager(columns);
   renderStudentsTableHead(columns);
   renderStudentsTable(students, classes, columns);
 
   $('#new-col-type').onchange = () => {
     $('#new-col-options-wrap').classList.toggle('hidden', $('#new-col-type').value !== 'select');
-  };
-
-  $('#add-class-btn').onclick = async () => {
-    const name = $('#class-name').value.trim();
-    if (!name) return;
-    await DB.put('classes', { name });
-    $('#class-name').value = '';
-    const updated = await DB.list('classes');
-    renderClassSelect(updated);
-    renderClassesList(updated);
-    // Таблица учащихся содержит собственные селекты класса в каждой строке —
-    // без перерисовки новый класс в них не появлялся до смены раздела.
-    renderStudentsTable(await Students.list(), updated, await Students.getColumns());
   };
 
   $('#add-student-btn').onclick = async () => {
@@ -1033,17 +1019,6 @@ async function renderStudents() {
       renderStudentsTable(updatedStudents, classesNow, cols);
       renderDashboard();
     } catch (e) { alert(e.message); }
-  };
-
-  $('#auto-distribute-btn').onclick = async () => {
-    const cls = await DB.list('classes');
-    if (!cls.length) return alert(T('ps.app.snachala_dobavte_hotya_by'));
-    const st = await Students.list();
-    const distributed = Students.autoDistribute(st, cls);
-    // Только classId поверх ПОЛНОЙ записи из базы (объекты list() — вид, не
-    // запись) и с отметкой в журнале — Students.setClass.
-    for (const item of distributed) await Students.setClass(item.id, item.classId, 'auto');
-    renderStudentsTable(await Students.list(), cls, await Students.getColumns());
   };
 
   $('#add-column-btn').onclick = async () => {
@@ -1117,12 +1092,6 @@ function renderClassSelect(classes) {
   const sel = document.getElementById('student-class-select');
   if (!sel) return;
   sel.innerHTML = `<option value="">${T('ps.app.bez_klassa')}</option>` + classes.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
-}
-
-function renderClassesList(classes) {
-  const el = $('#classes-list');
-  if (!classes.length) { el.innerHTML = `<p class="hint">${T('ps.app.klassov_poka_net_shkola')}</p>`; return; }
-  el.innerHTML = classes.map((c) => `<div class="list-row"><span>${esc(c.name)}</span></div>`).join('');
 }
 
 function renderColumnsManager(columns) {
@@ -1712,29 +1681,157 @@ async function openDispatchReminder(groups) {
 }
 
 // ---------- TEXTBOOKS ----------
+// ---------- КЛАССЫ И УЧЕБНИКИ (Ф5) ----------
+// Доска «Classes». Решения Алекса 15.11.2026: раздел «Учебники» стал
+// «Классы и учебники»; «Предложить» распределяет только тех, кто без класса
+// (предпросмотр → «Применить»); супруги и родственники вместе; заказ — язык ×
+// формат из ответов, «+5» только к печатным. Логика — js/modules/classes.js,
+// Textbooks.compute().
+
+let clsProposal = null;
+
+function clsMemberHtml(s, ctx) {
+  const cong = String((s.values || {}).congregation || '').trim();
+  const moved = ctx.moved && ctx.moved.has(s.id);
+  const opts = [`<option value="">${esc(T('ps.app.bez_klassa'))}</option>`]
+    .concat(ctx.classes.filter((c) => !c.isNew).map((c) => `<option value="${esc(c.id)}" ${c.id === s.classId ? 'selected' : ''}>${esc(c.name)}</option>`));
+  return `<li class="ps-cls-member${moved ? ' ps-cls-member--new' : ''}">
+    <button type="button" class="md-btn md-btn-text ov-open" data-id="${esc(s.id)}" data-ro-allow>${esc(Students.fullName(s))}</button>
+    ${cong ? `<small>${esc(cong)}</small>` : ''}
+    ${moved ? `<span class="ps-chip ps-chip--accent">${esc(T('ps.cls.proposed'))}</span>` : ''}
+    ${ctx.preview ? '' : `<select class="cls-move" data-id="${esc(s.id)}" aria-label="${esc(T('ps.cls.move', { name: Students.fullName(s) }))}">${opts.join('')}</select>`}
+  </li>`;
+}
+
+function clsMembersHtml(members, ctx) {
+  if (!members.length) return `<p class="hint">${esc(T('ps.cls.empty'))}</p>`;
+  return `<ul class="ps-cls-members">${PSClasses.groups(members).map((group) => {
+    if (group.length < 2) return clsMemberHtml(group[0], ctx);
+    const spouses = group.length === 2 && (group[0].relations || []).some((r) => r.type === 'spouse' && r.studentId === group[1].id);
+    return `<li class="ps-cls-group"><span class="ps-cls-group__label">${esc(T(spouses ? 'ps.cls.spouses' : 'ps.cls.together'))}</span>
+      <ul>${group.map((s) => clsMemberHtml(s, ctx)).join('')}</ul></li>`;
+  }).join('')}</ul>`;
+}
+
 async function renderTextbooks() {
-  const order = await Textbooks.getOrder();
-  $('#tb-requested').value = order.requestedByStudents || 0;
-  $('#tb-stock').value = order.alreadyInStock || 0;
+  const [students, classes, order, assignment] = await Promise.all([
+    Students.list(), PSClasses.list(), Textbooks.getOrder(), Assignment.get()
+  ]);
+  const ro = DB.isReadOnly();
+  const confirmed = students.filter((s) => PSClasses.isConfirmed(s));
+  const waiting = students.filter((s) => Textbooks.WAITING.includes(s.status));
+  const preview = clsProposal;
+
+  // ----- Классы -----
+  const countInput = $('#cls-count');
+  if (!countInput.dataset.touched) countInput.value = Math.max(1, classes.length);
+  countInput.oninput = () => { countInput.dataset.touched = '1'; };
+  const shown = preview ? preview.classes : classes;
+  const placeOf = new Map(students.map((s) => [s.id, s.classId || null]));
+  if (preview) preview.moves.forEach((m) => placeOf.set(m.id, m.to));
+  const ctx = { classes: shown, preview: !!preview, moved: preview ? new Set(preview.moves.map((m) => m.id)) : null };
+  const view = (s) => ({ ...s, classId: placeOf.get(s.id) });
+  const known = new Set(shown.map((c) => c.id));
+
+  const cards = shown.map((c, i) => {
+    const members = confirmed.map(view).filter((s) => s.classId === c.id);
+    const st = PSClasses.stats(members);
+    const others = students.filter((s) => s.classId === c.id && !PSClasses.isConfirmed(s)).length;
+    const phA = i === 0 ? assignment.teacherA || '' : '';
+    const phB = i === 0 ? assignment.teacherB || '' : '';
+    return `<section class="ps-cls-card${c.isNew ? ' ps-cls-card--new' : ''}" aria-label="${esc(c.name)}">
+      <div class="ps-cls-card__head">
+        ${c.isNew || preview ? `<h3>${esc(c.name)}${c.isNew ? ` <span class="ps-chip ps-chip--accent">${esc(T('ps.cls.new'))}</span>` : ''}</h3>`
+          : `<input type="text" class="cls-name" data-id="${esc(c.id)}" value="${esc(c.name)}" aria-label="${esc(T('ps.cls.name'))}">`}
+        <span class="hint">${esc(T('ps.cls.stats', { n: st.total, b: st.brothers, s: st.sisters }))}</span>
+      </div>
+      ${c.isNew ? '' : `<div class="ps-cls-teachers">
+        <label><span>${esc(T('ps.app.prepodavatel_a'))}</span><input type="text" class="cls-teacher" data-id="${esc(c.id)}" data-key="teacherA" value="${esc(c.teacherA || '')}" placeholder="${esc(phA)}" ${preview ? 'disabled' : ''}></label>
+        <label><span>${esc(T('ps.ui.prepodavatel_b'))}</span><input type="text" class="cls-teacher" data-id="${esc(c.id)}" data-key="teacherB" value="${esc(c.teacherB || '')}" placeholder="${esc(phB)}" ${preview ? 'disabled' : ''}></label>
+      </div>`}
+      ${clsMembersHtml(members, ctx)}
+      ${others ? `<p class="hint">${esc(T('ps.cls.others', { n: others }))}</p>` : ''}
+      ${!preview && !c.isNew && !members.length && !others ? `<button type="button" class="md-btn md-btn-text cls-remove" data-id="${esc(c.id)}">${esc(T('ps.app.udalit'))}</button>` : ''}
+    </section>`;
+  });
+  const unclassed = confirmed.map(view).filter((s) => !s.classId || !known.has(s.classId));
+  cards.push(`<section class="ps-cls-card ps-cls-card--none" aria-label="${esc(T('ps.tb2.col.none'))}">
+    <div class="ps-cls-card__head"><h3>${esc(T('ps.tb2.col.none'))}</h3>
+      <span class="hint">${esc(T('ps.cls.waiting', { n: waiting.length }))}</span></div>
+    ${unclassed.length ? clsMembersHtml(unclassed, ctx) : ''}
+    <p class="hint">${esc(T(classes.length || preview ? 'ps.cls.none_hint' : 'ps.app.klassov_poka_net_shkola'))}</p>
+  </section>`);
+  $('#cls-cols').innerHTML = cards.join('');
+
+  const box = $('#cls-preview');
+  box.hidden = !preview;
+  if (preview) {
+    const newCount = preview.classes.filter((c) => c.isNew && preview.moves.some((m) => m.to === c.id)).length;
+    box.innerHTML = `<p>${esc(T(preview.moves.length ? 'ps.cls.preview' : 'ps.cls.preview_none', { n: preview.moves.length, k: newCount }))}</p>
+      <div class="btn-row">
+        ${preview.moves.length ? `<button type="button" class="md-btn md-btn-filled" id="cls-apply">${esc(T('ps.cls.apply'))}</button>` : ''}
+        <button type="button" class="md-btn md-btn-outlined" id="cls-cancel" data-ro-allow>${esc(T('ps.cls.cancel'))}</button>
+      </div>`;
+    const apply = $('#cls-apply');
+    if (apply) apply.onclick = async () => {
+      apply.disabled = true;
+      await PSClasses.apply(preview);
+      clsProposal = null;
+      await renderTextbooks();
+      renderDashboard();
+    };
+    $('#cls-cancel').onclick = () => { clsProposal = null; renderTextbooks(); };
+  }
+  ['#cls-propose', '#cls-redistribute', '#cls-add'].forEach((sel) => { $(sel).disabled = !!preview || ro; });
+
+  const propose = async (mode) => {
+    const fresh = await Students.list();
+    clsProposal = PSClasses.propose({
+      students: fresh, classes: await PSClasses.list(), count: Number(countInput.value) || 1, mode,
+      newName: (n) => T('ps.cls.default_name', { n })
+    });
+    await renderTextbooks();
+    $('#cls-preview').focus && $('#cls-preview').scrollIntoView({ block: 'nearest' });
+  };
+  $('#cls-propose').onclick = () => propose('unclassed');
+  $('#cls-redistribute').onclick = () => { if (confirm(T('ps.cls.redistribute_confirm'))) propose('all'); };
+  $('#cls-add').onclick = async () => {
+    const list = await PSClasses.list();
+    await PSClasses.add(T('ps.cls.default_name', { n: list.length + 1 }));
+    countInput.dataset.touched = '';
+    await renderTextbooks();
+  };
+
+  const cols = $('#cls-cols');
+  $all('.ov-open', cols).forEach((b) => { b.onclick = () => openPioneerCard(b.dataset.id); });
+  $all('.cls-move', cols).forEach((sel) => {
+    sel.onchange = async () => {
+      await Students.setClass(sel.dataset.id, sel.value || null, 'manual');
+      await renderTextbooks();
+      renderDashboard();
+    };
+  });
+  $all('.cls-name', cols).forEach((inp) => { inp.onchange = async () => { await PSClasses.update(inp.dataset.id, { name: inp.value }); renderTextbooks(); }; });
+  $all('.cls-teacher', cols).forEach((inp) => { inp.onchange = () => PSClasses.update(inp.dataset.id, { [inp.dataset.key]: inp.value }); });
+  $all('.cls-remove', cols).forEach((b) => {
+    b.onclick = async () => {
+      try { await PSClasses.remove(b.dataset.id, await Students.list()); } catch (e) { alert(e.message); }
+      countInput.dataset.touched = '';
+      renderTextbooks();
+    };
+  });
+
+  // ----- Заказ учебников -----
+  renderTextbookOrder(students, classes, order);
   $('#tb-received').checked = !!order.received;
   $('#tb-recounted').checked = !!order.recountedOnReceipt;
-  $('#textbook-reminders').innerHTML = Textbooks.REMINDERS.map((r) => `<li>${r}</li>`).join('');
-  updateTextbookQty();
-
-  ['#tb-requested', '#tb-stock'].forEach((sel) => $(sel).oninput = updateTextbookQty);
-
-  $('#save-textbooks-btn').onclick = async () => {
-    const payload = {
-      ...order,
-      requestedByStudents: Number($('#tb-requested').value || 0),
-      alreadyInStock: Number($('#tb-stock').value || 0),
-      received: $('#tb-received').checked,
-      recountedOnReceipt: $('#tb-recounted').checked
-    };
-    await Textbooks.save(payload);
-    alert(T('ps.app.dannye_po_uchebnikam_sohraneny'));
-    renderDashboard();
+  const saveFlags = async () => {
+    const current = await Textbooks.getOrder();
+    await DB.put('textbookOrder', { ...current, id: 'main', received: $('#tb-received').checked, recountedOnReceipt: $('#tb-recounted').checked });
   };
+  $('#tb-received').onchange = saveFlags;
+  $('#tb-recounted').onchange = saveFlags;
+  $('#textbook-reminders').innerHTML = Textbooks.REMINDERS.map((r) => `<li>${r}</li>`).join('');
 
   $('#export-textbooks-pdf').onclick = async () => {
     if (!(await PSPdf.ensure('pdf'))) return;
@@ -1743,12 +1840,53 @@ async function renderTextbooks() {
   $('#export-textbooks-csv').onclick = async () => {
     ExcelExport.downloadTextbookOrder(await Textbooks.getOrder());
   };
+  applyReadOnly('textbooks');
 }
 
-function updateTextbookQty() {
-  const requested = Number($('#tb-requested').value || 0);
-  const stock = Number($('#tb-stock').value || 0);
-  $('#tb-order-qty').textContent = Textbooks.calcOrderQuantity({ requestedByStudents: requested, alreadyInStock: stock });
+function textbookFormatLabel(format) { return T('ps.tb2.format.' + format); }
+
+function renderTextbookOrder(students, classes, order) {
+  const schoolLanguage = Students._schoolLanguage();
+  const result = Textbooks.compute({ students, classes, order, schoolLanguage });
+  $('#tb-basis').value = result.basis;
+  const heads = [T('ps.ov.f.language'), T('ps.ov.f.format')]
+    .concat(classes.map((c) => c.name), [T('ps.tb2.col.none'), T('ps.tb2.col.reserve'), T('ps.ui.uzhe_v_nalichii'), T('ps.ui.k_zakazu')]);
+  $('#tb-head').innerHTML = heads.map((h, i) => `<th scope="col"${i > 1 ? ' class="num"' : ''}>${esc(h)}</th>`).join('');
+  const tbody = $('#tb-table tbody');
+  if (!result.rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${heads.length}" class="hint">${esc(T('ps.tb2.empty'))}</td></tr>`;
+  } else {
+    tbody.innerHTML = result.rows.map((r) => `<tr>
+      <td>${esc(Students.languageName(r.language))}</td>
+      <td>${esc(textbookFormatLabel(r.format))}</td>
+      ${classes.map((c) => `<td class="num">${r.byClass[c.id] || 0}</td>`).join('')}
+      <td class="num">${r.none}</td>
+      <td class="num">${r.reserve ? '+' + r.reserve : '—'}</td>
+      <td class="num"><input type="number" class="tb-stock" min="0" inputmode="numeric" data-key="${esc(r.key)}" value="${r.stock || ''}" placeholder="0"
+        aria-label="${esc(T('ps.tb2.stock_for', { row: Students.languageName(r.language) + ' · ' + textbookFormatLabel(r.format) }))}"></td>
+      <td class="num"><b>${r.order}</b></td>
+    </tr>`).join('');
+  }
+  const t = result.total;
+  $('#tb-table tfoot').innerHTML = `<tr class="ps-tb-total"><th scope="row" colspan="2">${esc(T('ps.tb2.total'))}</th>
+    ${classes.map((c) => `<td class="num">${t.byClass[c.id] || 0}</td>`).join('')}
+    <td class="num">${t.none}</td><td class="num">${t.reserve ? '+' + t.reserve : '—'}</td>
+    <td class="num">${t.stock}</td><td class="num"><b>${t.order}</b></td></tr>`;
+
+  // Наличие и основа сохраняются сразу; суммы — в прежние поля для PDF/CSV.
+  const persist = async (patch) => {
+    const current = await Textbooks.getOrder();
+    const next = { ...current, ...patch, stock: { ...(current.stock || {}), ...(patch.stock || {}) } };
+    const fresh = await Students.list();
+    await Textbooks.saveComputed(next, Textbooks.compute({ students: fresh, classes, order: next, schoolLanguage }));
+    renderTextbookOrder(fresh, classes, await Textbooks.getOrder());
+    applyReadOnly('textbooks');
+    renderDashboard();
+  };
+  $all('.tb-stock', tbody).forEach((inp) => {
+    inp.onchange = () => persist({ stock: { [inp.dataset.key]: Math.max(0, Number(inp.value) || 0) } });
+  });
+  $('#tb-basis').onchange = () => persist({ basis: $('#tb-basis').value });
 }
 
 // ---------- SCHEDULE / LESSONS ----------

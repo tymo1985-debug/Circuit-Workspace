@@ -489,22 +489,6 @@ const Students = {
     }
   },
 
-  // ВНИМАНИЕ: на вход подаются объекты из list() (вид, не полная запись).
-  // Возвращаем ТОЛЬКО изменение classId, чтобы вызывающий код не записывал в
-  // базу усечённую запись поверх полной (раньше так терялось, например, поле
-  // fromRegistrationId).
-  autoDistribute(students, classes) {
-    if (!classes.length) return students;
-    const sorted = [...students].filter((s) => this.isExpected(s));
-    const perClass = Math.ceil(sorted.length / classes.length);
-    let idx = 0;
-    return sorted.map((s) => {
-      const classIndex = Math.min(Math.floor(idx / perClass), classes.length - 1);
-      idx++;
-      return { ...s, classId: classes[classIndex].id };
-    });
-  },
-
   countByFormat(students) {
     const counts = { standard: 0, otherLanguage: 0, braille: 0, print: 0 };
     students.forEach((s) => {

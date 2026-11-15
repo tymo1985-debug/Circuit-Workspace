@@ -13,14 +13,14 @@ const PSOverview = {
   // Куда ведёт кнопка «Что сделать сейчас».
   STAGE_ROUTE: {
     prep: 'anketa', assignment: 'assignment', list: 'students', dispatch: 'dispatch',
-    answers: 'dispatch', classes: 'students', tasks: 'practical', report: 'afterschool'
+    answers: 'dispatch', classes: 'textbooks', tasks: 'practical', report: 'afterschool'
   },
   WAITING: ['invited', 'letterSent'],
   COMING: ['willCome', 'attended'],
 
   /**
    * input: { anketa, substitutes, assignment, students, groups, orphans,
-   *          classes, order, school }
+   *          classes, orderQty, school }
    * → { stages: [{ key, n, state: done|current|todo|later, data }], current }
    */
   stages(input) {
@@ -63,7 +63,7 @@ const PSOverview = {
       },
       classes: {
         done: classes.length > 0 && coming.length > 0 && unclassed.length === 0,
-        data: { classes: classes.length, unclassed: unclassed.length, order: input.order ? Textbooks.calcOrderQuantity(input.order) : 0 }
+        data: { classes: classes.length, unclassed: unclassed.length, order: Number(input.orderQty) || 0 }
       },
       tasks: { later: true, data: {} },
       report: { done: !!(input.school && input.school.completed), data: {} }

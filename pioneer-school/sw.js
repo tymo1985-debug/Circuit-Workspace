@@ -91,6 +91,7 @@ const ASSETS = [
   './js/modules/schools.js',
   './js/modules/pdfImport.js',
   './js/modules/textbooks.js',
+  './js/modules/classes.js',
   './js/modules/overview.js',
   './js/modules/practical.js',
   './js/modules/review.js',

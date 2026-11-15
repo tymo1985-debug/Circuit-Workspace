@@ -55,7 +55,7 @@
       <button data-i18n="ps.ui.zamestiteli" class="nav-item" data-route="substitutes">Заместители</button>
       <button data-i18n="ps.ui.uchaschiesya" class="nav-item" data-route="students">Учащиеся</button>
       <button data-i18n="ps.dispatch.title" class="nav-item" data-route="dispatch">Рассылка</button>
-      <button data-i18n="ps.ui.uchebniki" class="nav-item" data-route="textbooks">Учебники</button>
+      <button data-i18n="ps.cls.title" class="nav-item" data-route="textbooks">Классы и учебники</button>
 
       <div data-i18n="ps.ui.vo_vremya_shkoly" class="nav-group-label">Во время школы</div>
       <button data-i18n="ps.ui.uroki_i_raspisanie" class="nav-item" data-route="schedule">Уроки и расписание</button>
@@ -296,16 +296,6 @@
         <button data-i18n="ps.ui.dobavit_uchaschegosya" class="md-btn md-btn-filled" id="add-student-btn">Добавить учащегося</button>
       </div>
 
-      <div class="panel">
-        <h3 data-i18n="ps.ui.klassy">Классы</h3>
-        <div class="inline-form">
-          <input type="text" id="class-name" placeholder="Название класса, например «Класс 1 — Прага»" data-i18n-placeholder="ps.ph.nazvanie_klassa_naprimer_klass">
-          <button data-i18n="ps.ui.dobavit_klass" class="md-btn md-btn-outlined" id="add-class-btn">+ Добавить класс</button>
-        </div>
-        <div id="classes-list"></div>
-        <button data-i18n="ps.ui.ravnomerno_raspredelit_po_klassam" class="md-btn md-btn-outlined" id="auto-distribute-btn">Равномерно распределить по классам</button>
-      </div>
-
       <details class="panel">
         <summary data-i18n="ps.ui.stolbcy_tablicy" style="cursor:pointer;font-family:var(--md-font-family);font-size:16px;font-weight:600;">Столбцы таблицы</summary>
         <p data-i18n="ps.ui.stolbcy_familiya_imya_podtverzhdenie" class="hint" style="margin-top:10px;">Столбцы «Фамилия», «Имя», «Подтверждение участия» и «Формат учебника» — системные (от них зависит расчёт учебников и распределение по классам): их можно переименовать, но не удалить. Остальные столбцы можно добавлять, переименовывать и удалять свободно.</p>
@@ -373,27 +363,51 @@
       </div>
     </section>
 
+    <!-- Ф5 «Классы и учебники» (15.11.2026), доска «Classes». Раздел сохранил
+         id «textbooks» (адрес #textbooks в закладках и копиях). -->
     <section id="route-textbooks" class="route hidden">
       <header class="route-header">
-        <h1 data-i18n="ps.ui.uchebniki">Учебники</h1>
-        <p data-i18n="ps.ui.raschet_zakaza_zaprosheno_5" class="route-sub">Расчёт заказа: запрошено + 5 − в наличии (гл.2, п.12)</p>
+        <h1 data-i18n="ps.cls.title">Классы и учебники</h1>
+        <p data-i18n="ps.cls.sub" class="route-sub">Подтвердившие пионеры по классам и заказ учебников из их ответов</p>
       </header>
-      <div class="panel form-grid">
-        <label><span data-i18n="ps.ui.zaprosheno_uchaschimisya">Запрошено учащимися</span><input type="number" id="tb-requested" min="0"></label>
-        <label><span data-i18n="ps.ui.uzhe_v_nalichii">Уже в наличии</span><input type="number" id="tb-stock" min="0"></label>
-        <label class="checkbox-label"><input type="checkbox" id="tb-received"><span data-i18n="ps.ui.uchebniki_polucheny">Учебники получены</span></label>
-        <label class="checkbox-label"><input type="checkbox" id="tb-recounted"><span data-i18n="ps.ui.pereschitany_pri_poluchenii">Пересчитаны при получении</span></label>
+      <div class="panel ps-cls-tools">
+        <label class="ps-cls-count"><span data-i18n="ps.cls.count">Классов</span><input type="number" id="cls-count" min="1" max="12" inputmode="numeric"></label>
+        <button type="button" class="md-btn md-btn-filled" id="cls-propose" data-i18n="ps.cls.propose">Предложить распределение</button>
+        <button type="button" class="md-btn md-btn-outlined" id="cls-redistribute" data-i18n="ps.cls.redistribute">Перераспределить всех</button>
+        <button type="button" class="md-btn md-btn-text" id="cls-add" data-i18n="ps.ui.dobavit_klass">+ Добавить класс</button>
+        <p class="hint" data-i18n="ps.cls.hint">Супруги и родственники держатся вместе, классы выравниваются по числу и по братьям и сёстрам. Пионера можно перенести вручную.</p>
       </div>
-      <div class="panel result-panel">
-        <div class="result-number" id="tb-order-qty">0</div>
-        <div data-i18n="ps.ui.k_zakazu" class="result-label">к заказу</div>
+      <div class="panel ps-cls-preview" id="cls-preview" role="status" hidden></div>
+      <div class="ps-cls-cols" id="cls-cols"></div>
+
+      <div class="panel">
+        <div class="panel-header-row ps-tb-head">
+          <h3 data-i18n="ps.tb2.title">Заказ учебников</h3>
+          <label class="ps-tb-basis"><span data-i18n="ps.tb2.basis">Считать</span>
+            <select id="tb-basis">
+              <option value="expected" data-i18n="ps.tb2.basis_expected">подтвердивших и ждущих ответа</option>
+              <option value="confirmed" data-i18n="ps.tb2.basis_confirmed">только подтвердивших</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint" data-i18n="ps.tb2.hint">Считается из ответов пионеров. «+5» — только к печатным учебникам; «в наличии» — по каждой строке.</p>
+        <div class="md-table-wrap">
+          <table class="md-table" id="tb-table">
+            <thead><tr id="tb-head"></tr></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+        <div class="form-grid ps-tb-flags">
+          <label class="checkbox-label"><input type="checkbox" id="tb-received"><span data-i18n="ps.ui.uchebniki_polucheny">Учебники получены</span></label>
+          <label class="checkbox-label"><input type="checkbox" id="tb-recounted"><span data-i18n="ps.ui.pereschitany_pri_poluchenii">Пересчитаны при получении</span></label>
+        </div>
       </div>
       <div class="panel">
         <h3 data-i18n="ps.ui.napominaniya">Напоминания</h3>
         <ul class="fact-list" id="textbook-reminders"></ul>
       </div>
       <div class="btn-row">
-        <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-textbooks-btn">Сохранить</button>
         <button data-i18n="ps.ui.eksport_pdf" class="md-btn md-btn-outlined" id="export-textbooks-pdf">Экспорт PDF</button>
         <button data-i18n="ps.ui.eksport_csv" class="md-btn md-btn-outlined" id="export-textbooks-csv">Экспорт CSV</button>
       </div>
@@ -586,6 +600,7 @@
 <script src="js/modules/students.js"></script>
 <script src="js/modules/schools.js"></script>
 <script src="js/modules/textbooks.js"></script>
+<script src="js/modules/classes.js"></script>
 <script src="js/modules/overview.js"></script>
 <script src="js/modules/practical.js"></script>
 <script src="js/modules/review.js"></script>
