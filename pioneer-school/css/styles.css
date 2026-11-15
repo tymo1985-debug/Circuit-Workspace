@@ -715,3 +715,41 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 .ps-tb-total th, .ps-tb-total td { font-weight: 700; border-top: 1px solid var(--md-outline-variant); }
 .ps-tb-flags { margin-top: 12px; }
 @media print { .ps-cls-tools, .ps-cls-preview, .cls-move, .cls-remove { display: none !important; } }
+
+/* ---------- Задания (Ф6, 15.11.2026), доска «Tasks» ---------- */
+.ps-chip--ok { background: var(--status-success-bg); color: var(--status-success); }
+.ps-chip--warn { background: var(--status-important-bg); color: var(--status-important); }
+.ps-task-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.ps-task-tools label { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+.ps-task-tools .hint { flex: 1 1 100%; margin: 0; font-style: normal; }
+.ps-task-lay { display: grid; grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; align-items: start; margin-bottom: 16px; }
+.ps-task-lay > .panel { margin: 0; }
+.ps-task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ps-task-li {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px;
+  border: 0; border-radius: 10px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ps-task-li b {
+  flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; background: var(--md-surface-container-high);
+}
+.ps-task-li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-task-li small { flex: none; opacity: .75; }
+.ps-task-li--on { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.ps-task-li--on b { background: var(--md-primary); color: var(--md-on-primary); }
+.ps-task-edit, .ps-task-dist { display: flex; flex-direction: column; gap: 10px; }
+.ps-task-edit h3, .ps-task-dist h3 { margin: 0; }
+.ps-task-edit label, .ps-task-row label { display: flex; flex-direction: column; gap: 4px; }
+.ps-task-edit .hint { margin: 0; font-style: normal; }
+.ps-task-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.ps-task-row label { flex: 1 1 140px; min-width: 0; }
+.ps-task-slot { border-radius: 10px; background: var(--md-surface-container-low); padding: 0 12px; }
+.ps-task-slot + .ps-task-slot { margin-top: 6px; }
+.ps-task-slot summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 44px; cursor: pointer; }
+.ps-task-slot summary > span:first-of-type { flex: 1 1 auto; min-width: 0; }
+.ps-task-slot__meta { font-size: 12px; opacity: .8; }
+.ps-task-slot[open] { padding-bottom: 12px; }
+.ps-task-slot .hint { margin: 0 0 8px; font-style: normal; }
+.ps-task-plan input { width: 100%; min-width: 90px; box-sizing: border-box; }
+@media (max-width: 1000px) { .ps-task-lay { grid-template-columns: 1fr; } }
+@media print { .ps-task-tools, .ps-task-edit { display: none !important; } }

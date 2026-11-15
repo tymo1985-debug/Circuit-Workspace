@@ -20,7 +20,7 @@ function esc(value) {
 }
 
 const ROUTES = ['dashboard', 'anketa', 'assignment', 'registration', 'substitutes', 'students',
-  'dispatch', 'textbooks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup',
+  'dispatch', 'textbooks', 'tasks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup',
   'docsarchive'];
 const DEFAULT_ROUTE = 'dashboard';
 
@@ -107,6 +107,7 @@ async function renderRouteInner(route) {
     case 'students': return renderStudents();
     case 'dispatch': return renderDispatch();
     case 'textbooks': return renderTextbooks();
+    case 'tasks': return renderTasks();
     case 'schedule': return renderSchedule();
     case 'practical': return renderPractical();
     case 'review': return renderReview();
@@ -241,11 +242,12 @@ async function renderDashboard() {
     Anketa.get(), Substitutes.list(), Assignment.get(), Students.list(), DB.list('classes'),
     Textbooks.getOrder(), Dispatch.getState(), Registration.getConfig()
   ]);
+  const taskProgress = PSTasks.progress(await PSTasks.library(), await PSTasks.assignments(), classes);
   const groups = Dispatch.groups(students, state, config);
   const school = Schools.current();
   const orderQty = Textbooks.compute({ students, classes, order, schoolLanguage: Students._schoolLanguage() }).total.order;
   const { stages, current } = PSOverview.stages({
-    anketa, substitutes, assignment, students, groups, orphans: Dispatch.orphans(students), classes, orderQty, school
+    anketa, substitutes, assignment, students, groups, orphans: Dispatch.orphans(students), classes, orderQty, school, taskProgress
   });
   const cur = stages.find((st) => st.key === current);
 
@@ -1889,6 +1891,244 @@ function renderTextbookOrder(students, classes, order) {
   $('#tb-basis').onchange = () => persist({ basis: $('#tb-basis').value });
 }
 
+// ---------- ЗАДАНИЯ (Ф6) ----------
+// Доска «Tasks» и раздел G мастер-макета. Решения Алекса 15.11.2026: правило
+// участников — на задание; каждое задание один раз в каждом классе; день и
+// преподаватель — ручная правка → план школы → таблица уроков; библиотека
+// общая, тексты всегда текущие. Логика — js/modules/tasks.js.
+
+const taskUi = { no: 1, classId: null, lang: null };
+
+function taskStatus(text) { const el = $('#task-status'); if (el) el.textContent = text || ''; }
+
+function taskSchoolLang() { return Students._schoolLanguage() || PSTasks.FALLBACK_LANG; }
+
+function taskTeacherName(cls, letter, assignment) {
+  if (!letter) return '';
+  const own = String((cls || {})[letter === 'A' ? 'teacherA' : 'teacherB'] || '').trim();
+  if (own) return own;
+  return String((assignment || {})[letter === 'A' ? 'teacherA' : 'teacherB'] || '').trim();
+}
+
+function taskTeacherLabel(letter) {
+  return letter === 'A' ? T('ps.app.prepodavatel_a') : letter === 'Б' ? T('ps.ui.prepodavatel_b') : '—';
+}
+
+async function taskContext() {
+  const [library, all, classes, students, plan, seed, assignment] = await Promise.all([
+    PSTasks.library(), PSTasks.assignments(), PSClasses.list(), Students.list(), PSTasks.plan(), loadLessonsSeed(), Assignment.get()
+  ]);
+  const lessons = await PSTasks.lessonTable(seed);
+  return { library, all, classes, students, plan, lessons, assignment, planIdx: PSTasks.planIndex(plan) };
+}
+
+function taskMembers(ctx, classId) {
+  return ctx.students.filter((s) => s.classId === classId && PSClasses.isConfirmed(s));
+}
+
+async function renderTasks() {
+  const ctx = await taskContext();
+  if (!taskUi.lang) taskUi.lang = taskSchoolLang();
+  if (!ctx.classes.some((c) => c.id === taskUi.classId)) taskUi.classId = ctx.classes.length ? ctx.classes[0].id : null;
+  const cls = ctx.classes.find((c) => c.id === taskUi.classId) || null;
+
+  const sel = $('#task-class');
+  sel.innerHTML = ctx.classes.length
+    ? ctx.classes.map((c) => `<option value="${esc(c.id)}" ${c.id === taskUi.classId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')
+    : `<option value="">${esc(T('ps.task.no_classes'))}</option>`;
+  sel.disabled = !ctx.classes.length;
+  sel.onchange = () => { taskUi.classId = sel.value; renderTasks(); };
+  $('#task-auto').disabled = !cls;
+  $('#export-task-slips').disabled = !cls;
+  $('#task-auto').onclick = () => taskAutoFill(ctx, cls);
+  $('#export-task-slips').onclick = () => taskPrintSlips(ctx, cls);
+
+  const lang = taskSchoolLang();
+  $('#task-list').innerHTML = ctx.library.map((t) => {
+    const txt = PSTasks.text(t, lang);
+    return `<li><button type="button" class="ps-task-li${t.no === taskUi.no ? ' ps-task-li--on' : ''}" data-no="${t.no}" data-ro-allow aria-current="${t.no === taskUi.no}">
+      <b>${t.no}</b><span>${esc(txt.title || T('ps.task.untitled'))}</span>${t.lesson ? `<small>${esc(T('ps.task.lesson_n', { n: t.lesson }))}</small>` : ''}</button></li>`;
+  }).join('');
+  $all('.ps-task-li').forEach((b) => { b.onclick = () => { taskUi.no = Number(b.dataset.no); renderTasks(); }; });
+
+  renderTaskEditor(ctx);
+  renderTaskDistribution(ctx, cls);
+  renderTaskPlan(ctx);
+  applyReadOnly('tasks');
+}
+
+function renderTaskEditor(ctx) {
+  const t = ctx.library.find((x) => x.no === taskUi.no) || ctx.library[0];
+  const lang = taskUi.lang;
+  const own = (t.texts || {})[lang] || {};
+  const langs = Students.LANGUAGE_PRESETS.slice();
+  if (!langs.includes(lang)) langs.push(lang);
+  const opt = (v, label, cur) => `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(label)}</option>`;
+  $('#task-edit').innerHTML = `
+    <h3>${esc(T('ps.task.edit_title', { n: t.no }))}</h3>
+    <label><span>${esc(T('ps.task.text_lang'))}</span><select id="te-lang" data-ro-allow>${langs.map((c) => opt(c, Students.languageName(c), lang)).join('')}</select></label>
+    <label><span>${esc(T('ps.task.f.title'))}</span><input type="text" id="te-title" value="${esc(own.title || '')}"></label>
+    <label><span>${esc(T('ps.task.f.situation'))}</span><textarea id="te-situation" rows="3">${esc(own.situation || '')}</textarea></label>
+    <label><span>${esc(T('ps.task.f.description'))}</span><textarea id="te-description" rows="5">${esc(own.description || '')}</textarea></label>
+    <div class="ps-task-row">
+      <label><span>${esc(T('ps.task.f.lesson'))}</span><select id="te-lesson">${opt('', '—', t.lesson || '')}${Array.from({ length: PSTasks.LESSONS }, (_, i) => opt(i + 1, String(i + 1), t.lesson)).join('')}</select></label>
+      <label><span>${esc(T('ps.task.f.participants'))}</span><select id="te-count">${[2, 3, 4].map((n) => opt(n, String(n), t.participants)).join('')}</select></label>
+    </div>
+    <label><span>${esc(T('ps.task.f.rule'))}</span><select id="te-rule">${PSTasks.RULES.map((r) => opt(r, T('ps.task.rule.' + r), t.rule)).join('')}</select></label>
+    <p class="hint">${esc(T('ps.task.shared_hint'))}</p>`;
+  $('#te-lang').onchange = (e) => { taskUi.lang = e.target.value; renderTasks(); };
+  const save = async () => {
+    const texts = { ...(t.texts || {}) };
+    texts[lang] = { title: $('#te-title').value.trim(), situation: $('#te-situation').value.trim(), description: $('#te-description').value.trim() };
+    await PSTasks.saveTask({ ...t, texts, lesson: Number($('#te-lesson').value) || null, participants: Number($('#te-count').value), rule: $('#te-rule').value });
+    renderTasks();
+  };
+  ['#te-title', '#te-situation', '#te-description', '#te-lesson', '#te-count', '#te-rule'].forEach((id) => { $(id).onchange = save; });
+}
+
+function renderTaskDistribution(ctx, cls) {
+  const box = $('#task-dist');
+  $('#task-dist-title').textContent = cls ? T('ps.task.dist_title', { name: cls.name }) : T('ps.task.dist');
+  if (!cls) { box.innerHTML = `<p class="hint">${esc(T('ps.task.no_classes_hint'))}</p>`; return; }
+  const members = taskMembers(ctx, cls.id);
+  const byId = new Map(members.map((s) => [s.id, s]));
+  const allById = new Map(ctx.students.map((s) => [s.id, s]));
+  const lang = taskSchoolLang();
+  const dayOpt = (v, label, cur) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(label)}</option>`;
+
+  box.innerHTML = ctx.library.map((t) => {
+    const slot = PSTasks.slot(ctx.all, cls.id, t.no);
+    const res = PSTasks.resolve(t, slot, ctx.planIdx, ctx.lessons);
+    const auto = PSTasks.resolve(t, { people: [], teacher: null, day: null }, ctx.planIdx, ctx.lessons);
+    const probs = PSTasks.problems(t, slot, byId);
+    const names = slot.people.map((id) => allById.get(id)).filter(Boolean).map((s) => Students.fullName(s));
+    const txt = PSTasks.text(t, lang);
+    const chips = probs.length
+      ? probs.map((p) => `<span class="ps-chip ps-chip--warn">${esc(T('ps.task.prob.' + p))}</span>`).join('')
+      : `<span class="ps-chip ps-chip--ok">✓</span>`;
+    const when = [res.day ? T('ps.task.day_n', { n: res.day }) : '', res.teacher ? taskTeacherName(cls, res.teacher, ctx.assignment) || taskTeacherLabel(res.teacher) : ''].filter(Boolean).join(' · ');
+    const pickers = Array.from({ length: t.participants }, (_, i) => {
+      const cur = slot.people[i] || '';
+      const opts = [`<option value="">—</option>`].concat(members.map((s) => `<option value="${esc(s.id)}" ${s.id === cur ? 'selected' : ''}>${esc(Students.fullName(s))}</option>`));
+      if (cur && !byId.has(cur)) opts.push(`<option value="${esc(cur)}" selected>${esc(allById.has(cur) ? Students.fullName(allById.get(cur)) : '?')}</option>`);
+      return `<label><span>${esc(T(i === 0 ? 'ps.task.role.main' : 'ps.task.role.helper'))}</span><select class="td-person" data-no="${t.no}" data-i="${i}">${opts.join('')}</select></label>`;
+    }).join('');
+    return `<details class="ps-task-slot">
+      <summary><b>${esc(T('ps.task.short', { n: t.no }))}</b> <span>${esc(names.join(' + ') || '—')}</span>
+        <span class="ps-task-slot__meta">${esc(when)}</span> ${chips}</summary>
+      ${txt.title ? `<p class="hint">${esc(txt.title)}${txt.fallback ? ' · ' + esc(T('ps.task.fallback', { lang: Students.languageName(txt.lang) })) : ''}</p>` : `<p class="hint">${esc(T('ps.task.no_text'))}</p>`}
+      <p class="hint">${esc(T('ps.task.rule_label', { rule: T('ps.task.rule.' + t.rule) }))}</p>
+      <div class="ps-task-row">${pickers}</div>
+      <div class="ps-task-row">
+        <label><span>${esc(T('ps.task.f.day'))}</span><select class="td-day" data-no="${t.no}">
+          ${dayOpt('', T('ps.task.auto_value', { v: auto.day ? T('ps.task.day_n', { n: auto.day }) : '—' }), slot.day || '')}
+          ${Array.from({ length: PSTasks.DAYS }, (_, i) => dayOpt(i + 1, T('ps.task.day_n', { n: i + 1 }), slot.day)).join('')}</select></label>
+        <label><span>${esc(T('ps.task.f.teacher'))}</span><select class="td-teacher" data-no="${t.no}">
+          ${dayOpt('', T('ps.task.auto_value', { v: auto.teacher ? taskTeacherLabel(auto.teacher) : '—' }), slot.teacher || '')}
+          ${PSTasks.TEACHERS.map((l) => dayOpt(l, taskTeacherLabel(l) + (taskTeacherName(cls, l, ctx.assignment) ? ' · ' + taskTeacherName(cls, l, ctx.assignment) : ''), slot.teacher)).join('')}</select></label>
+      </div>
+    </details>`;
+  }).join('');
+
+  const update = async (no, fn) => {
+    const all = await PSTasks.assignments();
+    const slot = PSTasks.slot(all, cls.id, no);
+    fn(slot);
+    await PSTasks.saveAssignments(PSTasks.setSlot(all, cls.id, no, slot));
+    renderTasks();
+  };
+  $all('.td-person', box).forEach((s) => {
+    s.onchange = () => update(Number(s.dataset.no), (slot) => {
+      const i = Number(s.dataset.i);
+      const people = slot.people.slice();
+      while (people.length <= i) people.push('');
+      const prev = people.indexOf(s.value);
+      if (s.value && prev >= 0 && prev !== i) people[prev] = people[i];
+      people[i] = s.value;
+      slot.people = people.filter(Boolean);
+    });
+  });
+  $all('.td-day', box).forEach((s) => { s.onchange = () => update(Number(s.dataset.no), (slot) => { slot.day = Number(s.value) || null; }); });
+  $all('.td-teacher', box).forEach((s) => { s.onchange = () => update(Number(s.dataset.no), (slot) => { slot.teacher = s.value || null; }); });
+}
+
+async function taskAutoFill(ctx, cls) {
+  if (!cls) return;
+  const members = taskMembers(ctx, cls.id);
+  const all = await PSTasks.assignments();
+  const { slots, filled } = PSTasks.propose(ctx.library, all[cls.id] || {}, members);
+  await PSTasks.saveAssignments({ ...all, [cls.id]: slots });
+  await renderTasks();
+  taskStatus(T('ps.task.auto_done', { n: filled }));
+}
+
+function taskPrintSlips(ctx, cls) {
+  if (!cls) return;
+  const lang = taskSchoolLang();
+  const docLang = PSDocLang.LANGS.includes(lang) ? lang : PSDocLang.get();
+  const L = (k, v) => (typeof CWI18n !== 'undefined' ? CWI18n.t(k, v, docLang) : k);
+  const byId = new Map(ctx.students.map((s) => [s.id, s]));
+  const date = (iso) => { try { return iso ? new Date(iso + 'T00:00:00').toLocaleDateString(PSDocLang.LOCALES[docLang] || 'ru-RU') : ''; } catch (e) { return iso; } };
+  const slips = ctx.library.map((t) => {
+    const slot = PSTasks.slot(ctx.all, cls.id, t.no);
+    if (!slot.people.length) return '';
+    const res = PSTasks.resolve(t, slot, ctx.planIdx, ctx.lessons);
+    const txt = PSTasks.text(t, lang);
+    const people = slot.people.map((id) => byId.get(id)).filter(Boolean).map((s) => esc(Students.fullName(s)));
+    const when = [t.lesson ? L('doc.ps.task.lesson', { n: t.lesson }) : '', res.day ? L('doc.ps.task.day', { n: res.day }) : '', res.date ? date(res.date) : ''].filter(Boolean).join(' · ');
+    const teacher = taskTeacherName(cls, res.teacher, ctx.assignment);
+    return `<section class="slip">
+      <h2>${esc(L('doc.ps.task.head', { n: t.no }))}${txt.title ? ' · ' + esc(txt.title) : ''}</h2>
+      <p class="ln"><b>${esc(L('doc.ps.task.people'))}:</b> ${people.join(', ')}</p>
+      ${when ? `<p class="ln">${esc(when)}</p>` : ''}
+      ${teacher ? `<p class="ln"><b>${esc(L('doc.ps.task.teacher'))}:</b> ${esc(teacher)}</p>` : ''}
+      ${txt.situation ? `<p><b>${esc(L('doc.ps.task.situation'))}:</b> ${esc(txt.situation)}</p>` : ''}
+      ${txt.description ? `<p class="pre">${esc(txt.description)}</p>` : ''}
+    </section>`;
+  }).filter(Boolean);
+  if (!slips.length) return alert(T('ps.task.print_empty'));
+  CWPrint.document({
+    title: L('doc.ps.task.title') + ' · ' + cls.name,
+    lang: docLang,
+    css: '.slip{border:1px solid #999;border-radius:6px;padding:10pt 12pt;margin:0 0 10pt;break-inside:avoid}'
+      + '.slip h2{font-size:12pt;margin:0 0 6pt}.slip p{margin:0 0 4pt}.slip .ln{border-bottom:1px solid #ccc;padding-bottom:3pt}.pre{white-space:pre-wrap}',
+    html: slips.join(''),
+    onBlocked: () => alert(T('ps.docs.print_blocked')),
+  });
+}
+
+function renderTaskPlan(ctx) {
+  const table = $('#task-plan');
+  const head = `<thead><tr><th></th>${ctx.plan.days.map((d, i) => `<th>${esc(T('ps.task.day_n', { n: i + 1 }))}</th>`).join('')}</tr></thead>`;
+  const row = (label, cells) => `<tr><th scope="row">${esc(label)}</th>${cells}</tr>`;
+  const dates = row(T('ps.task.plan_date'), ctx.plan.days.map((d, i) => `<td><input type="date" class="tp-date" data-i="${i}" value="${esc(d.date)}" aria-label="${esc(T('ps.task.plan_date') + ' ' + (i + 1))}"></td>`).join(''));
+  const teacherRow = (l) => row(taskTeacherLabel(l), ctx.plan.days.map((d, i) => `<td><input type="text" class="tp-lessons" inputmode="numeric" data-i="${i}" data-t="${l}" value="${esc(d[l].join(', '))}" placeholder="${esc(T('ps.task.plan_ph'))}" aria-label="${esc(taskTeacherLabel(l) + ' · ' + T('ps.task.day_n', { n: i + 1 }))}"></td>`).join(''));
+  table.innerHTML = head + `<tbody>${dates}${teacherRow('A')}${teacherRow('Б')}</tbody>`;
+  const save = async (fn) => { const plan = await PSTasks.plan(); fn(plan); await PSTasks.savePlan(plan); renderTasks(); };
+  $all('.tp-date', table).forEach((inp) => { inp.onchange = () => save((p) => { p.days[Number(inp.dataset.i)].date = inp.value; }); });
+  $all('.tp-lessons', table).forEach((inp) => { inp.onchange = () => save((p) => { p.days[Number(inp.dataset.i)][inp.dataset.t] = PSTasks.parseLessons(inp.value); }); });
+  $('#task-plan-template').onclick = async () => {
+    await PSTasks.saveTemplate(await PSTasks.plan());
+    taskStatus(T('ps.task.plan_tpl_saved'));
+  };
+}
+
+async function renderLessonTable() {
+  const seed = await loadLessonsSeed();
+  const lessons = await PSTasks.lessonTable(seed);
+  const opt = (v, label, cur) => `<option value="${v}" ${String(v) === String(cur || '') ? 'selected' : ''}>${esc(label)}</option>`;
+  const table = $('#lesson-table');
+  table.innerHTML = `<thead><tr><th>${esc(T('ps.task.f.lesson'))}</th><th>${esc(T('ps.task.f.day'))}</th><th>${esc(T('ps.task.f.teacher'))}</th></tr></thead><tbody>${
+    Object.keys(lessons).map((n) => `<tr><th scope="row">${esc(n)}</th>
+      <td><select class="lt-day" data-n="${n}" aria-label="${esc(T('ps.task.f.day') + ' · ' + n)}">${opt('', '—', lessons[n].day)}${Array.from({ length: PSTasks.DAYS }, (_, i) => opt(i + 1, String(i + 1), lessons[n].day)).join('')}</select></td>
+      <td><select class="lt-teacher" data-n="${n}" aria-label="${esc(T('ps.task.f.teacher') + ' · ' + n)}">${opt('', '—', lessons[n].teacher)}${PSTasks.TEACHERS.map((l) => opt(l, taskTeacherLabel(l), lessons[n].teacher)).join('')}</select></td></tr>`).join('')
+  }</tbody>`;
+  const save = async (n) => {
+    await PSTasks.setLesson(n, { day: Number($(`.lt-day[data-n="${n}"]`).value) || null, teacher: $(`.lt-teacher[data-n="${n}"]`).value || null });
+  };
+  $all('.lt-day, .lt-teacher', table).forEach((s) => { s.onchange = () => save(s.dataset.n); });
+}
+
 // ---------- SCHEDULE / LESSONS ----------
 async function loadLessonsSeed() {
   if (LESSONS_SEED) return LESSONS_SEED;
@@ -1905,6 +2145,7 @@ async function renderSchedule() {
   const stored = await DB.list('lessons');
   const doneMap = Object.fromEntries(stored.map((l) => [l.key, l.done]));
 
+  await renderLessonTable();
   const el = $('#lessons-list');
   el.innerHTML = seed.lessons.map((lesson) => {
     const key = `${lesson.number}${lesson.letter || ''}`;

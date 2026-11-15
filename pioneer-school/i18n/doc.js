@@ -211,6 +211,13 @@
     'doc.ps.sum.title': 'Регистрация на Школу пионерского служения',
     'doc.ps.sum.fullname': 'Фамилия Имя',
     'doc.ps.sum.reason': 'причина',
+    'doc.ps.task.title': 'Задания пионеров',
+    'doc.ps.task.head': 'Школа пионерского служения · Задание {n}',
+    'doc.ps.task.people': 'Участники',
+    'doc.ps.task.lesson': 'Урок {n}',
+    'doc.ps.task.day': 'день {n}',
+    'doc.ps.task.teacher': 'Преподаватель',
+    'doc.ps.task.situation': 'Ситуация',
   } });
 
   /* ------------------------------------------------------------------
@@ -331,6 +338,13 @@
     'doc.ps.sum.title': 'Реєстрація на Школу піонерського служіння',
     'doc.ps.sum.fullname': 'Прізвище Ім\'я',
     'doc.ps.sum.reason': 'причина',
+    'doc.ps.task.title': 'Завдання піонерів',
+    'doc.ps.task.head': 'Школа піонерського служіння · Завдання {n}',
+    'doc.ps.task.people': 'Учасники',
+    'doc.ps.task.lesson': 'Урок {n}',
+    'doc.ps.task.day': 'день {n}',
+    'doc.ps.task.teacher': 'Викладач',
+    'doc.ps.task.situation': 'Ситуація',
   } });
   global.CWI18n.register({ en: {
     'doc.ps.field.lastName': 'Last name',
@@ -437,6 +451,13 @@
     'doc.ps.sum.title': 'Registration for the Pioneer Service School',
     'doc.ps.sum.fullname': 'Last Name First Name',
     'doc.ps.sum.reason': 'reason',
+    'doc.ps.task.title': 'Pioneer assignments',
+    'doc.ps.task.head': 'Pioneer Service School · Assignment {n}',
+    'doc.ps.task.people': 'Participants',
+    'doc.ps.task.lesson': 'Lesson {n}',
+    'doc.ps.task.day': 'day {n}',
+    'doc.ps.task.teacher': 'Instructor',
+    'doc.ps.task.situation': 'Situation',
   } });
   global.CWI18n.register({ pl: {
     'doc.ps.field.lastName': 'Nazwisko',
@@ -543,6 +564,13 @@
     'doc.ps.sum.title': 'Rejestracja do Szkoły pionierskiej służby',
     'doc.ps.sum.fullname': 'Nazwisko Imię',
     'doc.ps.sum.reason': 'powód',
+    'doc.ps.task.title': 'Zadania pionierów',
+    'doc.ps.task.head': 'Kurs Służby Pionierskiej · Zadanie {n}',
+    'doc.ps.task.people': 'Uczestnicy',
+    'doc.ps.task.lesson': 'Lekcja {n}',
+    'doc.ps.task.day': 'dzień {n}',
+    'doc.ps.task.teacher': 'Wykładowca',
+    'doc.ps.task.situation': 'Sytuacja',
   } });
   global.CWI18n.register({ de: {
     'doc.ps.field.lastName': 'Nachname',
@@ -649,6 +677,13 @@
     'doc.ps.sum.title': 'Anmeldung für die Pionierdienstschule',
     'doc.ps.sum.fullname': 'Nachname Vorname',
     'doc.ps.sum.reason': 'Grund',
+    'doc.ps.task.title': 'Aufgaben der Pioniere',
+    'doc.ps.task.head': 'Pionierdienstschule · Aufgabe {n}',
+    'doc.ps.task.people': 'Teilnehmer',
+    'doc.ps.task.lesson': 'Lektion {n}',
+    'doc.ps.task.day': 'Tag {n}',
+    'doc.ps.task.teacher': 'Unterweiser',
+    'doc.ps.task.situation': 'Situation',
   } });
 
   /**

@@ -7,8 +7,8 @@
  *     затёртое поле `history` — карточка молча теряет историю. Смена статуса
  *     рассылкой и формуляром в журнал НЕ идёт (восстанавливается из их
  *     данных) — иначе одна строка появится дважды.
- *  2. Этап считается по данным: «текущий» — первый незакрытый; «Задания» до
- *     Ф6 текущим не бывают — иначе обзор навсегда застрял бы на них.
+ *  2. Этап считается по данным: «текущий» — первый незакрытый; «Задания»
+ *     (с Ф6) закрываются, когда заполнены все места во всех классах.
  *  3. Фильтры списка: «ждём ответа», «без класса», «не указано» — особые
  *     значения; ошибка в одном из них прячет пионера из списка.
  *  4. Экран не пишет в базу мимо Students: автораспределение — через setClass.
@@ -123,8 +123,11 @@ const ok = (name, cond, extra) => { console.log((cond ? '  ✓ ' : '  ✗ ') + n
   ok('все ответили, «c» без класса — текущий «классы»', r.current === 'classes' && r.stages[5].data.unclassed === 1, r.current);
   const classed = allAnswered.map((s) => ({ ...s, classId: s.status === 'wontCome' ? null : 'k1' }));
   r = PSOverview.stages({ ...base, anketa: { proposedLocations: [{}] }, substitutes: [{}], assignment: { startDate: '2027-03-02', location: 'Прага' }, students: classed, groups: sentAll, classes });
-  ok('«задания» — later, текущий перескакивает на отчёт', r.stages[6].state === 'later' && r.current === 'report', r.current);
-  r = PSOverview.stages({ ...base, anketa: { proposedLocations: [{}] }, substitutes: [{}], assignment: { startDate: '2027-03-02', location: 'Прага' }, students: classed, groups: sentAll, classes, school: { completed: true } });
+  ok('Ф6: задания не заполнены — текущий «задания»', r.stages[6].state === 'current' && r.current === 'tasks', r.current);
+  const tasksDone = { done: 18, total: 18 };
+  r = PSOverview.stages({ ...base, anketa: { proposedLocations: [{}] }, substitutes: [{}], assignment: { startDate: '2027-03-02', location: 'Прага' }, students: classed, groups: sentAll, classes, taskProgress: tasksDone });
+  ok('задания заполнены — текущий «итог»', r.stages[6].state === 'done' && r.current === 'report', r.current);
+  r = PSOverview.stages({ ...base, anketa: { proposedLocations: [{}] }, substitutes: [{}], assignment: { startDate: '2027-03-02', location: 'Прага' }, students: classed, groups: sentAll, classes, taskProgress: tasksDone, school: { completed: true } });
   ok('завершённая школа — текущего нет', r.current === null && r.stages[7].state === 'done');
   ok('у каждого этапа есть раздел для кнопки', PSOverview.STAGES.every((k) => PSOverview.STAGE_ROUTE[k]));
 

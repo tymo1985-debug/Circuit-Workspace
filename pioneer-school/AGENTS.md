@@ -75,7 +75,7 @@
   `source`). Смены статуса из рассылки (`dispatch`) и формуляра (`form`) в
   журнал не идут — восстанавливаются из `dispatch` и `registrations`.
 - Этапы и фильтры — чистые функции `js/modules/overview.js`; этап по данным,
-  без ручных отметок. «Задания» — `later`, пока нет Ф6.
+  без ручных отметок. «Задания» закрыты, когда заполнены все места (Ф6).
 - Проверка — `scripts/check-pioneer-overview.mjs`.
 
 ## Классы и учебники (Ф5, 15.11.2026) — инварианты
@@ -88,6 +88,22 @@
   `order.stock` по строке, `order.basis`); суммы — в `requestedByStudents` /
   `alreadyInStock` / `orderQuantity` для PDF/CSV и старых копий.
 - Раздел остаётся `#textbooks`. Проверка — `scripts/check-pioneer-classes.mjs`.
+
+## Задания (Ф6, 15.11.2026) — инварианты
+
+- Логика — `js/modules/tasks.js` (`PSTasks`), экран — раздел `#tasks`.
+- Общие для всех школ (`GLOBAL_META`): `taskLibrary` (ровно 18, читать только
+  через `PSTasks.library()`), `lessonTable` (правки поверх seed),
+  `schoolPlanTemplate` (без дат). У школы: meta `tasks`
+  (`{ [classId]: { [no]: { people, teacher, day } } }`, `people[0]` —
+  главный, `null` — «как в плане/уроке») и `schoolPlan`.
+- День и преподаватель — только `PSTasks.resolve()`: ручная правка → план →
+  таблица уроков. Имя преподавателя — из `teacherA/teacherB` класса.
+- Правило — одно на задание; нарушение — предупреждение, не запрет. Каждое
+  задание — один раз в классе. «Распределить автоматически»
+  (`PSTasks.propose`) не трогает заполненные места.
+- Тексты библиотеки всегда текущие (снимков нет — решение Алекса).
+- Проверка — `scripts/check-pioneer-tasks.mjs`.
 
 ## Открытая работа: N-3
 

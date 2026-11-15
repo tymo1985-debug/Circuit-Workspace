@@ -49,7 +49,9 @@ const STORES = [
    ошибкой с code = 'PS_READONLY' (интерфейс дополнительно гасит поля). */
 const SCOPE_SEP = '|';
 const SCOPED_STORES = STORES.filter((name) => name !== 'meta');
-const GLOBAL_META = ['schools', 'currentSchoolId', 'studentColumns', 'studentExportColumns'];
+// Ф6: библиотека 18 заданий, таблица уроков и шаблон плана — общие для всех школ.
+const GLOBAL_META = ['schools', 'currentSchoolId', 'studentColumns', 'studentExportColumns',
+  'taskLibrary', 'lessonTable', 'schoolPlanTemplate'];
 const scope = { schools: [], currentId: null };
 
 function isGlobalMeta(key) { return GLOBAL_META.includes(key); }

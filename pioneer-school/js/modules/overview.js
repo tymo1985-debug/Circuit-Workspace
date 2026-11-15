@@ -2,7 +2,7 @@
 //
 // ЭТАПЫ (решение Алекса — «автоматически по данным»): этап закрыт, когда это
 // видно из данных; текущий — первый незакрытый. Ручных отметок и новых полей
-// нет. Этап «Задания» до Ф6 считать нечем — он `later` и текущим не бывает.
+// нет. Этап «Задания» (Ф6) готов, когда все 18 заданий заполнены в каждом классе.
 // Функции чистые: экран собирает данные и передаёт их сюда (проверка —
 // scripts/check-pioneer-overview.mjs).
 //
@@ -13,14 +13,14 @@ const PSOverview = {
   // Куда ведёт кнопка «Что сделать сейчас».
   STAGE_ROUTE: {
     prep: 'anketa', assignment: 'assignment', list: 'students', dispatch: 'dispatch',
-    answers: 'dispatch', classes: 'textbooks', tasks: 'practical', report: 'afterschool'
+    answers: 'dispatch', classes: 'textbooks', tasks: 'tasks', report: 'afterschool'
   },
   WAITING: ['invited', 'letterSent'],
   COMING: ['willCome', 'attended'],
 
   /**
    * input: { anketa, substitutes, assignment, students, groups, orphans,
-   *          classes, orderQty, school }
+   *          classes, orderQty, school, taskProgress: { done, total } }
    * → { stages: [{ key, n, state: done|current|todo|later, data }], current }
    */
   stages(input) {
@@ -65,7 +65,10 @@ const PSOverview = {
         done: classes.length > 0 && coming.length > 0 && unclassed.length === 0,
         data: { classes: classes.length, unclassed: unclassed.length, order: Number(input.orderQty) || 0 }
       },
-      tasks: { later: true, data: {} },
+      tasks: {
+        done: !!(input.taskProgress && input.taskProgress.total && input.taskProgress.done === input.taskProgress.total),
+        data: { done: (input.taskProgress || {}).done || 0, total: (input.taskProgress || {}).total || 0 }
+      },
       report: { done: !!(input.school && input.school.completed), data: {} }
     };
 
