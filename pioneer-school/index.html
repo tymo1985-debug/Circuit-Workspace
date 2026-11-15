@@ -487,33 +487,48 @@
 
     <section id="route-afterschool" class="route hidden">
       <header class="route-header">
-        <h1 data-i18n="ps.ui.s_253_proshedshie_obuchenie">S-253 — Прошедшие обучение</h1>
-        <p data-i18n="ps.ui.zapolnyaetsya_posle_vypuska_poslednego" class="route-sub">Заполняется после выпуска последнего класса в году (гл.4)</p>
+        <h1 data-i18n="ps.after.title">Присутствие и отчёт</h1>
+        <p data-i18n="ps.after.sub" class="route-sub">Отметки «Был / Не был» и S-253 филиалу — заполняется сам из статусов пионеров (гл.4)</p>
       </header>
-      <div class="panel">
-        <h3 data-i18n="ps.ui.stranica_1_iz_spiska">Страница 1 — из «Списка», но не прошли обучение здесь</h3>
-        <div class="inline-form">
-          <input type="text" id="na-name" placeholder="Имя пионера" data-i18n-placeholder="ps.ph.imya_pionera">
-          <input type="text" id="na-reason" placeholder="Причина" data-i18n-placeholder="ps.ph.prichina">
-          <button data-i18n="ps.ui.dobavit" class="md-btn md-btn-outlined" id="add-na-btn">+ Добавить</button>
-        </div>
-        <ul id="na-list" class="simple-list"></ul>
+      <div class="btn-row">
+        <button data-i18n="ps.ui.eksport_pdf" class="md-btn md-btn-filled" id="export-s253-pdf">Экспорт PDF</button>
+        <button data-i18n="ps.after.submitted_btn" class="md-btn md-btn-outlined" id="save-s253-btn">Отчёт отправлен филиалу</button>
+        <button data-i18n="ps.after.complete_btn" class="md-btn md-btn-outlined" id="as-complete-btn">Отметить школу завершённой</button>
+        <span class="hint" id="as-submitted"></span>
       </div>
-      <div class="panel">
-        <h3 data-i18n="ps.ui.stranica_2_proshli_obuchenie">Страница 2 — прошли обучение, но не были в «Списке»</h3>
-        <div class="inline-form">
-          <input type="text" id="ao-name" placeholder="Имя пионера" data-i18n-placeholder="ps.ph.imya_pionera">
-          <input type="text" id="ao-congregation" placeholder="Собрание" data-i18n-placeholder="ps.ph.sobranie">
-          <button data-i18n="ps.ui.dobavit" class="md-btn md-btn-outlined" id="add-ao-btn">+ Добавить</button>
+      <p class="ps-after-warn" id="as-warn" hidden></p>
+      <div class="ps-after-lay">
+        <div class="panel">
+          <h3 data-i18n="ps.after.att_title">Отметки присутствия</h3>
+          <p data-i18n="ps.after.att_hint" class="hint">Отмечаются подтвердившие («Придёт»). «Не придёт» из формуляров уходит в S-253 сам.</p>
+          <div id="as-attendance"></div>
         </div>
-        <ul id="ao-list" class="simple-list"></ul>
+        <div class="panel">
+          <h3 data-i18n="ps.ui.stranica_1_iz_spiska">Страница 1 — из «Списка», но не прошли обучение здесь</h3>
+          <div id="as-page1"></div>
+          <details class="ps-after-add">
+            <summary data-i18n="ps.after.add_manual">Добавить строку вручную</summary>
+            <div class="inline-form">
+              <input type="text" id="na-name" placeholder="Имя пионера" data-i18n-placeholder="ps.ph.imya_pionera">
+              <input type="text" id="na-reason" placeholder="Причина" data-i18n-placeholder="ps.ph.prichina">
+              <button data-i18n="ps.ui.dobavit" class="md-btn md-btn-outlined" id="add-na-btn">+ Добавить</button>
+            </div>
+          </details>
+          <h3 data-i18n="ps.ui.stranica_2_proshli_obuchenie">Страница 2 — прошли обучение, но не были в «Списке»</h3>
+          <div id="as-page2"></div>
+          <details class="ps-after-add">
+            <summary data-i18n="ps.after.add_manual">Добавить строку вручную</summary>
+            <div class="inline-form">
+              <input type="text" id="ao-name" placeholder="Имя пионера" data-i18n-placeholder="ps.ph.imya_pionera">
+              <input type="text" id="ao-congregation" placeholder="Собрание" data-i18n-placeholder="ps.ph.sobranie">
+              <button data-i18n="ps.ui.dobavit" class="md-btn md-btn-outlined" id="add-ao-btn">+ Добавить</button>
+            </div>
+          </details>
+          <div class="ps-after-chips" id="as-chips"></div>
+        </div>
       </div>
       <div class="panel">
         <p class="hint" id="expenses-note"></p>
-      </div>
-      <div class="btn-row">
-        <button data-i18n="ps.ui.sohranit" class="md-btn md-btn-filled" id="save-s253-btn">Сохранить</button>
-        <button data-i18n="ps.ui.eksport_pdf" class="md-btn md-btn-outlined" id="export-s253-pdf">Экспорт PDF</button>
       </div>
     </section>
 

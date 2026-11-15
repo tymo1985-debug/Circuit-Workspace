@@ -753,3 +753,26 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 .ps-task-plan input { width: 100%; min-width: 90px; box-sizing: border-box; }
 @media (max-width: 1000px) { .ps-task-lay { grid-template-columns: 1fr; } }
 @media print { .ps-task-tools, .ps-task-edit { display: none !important; } }
+
+/* ---------- Ф7 · После школы: присутствие и S-253 ---------- */
+.ps-after-lay { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; align-items: start; }
+.ps-after-lay > .panel { margin: 0; }
+.ps-after-warn { margin: 12px 0; padding: 10px 14px; border-radius: 10px; background: var(--status-important-bg); color: var(--status-important); }
+.ps-att-group { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.ps-att-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ps-att { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; border-radius: 10px; background: var(--md-surface-container-high); }
+.ps-att-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ps-att-tg { display: flex; gap: 6px; }
+.ps-att-btn { font: inherit; font-size: 14px; min-height: 36px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--md-outline); background: transparent; color: var(--md-on-surface-variant); cursor: pointer; }
+.ps-att-btn.is-yes { background: var(--status-success-bg); color: var(--status-success); border-color: var(--status-success); font-weight: 600; }
+.ps-att-btn.is-no { background: var(--status-critical-bg); color: var(--status-critical); border-color: var(--status-critical); font-weight: 600; }
+.ps-att-reason { display: flex; gap: 8px; flex-wrap: wrap; }
+.ps-att-reason[hidden] { display: none; }
+.ps-att-reason-in { flex: 1 1 200px; }
+.ps-after-scroll { overflow-x: auto; margin: 8px 0 12px; }
+.ps-after-table tr.is-hidden td { opacity: .5; text-decoration: line-through; }
+.ps-after-tag { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.ps-after-add { margin: 0 0 16px; }
+.ps-after-add summary { cursor: pointer; color: var(--md-primary); font-size: 14px; }
+.ps-after-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 900px) { .ps-after-lay { grid-template-columns: 1fr; } }

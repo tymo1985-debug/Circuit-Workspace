@@ -493,15 +493,26 @@ const PdfExport = {
     doc.save('registration-blank-form.pdf');
   },
 
-  async downloadS253(data) {
-    const lines = [
-      D('doc.ps.s253.page1'),
-      ...(data.notAttendedFromList || []).map((s) => `  ${s.name} — ${s.reason || D('doc.ps.s253.no_comment')}`),
-      '',
-      D('doc.ps.s253.page2'),
-      ...(data.attendedNotOnList || []).map((s) => `  ${s.name} — ${s.congregation || ''}`)
-    ];
-    const doc = await this.buildDocument(D('doc.ps.s253.title'), lines);
+  // S-253 (Ф7): две таблицы из AfterSchool.report(); скрытые строки не печатаются.
+  async downloadS253(report) {
+    const reason = (r) => r.reason || (r.reasonCode ? D('doc.ps.s253.reason.' + r.reasonCode) : D('doc.ps.s253.no_comment'));
+    const from = (r) => (r.origin ? D('doc.ps.s253.from.' + r.origin) : '');
+    const p1 = (report.page1 || []).filter((r) => !r.hidden);
+    const p2 = (report.page2 || []).filter((r) => !r.hidden);
+    const doc = this._textDoc();
+    let y = this._para(doc, D('doc.ps.s253.title'), 40, 50, { size: 16, gap: 12 });
+    y = this._para(doc, D('doc.ps.s253.page1'), 40, y, { size: 11, gap: 6 });
+    y = p1.length
+      ? this._table(doc, ['№', D('doc.ps.s253.col.name'), D('doc.ps.s253.col.cong'), D('doc.ps.s253.col.reason')],
+        p1.map((r, i) => [String(i + 1), r.name, r.congregation || '', reason(r)]), y, [28, 170, 140, 177]) + 18
+      : this._para(doc, '—', 40, y, { size: 11, gap: 14 });
+    y = this._para(doc, D('doc.ps.s253.page2'), 40, y, { size: 11, gap: 6 });
+    if (p2.length) {
+      this._table(doc, ['№', D('doc.ps.s253.col.name'), D('doc.ps.s253.col.cong'), D('doc.ps.s253.col.from')],
+        p2.map((r, i) => [String(i + 1), r.name, r.congregation || '', from(r)]), y, [28, 170, 160, 157]);
+    } else {
+      this._para(doc, '—', 40, y, { size: 11 });
+    }
     doc.save('s253-report.pdf');
   },
 

@@ -2255,53 +2255,125 @@ async function saveReviewField(id, field, value) {
 }
 
 // ---------- AFTER SCHOOL ----------
+// Ф7: отметки присутствия + S-253 живым расчётом (AfterSchool.report).
 async function renderAfterSchool() {
-  const data = await AfterSchool.get();
+  const [students, classes, data] = await Promise.all([Students.list(), PSClasses.list(), AfterSchool.get()]);
+  const school = Schools.current();
+  const rep = AfterSchool.report(students, data);
   $('#expenses-note').textContent = AfterSchool.EXPENSES_NOTE;
-  renderNaList(data.notAttendedFromList || []);
-  renderAoList(data.attendedNotOnList || []);
+
+  // Отметки по классам; без класса — отдельной группой в конце.
+  const markable = students.filter((s) => AfterSchool.MARKABLE.includes(s.status));
+  const groups = classes.map((c) => ({ name: c.name, items: markable.filter((s) => s.classId === c.id) }))
+    .concat([{ name: T('ps.after.no_class'), items: markable.filter((s) => !classes.some((c) => c.id === s.classId)) }])
+    .filter((g) => g.items.length);
+  const row = (s) => {
+    const yes = s.status === 'attended', no = s.status === 'notAttended';
+    return `<div class="ps-att" data-id="${esc(s.id)}">
+      <div class="ps-att-row"><span>${esc(Students.fullName(s))}</span>
+        <span class="ps-att-tg" role="group" aria-label="${esc(Students.fullName(s))}">
+          <button type="button" class="ps-att-btn${yes ? ' is-yes' : ''}" data-att="attended" aria-pressed="${yes}">${esc(T('ps.pioneer.status.attended'))}</button>
+          <button type="button" class="ps-att-btn${no ? ' is-no' : ''}" data-att="notAttended" aria-pressed="${no}">${esc(T('ps.pioneer.status.notAttended'))}</button>
+        </span></div>
+      <div class="ps-att-reason" ${no ? '' : 'hidden'}>
+        <input type="text" class="ps-att-reason-in" value="${esc(no ? s.statusReason || '' : '')}" placeholder="${esc(T('ps.after.reason_ph'))}" aria-label="${esc(T('ps.after.reason_ph'))}">
+        <button type="button" class="md-btn md-btn-tonal ps-att-reason-save">${esc(T('ps.ui.sohranit'))}</button>
+      </div>
+    </div>`;
+  };
+  $('#as-attendance').innerHTML = groups.length
+    ? groups.map((g) => {
+      const done = g.items.filter((s) => s.status !== 'willCome').length;
+      return `<div class="ps-att-group"><div class="ps-att-head"><b>${esc(g.name)}</b><span class="hint">${esc(T('ps.after.marked', { done, total: g.items.length }))}</span></div>${g.items.map(row).join('')}</div>`;
+    }).join('')
+    : `<p class="hint">${esc(T('ps.after.att_empty'))}</p>`;
+
+  const mark = async (id, value, reason) => {
+    try { await AfterSchool.mark(id, value, reason); } catch (e) { return alert(e.message); }
+    renderAfterSchool();
+  };
+  $all('.ps-att', $('#as-attendance')).forEach((box) => {
+    const s = students.find((x) => x.id === box.dataset.id);
+    $all('[data-att]', box).forEach((btn) => {
+      btn.onclick = () => {
+        const v = btn.dataset.att;
+        if (s.status === v) return mark(s.id, null);
+        if (v === 'attended') return mark(s.id, 'attended');
+        box.querySelector('.ps-att-reason').hidden = false;
+        box.querySelector('.ps-att-reason-in').focus();
+      };
+    });
+    box.querySelector('.ps-att-reason-save').onclick = () => {
+      const reason = box.querySelector('.ps-att-reason-in').value.trim();
+      if (!reason) return alert(T('ps.pioneer.err.reason'));
+      mark(s.id, 'notAttended', reason);
+    };
+  });
+
+  // S-253: стр.1 / стр.2, ручные строки удаляются, авто — скрываются из отчёта.
+  const reasonText = (r) => r.reason || (r.reasonCode ? T('ps.after.reason.' + r.reasonCode) : '—');
+  const act = (r) => (r.manual
+    ? `<button type="button" class="md-btn md-btn-text" data-as-del="${esc(r.id)}">${esc(T('ps.after.remove'))}</button>`
+    : `<button type="button" class="md-btn md-btn-text" data-as-hide="${esc(r.id)}">${esc(T(r.hidden ? 'ps.after.include' : 'ps.after.exclude'))}</button>`);
+  const tag = (r) => (r.manual ? ` <span class="ps-after-tag">${esc(T('ps.after.manual'))}</span>` : '');
+  const table = (head, rows, cells) => (rows.length
+    ? `<div class="ps-after-scroll"><table class="md-table md-table--cards ps-after-table"><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}<th></th></tr></thead><tbody>${
+      rows.map((r) => `<tr class="${r.hidden ? 'is-hidden' : ''}">${cells(r).map((c, i) => `<td data-label="${esc(head[i])}">${c}</td>`).join('')}<td>${act(r)}</td></tr>`).join('')
+    }</tbody></table></div>`
+    : `<p class="hint">${esc(T('ps.app.pusto'))}</p>`);
+  $('#as-page1').innerHTML = table([T('ps.after.col.name'), T('ps.after.col.cong'), T('ps.after.col.reason')], rep.page1,
+    (r) => [esc(r.name) + tag(r), esc(r.congregation || '—'), esc(reasonText(r))]);
+  $('#as-page2').innerHTML = table([T('ps.after.col.name'), T('ps.after.col.cong'), T('ps.after.col.from')], rep.page2,
+    (r) => [esc(r.name) + tag(r), esc(r.congregation || '—'), esc(r.origin ? Students.originLabel(r.origin) : '—')]);
+  $('#as-chips').innerHTML = `<span class="ps-status ps-status--attended">${esc(T('ps.after.chip_ok', { n: rep.attended }))}</span>`
+    + `<span class="ps-status ps-status--notAttended">${esc(T('ps.after.chip_bad', { n: rep.failed }))}</span>`;
+  $all('[data-as-hide]').forEach((b) => { b.onclick = async () => { await AfterSchool.toggleHidden(b.dataset.asHide); renderAfterSchool(); }; });
+  $all('[data-as-del]').forEach((b) => { b.onclick = async () => { await AfterSchool.removeManual(b.dataset.asDel); renderAfterSchool(); }; });
+
+  const warn = $('#as-warn');
+  warn.hidden = !rep.open.length;
+  warn.textContent = rep.open.length ? T('ps.after.warn_open', { n: rep.open.length }) : '';
+  $('#as-submitted').textContent = data.submitted ? T('ps.after.submitted_on', { date: psDate(data.submittedDate) }) : '';
+  $('#as-complete-btn').hidden = !school || !!school.completed;
 
   $('#add-na-btn').onclick = async () => {
     const name = $('#na-name').value.trim();
     if (!name) return;
     const d = await AfterSchool.get();
-    d.notAttendedFromList = d.notAttendedFromList || [];
     d.notAttendedFromList.push({ name, reason: $('#na-reason').value.trim() });
     await AfterSchool.save(d);
-    $('#na-name').value = ''; $('#na-reason').value = '';
-    renderNaList(d.notAttendedFromList);
+    renderAfterSchool();
   };
-
   $('#add-ao-btn').onclick = async () => {
     const name = $('#ao-name').value.trim();
     if (!name) return;
     const d = await AfterSchool.get();
-    d.attendedNotOnList = d.attendedNotOnList || [];
     d.attendedNotOnList.push({ name, congregation: $('#ao-congregation').value.trim() });
     await AfterSchool.save(d);
-    $('#ao-name').value = ''; $('#ao-congregation').value = '';
-    renderAoList(d.attendedNotOnList);
+    renderAfterSchool();
   };
-
   $('#save-s253-btn').onclick = async () => {
     const d = await AfterSchool.get();
     d.submitted = true;
     d.submittedDate = DateUtils.todayIso();
     await AfterSchool.save(d);
-    alert(T('ps.app.s_253_sohranen'));
+    renderAfterSchool();
   };
-
   $('#export-s253-pdf').onclick = async () => {
+    if (rep.open.length && !confirm(T('ps.after.warn_open', { n: rep.open.length }) + '\n\n' + T('ps.after.pdf_anyway'))) return;
     if (!(await PSPdf.ensure('pdf'))) return;
-    await PdfExport.downloadS253(await AfterSchool.get());
+    const fresh = AfterSchool.report(await Students.list(), await AfterSchool.get());
+    await PdfExport.downloadS253(fresh);
   };
-}
-
-function renderNaList(items) {
-  $('#na-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.reason ? ' — ' + esc(i.reason) : ''}</li>`).join('') || `<li class="hint">${T('ps.app.pusto')}</li>`;
-}
-function renderAoList(items) {
-  $('#ao-list').innerHTML = items.map((i) => `<li>${esc(i.name)}${i.congregation ? ' — ' + esc(i.congregation) : ''}</li>`).join('') || `<li class="hint">${T('ps.app.pusto')}</li>`;
+  $('#as-complete-btn').onclick = async () => {
+    const cur = Schools.current();
+    if (!cur || cur.completed) return;
+    const lead = rep.open.length ? T('ps.after.warn_open', { n: rep.open.length }) + '\n\n' : '';
+    if (!confirm(lead + T('ps.school.complete_confirm', { school: Schools.label(cur) }))) return;
+    await Schools.complete(cur.id);
+    rerenderCurrentRoute();
+  };
+  applyReadOnly('afterschool');
 }
 
 // ---------- SIGN LANGUAGE ----------

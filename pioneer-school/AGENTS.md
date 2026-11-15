@@ -105,6 +105,18 @@
 - Тексты библиотеки всегда текущие (снимков нет — решение Алекса).
 - Проверка — `scripts/check-pioneer-tasks.mjs`.
 
+## После школы (Ф7, 15.11.2026) — инварианты
+
+- Логика — `js/modules/afterSchool.js`, экран — `#afterschool`. Отметка
+  присутствия — это статус пионера (`attended` / `notAttended` + причина),
+  ставится только `AfterSchool.mark()` (журнал, source `attendance`).
+- S-253 — живой расчёт `AfterSchool.report()` (решение Алекса): стр.1 —
+  origin `branchList` и не «Был» (без ответа / без отметки — тоже, с
+  предупреждением), стр.2 — «Был» и не `branchList`. Meta `afterSchool_s253`
+  хранит только ручные строки (`notAttendedFromList` / `attendedNotOnList` —
+  имена полей = контракт со старыми копиями), `hidden` и `submitted`.
+- Проверка — `scripts/check-pioneer-after.mjs`.
+
 ## Открытая работа: N-3
 
 Ленивая догрузка библиотек. Четыре именованных набора: `pdf`, `import`,
