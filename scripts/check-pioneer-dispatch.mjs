@@ -118,7 +118,7 @@ function unzip(buf) {
   };
   ctx.window = ctx; ctx.self = ctx;
   vm.createContext(ctx);
-  for (const f of ['js/db.js', 'js/modules/students.js', 'js/modules/schools.js', 'js/modules/registrationSchema.js', 'js/modules/registration.js', 'js/modules/dispatch.js']) {
+  for (const f of ['js/db.js', 'js/modules/history.js', 'js/modules/students.js', 'js/modules/schools.js', 'js/modules/registrationSchema.js', 'js/modules/registration.js', 'js/modules/dispatch.js']) {
     vm.runInContext(readFileSync(join(PS, f), 'utf8'), ctx, { filename: f });
   }
   await ctx.DB.ready();

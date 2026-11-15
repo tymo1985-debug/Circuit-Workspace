@@ -29,7 +29,7 @@ function page() {
   };
   ctx.window = ctx; ctx.self = ctx;
   vm.createContext(ctx);
-  for (const f of ['js/db.js', 'js/modules/students.js', 'js/modules/schools.js']) {
+  for (const f of ['js/db.js', 'js/modules/history.js', 'js/modules/students.js', 'js/modules/schools.js']) {
     vm.runInContext(readFileSync(join(ROOT, 'pioneer-school', f), 'utf8'), ctx, { filename: f });
   }
   return ctx;

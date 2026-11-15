@@ -82,7 +82,10 @@
         <h1 data-i18n="ps.ui.obzor">Обзор</h1>
         <p data-i18n="ps.ui.obschaya_gotovnost_k_shkole" class="route-sub">Общая готовность к Школе пионерского служения</p>
       </header>
-      <div class="card-grid" id="dashboard-cards"></div>
+      <!-- Ф4 «Обзор» (15.11.2026): этапы школы по данным, доска «Stages». -->
+      <div class="panel ps-ov-head" id="ov-head"></div>
+      <div class="panel ps-ov-now" id="ov-now" role="status"></div>
+      <ol class="ps-ov-stages" id="ov-stages"></ol>
     </section>
 
     <section id="route-anketa" class="route hidden">
@@ -258,6 +261,35 @@
         <p data-i18n="ps.ui.spisok_gibkie_stolbcy_i" class="route-sub">Список, гибкие столбцы и распределение по классам</p>
       </header>
 
+      <!-- Ф4: «Все пионеры» — просмотр с фильтрами (доска «List»); правка —
+           прежние панели во вкладке «Редактирование». -->
+      <div class="ps-tabs" role="tablist" aria-label="Учащиеся" data-i18n-aria-label="ps.ui.uchaschiesya">
+        <button type="button" role="tab" class="ps-tab" id="st-tab-overview" aria-controls="students-overview" aria-selected="true" data-ro-allow data-i18n="ps.ov.tab_all">Все пионеры</button>
+        <button type="button" role="tab" class="ps-tab" id="st-tab-edit" aria-controls="students-edit" aria-selected="false" tabindex="-1" data-ro-allow data-i18n="ps.ov.tab_edit">Редактирование</button>
+      </div>
+
+      <div id="students-overview" role="tabpanel" aria-labelledby="st-tab-overview">
+        <div class="panel-header-row">
+          <h3 id="ov-list-title"></h3>
+          <div class="btn-row">
+            <button type="button" class="md-btn md-btn-outlined" id="ov-export-btn" data-ro-allow data-i18n="ps.ui.eksport">Экспорт…</button>
+            <button type="button" class="md-btn md-btn-filled" id="ov-add-btn" data-i18n="ps.ov.add">Добавить пионера</button>
+          </div>
+        </div>
+        <div class="ps-ov-stats" id="ov-stats"></div>
+        <details class="panel ps-ov-filterbox" id="ov-filterbox">
+          <summary id="ov-filters-summary" data-i18n="ps.ov.filters">Фильтры</summary>
+          <div class="ps-ov-filters" id="ov-filters" role="group" aria-labelledby="ov-filters-summary"></div>
+        </details>
+        <div class="md-table-wrap">
+          <table class="md-table" id="ov-table">
+            <thead><tr id="ov-table-head"></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="students-edit" role="tabpanel" aria-labelledby="st-tab-edit" hidden>
       <div class="panel">
         <h3 data-i18n="ps.ui.dobavit_uchaschegosya">Добавить учащегося</h3>
         <div class="form-grid" id="student-form-fields"></div>
@@ -320,6 +352,7 @@
             <tbody></tbody>
           </table>
         </div>
+      </div>
       </div>
     </section>
 
@@ -549,9 +582,11 @@
 <script src="js/modules/assignment.js"></script>
 <script src="js/modules/registration.js"></script>
 <script src="js/modules/substitutes.js"></script>
+<script src="js/modules/history.js"></script>
 <script src="js/modules/students.js"></script>
 <script src="js/modules/schools.js"></script>
 <script src="js/modules/textbooks.js"></script>
+<script src="js/modules/overview.js"></script>
 <script src="js/modules/practical.js"></script>
 <script src="js/modules/review.js"></script>
 <script src="js/modules/afterSchool.js"></script>

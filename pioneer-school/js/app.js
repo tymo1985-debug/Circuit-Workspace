@@ -185,25 +185,108 @@ async function renderDocsArchive() {
   renderDocsArchiveList();
 }
 
-// ---------- DASHBOARD ----------
+// ---------- ОБЗОР (Ф4): этапы школы ----------
+// Доска «0 · Мастер-макет › Stages». Решения Алекса 15.11.2026: этапы
+// вычисляются по данным (PSOverview.stages), экран заменил прежние пять
+// карточек с цифрами. Кнопка «Что сделать сейчас» ведёт в раздел этапа.
+
+// Дата для показа: ISO-время журнала или YYYY-MM-DD рассылки.
+function psDate(iso) {
+  if (!iso) return '—';
+  const value = String(iso);
+  const d = new Date(value.length === 10 ? value + 'T00:00:00' : value);
+  return isNaN(d.getTime()) ? value : d.toLocaleDateString(document.documentElement.lang || 'ru');
+}
+
+function navLabel(route) {
+  const btn = document.querySelector(`.nav-item[data-route="${route}"]`);
+  return btn ? btn.textContent.trim() : route;
+}
+
+function stageNote(stage) {
+  const d = stage.data;
+  switch (stage.key) {
+    case 'assignment':
+      return d.start || d.location
+        ? T('ps.stage.note.assignment', { dates: [psDate(d.start), d.end ? psDate(d.end) : ''].filter(Boolean).join(' – '), location: d.location || '—' })
+        : T('ps.stage.note.assignment_empty');
+    case 'dispatch':
+      return T('ps.stage.note.dispatch', d) + (d.orphans ? ' · ' + T('ps.stage.note.dispatch_orphans', { n: d.orphans }) : '');
+    case 'answers':
+      return T('ps.stage.note.answers', d) + (d.overdue ? ' · ' + T('ps.stage.note.answers_overdue', { n: d.overdue }) : '');
+    case 'report':
+      return T(stage.state === 'done' ? 'ps.stage.note.report_done' : 'ps.stage.note.report');
+    default:
+      return T('ps.stage.note.' + stage.key, d);
+  }
+}
+
+function stageExtra(stage) {
+  if (stage.key !== 'answers' || !stage.data.total) return '';
+  const d = stage.data;
+  const pct = (n) => Math.round((n / d.total) * 100);
+  return `<div class="ps-ov-bar" aria-hidden="true">
+      <span class="ps-ov-bar__ok" style="width:${pct(d.coming)}%"></span>
+      <span class="ps-ov-bar__bad" style="width:${pct(d.refused)}%"></span>
+    </div>
+    <div class="ps-card-chips">
+      <span class="ps-status ps-status--willCome">${esc(T('ps.stage.chip.coming', { n: d.coming }))}</span>
+      <span class="ps-status ps-status--wontCome">${esc(T('ps.stage.chip.refused', { n: d.refused }))}</span>
+      <span class="ps-status ps-status--invited">${esc(T('ps.stage.chip.waiting', { n: d.waiting }))}</span>
+    </div>`;
+}
+
 async function renderDashboard() {
-  const [assignment, students, order, substitutes, registrations] = await Promise.all([
-    Assignment.get(), Students.list(), Textbooks.getOrder(), Substitutes.list(), Registration.list()
+  const [anketa, substitutes, assignment, students, classes, order, state, config] = await Promise.all([
+    Anketa.get(), Substitutes.list(), Assignment.get(), Students.list(), DB.list('classes'),
+    Textbooks.getOrder(), Dispatch.getState(), Registration.getConfig()
   ]);
-  const cards = [
-    { title: T('ps.ui.naznachenie'), value: assignment.startDate ? DateUtils.formatRu(assignment.startDate) : T('ps.app.ne_zapolneno'), sub: assignment.location || '—' },
-    { title: T('ps.app.registracii'), value: registrations.length, sub: T('ps.app.polucheno_formulyarov') },
-    { title: T('ps.ui.uchaschiesya'), value: students.length, sub: T('ps.app.vsego_v_baze') },
-    { title: T('ps.ui.zamestiteli'), value: substitutes.length, sub: T('ps.app.rekomendovano') },
-    { title: T('ps.app.uchebniki_k_zakazu'), value: Textbooks.calcOrderQuantity(order), sub: T('ps.app.shtuk') }
-  ];
-  const el = $('#dashboard-cards');
-  el.innerHTML = cards.map((c) => `
-    <div class="stat-card">
-      <div class="stat-title">${esc(c.title)}</div>
-      <div class="stat-value">${esc(c.value)}</div>
-      <div class="stat-sub">${esc(c.sub)}</div>
-    </div>`).join('');
+  const groups = Dispatch.groups(students, state, config);
+  const school = Schools.current();
+  const { stages, current } = PSOverview.stages({
+    anketa, substitutes, assignment, students, groups, orphans: Dispatch.orphans(students), classes, order, school
+  });
+  const cur = stages.find((st) => st.key === current);
+
+  const dates = assignment.startDate ? [psDate(assignment.startDate), assignment.endDate ? psDate(assignment.endDate) : ''].filter(Boolean).join(' – ') : '';
+  const title = [Schools.label(school), dates, assignment.location].filter(Boolean).join(' · ');
+  const teachers = [assignment.teacherA, assignment.teacherB].map((t) => String(t || '').trim()).filter(Boolean);
+  const chip = cur ? T('ps.stage.chip', { n: cur.n, total: stages.length, name: T('ps.stage.' + cur.key) }) : T('ps.stage.all_done');
+  $('#ov-head').innerHTML = `
+    <div class="ps-ov-head__text">
+      <h2>${esc(title || T('ps.app.ne_zapolneno'))}</h2>
+      ${teachers.length ? `<p class="hint">${esc(T('ps.stage.teachers', { names: teachers.join(', ') }))}</p>` : ''}
+    </div>
+    <span class="ps-chip ps-chip--accent">${esc(chip)}</span>`;
+
+  const nowBox = $('#ov-now');
+  if (cur) {
+    const route = PSOverview.STAGE_ROUTE[cur.key];
+    nowBox.innerHTML = `
+      <div>
+        <h3>${esc(T('ps.stage.now_title'))}</h3>
+        <p class="hint">${esc(T('ps.stage.now.' + cur.key, cur.data))}</p>
+      </div>
+      <button type="button" class="md-btn md-btn-filled" id="ov-now-go" data-ro-allow>${esc(T('ps.stage.go', { screen: navLabel(route) }))}</button>`;
+    $('#ov-now-go').onclick = () => {
+      if (cur.key === 'classes') studentsTab = 'edit';
+      if (cur.key === 'list') studentsTab = 'overview';
+      showRoute(route);
+    };
+  } else {
+    nowBox.innerHTML = `<div><h3>${esc(T('ps.stage.all_done'))}</h3></div>`;
+  }
+
+  $('#ov-stages').innerHTML = stages.map((st) => `
+    <li class="ps-ov-stage ps-ov-stage--${st.state}" ${st.state === 'current' ? 'aria-current="step"' : ''}>
+      <div class="ps-ov-stage__top">
+        <span class="ps-ov-dot ps-ov-dot--${st.state}" aria-hidden="true">${st.state === 'done' ? '✓' : st.n}</span>
+        <h3>${st.n} · ${esc(T('ps.stage.' + st.key))}</h3>
+        <span class="sr-only">${esc(T('ps.stage.state.' + st.state))}</span>
+      </div>
+      <p class="hint">${esc(stageNote(st))}</p>
+      ${stageExtra(st)}
+    </li>`).join('');
 }
 
 // ---------- ANKETA ----------
@@ -748,9 +831,167 @@ async function pdfComposerDoc() {
   Letters.snapshot(doc, composerState.student, 'print', composerState.edited);
 }
 
+// ---------- ВСЕ ПИОНЕРЫ (Ф4): список с фильтрами ----------
+// Доска «List». Решение Алекса 15.11.2026: просмотр с фильтрами и счётчиками,
+// строка → карточка; прежняя редактируемая таблица — вкладка «Редактирование».
+
+let studentsTab = 'overview';
+const ovFilter = {};
+const OV_FILTERS = ['congregation', 'status', 'classId', 'gender', 'language', 'format', 'transport', 'lodging', 'origin'];
+
+function setStudentsTab(tab) {
+  studentsTab = tab === 'edit' ? 'edit' : 'overview';
+  const edit = studentsTab === 'edit';
+  $('#students-overview').hidden = edit;
+  $('#students-edit').hidden = !edit;
+  [['#st-tab-overview', !edit], ['#st-tab-edit', edit]].forEach(([sel, on]) => {
+    const btn = $(sel);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    btn.tabIndex = on ? 0 : -1;
+  });
+}
+
+function bindStudentsTabs() {
+  const tabs = [$('#st-tab-overview'), $('#st-tab-edit')];
+  // Правки во вкладке «Редактирование» перерисовывают только её таблицу —
+  // список пересобирается из базы при возврате на «Все пионеры».
+  const show = async (tab) => {
+    setStudentsTab(tab);
+    if (tab !== 'overview') return;
+    const [list, cls, cols] = await Promise.all([Students.list(), DB.list('classes'), Students.getColumns()]);
+    renderStudentsOverview(list, cls, cols);
+    applyReadOnly('students');
+  };
+  tabs[0].onclick = () => show('overview');
+  tabs[1].onclick = () => show('edit');
+  tabs.forEach((btn, i) => {
+    btn.onkeydown = (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = tabs[(i + 1) % 2];
+      show(next === tabs[1] ? 'edit' : 'overview');
+      next.focus();
+    };
+  });
+  setStudentsTab(studentsTab);
+}
+
+function ovYesNo(value) {
+  return value === 'yes' ? T('ps.ui.da') : (value === 'no' ? T('ps.ui.net') : '—');
+}
+
+function ovFilterOptions(key, students, classes, columns) {
+  const opt = (value, label) => ({ value, label });
+  const data = PSOverview.options(students);
+  switch (key) {
+    case 'congregation': return data.congregation.map((c) => opt(c, c));
+    case 'status': return [opt('_waiting', T('ps.ov.waiting'))].concat(Students.STATUSES.map((v) => opt(v, Students.statusLabel(v))));
+    case 'classId': return classes.map((c) => opt(c.id, c.name)).concat(opt('_none', T('ps.app.bez_klassa')));
+    case 'gender': return Students.GENDERS.map((v) => opt(v, Students.genderLabel(v))).concat(opt('_none', T('ps.ov.not_set')));
+    case 'language': return data.language.map((l) => opt(l, Students.languageName(l)));
+    case 'format': {
+      const col = columns.find((c) => c.key === 'textbookFormat');
+      return ((col && col.options) || []).map((o) => opt(o.value, Students.optionLabel(o)));
+    }
+    case 'transport':
+    case 'lodging': return [opt('yes', T('ps.ui.da')), opt('no', T('ps.ui.net'))];
+    case 'origin': return Students.ORIGINS.map((v) => opt(v, Students.originLabel(v)));
+    default: return [];
+  }
+}
+
+function renderStudentsOverview(students, classes, columns) {
+  const classById = Object.fromEntries(classes.map((c) => [c.id, c]));
+  const st = PSOverview.stats(students);
+  $('#ov-stats').innerHTML = ['coming', 'refused', 'waiting', 'lodging', 'special'].map((k) => `
+    <div class="ps-ov-stat"><b>${st[k]}</b><span>${esc(T('ps.ov.stat.' + k))}</span></div>`).join('');
+
+  // Фильтр, чьего значения больше нет в данных (удалённый класс), снимается.
+  OV_FILTERS.forEach((key) => {
+    if (ovFilter[key] && !ovFilterOptions(key, students, classes, columns).some((o) => o.value === ovFilter[key])) delete ovFilter[key];
+  });
+  const active = OV_FILTERS.some((k) => ovFilter[k]);
+  const activeCount = OV_FILTERS.filter((k) => ovFilter[k]).length;
+  // Телефон: девять фильтров свёрнуты, пока ни один не выбран; шире — открыты.
+  const box = $('#ov-filterbox');
+  if (!box.dataset.touched) box.open = active || window.matchMedia('(min-width: 901px)').matches;
+  box.ontoggle = () => { box.dataset.touched = '1'; };
+  $('#ov-filters-summary').textContent = activeCount ? T('ps.ov.filters_on', { n: activeCount }) : T('ps.ov.filters');
+  $('#ov-filters').innerHTML = OV_FILTERS.map((key) => {
+    const options = ovFilterOptions(key, students, classes, columns);
+    return `<label class="ps-ov-filter${ovFilter[key] ? ' ps-ov-filter--on' : ''}"><span>${esc(T('ps.ov.f.' + key))}</span>
+      <select data-ov-filter="${key}" data-ro-allow>
+        <option value="">${esc(T('ps.ov.all'))}</option>
+        ${options.map((o) => `<option value="${esc(o.value)}" ${o.value === ovFilter[key] ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+      </select></label>`;
+  }).join('') + (active ? `<button type="button" class="md-btn md-btn-text" id="ov-reset" data-ro-allow>${esc(T('ps.ov.reset'))}</button>` : '');
+  $all('[data-ov-filter]', $('#ov-filters')).forEach((sel) => {
+    sel.onchange = () => {
+      if (sel.value) ovFilter[sel.dataset.ovFilter] = sel.value; else delete ovFilter[sel.dataset.ovFilter];
+      renderStudentsOverview(students, classes, columns);
+      const again = document.querySelector(`[data-ov-filter="${sel.dataset.ovFilter}"]`);
+      if (again) again.focus();
+    };
+  });
+  const reset = $('#ov-reset');
+  if (reset) reset.onclick = () => { OV_FILTERS.forEach((k) => delete ovFilter[k]); renderStudentsOverview(students, classes, columns); };
+
+  const rows = PSOverview.filter(students, ovFilter);
+  $('#ov-list-title').textContent = active
+    ? T('ps.ov.title_filtered', { n: rows.length, total: students.length })
+    : T('ps.ov.title', { n: students.length });
+
+  const heads = ['name', 'congregation', 'gender', 'origin', 'status', 'class', 'textbook', 'transport', 'lodging'];
+  $('#ov-table-head').innerHTML = heads.map((h) => `<th scope="col">${esc(T('ps.ov.col.' + h))}</th>`).join('');
+  const formatCol = columns.find((c) => c.key === 'textbookFormat');
+  const formatLabel = (value) => {
+    const o = ((formatCol && formatCol.options) || []).find((x) => x.value === (value || 'standard'));
+    return o ? Students.optionLabel(o) : (value || '');
+  };
+  const tbody = $('#ov-table tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${heads.length}" class="hint">${esc(T(students.length ? 'ps.ov.empty_filtered' : 'ps.app.uchaschihsya_poka_net'))}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((s) => {
+    const v = s.values || {};
+    const cls = classById[s.classId];
+    const langs = (s.textbookLanguages || []).join(', ');
+    const reason = Students.REASON_REQUIRED.includes(s.status) && s.statusReason ? `<span class="ps-reason">${esc(s.statusReason)}</span>` : '';
+    return `<tr>
+      <td><button type="button" class="md-btn md-btn-text ov-open" data-id="${esc(s.id)}" data-ro-allow>${esc(Students.fullName(s))}</button></td>
+      <td>${esc(v.congregation || '—')}</td>
+      <td>${esc(s.gender ? T('ps.ov.gender_short.' + s.gender) : '—')}</td>
+      <td>${esc(Students.originLabel(s.origin))}</td>
+      <td><span class="ps-status ps-status--${esc(s.status)}">${esc(Students.statusLabel(s.status))}</span>${reason}</td>
+      <td>${cls ? `<span class="ps-chip">${esc(cls.name)}</span>` : '—'}</td>
+      <td class="hint">${esc([formatLabel(v.textbookFormat), langs].filter(Boolean).join(' · '))}</td>
+      <td>${esc(ovYesNo(v.transport))}</td>
+      <td>${esc(ovYesNo(v.lodging))}</td>
+    </tr>`;
+  }).join('');
+  $all('.ov-open', tbody).forEach((btn) => { btn.onclick = () => openPioneerCard(btn.dataset.id); });
+}
+
+async function refreshStudentsViews() {
+  if ($('#route-students').classList.contains('hidden')) return;
+  const [list, cls, cols] = await Promise.all([Students.list(), DB.list('classes'), Students.getColumns()]);
+  renderStudentsOverview(list, cls, cols);
+  renderStudentsTable(list, cls, cols);
+  applyReadOnly('students');
+}
+
 // ---------- STUDENTS ----------
 async function renderStudents() {
   const [students, classes, columns] = await Promise.all([Students.list(), DB.list('classes'), Students.getColumns()]);
+
+  bindStudentsTabs();
+  renderStudentsOverview(students, classes, columns);
+  $('#ov-export-btn').onclick = () => openExportPicker();
+  $('#ov-add-btn').onclick = () => {
+    setStudentsTab('edit');
+    const first = $('#student-form-fields input, #student-form-fields select');
+    if (first) first.focus();
+  };
 
   renderStudentFormFields(columns);
   renderClassSelect(classes);
@@ -799,15 +1040,9 @@ async function renderStudents() {
     if (!cls.length) return alert(T('ps.app.snachala_dobavte_hotya_by'));
     const st = await Students.list();
     const distributed = Students.autoDistribute(st, cls);
-    // Пишем только изменившееся поле поверх ПОЛНОЙ записи из базы: объекты из
-    // Students.list() усечены до { id, classId, values }, и запись их целиком
-    // стирала служебные поля (например, fromRegistrationId).
-    for (const item of distributed) {
-      const full = await DB.get('students', item.id);
-      if (!full) continue;
-      full.classId = item.classId;
-      await DB.put('students', full);
-    }
+    // Только classId поверх ПОЛНОЙ записи из базы (объекты list() — вид, не
+    // запись) и с отметкой в журнале — Students.setClass.
+    for (const item of distributed) await Students.setClass(item.id, item.classId, 'auto');
     renderStudentsTable(await Students.list(), cls, await Students.getColumns());
   };
 
@@ -1191,7 +1426,7 @@ async function confirmPdfImport(existingColumns) {
       const values = {};
       keys.forEach((key, idx) => { values[key] = row[idx] || ''; });
       try {
-        await Students.save({ id: DB.uid(), classId: null, values });
+        await Students.save({ id: DB.uid(), classId: null, values }, { source: 'import' });
         imported++;
       } catch (e) {
         errors.push(`«${values.lastName || row[0] || '?'} ${values.firstName || ''}»: ${e.message}`);
@@ -1905,11 +2140,55 @@ async function initSchools() {
   if (manage) manage.onclick = openSchoolsModal;
 }
 
-// ---------- КАРТОЧКА ПИОНЕРА (Ф1, экран 1 без истории) ----------
+// ---------- КАРТОЧКА ПИОНЕРА (Ф1; Ф4 — путь и история) ----------
+
+// Текст строки истории: ключ ps.hist.<kind>, подписи статусов и происхождения.
+function historyText(item) {
+  const p = item.params || {};
+  const params = {
+    ...p,
+    origin: Students.originLabel(p.origin),
+    from: Students.statusLabel(p.from),
+    to: Students.statusLabel(p.to),
+    answer: Students.statusLabel(p.answer),
+    deadline: p.deadline ? psDate(p.deadline) : ''
+  };
+  const text = T('ps.hist.' + item.kind, params);
+  return item.kind === 'status' && p.reason ? `${text}: ${p.reason}` : text;
+}
+
+function pioneerPathHtml(steps) {
+  return `<ol class="ps-path" aria-label="${esc(T('ps.path.title'))}">${steps.map((st, i) => {
+    const note = st.key === 'answered' && st.note ? Students.statusLabel(st.note) : st.note;
+    const sub = [st.at ? psDate(st.at) : '', note].filter(Boolean).join(' · ') || (st.state === 'skip' ? '—' : '');
+    return `<li class="ps-path__step ps-path__step--${st.state}" ${st.state === 'current' ? 'aria-current="step"' : ''}>
+      <span class="ps-ov-dot ps-ov-dot--${st.state}" aria-hidden="true">${st.state === 'done' ? '✓' : (st.state === 'bad' ? '✕' : i + 1)}</span>
+      <span class="ps-path__label">${esc(T('ps.path.' + st.key))}</span>
+      ${sub ? `<span class="ps-path__sub">${esc(sub)}</span>` : ''}
+      <span class="sr-only">${esc(T('ps.stage.state.' + (st.state === 'bad' ? 'todo' : st.state === 'skip' ? 'later' : st.state)))}</span>
+    </li>`;
+  }).join('')}</ol>`;
+}
+
+function pioneerHistoryHtml(items) {
+  if (!items.length) return `<p class="hint">${esc(T('ps.hist.empty'))}</p>`;
+  return `<ul class="ps-history">${items.map((it) => `
+    <li><b>${esc(psDate(it.at))}</b><span>${esc(historyText(it))}</span></li>`).join('')}</ul>`;
+}
+
 async function openPioneerCard(studentId) {
-  const [students, classes] = await Promise.all([Students.list(), DB.list('classes')]);
+  const [students, classes, dispatchState, config, registrations] = await Promise.all([
+    Students.list(), DB.list('classes'), Dispatch.getState(), Registration.getConfig(), Registration.list()
+  ]);
   const student = students.find((s) => s.id === studentId);
   if (!student) return;
+  const groupKey = Dispatch.keyOf(student);
+  const dirRec = student.congregationId && typeof CWDirectory !== 'undefined' && CWDirectory.ready ? CWDirectory.get(student.congregationId) : null;
+  const historyCtx = {
+    classes, dispatchState, registrations, groupKey,
+    groupName: (dirRec && dirRec.name) || String(student.values.congregation || '').trim(),
+    deadline: ((dispatchState[groupKey] || {}).deadline) || config.deadline || ''
+  };
   const school = Schools.current();
   const ro = DB.isReadOnly();
   const others = students.filter((s) => s.id !== studentId);
@@ -1941,6 +2220,8 @@ async function openPioneerCard(studentId) {
       <span class="ps-status ps-status--${esc(student.status)}">${esc(Students.statusLabel(student.status))}</span>
     </div>
     ${(student.previousInvites || []).map((p) => `<p class="ps-prev-invite">${esc(Students.previousInviteText(p))}</p>`).join('')}
+    <h3>${T('ps.path.title')}</h3>
+    ${pioneerPathHtml(PioneerHistory.path(student, historyCtx))}
     <fieldset class="ps-card" ${ro ? 'disabled' : ''}>
       <div class="form-grid">
         <label>${T('ps.pioneer.f.origin')}<select id="pc-origin">${optionList(Students.ORIGINS, Students.originLabel, student.origin)}</select></label>
@@ -1969,6 +2250,8 @@ async function openPioneerCard(studentId) {
       </div>
       <p class="hint">${T('ps.pioneer.rel_hint')}</p>
     </fieldset>
+    <h3>${T('ps.hist.title')}</h3>
+    ${pioneerHistoryHtml(PioneerHistory.timeline(student, historyCtx))}
     <p class="ps-error" id="pc-error" role="alert"></p>
     <div class="modal-close-row">
       ${canReinvite ? `<button type="button" class="md-btn md-btn-tonal" id="pc-reinvite">${T('ps.pioneer.reinvite', { school: Schools.label(open) })}</button>` : ''}
@@ -2047,11 +2330,7 @@ async function openPioneerCard(studentId) {
         return;
       }
       closeModal();
-      if (!$('#route-students').classList.contains('hidden')) {
-        const [list, cls, cols] = await Promise.all([Students.list(), DB.list('classes'), Students.getColumns()]);
-        renderStudentsTable(list, cls, cols);
-        applyReadOnly('students');
-      }
+      await refreshStudentsViews();
       renderDashboard();
     };
   }

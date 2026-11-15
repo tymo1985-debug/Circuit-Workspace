@@ -168,34 +168,6 @@ button, input, select, textarea { font-family: inherit; font-size: 14px; }
   font-style: italic;
 }
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-}
-
-.stat-card {
-  background: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 18px;
-}
-.stat-title {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--md-on-surface-variant);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.stat-value {
-  font-family: var(--md-font-family);
-  font-size: 24px;
-  font-weight: 500;
-  margin: 6px 0 2px;
-}
-.stat-sub { font-size: 12px; color: var(--md-on-surface-variant); }
-
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -630,3 +602,75 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 .ps-dispatch-chip--ok { background: var(--status-success-bg); color: var(--status-success); }
 .ps-dispatch-chip--warn { background: var(--status-important-bg); color: var(--status-important); }
 .ps-dispatch-chip--bad { background: var(--status-critical-bg); color: var(--status-critical); }
+
+/* ---------- Обзор и общий список (Ф4, 15.11.2026) ---------- */
+.ps-ov-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.ps-ov-head h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.ps-ov-head .hint { margin: 4px 0 0; font-style: normal; }
+.ps-chip--accent { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: var(--md-primary); font-weight: 600; }
+.ps-ov-now { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; border-color: var(--md-primary); }
+.ps-ov-now h3 { margin: 0 0 4px; }
+.ps-ov-now .hint { margin: 0; font-size: 14px; font-style: normal; }
+.ps-ov-stages {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+}
+.ps-ov-stage {
+  background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.ps-ov-stage--current { border-color: var(--md-primary); box-shadow: 0 0 0 1px var(--md-primary); }
+.ps-ov-stage--later { opacity: .8; }
+.ps-ov-stage__top { display: flex; align-items: center; gap: 10px; }
+.ps-ov-stage h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.ps-ov-stage .hint { margin: 0; font-size: 14px; font-style: normal; }
+.ps-ov-stage .ps-card-chips { margin: 0; }
+.ps-ov-dot {
+  flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; border: 2px solid var(--md-outline-variant);
+  background: var(--md-surface-container); color: var(--md-on-surface-variant);
+}
+.ps-ov-dot--done { background: var(--status-success-bg); color: var(--status-success); border-color: var(--status-success); }
+.ps-ov-dot--current { background: var(--md-primary); color: var(--md-on-primary); border-color: var(--md-primary); }
+.ps-ov-dot--bad { background: var(--status-critical-bg); color: var(--status-critical); border-color: var(--status-critical); }
+.ps-ov-bar { height: 8px; border-radius: 4px; background: var(--md-surface-container-high); display: flex; overflow: hidden; }
+.ps-ov-bar__ok { background: var(--status-success); }
+.ps-ov-bar__bad { background: var(--status-critical); }
+
+.ps-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--md-outline-variant); margin-bottom: 16px; }
+.ps-tab {
+  font: inherit; font-size: 14px; min-height: 44px; padding: 0 16px; border: 0; background: none; cursor: pointer;
+  color: var(--md-on-surface-variant); border-bottom: 3px solid transparent; margin-bottom: -1px;
+}
+.ps-tab[aria-selected="true"] { color: var(--md-primary); border-bottom-color: var(--md-primary); font-weight: 600; }
+.ps-tab:focus-visible { outline: 2px solid var(--md-primary); outline-offset: -2px; }
+#students-overview .panel-header-row { flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+#students-overview .panel-header-row h3 { margin: 0; font-size: 20px; }
+#students-overview .btn-row { margin-top: 0; }
+.ps-ov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.ps-ov-stat {
+  background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md); padding: 10px 12px;
+}
+.ps-ov-filterbox { padding: 0; }
+.ps-ov-filterbox > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 0 16px; font-weight: 600; font-size: 14px; }
+.ps-ov-stat b { display: block; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ps-ov-stat span { font-size: 12px; color: var(--md-on-surface-variant); }
+.ps-ov-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; padding: 0 16px 14px; }
+.ps-ov-filter { flex: 1 1 150px; min-width: 0; font-size: 12px; }
+.ps-ov-filter select { width: 100%; }
+.ps-ov-filter--on select { border-color: var(--md-primary); background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+#ov-table .ov-open { padding-inline: 4px; text-align: left; min-height: 44px; }
+#ov-table td { vertical-align: middle; }
+
+.ps-path { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 0; }
+.ps-path__step {
+  flex: 1 1 110px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  font-size: 12px; color: var(--md-on-surface-variant);
+}
+.ps-path__label { font-weight: 600; color: var(--md-on-surface); }
+.ps-path__step--skip .ps-path__label, .ps-path__step--todo .ps-path__label { font-weight: 400; color: var(--md-on-surface-variant); }
+.ps-history { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.ps-history li { display: flex; gap: 12px; }
+.ps-history b { flex: none; min-width: 88px; font-weight: 500; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+@media print { .ps-tabs, .ps-ov-filterbox, #ov-now-go { display: none !important; } }

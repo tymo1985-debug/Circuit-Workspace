@@ -278,7 +278,8 @@ const Students = {
       relations: rec.relations,
       textbookLanguages: rec.textbookLanguages,
       previousInvites: rec.previousInvites,
-      reinvitedFrom: rec.reinvitedFrom || null
+      reinvitedFrom: rec.reinvitedFrom || null,
+      history: Array.isArray(rec.history) ? rec.history : []
     };
   },
 
@@ -318,10 +319,13 @@ const Students = {
     return errors;
   },
 
-  async save(student) {
+  // opts.source — откуда запись (журнал Ф4): manual | import | form | auto.
+  async save(student, opts = {}) {
     const { rec } = this.normalize(student, this._schoolLanguage());
     const errors = this.validate(rec);
     if (errors.length) throw new Error(errors.join('; '));
+    const prev = rec.id ? await DB.get('students', rec.id) : null;
+    PioneerHistory.stamp(prev, rec, opts.source);
     const saved = await DB.put('students', rec);
     if (student !== saved) Object.assign(student, { id: saved.id });
     return saved;
@@ -330,7 +334,7 @@ const Students = {
   // Сохранение из карточки: поля модели + взаимные связи одним заходом.
   // patch — { values?, origin, status, statusReason, gender, congregationId,
   // textbookLanguages, relations } поверх ПОЛНОЙ записи из базы.
-  async saveCard(studentId, patch) {
+  async saveCard(studentId, patch, opts = {}) {
     const full = await DB.get('students', studentId);
     if (!full) throw new Error(T('ps.pioneer.err.not_found'));
     const { rec } = this.normalize(full, this._schoolLanguage());
@@ -360,6 +364,8 @@ const Students = {
     const errors = this.validate(next);
     if (errors.length) throw new Error(errors.join('; '));
 
+    PioneerHistory.stamp(rec, next, opts.source);
+
     // Взаимность: у второй стороны связь ставится и снимается вместе с этой.
     const touched = [];
     all.forEach((other) => {
@@ -377,6 +383,15 @@ const Students = {
     await DB.put('students', next);
     for (const other of touched) await DB.put('students', other);
     return this._view(next);
+  },
+
+  // Класс одной записи поверх ПОЛНОЙ записи из базы, с отметкой в журнале.
+  async setClass(studentId, classId, source = 'manual') {
+    const full = await DB.get('students', studentId);
+    if (!full) return null;
+    const next = { ...full, classId: classId || null };
+    PioneerHistory.stamp(full, next, source);
+    return DB.put('students', next);
   },
 
   async remove(id) {
@@ -435,6 +450,7 @@ const Students = {
       reinvitedFrom: { schoolId: fromSchoolId, studentId },
       model: this.MODEL
     };
+    PioneerHistory.stamp(null, rec, 'reinvite');
     await target.put('students', rec);
     return rec;
   },

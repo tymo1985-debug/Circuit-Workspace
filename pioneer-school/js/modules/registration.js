@@ -195,7 +195,7 @@ const Registration = {
         patch.status = nextStatus;
         patch.statusReason = nextStatus === 'wontCome' ? reason : '';
       }
-      student = await Students.saveCard(studentId, patch);
+      student = await Students.saveCard(studentId, patch, { source: 'form' });
     } else {
       student = {
         id: DB.uid(),
@@ -212,7 +212,7 @@ const Registration = {
         previousInvites: [],
         fromRegistrationId: reg.id
       };
-      await Students.save(student);
+      await Students.save(student, { source: 'form' });
     }
     reg.convertedToStudentId = student.id;
     await DB.put('registrations', reg);

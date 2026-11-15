@@ -95,7 +95,7 @@ const Dispatch = {
   async markSent(group, date) {
     await this.saveEntry(group.key, { sentAt: date || DateUtils.todayIso() });
     for (const s of group.members) {
-      if (s.status === 'invited') await Students.saveCard(s.id, { status: 'letterSent' });
+      if (s.status === 'invited') await Students.saveCard(s.id, { status: 'letterSent' }, { source: 'dispatch' });
     }
   },
 
@@ -103,7 +103,7 @@ const Dispatch = {
   async unmarkSent(group) {
     await this.saveEntry(group.key, { sentAt: '', remindedAt: '' });
     for (const s of group.members) {
-      if (s.status === 'letterSent') await Students.saveCard(s.id, { status: 'invited' });
+      if (s.status === 'letterSent') await Students.saveCard(s.id, { status: 'invited' }, { source: 'dispatch' });
     }
   },
 

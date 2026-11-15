@@ -6,7 +6,7 @@
 
 | Файл | Размер | Как читать |
 |---|---:|---|
-| `js/app.js` | 91 КБ | по разделам (`// ----------`) |
+| `js/app.js` | 120 КБ | по разделам (`// ----------`) |
 | `i18n/dict.js` | 141 КБ | только `grep` по ключу |
 | `../shared/fonts/noto-sans-pdf-*.js` | ~90 КБ | **не открывать** — base64 |
 
@@ -67,6 +67,16 @@
 - Тексты писем старейшинам — шаблоны общего слоя
   (`sys.school.congregation.letter` / `.reminder`), правятся в «Документах».
 - Проверка — `scripts/check-pioneer-dispatch.mjs`.
+
+## Обзор (Ф4, 15.11.2026) — инварианты
+
+- Журнал — поле `history` записи пионера; пишет только `PioneerHistory.stamp`
+  внутри `Students.save` / `saveCard` / `setClass` / `reinvite` (параметр
+  `source`). Смены статуса из рассылки (`dispatch`) и формуляра (`form`) в
+  журнал не идут — восстанавливаются из `dispatch` и `registrations`.
+- Этапы и фильтры — чистые функции `js/modules/overview.js`; этап по данным,
+  без ручных отметок. «Задания» — `later`, пока нет Ф6.
+- Проверка — `scripts/check-pioneer-overview.mjs`.
 
 ## Открытая работа: N-3
 
