@@ -6,11 +6,11 @@
 // register.html, — и описания уже разошлись: поле «Дополнительные сведения»
 // имело в них разные подписи (два ключа словаря на один вопрос).
 //
-// ЧТО ЕЩЁ НЕ ОТСЮДА. Печатный бланк (pdfExport.downloadRegistrationBlankForm)
-// по-прежнему разложен вручную: у него подобранные координаты в две колонки,
-// и генерация «как получится» испортила бы готовую бумагу. Подписи и порядок
-// разделов он берёт из схемы, а расстановку держит свою. Это осознанный
-// остаток дублирования, отмеченный в TODO.md.
+// Печатный бланк (pdfExport.downloadRegistrationBlankForm) с 18.11.2026 тоже
+// собирается из схемы: поля и порядок — отсюда, координаты — раскладочные
+// подсказки `pdf` у поля (см. ниже). Генерация «как получится» испортила бы
+// готовую бумагу, поэтому подсказки воспроизводят прежнюю раскладку точно;
+// это проверено сравнением вызовов отрисовки на пяти языках.
 //
 // Настройки конкретной школы (срок сдачи, контакты, доп. текст) в схеме НЕ хранятся:
 // они лежат отдельно, в настройках приложения (meta 'registrationConfig'), и
@@ -40,6 +40,23 @@
 //   сперва выбрал «Нет», потом передумал.
 // rows — высота textarea на вебе; pdfLines — сколько линий рисовать на бумаге.
 //   Это разные величины: на экране поле прокручивается, на бумаге нет.
+//
+// РАСКЛАДОЧНЫЕ ПОДСКАЗКИ ПЕЧАТНОГО БЛАНКА — `pdf` у поля, `pdfBreak` у раздела.
+// Всё необязательно: поле без подсказок ложится на бланк само (подпись слева,
+// линия до правого поля / варианты потоком слева направо).
+//   pdf.sameRow  — поле продолжает ряд предыдущего, а не начинает новый
+//   pdf.x        — левый край подписи (по умолчанию 40)
+//   pdf.lineX    — МИНИМАЛЬНОЕ начало линии ответа: длинная подпись сдвигает её
+//   pdf.lineW    — ширина линии от lineX (по умолчанию до правого поля)
+//   pdf.optionX  — минимальные x вариантов radio/checkboxes по порядку
+//   pdf.label    — короткая подпись для бумаги вместо `label`
+//   pdf.inline   — textarea одной строкой «подпись: ____» вместо pdfLines
+//   pdf.after    — шаг после поля (по умолчанию 26; у textarea — 6)
+//   option.pdfLabel — короткая подпись варианта на бумаге
+//   section.pdfBreak — перенос раздела на новую страницу, если до низа меньше
+// Вариант checkboxes, который раскрывает текстовое поле (showIf.includes),
+// печатается своим рядом с линией для ответа — само текстовое поле отдельно
+// не рисуется. Так «Другой: ____» не теряет линию при длинном переводе.
 //
 // НУМЕРАЦИЯ РАЗДЕЛОВ — В `heading`, А НЕ В СЛОВАРЕ. Раньше строка словаря была
 // «1. Личные данные», то есть переводчик отвечал за номер и обязан был помнить,
@@ -79,19 +96,28 @@ const RegistrationSchema = {
         id: 'personal',
         title: D('doc.ps.reg.section.personal'),
         fields: [
-          { key: 'lastName', label: D('doc.ps.field.lastName'), type: 'text', required: true, autocomplete: 'family-name' },
-          { key: 'firstName', label: D('doc.ps.field.firstName'), type: 'text', required: true, autocomplete: 'given-name' },
+          { key: 'lastName', label: D('doc.ps.field.lastName'), type: 'text', required: true, autocomplete: 'family-name', pdf: { lineX: 100, lineW: 200 } },
+          {
+            key: 'firstName', label: D('doc.ps.field.firstName'), type: 'text', required: true, autocomplete: 'given-name',
+            pdf: { sameRow: true, x: 320, lineX: 360, lineW: 195 }
+          },
           // Собрание — текстом: справочника собраний (CWDirectory) на телефоне
           // пионера нет. Сопоставление со справочником — при переносе в
           // карточку (Registration.applyToStudent).
-          { key: 'congregation', label: D('doc.ps.field.congregation'), type: 'text', required: true, autocomplete: 'off' },
+          { key: 'congregation', label: D('doc.ps.field.congregation'), type: 'text', required: true, autocomplete: 'off', pdf: { lineX: 110, lineW: 445 } },
           {
             key: 'phone', label: D('doc.ps.reg.field.phone'), type: 'tel', required: true, autocomplete: 'tel',
-            placeholder: '+000 00 000 00 00'
+            placeholder: '+000 00 000 00 00', pdf: { lineX: 160, lineW: 200 }
           },
-          { key: 'phoneWhatsapp', label: D('doc.ps.reg.field.phoneWhatsapp'), type: 'check' },
-          { key: 'email', label: D('doc.ps.field.email'), type: 'email', required: true, autocomplete: 'email' },
-          { key: 'address', label: D('doc.ps.field.address'), type: 'text', required: true, autocomplete: 'street-address', pdfWidth: 'full' }
+          {
+            key: 'phoneWhatsapp', label: D('doc.ps.reg.field.phoneWhatsapp'), type: 'check',
+            pdf: { sameRow: true, x: 380, label: D('doc.ps.pdf.contact.whatsapp') }
+          },
+          { key: 'email', label: D('doc.ps.field.email'), type: 'email', required: true, autocomplete: 'email', pdf: { lineX: 90, lineW: 465 } },
+          {
+            key: 'address', label: D('doc.ps.field.address'), type: 'text', required: true, autocomplete: 'street-address', pdfWidth: 'full',
+            pdf: { lineX: 155, lineW: 400 }
+          }
         ]
       },
       {
@@ -101,13 +127,14 @@ const RegistrationSchema = {
           {
             key: 'attending', type: 'radio', required: true,
             label: D('doc.ps.reg.field.attending'),
-            options: yesNo
+            options: yesNo, pdf: { optionX: [40, 140], after: 22 }
           },
           // required — пока поле видимо (RegistrationForm.wire): при «Нет»
           // причина обязательна. Звёздочка видна и на бумаге.
           {
             key: 'attendReason', type: 'textarea', required: true, label: D('doc.ps.reg.field.attendReason'),
-            showIf: { field: 'attending', equals: 'no' }, pdfWidth: 'full', pdfLines: 2, rows: 2
+            showIf: { field: 'attending', equals: 'no' }, pdfWidth: 'full', pdfLines: 2, rows: 2,
+            pdf: { inline: true, lineX: 210, lineW: 345 }
           }
         ]
       },
@@ -115,14 +142,14 @@ const RegistrationSchema = {
         id: 'transport',
         title: D('doc.ps.reg.section.transport'),
         fields: [
-          { key: 'transport', type: 'radio', label: D('doc.ps.reg.field.transport'), options: yesNo }
+          { key: 'transport', type: 'radio', label: D('doc.ps.reg.field.transport'), options: yesNo, pdf: { optionX: [40, 140] } }
         ]
       },
       {
         id: 'lodging',
         title: D('doc.ps.reg.section.lodging'),
         fields: [
-          { key: 'lodging', type: 'radio', label: D('doc.ps.reg.field.lodging'), options: yesNo }
+          { key: 'lodging', type: 'radio', label: D('doc.ps.reg.field.lodging'), options: yesNo, pdf: { optionX: [40, 140] } }
         ]
       },
       {
@@ -131,26 +158,29 @@ const RegistrationSchema = {
         fields: [
           {
             key: 'languages', type: 'checkboxes', required: true, label: D('doc.ps.reg.field.languages'),
-            options: this.LANGUAGE_OPTIONS.map((code) => ({ value: code, label: D('doc.ps.reg.opt.lang.' + code) }))
+            options: this.LANGUAGE_OPTIONS.map((code) => ({ value: code, label: D('doc.ps.reg.opt.lang.' + code) })),
+            pdf: { optionX: [40, 140, 250] }
           },
           {
             key: 'languageOther', type: 'text', label: D('doc.ps.reg.field.languageOther'),
-            showIf: { field: 'languages', includes: 'other' }
+            showIf: { field: 'languages', includes: 'other' }, pdf: { lineX: 110 }
           },
           {
             key: 'format', type: 'checkboxes', label: D('doc.ps.reg.field.format'),
             options: [
               { value: 'print', label: D('doc.ps.reg.opt.format.print') },
-              { value: 'jwpub', label: D('doc.ps.reg.opt.format.jwpub') },
+              { value: 'jwpub', label: D('doc.ps.reg.opt.format.jwpub'), pdfLabel: 'JWPub' },
               { value: 'pdf', label: D('doc.ps.reg.opt.format.pdf') },
               { value: 'epub', label: D('doc.ps.reg.opt.format.epub') }
-            ]
+            ],
+            pdf: { optionX: [40, 150, 250, 340] }
           }
         ]
       },
       {
         id: 'needs',
         title: D('doc.ps.field.specialNeeds'),
+        pdfBreak: 150,
         fields: [
           {
             key: 'specialNeeds', type: 'textarea', pdfWidth: 'full', pdfLines: 2, rows: 2,
@@ -161,6 +191,7 @@ const RegistrationSchema = {
       {
         id: 'extra',
         title: D('doc.ps.reg.section.extra'),
+        pdfBreak: 130,
         fields: [
           {
             key: 'notes', type: 'textarea', pdfWidth: 'full', pdfLines: 3, rows: 4,
@@ -180,8 +211,7 @@ const RegistrationSchema = {
     return this.sections.flatMap((s) => s.fields);
   },
 
-  // Печатный бланк раскладывает разделы вручную, но названия и номера обязан
-  // брать отсюда — иначе схема и бумага снова разъедутся.
+  // Раздел по id (заголовок с номером — `heading`).
   sectionById(id) {
     return this.sections.find((s) => s.id === id) || null;
   },

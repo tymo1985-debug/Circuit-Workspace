@@ -2116,7 +2116,7 @@
           'statsModal','statsModalTitle','statsModalSub','statsModalBody','statsModalCloseBtn','statsModalOkBtn','statsBtn','plannerBtn',
           'plannerModal','plannerModalCloseBtn','plannerStartInput','plannerEndInput','plannerEventsList','plannerPreview','plannerCancelBtn','plannerApplyBtn',
           'holidaysToggle','autoShowRemindersToggle','editorResultInput','editorResultLabel',
-          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','profileSummary','homeSummary','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','emailBodyDefaultInput','emailBodyDefaultResetBtn','placeholderRefBody','letterSalutationInput','letterSalutationResetBtn',
+          'eventCongNumberInput','eventFormLanguageSelect','eventRouteBaseSelect','eventRouteAfterSelect','eventVisitOnlyFields','geocodeEventBtn','eventDistanceStatus','profileSummary','homeSummary','letterTemplateEditor','letterTemplateResetBtn','letterPagesList','addLetterPageBtn','previewLetterPdfBtn','emailBodyDefaultInput','emailBodyDefaultResetBtn','letterSalutationInput','letterSalutationResetBtn',
           'vfLanguageSelect','vfLanguageReminder',
           'visitFormModal','visitFormSub','visitFormCloseBtn','vfVisitType','vfMeetingsList','vfAddMeetingBtn','vfServiceDaysList','vfAddDayBtn','vfPastoralHeading','vfPastoralList','vfAddPastoralBtn','vfMealsList','vfAddMealBtn','vfNotesInput','vfCloseBtn2','vfGeneratePdfBtn',
           'letterModal','letterModalSub','letterEmailLangSelect','letterEmailLangNote','letterModalCloseBtn','letterEmailBodyInput','letterAttachStatus','letterPreviewPdfBtn','letterAttachPdfBtn','letterSendBtn','letterEmailBodyResetToDefaultBtn','letterSubjectInput','letterSnapshotBtn',
@@ -3283,20 +3283,6 @@ document.querySelectorAll('.sy-day[data-add-date]').forEach((btn) => {
       syncEventVisitFieldsVisibility() {
         if (App.els.eventVisitOnlyFields) App.els.eventVisitOnlyFields.style.display = App.els.eventVisitTypeInput?.value ? 'contents' : 'none';
       },
-      /**
-       * Справочник переменных в настройках писем.
-       *
-       * Имена берутся из общего реестра (shared/templates.js), собственного
-       * списка у модуля больше нет. В первой колонке — каноническое имя, под
-       * ним прежнее: свой старый шаблон должен опознаваться с первого взгляда,
-       * а старые имена работают всегда.
-       *
-       * Показаны только те переменные, у которых уже есть описание в словаре
-       * (ключи `ph_*`, переведены носителями). Остальные поля реестра —
-       * congregation.address, sender.* кроме имени и т.д. — движок подставит,
-       * но в таблицу они попадут только вместе с описанием от носителя языка:
-       * строка без описания в справочнике бесполезна.
-       */
       renderEventDistanceStatus() {
         if (!App.els.eventDistanceStatus) return;
         const coords = App.state.editingEventCoords;

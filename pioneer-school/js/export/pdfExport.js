@@ -347,14 +347,68 @@ const PdfExport = {
     return y;
   },
 
-  // Заголовок раздела для бумаги — ИЗ СХЕМЫ, вместе с номером.
-  // Раскладка бланка своя (подобранные координаты в две колонки), но названия
-  // и порядок разделов обязаны совпадать с онлайн-анкетой и интерактивным PDF.
-  // Номер приписывает схема: в словаре его нет — там чистое название.
-  _sectionHeading(id) {
-    const S = window.RegistrationSchema;
-    const section = S && S.sectionById(id);
-    return section ? section.heading : '';
+  // Печатный бланк собирается из схемы (RegistrationSchema): разделы, поля и
+  // порядок — оттуда, координаты — раскладочные подсказки `pdf` у поля и
+  // `pdfBreak` у раздела (описание — в шапке registrationSchema.js). До
+  // 18.11.2026 бланк был разложен здесь вручную; подсказки воспроизводят ту
+  // раскладку точно — бумага не изменилась ни на пункт ни в одном языке.
+  //
+  // Поле рисуется одним из пяти способов по типу; каждый возвращает новый y.
+  // Шаг после поля (`after`) откладывается до следующего: поле с `sameRow`
+  // продолжает ряд предыдущего, а не начинает новый.
+  _blankField(doc, y, field, fields) {
+    const P = field.pdf || {};
+    const x = P.x || 40;
+    const label = P.label || field.label;
+    const lineEnd = (lineX) => (P.lineW ? lineX + P.lineW : 555);
+    const opts = (field.options || []);
+    const optLabel = (o) => o.pdfLabel || o.label;
+
+    if (field.type === 'check') {
+      return this._checkboxRow(doc, y, [{ x, label }]);
+    }
+    if (field.type === 'radio' || field.type === 'checkboxes') {
+      // Подпись radio — вопрос со своим «?», двоеточие ему не нужно.
+      const text = field.type === 'radio' ? label : this._withColon(label);
+      y = this._label(doc, 40, y, text, 11, 515);
+      y += 20;
+      // Вариант, раскрывающий текстовое поле, печатается своим рядом с линией.
+      const opener = (o) => fields.find((f) => f.type === 'text' && f.showIf
+        && f.showIf.field === field.key && f.showIf.includes === o.value);
+      const optionX = P.optionX || [];
+      const inline = opts.filter((o) => !opener(o))
+        .map((o, i) => ({ x: optionX[i] !== undefined ? optionX[i] : (i ? 0 : 40), label: optLabel(o) }));
+      if (inline.length) y = this._checkboxRow(doc, y, inline);
+      opts.filter(opener).forEach((o) => {
+        const other = opener(o);
+        y += 20;
+        y = this._checkboxRow(doc, y, [{ x: 40, label: this._withColon(optLabel(o)) }]);
+        // Линия начинается после подписи ряда: свой ряд оставляет ей место
+        // при любом переводе («Другой:» / «Andere:»).
+        const start = Math.max((other.pdf && other.pdf.lineX) || 40, (this._lastCheckboxRowEnd || 0) - 12);
+        if (555 > start + 20) this._answerLine(doc, start, y + 2, 555 - start);
+      });
+      return y;
+    }
+    if (field.type === 'textarea' && !P.inline) {
+      y = this._label(doc, 40, y, this._withColon(label), 10.5, 515);
+      y += 20;
+      for (let i = 0; i < (field.pdfLines || 1); i++) {
+        this._answerLine(doc, 40, y, 515);
+        if (i < (field.pdfLines || 1) - 1) y += 22;
+      }
+      return y;
+    }
+    // text | email | tel | textarea с pdf.inline — «подпись: ______»
+    const lineX = P.lineX || x;
+    this._labelLine(doc, x, y, label, lineX, lineEnd(lineX) - lineX);
+    return y;
+  },
+
+  _blankAfter(field) {
+    const P = field.pdf || {};
+    if (P.after !== undefined) return P.after;
+    return (field.type === 'textarea' && !P.inline) ? 22 + 6 : 26;
   },
 
   async downloadRegistrationBlankForm(config) {
@@ -364,10 +418,6 @@ const PdfExport = {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     let y = 50;
-
-    const opt = (field, value) => this._optLabel(field, value);
-    const yes = opt('attending', 'yes');
-    const no = opt('attending', 'no');
 
     doc.setFont('NotoSans');
     doc.setFontSize(18);
@@ -383,87 +433,25 @@ const PdfExport = {
     doc.text(leadLines, 40, y);
     y += 12 + leadLines.length * 13;
 
-    // 1. Личные данные
-    y = this._sectionTitle(doc, y, this._sectionHeading('personal'));
-    this._labelLine(doc, 40, y, D('doc.ps.field.lastName'), 100, 200);
-    this._labelLine(doc, 320, y, D('doc.ps.field.firstName'), 360, 195);
-    y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.field.congregation'), 110, 445);
-    y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.reg.field.phone'), 160, 200);
-    y = this._checkboxRow(doc, y, [{ x: 380, label: D('doc.ps.pdf.contact.whatsapp') }]);
-    y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.field.email'), 90, 465);
-    y += 26;
-    this._labelLine(doc, 40, y, D('doc.ps.field.address'), 155, 400);
-    y += 34;
-
-    // 2. Участие
-    y = this._sectionTitle(doc, y, this._sectionHeading('attendance'));
-    y = this._label(doc, 40, y, D('doc.ps.reg.field.attending'), 11, 515);
-    y += 20;
-    y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
-    y += 22;
-    this._labelLine(doc, 40, y, D('doc.ps.reg.field.attendReason'), 210, 345);
-    y += 34;
-
-    // 3. Транспорт
-    y = this._sectionTitle(doc, y, this._sectionHeading('transport'));
-    y = this._label(doc, 40, y, D('doc.ps.reg.field.transport'), 11, 515);
-    y += 20;
-    y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
-    y += 34;
-
-    // 4. Проживание
-    y = this._sectionTitle(doc, y, this._sectionHeading('lodging'));
-    y = this._label(doc, 40, y, D('doc.ps.reg.field.lodging'), 11, 515);
-    y += 20;
-    y = this._checkboxRow(doc, y, [{ x: 40, label: yes }, { x: 140, label: no }]);
-    y += 34;
-
-    // 5. Учебник
-    y = this._sectionTitle(doc, y, this._sectionHeading('textbook'));
-    // Ф2: языков может быть несколько — подпись говорит об этом сама.
-    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.languages')), 11, 515);
-    y += 20;
-    y = this._checkboxRow(doc, y, [
-      { x: 40, label: opt('languages', 'ru') }, { x: 140, label: opt('languages', 'uk') },
-      { x: 250, label: opt('languages', 'de') }
-    ]);
-    y += 20;
-    y = this._checkboxRow(doc, y, [{ x: 40, label: this._withColon(D('doc.ps.reg.opt.lang.other')) }]);
-    // Линия начинается после подписи ряда, а не с жёсткой координаты.
-    // ОГРАНИЧЕНИЕ: если перевод подписи длинный (немецкое «Andere Sprache:»
-    // дотягивается до 553), места на строке не остаётся и линия не рисуется
-    // вовсе — это лучше, чем линия поверх букв, но поле для ответа при этом
-    // пропадает. Всплывёт, когда придут переводы; отмечено в TODO.md.
-    // С Ф2 «Другой» стоит в своём ряду, и линии хватает места при любом переводе.
-    const otherStart = Math.max(110, (this._lastCheckboxRowEnd || 0) - 12);
-    if (555 > otherStart + 20) this._answerLine(doc, otherStart, y + 2, 555 - otherStart);
-    y += 26;
-    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.format')), 11, 515);
-    y += 20;
-    y = this._checkboxRow(doc, y, [
-      { x: 40, label: D('doc.ps.reg.opt.format.print') }, { x: 150, label: 'JWPub' },
-      { x: 250, label: 'PDF' }, { x: 340, label: 'EPUB' }
-    ]);
-    y += 34;
-
-    // 6. Особые потребности (Ф2)
-    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-    y = this._sectionTitle(doc, y, this._sectionHeading('needs'));
-    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.specialNeeds')), 10.5, 515);
-    y += 20;
-    for (let i = 0; i < 2; i++) { this._answerLine(doc, 40, y, 515); y += 22; }
-    y += 6;
-
-    // 7. Дополнительные сведения
-    if (y > pageHeight - 130) { doc.addPage(); y = 50; }
-    y = this._sectionTitle(doc, y, this._sectionHeading('extra'));
-    y = this._label(doc, 40, y, this._withColon(D('doc.ps.reg.field.notes')), 10.5, 515);
-    y += 20;
-    for (let i = 0; i < 3; i++) { this._answerLine(doc, 40, y, 515); y += 22; }
-    y += 6;
+    const S = window.RegistrationSchema;
+    for (const section of S.sections) {
+      if (section.pdfBreak && y > pageHeight - section.pdfBreak) { doc.addPage(); y = 50; }
+      y = this._sectionTitle(doc, y, section.heading);
+      // Текстовое поле, раскрываемое вариантом checkboxes, рисуется в ряду
+      // этого варианта (см. _blankField) — отдельно его не печатаем.
+      const own = section.fields.filter((f) => !(f.type === 'text' && f.showIf
+        && section.fields.some((g) => g.key === f.showIf.field && g.type === 'checkboxes')));
+      let pending = 0;
+      own.forEach((f) => {
+        if (!(f.pdf && f.pdf.sameRow)) y += pending;
+        y = this._blankField(doc, y, f, section.fields);
+        pending = this._blankAfter(f);
+      });
+      // Между разделами — ещё 8 пунктов; линии textarea оставляют место сами.
+      const last = own[own.length - 1];
+      const linesLast = last && last.type === 'textarea' && !(last.pdf && last.pdf.inline);
+      y += pending + (linesLast ? 0 : 8);
+    }
 
     // Информация для учащегося
     if (y > pageHeight - 140) { doc.addPage(); y = 50; }

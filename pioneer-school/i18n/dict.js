@@ -2651,7 +2651,7 @@
     'ps.task.rule.brothers': 'Tylko bracia',
     'ps.task.rule.sisters': 'Tylko siostry',
     'ps.task.rule.any': 'Dowolni',
-    'ps.task.shared_hint': 'Biblioteka jest wspólna dla wszystkich szkół: zmiana widać w każdej szkole, także przy ponownym druku kart.',
+    'ps.task.shared_hint': 'Biblioteka jest wspólna dla wszystkich szkół: zmiana jest widoczna w każdej szkole, także przy ponownym druku kart.',
     'ps.task.dist': 'Przydział',
     'ps.task.dist_title': '{name} · przydział',
     'ps.task.no_classes': 'Na razie brak klas',
