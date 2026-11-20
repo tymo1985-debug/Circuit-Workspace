@@ -18,6 +18,8 @@
 //    у урока 18 — как в расписании.
 //  - Названия — по языкам; пока есть только ru, остальные — когда придут
 //    файлы (_X, _K). Нет названия на языке — русское.
+//  - «Сейчас» (20.11.2026, варианты A + C): статус по местному времени
+//    устройства — `status()`; данных не хранит, на печать не влияет.
 // Функции без DB — чистые (scripts/check-pioneer-schedule.mjs).
 
 const PSSchedule = {
@@ -250,8 +252,13 @@ const PSSchedule = {
       date: startDate ? this.addDays(startDate, i) : '',
       open: d.open,
       close: d.close,
-      slots: d.slots.map((s) => {
-        if (!s.id) return { kind: s.kind, minutes: s.minutes };
+      slots: d.slots.map((s, j) => {
+        if (!s.id) {
+          // Время перерыва — между соседними уроками (с учётом своего времени школы).
+          const at = (k) => { const x = d.slots[k]; return x && x.id ? (own[x.id] || x) : null; };
+          const prev = at(j - 1); const next = at(j + 1);
+          return { kind: s.kind, minutes: s.minutes, key: 'd' + (i + 1) + '-' + j, start: prev ? prev.end : '', end: next ? next.start : '' };
+        }
         const t = own[s.id];
         const title = this.title(s.id, lang);
         return {
@@ -272,6 +279,63 @@ const PSSchedule = {
       if (s) return { day: d.day, date: d.date, start: s.start, end: s.end, id: s.id, label: s.label, teacher: s.teacher, changed: s.changed };
     }
     return null;
+  },
+
+  // ---------- Сейчас ----------
+
+  toMin(t) { return this.validTime(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) : null; },
+
+  daysBetween(a, b) {
+    const d = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN; };
+    return Math.round((d(b) - d(a)) / 86400000);
+  },
+
+  /**
+   * Где мы сейчас. Чистая функция.
+   *  days — build(...); today — 'YYYY-MM-DD' (местная дата); nowMin — минуты от полуночи.
+   * → { phase: 'nodate' | 'before' | 'during' | 'after', daysUntil,
+   *     day, date, dayState: 'before' | 'running' | 'done',
+   *     current: { item, left, progress } | null, next, then,
+   *     slots: { [id|key]: 'past' | 'current' | 'future' }, dayStates: { [day]: 'past' | 'today' | 'future' } }
+   * item — { kind, id|key, label, title, practical, date, day, start, end }.
+   */
+  status(days, today, nowMin) {
+    const list = days || [];
+    if (!list.length || !list[0].date || !today) return { phase: 'nodate' };
+    const first = list[0].date; const last = list[list.length - 1].date;
+    const dayStates = {};
+    list.forEach((d) => { dayStates[d.day] = d.date < today ? 'past' : d.date === today ? 'today' : 'future'; });
+    if (today < first) return { phase: 'before', daysUntil: this.daysBetween(today, first), dayStates };
+    if (today > last) return { phase: 'after', dayStates };
+    const items = [];
+    list.forEach((d) => d.slots.forEach((s) => {
+      if (!s.start || !s.end) return;
+      items.push({ kind: s.kind, sid: s.id || s.key, label: s.label || '', title: s.title || '', practical: s.practical || null,
+        date: d.date, day: d.day, start: s.start, end: s.end, minutes: s.minutes || null });
+    }));
+    const pos = (it) => [it.date, this.toMin(it.start), this.toMin(it.end)];
+    const slots = {};
+    let current = null; let nextIdx = -1;
+    items.forEach((it, i) => {
+      const [date, a, b] = pos(it);
+      let st;
+      if (date < today || (date === today && b <= nowMin)) st = 'past';
+      else if (date === today && a <= nowMin && nowMin < b) st = 'current';
+      else st = 'future';
+      slots[it.sid] = st;
+      if (st === 'current') current = { item: it, left: b - nowMin, progress: Math.round(((nowMin - a) / (b - a)) * 100) };
+      if (st === 'future' && nextIdx < 0) nextIdx = i;
+    });
+    const todayItems = items.filter((it) => it.date === today);
+    const dayStart = todayItems.length ? this.toMin(todayItems[0].start) : null;
+    const dayEnd = todayItems.length ? this.toMin(todayItems[todayItems.length - 1].end) : null;
+    const dayState = dayStart !== null && nowMin < dayStart ? 'before' : dayEnd !== null && nowMin >= dayEnd ? 'done' : 'running';
+    const today1 = list.find((d) => d.date === today);
+    return {
+      phase: 'during', day: today1 ? today1.day : null, date: today, dayState,
+      current, next: nextIdx >= 0 ? items[nextIdx] : null, then: nextIdx >= 0 && items[nextIdx + 1] ? items[nextIdx + 1] : null,
+      slots, dayStates
+    };
   },
 
   /** Номер дня школы для даты today или null (вне школы). */

@@ -754,7 +754,7 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 @media print { .ps-task-tools, .ps-task-edit { display: none !important; } }
 
 /* ---------- Ф6a · Расписание школы ---------- */
-.ps-sch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.ps-sch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px; align-items: start; }
 .ps-sch-day { border: 1px solid var(--md-outline-variant); border-radius: 12px; background: var(--md-surface-container-low); padding: 10px 12px; min-width: 0; }
 .ps-sch-day__head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; margin-bottom: 6px; }
 .ps-sch-song, .ps-sch-break { font-size: 12px; color: var(--md-on-surface-variant); }
@@ -771,7 +771,28 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 .ps-sch-tasks { flex: 1 1 100%; margin: 4px 0 0 44px; padding-left: 16px; font-size: 12px; }
 p.ps-sch-tasks { padding-left: 0; font-style: normal; }
 .ps-sch-warn { color: var(--status-important); }
-@media print { #route-schedule .ps-task-tools { display: none !important; } }
+.ps-sch-day__head .ps-sch-song { margin-left: auto; }
+.ps-sch-day--today { border: 2px solid var(--md-primary); }
+.ps-sch-day--done .ps-sch-day__body { display: none; }
+.ps-sch-day--done.ps-sch-day--open .ps-sch-day__body { display: block; }
+.ps-sch-day__toggle { min-height: 44px; padding: 0 8px; }
+/* .md-btn задаёт display и перебивает атрибут hidden. */
+#route-schedule .md-btn[hidden], #route-dashboard .md-btn[hidden] { display: none !important; }
+.ps-sch--past { color: var(--md-on-surface-variant); opacity: .6; }
+.ps-sch-slot.ps-sch--current { background: var(--md-primary-container); color: var(--md-on-primary-container); border-radius: 8px; padding-left: 6px; padding-right: 6px; border-top-color: transparent; }
+.ps-sch-break.ps-sch--current { color: var(--md-primary); font-weight: 600; }
+.ps-sch-slot .ps-sch-live.ps-chip { margin-left: 44px; }
+.ps-sch-bar { flex: 1 1 100%; height: 4px; margin: 4px 0 0 44px; border-radius: 2px; background: var(--md-outline-variant); overflow: hidden; }
+.ps-sch-bar i { display: block; height: 100%; background: var(--md-primary); }
+.ps-sch-now p { margin: 0 0 4px; }
+.ps-sch-now__day { font-size: 12px; color: var(--md-on-surface-variant); }
+.ps-sch-now__cur { font-size: 16px; font-weight: 600; }
+.ps-sch-now__left, .ps-sch-now__then { font-size: 14px; color: var(--md-on-surface-variant); }
+.ps-sch-seg { display: flex; gap: 3px; margin: 6px 0 8px; max-width: 320px; }
+.ps-sch-seg b { flex: 1; height: 8px; border-radius: 2px; background: var(--md-outline-variant); }
+.ps-sch-seg b.ps-sch-seg--past { background: var(--md-on-surface-variant); }
+.ps-sch-seg b.ps-sch-seg--today { background: var(--md-primary); }
+@media print { #route-schedule .ps-task-tools, .ps-sch-now { display: none !important; } }
 
 /* ---------- Ф7 · После школы: присутствие и S-253 ---------- */
 .ps-after-lay { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; align-items: start; }

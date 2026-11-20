@@ -29,6 +29,7 @@ function showRoute(route) {
   // прятал все экраны и не показывал ни одного — пользователь видел пустую
   // страницу без объяснения. Теперь неизвестное имя откатывается на дашборд.
   const safeRoute = ROUTES.includes(route) ? route : DEFAULT_ROUTE;
+  schLiveStop();
   $all('.route').forEach((el) => el.classList.add('hidden'));
   const target = document.getElementById('route-' + safeRoute);
   if (target) target.classList.remove('hidden');
@@ -276,6 +277,21 @@ async function renderDashboard() {
   } else {
     nowBox.innerHTML = `<div><h3>${esc(T('ps.stage.all_done'))}</h3></div>`;
   }
+
+  // «Сейчас» во время школы (вариант C) — та же полоса, что в расписании.
+  const ovNow = async () => {
+    const days = PSSchedule.build(assignment.startDate || '', await PSSchedule.times(), taskSchoolLang());
+    const st = schNowStatus(days);
+    const box = $('#ov-sch-now');
+    if (!box) return;
+    box.hidden = st.phase !== 'during';
+    box.innerHTML = st.phase === 'during' ? schNowHtml(st, days, await PSTasks.library())
+      + `<button type="button" class="md-btn md-btn-text" id="ov-sch-go" data-ro-allow>${esc(T('ps.stage.go', { screen: navLabel('schedule') }))}</button>` : '';
+    const go = $('#ov-sch-go');
+    if (go) go.onclick = () => showRoute('schedule');
+  };
+  await ovNow();
+  schLiveStart(ovNow);
 
   $('#ov-stages').innerHTML = stages.map((st) => `
     <li class="ps-ov-stage ps-ov-stage--${st.state}" ${st.state === 'current' ? 'aria-current="step"' : ''}>
@@ -2124,6 +2140,96 @@ function schDayName(iso, locale) {
   try { return new Date(iso + 'T00:00:00').toLocaleDateString(locale || schLocale(), { weekday: 'short' }); } catch (e) { return ''; }
 }
 
+// «Сейчас» (20.11.2026, варианты A + C): статусы уроков и полоса «сейчас и
+// далее» по местному времени; пересчёт раз в 30 с, пока экран открыт.
+const schLive = { timer: null, ctx: null, fn: null };
+
+function schLiveStart(fn) {
+  schLiveStop();
+  schLive.fn = fn;
+  schLive.timer = setInterval(fn, 30000);
+}
+function schLiveStop() {
+  if (schLive.timer) clearInterval(schLive.timer);
+  schLive.timer = null; schLive.fn = null;
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && schLive.fn) schLive.fn(); });
+
+function schNowStatus(days) {
+  const d = new Date();
+  return PSSchedule.status(days, DateUtils.todayIso(), d.getHours() * 60 + d.getMinutes());
+}
+
+/** «5б · Практ. занятие 1 · 2 зад.», «Обед 12:00–13:00»; другой день — с днём недели. */
+function schItemText(it, st, library) {
+  const day = it.date !== st.date ? schDayName(it.date) + ' ' : '';
+  if (it.kind !== 'lesson') return day + T(it.kind === 'lunch' ? 'ps.sch.lunch' : 'ps.sch.break', { n: it.minutes }) + ' · ' + it.start + '–' + it.end;
+  const n = it.practical ? (library || []).filter((t) => t.practical === it.practical).length : 0;
+  return [day + it.start + ' · ' + it.label, it.title, it.practical ? T('ps.sch.practical_n', { n: it.practical }) : '', n ? T('ps.sch.now.tasks', { n }) : '']
+    .filter(Boolean).join(' · ');
+}
+
+/** Вариант C: полоса «сейчас и далее». Пустая строка — показывать нечего. */
+function schNowHtml(st, days, library) {
+  if (st.phase === 'nodate') return '';
+  if (st.phase === 'before') return `<b>${esc(T('ps.sch.now.before', { n: st.daysUntil }))}</b>`;
+  if (st.phase === 'after') return `<b>${esc(T('ps.sch.now.after'))}</b>`;
+  const segs = days.map((d) => `<b class="ps-sch-seg--${st.dayStates[d.day]}"></b>`).join('');
+  let now;
+  if (st.current) {
+    const it = st.current.item;
+    now = `<p class="ps-sch-now__cur">${esc(it.kind === 'lesson'
+      ? T('ps.sch.now.current', { label: it.label, end: it.end })
+      : T(it.kind === 'lunch' ? 'ps.sch.now.lunch' : 'ps.sch.now.break', { end: it.end }))}</p>
+      <p class="ps-sch-now__left">${esc(T('ps.sch.now.left', { n: st.current.left }))}</p>
+      ${it.kind === 'lesson' && it.title ? `<p class="ps-sch-now__title">${esc(it.title)}</p>` : ''}`;
+  } else {
+    now = `<p class="ps-sch-now__cur">${esc(st.dayState === 'done' ? T('ps.sch.now.day_done') : T('ps.sch.now.day_starts', { start: st.next ? st.next.start : '' }))}</p>`;
+  }
+  return `<p class="ps-sch-now__day">${esc(T('ps.sch.now.day', { n: st.day, total: days.length, date: schDayName(st.date) + ', ' + psDate(st.date) }))}</p>
+    <div class="ps-sch-seg" aria-hidden="true">${segs}</div>${now}
+    ${st.next ? `<p>${esc(T('ps.sch.now.next', { what: schItemText(st.next, st, library) }))}</p>` : ''}
+    ${st.then ? `<p class="ps-sch-now__then">${esc(T('ps.sch.now.then', { what: schItemText(st.then, st, library) }))}</p>` : ''}`;
+}
+
+/** Вариант A: статусы уроков и дней в сетке + полоса C над ней. */
+function schApplyNow() {
+  const ctx = schLive.ctx;
+  const grid = $('#sch-grid');
+  if (!ctx || !grid) return;
+  const st = schNowStatus(ctx.days);
+  const box = $('#sch-now');
+  const html = schNowHtml(st, ctx.days, ctx.library);
+  box.hidden = !html;
+  // Без живой области: пересчёт раз в 30 с не должен зачитываться вслух.
+  if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
+  $all('.ps-sch-live', grid).forEach((el) => el.remove());
+  $all('[data-sid]', grid).forEach((el) => {
+    const state = (st.slots || {})[el.dataset.sid] || '';
+    el.classList.toggle('ps-sch--past', state === 'past');
+    el.classList.toggle('ps-sch--current', state === 'current');
+    if (state === 'current' && el.classList.contains('ps-sch-slot')) {
+      el.setAttribute('aria-current', 'time');
+      el.insertAdjacentHTML('beforeend', `<span class="ps-sch-live ps-chip ps-chip--accent">${esc(T('ps.sch.now.left', { n: st.current.left }))}</span>
+        <span class="ps-sch-live ps-sch-bar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, st.current.progress))}%"></i></span>`);
+    } else {
+      el.removeAttribute('aria-current');
+    }
+    if (state === 'past' && el.classList.contains('ps-sch-slot')) {
+      el.querySelector('.ps-sch-label').insertAdjacentHTML('beforeend', `<span class="ps-sch-live" aria-label="${esc(T('ps.sch.now.done_mark'))}"> ✓</span>`);
+    }
+  });
+  $all('.ps-sch-day', grid).forEach((sec) => {
+    const ds = (st.dayStates || {})[sec.dataset.day] || '';
+    sec.classList.toggle('ps-sch-day--done', ds === 'past');
+    sec.classList.toggle('ps-sch-day--today', ds === 'today');
+    const lab = sec.querySelector('.ps-sch-day__state');
+    lab.textContent = ds === 'past' ? T('ps.sch.now.day_done_short') : ds === 'today' ? T('ps.sch.today') : '';
+    lab.className = 'ps-sch-day__state' + (ds === 'past' ? ' ps-chip' : ds === 'today' ? ' ps-chip ps-chip--accent' : '');
+    sec.querySelector('.ps-sch-day__toggle').hidden = ds !== 'past';
+  });
+}
+
 async function schContext() {
   const [assignment, times, classes, library, all, students] = await Promise.all([
     Assignment.get(), PSSchedule.times(), PSClasses.list(), PSTasks.library(), PSTasks.assignments(), Students.list()
@@ -2181,11 +2287,14 @@ async function renderSchedule() {
 
   const teacherName = (l) => (cls ? taskTeacherName(cls, l, ctx.assignment) : '') || taskTeacherLabel(l);
   $('#sch-grid').innerHTML = ctx.days.map((d) => `
-    <section class="ps-sch-day" aria-label="${esc(T('ps.task.day_n', { n: d.day }))}">
+    <section class="ps-sch-day" data-day="${d.day}" aria-label="${esc(T('ps.task.day_n', { n: d.day }))}">
       <header class="ps-sch-day__head"><b>${d.date ? esc(schDayName(d.date) + ', ' + psDate(d.date)) : esc(T('ps.task.day_n', { n: d.day }))}</b>
+        <span class="ps-sch-day__state"></span>
+        <button type="button" class="md-btn md-btn-text ps-sch-day__toggle" data-ro-allow aria-expanded="false" hidden>${esc(T('ps.sch.now.show'))}</button>
         <span class="ps-sch-song">${esc(T('ps.sch.song', { n: d.open }))}</span></header>
+      <div class="ps-sch-day__body">
       ${d.slots.map((s) => {
-        if (s.kind !== 'lesson') return `<div class="ps-sch-break">${esc(T(s.kind === 'lunch' ? 'ps.sch.lunch' : 'ps.sch.break', { n: s.minutes }))}</div>`;
+        if (s.kind !== 'lesson') return `<div class="ps-sch-break" data-sid="${esc(s.key)}">${esc(T(s.kind === 'lunch' ? 'ps.sch.lunch' : 'ps.sch.break', { n: s.minutes }))}</div>`;
         const time = schUi.edit
           ? `<span class="ps-sch-time-edit"><input type="time" class="sch-t" data-id="${esc(s.id)}" data-f="start" value="${esc(s.start)}" aria-label="${esc(T('ps.sch.time_from', { n: s.label }))}">–<input type="time" class="sch-t" data-id="${esc(s.id)}" data-f="end" value="${esc(s.end)}" aria-label="${esc(T('ps.sch.time_to', { n: s.label }))}">${s.changed ? `<button type="button" class="md-btn md-btn-text sch-t-reset" data-id="${esc(s.id)}" title="${esc(T('ps.sch.reset_one', { v: s.baseStart + '–' + s.baseEnd }))}" aria-label="${esc(T('ps.sch.reset_one', { v: s.baseStart + '–' + s.baseEnd }))}">↺</button>` : ''}</span>`
           : `<span class="ps-sch-time">${esc(s.start + '–' + s.end)}</span>`;
@@ -2199,11 +2308,12 @@ async function renderSchedule() {
         const taskHtml = !tasks ? '' : tasks.length
           ? `<ul class="ps-sch-tasks">${tasks.map((t) => `<li>${esc(T('ps.task.short', { n: t.no }))}${t.title ? ' · ' + esc(t.title) : ''}${cls ? ' — ' + esc(t.names.join(' + ') || '—') : ''}${t.teacher ? ' · ' + esc(teacherName(t.teacher)) : ''}</li>`).join('')}</ul>`
           : `<p class="hint ps-sch-tasks">${esc(T('ps.sch.tasks_stub'))}</p>`;
-        return `<div class="ps-sch-slot${s.practical ? ' ps-sch-slot--practical' : ''}">
+        return `<div class="ps-sch-slot${s.practical ? ' ps-sch-slot--practical' : ''}" data-sid="${esc(s.id)}">
           <span class="ps-sch-label">${esc(s.label)}</span>${time}
           <span class="ps-sch-title">${esc(s.title)}${s.fallback ? ' <small>(ru)</small>' : ''}</span>${tags}${taskHtml}</div>`;
       }).join('')}
       <footer class="ps-sch-song">${esc(T('ps.sch.song', { n: d.close }))}</footer>
+      </div>
     </section>`).join('');
 
   $all('.sch-t').forEach((inp) => {
@@ -2220,6 +2330,17 @@ async function renderSchedule() {
     };
   });
   $all('.sch-t-reset').forEach((b) => { b.onclick = async () => { await PSSchedule.resetTime(b.dataset.id); renderSchedule(); }; });
+  $all('.ps-sch-day__toggle').forEach((b) => {
+    b.onclick = () => {
+      const day = b.closest('.ps-sch-day');
+      const open = day.classList.toggle('ps-sch-day--open');
+      b.setAttribute('aria-expanded', String(open));
+      b.textContent = T(open ? 'ps.sch.now.hide' : 'ps.sch.now.show');
+    };
+  });
+  schLive.ctx = ctx;
+  schApplyNow();
+  schLiveStart(schApplyNow);
   applyReadOnly('schedule');
   await renderLessonCards();
 }

@@ -10,6 +10,8 @@
  *  2. Своё время — только отличие от шаблона и только в своей школе; шаблон
  *     не меняется, завершённая школа не пишется.
  *  3. Даты дней — от даты начала без сдвига часовых поясов.
+ *  4. «Сейчас» (варианты A + C): статус урока/перерыва/дня по местному
+ *     времени; граница урока не даёт двух «текущих», своё время учитывается.
  */
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { readFileSync } from 'node:fs';
@@ -90,6 +92,28 @@ const min = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
   let refused = false;
   try { await DB.inSchool(s1).setMeta('scheduleTimes', {}); } catch (e) { refused = e.code === 'PS_READONLY'; }
   ok('завершённая школа не пишется', refused);
+
+  console.log('4. Сейчас');
+  const dd = S.build('2027-02-01', {}, 'ru');
+  const at = (date, hm) => S.status(dd, date, min(hm));
+  ok('нет даты начала — nodate', S.status(S.build('', {}, 'ru'), '2027-02-01', 600).phase === 'nodate');
+  let st = at('2027-01-20', '10:00');
+  ok('до школы — дни до начала', st.phase === 'before' && st.daysUntil === 12);
+  ok('после школы — after', at('2027-02-07', '09:00').phase === 'after');
+  st = at('2027-02-02', '11:20');
+  ok('вт 11:20 — идёт 5а, ещё 40 мин', st.phase === 'during' && st.day === 2 && st.current.item.sid === '5a' && st.current.left === 40 && st.current.progress === 47, JSON.stringify(st.current));
+  ok('4а/4б и понедельник — пройдены, 5б впереди', st.slots['4a'] === 'past' && st.slots['1a'] === 'past' && st.slots['5b'] === 'future' && st.dayStates[1] === 'past' && st.dayStates[2] === 'today' && st.dayStates[3] === 'future');
+  ok('далее — обед, потом 5б (практ. 1)', st.next.kind === 'lunch' && st.next.start === '12:00' && st.next.end === '13:00' && st.then.sid === '5b' && st.then.practical === 1);
+  st = at('2027-02-02', '10:30');
+  ok('граница: 10:30 — перерыв, не 4б', st.current.item.kind === 'break' && st.slots['4b'] === 'past' && st.current.item.end === '10:45');
+  st = at('2027-02-02', '07:50');
+  ok('утро — день ещё не начался, далее 4а', st.dayState === 'before' && !st.current && st.next.sid === '4a');
+  st = at('2027-02-02', '17:00');
+  ok('вечер — день закончен, далее — завтра 7а', st.dayState === 'done' && !st.current && st.next.sid === '7a' && st.next.date === '2027-02-03');
+  st = at('2027-02-06', '15:20');
+  ok('последний день после 18 — ничего далее', st.dayState === 'done' && st.next === null);
+  st = S.status(S.build('2027-02-01', { '5a': { start: '11:00', end: '12:00' } }, 'ru'), '2027-02-02', min('10:50'));
+  ok('своё время: перерыв тянется до нового начала 5а', st.current.item.kind === 'break' && st.current.item.end === '11:00' && st.current.left === 10);
 
   console.log(fails ? `\n✗ ${fails} проверок не прошло` : '\n✓ Ф6a: расписание — всё на месте');
   process.exit(fails ? 1 : 0);

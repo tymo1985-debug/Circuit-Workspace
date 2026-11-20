@@ -120,6 +120,10 @@
 - Своё время — meta `scheduleTimes` школы, только отличия
   (`normalizeTimes`), пусто — стандарт. Даты — от `Assignment.startDate`.
 - Экран — `#schedule`; печать A4 альбом через `CWPrint.document`.
+- «Сейчас» — только `PSSchedule.status(days, today, nowMin)` (чистая, местное
+  время; граница урока — уже следующий слот). Экран лишь накладывает классы
+  на готовую сетку (`schApplyNow`), таймер — `schLiveStart/Stop`, гасится в
+  `showRoute`. Полоса без живой области: пересчёт не зачитывается вслух.
 - Проверка — `scripts/check-pioneer-schedule.mjs`.
 
 ## После школы (Ф7, 15.11.2026) — инварианты
