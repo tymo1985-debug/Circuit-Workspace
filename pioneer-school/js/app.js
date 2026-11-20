@@ -20,7 +20,7 @@ function esc(value) {
 }
 
 const ROUTES = ['dashboard', 'anketa', 'assignment', 'registration', 'substitutes', 'students',
-  'dispatch', 'textbooks', 'tasks', 'schedule', 'practical', 'review', 'afterschool', 'signlanguage', 'backup',
+  'dispatch', 'textbooks', 'tasks', 'schedule', 'afterschool', 'signlanguage', 'backup',
   'docsarchive'];
 const DEFAULT_ROUTE = 'dashboard';
 
@@ -109,8 +109,6 @@ async function renderRouteInner(route) {
     case 'textbooks': return renderTextbooks();
     case 'tasks': return renderTasks();
     case 'schedule': return renderSchedule();
-    case 'practical': return renderPractical();
-    case 'review': return renderReview();
     case 'afterschool': return renderAfterSchool();
     case 'signlanguage': return renderSignLanguage();
     case 'backup': return; // static
@@ -1893,9 +1891,10 @@ function renderTextbookOrder(students, classes, order) {
 
 // ---------- ЗАДАНИЯ (Ф6) ----------
 // Доска «Tasks» и раздел G мастер-макета. Решения Алекса 15.11.2026: правило
-// участников — на задание; каждое задание один раз в каждом классе; день и
-// преподаватель — ручная правка → план школы → таблица уроков; библиотека
-// общая, тексты всегда текущие. Логика — js/modules/tasks.js.
+// участников — на задание; каждое задание один раз в каждом классе; библиотека
+// общая, тексты всегда текущие. Ф6a (20.11): день и время — из расписания по
+// практическому занятию задания; преподаватель — ручная правка → буква части
+// урока. Логика — js/modules/tasks.js, js/modules/schedule.js.
 
 const taskUi = { no: 1, classId: null, lang: null };
 
@@ -1915,11 +1914,19 @@ function taskTeacherLabel(letter) {
 }
 
 async function taskContext() {
-  const [library, all, classes, students, plan, seed, assignment] = await Promise.all([
-    PSTasks.library(), PSTasks.assignments(), PSClasses.list(), Students.list(), PSTasks.plan(), loadLessonsSeed(), Assignment.get()
+  const [library, all, classes, students, assignment, times] = await Promise.all([
+    PSTasks.library(), PSTasks.assignments(), PSClasses.list(), Students.list(), Assignment.get(), PSSchedule.times()
   ]);
-  const lessons = await PSTasks.lessonTable(seed);
-  return { library, all, classes, students, plan, lessons, assignment, planIdx: PSTasks.planIndex(plan) };
+  const days = PSSchedule.build(assignment.startDate || '', times, taskSchoolLang());
+  return { library, all, classes, students, assignment, days };
+}
+
+/** «Практ. 1 · Вт, 02.02 · 13:00–14:25» */
+function taskWhen(res, opts = {}) {
+  if (!res.practical) return '';
+  const T2 = opts.L || T;
+  const day = res.date ? schDayName(res.date, opts.locale) + ', ' + (opts.date ? opts.date(res.date) : psDate(res.date)) : T2(opts.L ? 'doc.ps.task.day' : 'ps.task.day_n', { n: res.day });
+  return [T2(opts.L ? 'doc.ps.sch.practical' : 'ps.sch.practical_n', { n: res.practical }), day, res.start + '–' + res.end].join(' · ');
 }
 
 function taskMembers(ctx, classId) {
@@ -1947,13 +1954,12 @@ async function renderTasks() {
   $('#task-list').innerHTML = ctx.library.map((t) => {
     const txt = PSTasks.text(t, lang);
     return `<li><button type="button" class="ps-task-li${t.no === taskUi.no ? ' ps-task-li--on' : ''}" data-no="${t.no}" data-ro-allow aria-current="${t.no === taskUi.no}">
-      <b>${t.no}</b><span>${esc(txt.title || T('ps.task.untitled'))}</span>${t.lesson ? `<small>${esc(T('ps.task.lesson_n', { n: t.lesson }))}</small>` : ''}</button></li>`;
+      <b>${t.no}</b><span>${esc(txt.title || T('ps.task.untitled'))}</span>${t.practical ? `<small>${esc(T('ps.sch.practical_n', { n: t.practical }))}</small>` : t.lesson ? `<small>${esc(T('ps.task.lesson_n', { n: t.lesson }))}</small>` : ''}</button></li>`;
   }).join('');
   $all('.ps-task-li').forEach((b) => { b.onclick = () => { taskUi.no = Number(b.dataset.no); renderTasks(); }; });
 
   renderTaskEditor(ctx);
   renderTaskDistribution(ctx, cls);
-  renderTaskPlan(ctx);
   applyReadOnly('tasks');
 }
 
@@ -1974,16 +1980,20 @@ function renderTaskEditor(ctx) {
       <label><span>${esc(T('ps.task.f.lesson'))}</span><select id="te-lesson">${opt('', '—', t.lesson || '')}${Array.from({ length: PSTasks.LESSONS }, (_, i) => opt(i + 1, String(i + 1), t.lesson)).join('')}</select></label>
       <label><span>${esc(T('ps.task.f.participants'))}</span><select id="te-count">${[2, 3, 4].map((n) => opt(n, String(n), t.participants)).join('')}</select></label>
     </div>
+    <label><span>${esc(T('ps.sch.f.practical'))}</span><select id="te-practical">${opt('', T('ps.sch.practical_none'), t.practical || '')}${PSTasks.PRACTICALS.map((n) => {
+      const at = PSSchedule.practical(n);
+      return opt(n, T('ps.sch.practical_n', { n }) + ' · ' + T('ps.sch.lesson_label', { n: PSSchedule.label(at.id) }) + ' · ' + T('ps.task.day_n', { n: at.day }), t.practical);
+    }).join('')}</select></label>
     <label><span>${esc(T('ps.task.f.rule'))}</span><select id="te-rule">${PSTasks.RULES.map((r) => opt(r, T('ps.task.rule.' + r), t.rule)).join('')}</select></label>
     <p class="hint">${esc(T('ps.task.shared_hint'))}</p>`;
   $('#te-lang').onchange = (e) => { taskUi.lang = e.target.value; renderTasks(); };
   const save = async () => {
     const texts = { ...(t.texts || {}) };
     texts[lang] = { title: $('#te-title').value.trim(), situation: $('#te-situation').value.trim(), description: $('#te-description').value.trim() };
-    await PSTasks.saveTask({ ...t, texts, lesson: Number($('#te-lesson').value) || null, participants: Number($('#te-count').value), rule: $('#te-rule').value });
+    await PSTasks.saveTask({ ...t, texts, lesson: Number($('#te-lesson').value) || null, practical: Number($('#te-practical').value) || null, participants: Number($('#te-count').value), rule: $('#te-rule').value });
     renderTasks();
   };
-  ['#te-title', '#te-situation', '#te-description', '#te-lesson', '#te-count', '#te-rule'].forEach((id) => { $(id).onchange = save; });
+  ['#te-title', '#te-situation', '#te-description', '#te-lesson', '#te-practical', '#te-count', '#te-rule'].forEach((id) => { $(id).onchange = save; });
 }
 
 function renderTaskDistribution(ctx, cls) {
@@ -1998,15 +2008,14 @@ function renderTaskDistribution(ctx, cls) {
 
   box.innerHTML = ctx.library.map((t) => {
     const slot = PSTasks.slot(ctx.all, cls.id, t.no);
-    const res = PSTasks.resolve(t, slot, ctx.planIdx, ctx.lessons);
-    const auto = PSTasks.resolve(t, { people: [], teacher: null, day: null }, ctx.planIdx, ctx.lessons);
+    const res = PSTasks.resolve(t, slot, ctx.days);
     const probs = PSTasks.problems(t, slot, byId);
     const names = slot.people.map((id) => allById.get(id)).filter(Boolean).map((s) => Students.fullName(s));
     const txt = PSTasks.text(t, lang);
     const chips = probs.length
       ? probs.map((p) => `<span class="ps-chip ps-chip--warn">${esc(T('ps.task.prob.' + p))}</span>`).join('')
       : `<span class="ps-chip ps-chip--ok">✓</span>`;
-    const when = [res.day ? T('ps.task.day_n', { n: res.day }) : '', res.teacher ? taskTeacherName(cls, res.teacher, ctx.assignment) || taskTeacherLabel(res.teacher) : ''].filter(Boolean).join(' · ');
+    const when = [taskWhen(res) || T('ps.sch.practical_none'), res.teacher ? taskTeacherName(cls, res.teacher, ctx.assignment) || taskTeacherLabel(res.teacher) : ''].filter(Boolean).join(' · ');
     const pickers = Array.from({ length: t.participants }, (_, i) => {
       const cur = slot.people[i] || '';
       const opts = [`<option value="">—</option>`].concat(members.map((s) => `<option value="${esc(s.id)}" ${s.id === cur ? 'selected' : ''}>${esc(Students.fullName(s))}</option>`));
@@ -2020,11 +2029,8 @@ function renderTaskDistribution(ctx, cls) {
       <p class="hint">${esc(T('ps.task.rule_label', { rule: T('ps.task.rule.' + t.rule) }))}</p>
       <div class="ps-task-row">${pickers}</div>
       <div class="ps-task-row">
-        <label><span>${esc(T('ps.task.f.day'))}</span><select class="td-day" data-no="${t.no}">
-          ${dayOpt('', T('ps.task.auto_value', { v: auto.day ? T('ps.task.day_n', { n: auto.day }) : '—' }), slot.day || '')}
-          ${Array.from({ length: PSTasks.DAYS }, (_, i) => dayOpt(i + 1, T('ps.task.day_n', { n: i + 1 }), slot.day)).join('')}</select></label>
         <label><span>${esc(T('ps.task.f.teacher'))}</span><select class="td-teacher" data-no="${t.no}">
-          ${dayOpt('', T('ps.task.auto_value', { v: auto.teacher ? taskTeacherLabel(auto.teacher) : '—' }), slot.teacher || '')}
+          ${dayOpt('', T('ps.task.auto_value', { v: res.autoTeacher ? taskTeacherLabel(res.autoTeacher) : '—' }), slot.teacher || '')}
           ${PSTasks.TEACHERS.map((l) => dayOpt(l, taskTeacherLabel(l) + (taskTeacherName(cls, l, ctx.assignment) ? ' · ' + taskTeacherName(cls, l, ctx.assignment) : ''), slot.teacher)).join('')}</select></label>
       </div>
     </details>`;
@@ -2048,7 +2054,6 @@ function renderTaskDistribution(ctx, cls) {
       slot.people = people.filter(Boolean);
     });
   });
-  $all('.td-day', box).forEach((s) => { s.onchange = () => update(Number(s.dataset.no), (slot) => { slot.day = Number(s.value) || null; }); });
   $all('.td-teacher', box).forEach((s) => { s.onchange = () => update(Number(s.dataset.no), (slot) => { slot.teacher = s.value || null; }); });
 }
 
@@ -2072,10 +2077,10 @@ function taskPrintSlips(ctx, cls) {
   const slips = ctx.library.map((t) => {
     const slot = PSTasks.slot(ctx.all, cls.id, t.no);
     if (!slot.people.length) return '';
-    const res = PSTasks.resolve(t, slot, ctx.planIdx, ctx.lessons);
+    const res = PSTasks.resolve(t, slot, ctx.days);
     const txt = PSTasks.text(t, lang);
     const people = slot.people.map((id) => byId.get(id)).filter(Boolean).map((s) => esc(Students.fullName(s)));
-    const when = [t.lesson ? L('doc.ps.task.lesson', { n: t.lesson }) : '', res.day ? L('doc.ps.task.day', { n: res.day }) : '', res.date ? date(res.date) : ''].filter(Boolean).join(' · ');
+    const when = [t.lesson ? L('doc.ps.task.lesson', { n: t.lesson }) : '', taskWhen(res, { L, date, locale: PSDocLang.LOCALES[docLang] })].filter(Boolean).join(' · ');
     const teacher = taskTeacherName(cls, res.teacher, ctx.assignment);
     return `<section class="slip">
       <h2>${esc(L('doc.ps.task.head', { n: t.no }))}${txt.title ? ' · ' + esc(txt.title) : ''}</h2>
@@ -2097,38 +2102,6 @@ function taskPrintSlips(ctx, cls) {
   });
 }
 
-function renderTaskPlan(ctx) {
-  const table = $('#task-plan');
-  const head = `<thead><tr><th></th>${ctx.plan.days.map((d, i) => `<th>${esc(T('ps.task.day_n', { n: i + 1 }))}</th>`).join('')}</tr></thead>`;
-  const row = (label, cells) => `<tr><th scope="row">${esc(label)}</th>${cells}</tr>`;
-  const dates = row(T('ps.task.plan_date'), ctx.plan.days.map((d, i) => `<td><input type="date" class="tp-date" data-i="${i}" value="${esc(d.date)}" aria-label="${esc(T('ps.task.plan_date') + ' ' + (i + 1))}"></td>`).join(''));
-  const teacherRow = (l) => row(taskTeacherLabel(l), ctx.plan.days.map((d, i) => `<td><input type="text" class="tp-lessons" inputmode="numeric" data-i="${i}" data-t="${l}" value="${esc(d[l].join(', '))}" placeholder="${esc(T('ps.task.plan_ph'))}" aria-label="${esc(taskTeacherLabel(l) + ' · ' + T('ps.task.day_n', { n: i + 1 }))}"></td>`).join(''));
-  table.innerHTML = head + `<tbody>${dates}${teacherRow('A')}${teacherRow('Б')}</tbody>`;
-  const save = async (fn) => { const plan = await PSTasks.plan(); fn(plan); await PSTasks.savePlan(plan); renderTasks(); };
-  $all('.tp-date', table).forEach((inp) => { inp.onchange = () => save((p) => { p.days[Number(inp.dataset.i)].date = inp.value; }); });
-  $all('.tp-lessons', table).forEach((inp) => { inp.onchange = () => save((p) => { p.days[Number(inp.dataset.i)][inp.dataset.t] = PSTasks.parseLessons(inp.value); }); });
-  $('#task-plan-template').onclick = async () => {
-    await PSTasks.saveTemplate(await PSTasks.plan());
-    taskStatus(T('ps.task.plan_tpl_saved'));
-  };
-}
-
-async function renderLessonTable() {
-  const seed = await loadLessonsSeed();
-  const lessons = await PSTasks.lessonTable(seed);
-  const opt = (v, label, cur) => `<option value="${v}" ${String(v) === String(cur || '') ? 'selected' : ''}>${esc(label)}</option>`;
-  const table = $('#lesson-table');
-  table.innerHTML = `<thead><tr><th>${esc(T('ps.task.f.lesson'))}</th><th>${esc(T('ps.task.f.day'))}</th><th>${esc(T('ps.task.f.teacher'))}</th></tr></thead><tbody>${
-    Object.keys(lessons).map((n) => `<tr><th scope="row">${esc(n)}</th>
-      <td><select class="lt-day" data-n="${n}" aria-label="${esc(T('ps.task.f.day') + ' · ' + n)}">${opt('', '—', lessons[n].day)}${Array.from({ length: PSTasks.DAYS }, (_, i) => opt(i + 1, String(i + 1), lessons[n].day)).join('')}</select></td>
-      <td><select class="lt-teacher" data-n="${n}" aria-label="${esc(T('ps.task.f.teacher') + ' · ' + n)}">${opt('', '—', lessons[n].teacher)}${PSTasks.TEACHERS.map((l) => opt(l, taskTeacherLabel(l), lessons[n].teacher)).join('')}</select></td></tr>`).join('')
-  }</tbody>`;
-  const save = async (n) => {
-    await PSTasks.setLesson(n, { day: Number($(`.lt-day[data-n="${n}"]`).value) || null, teacher: $(`.lt-teacher[data-n="${n}"]`).value || null });
-  };
-  $all('.lt-day, .lt-teacher', table).forEach((s) => { s.onchange = () => save(s.dataset.n); });
-}
-
 // ---------- SCHEDULE / LESSONS ----------
 async function loadLessonsSeed() {
   if (LESSONS_SEED) return LESSONS_SEED;
@@ -2140,12 +2113,154 @@ async function loadLessonsSeed() {
   return LESSONS_SEED;
 }
 
+// Ф6a (20.11.2026): расписание — только чтение (js/modules/schedule.js);
+// своё время у слота — редкое исключение одной школы, хранится отличием.
+const schUi = { classId: null, edit: false };
+
+function schLocale() { return document.documentElement.lang || 'ru'; }
+
+/** Короткое название дня недели на языке интерфейса (или документа). */
+function schDayName(iso, locale) {
+  try { return new Date(iso + 'T00:00:00').toLocaleDateString(locale || schLocale(), { weekday: 'short' }); } catch (e) { return ''; }
+}
+
+async function schContext() {
+  const [assignment, times, classes, library, all, students] = await Promise.all([
+    Assignment.get(), PSSchedule.times(), PSClasses.list(), PSTasks.library(), PSTasks.assignments(), Students.list()
+  ]);
+  const lang = taskSchoolLang();
+  return { assignment, times, classes, library, all, students, lang, days: PSSchedule.build(assignment.startDate || '', times, lang) };
+}
+
+/** Задания класса в практическом занятии n: [{ no, title, names, teacher }]. */
+function schTasksIn(ctx, cls, n) {
+  const byId = new Map(ctx.students.map((s) => [s.id, s]));
+  return ctx.library.filter((t) => t.practical === n).map((t) => {
+    const slot = cls ? PSTasks.slot(ctx.all, cls.id, t.no) : { people: [], teacher: null };
+    const res = PSTasks.resolve(t, slot, ctx.days);
+    return {
+      no: t.no, title: PSTasks.text(t, ctx.lang).title,
+      names: slot.people.map((id) => byId.get(id)).filter(Boolean).map((s) => Students.fullName(s)),
+      teacher: res.teacher
+    };
+  });
+}
+
 async function renderSchedule() {
+  const ctx = await schContext();
+  if (!ctx.classes.some((c) => c.id === schUi.classId)) schUi.classId = ctx.classes.length ? ctx.classes[0].id : null;
+  const cls = ctx.classes.find((c) => c.id === schUi.classId) || null;
+  const start = ctx.assignment.startDate || '';
+  const changed = Object.keys(ctx.times).length;
+
+  const sel = $('#sch-class');
+  sel.innerHTML = ctx.classes.length
+    ? ctx.classes.map((c) => `<option value="${esc(c.id)}" ${c.id === schUi.classId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')
+    : `<option value="">${esc(T('ps.task.no_classes'))}</option>`;
+  sel.disabled = !ctx.classes.length;
+  sel.onchange = () => { schUi.classId = sel.value; renderSchedule(); };
+
+  const wd = PSSchedule.weekday(start);
+  $('#sch-start').textContent = start
+    ? T('ps.sch.start', { date: psDate(start) }) + (wd !== 1 ? ' · ' + T('ps.sch.not_monday') : '')
+    : T('ps.sch.no_start');
+  $('#sch-start').classList.toggle('ps-sch-warn', !start || wd !== 1);
+  if (DB.isReadOnly()) schUi.edit = false;
+  $('#sch-edit').hidden = DB.isReadOnly();
+  $('#sch-edit').textContent = T(schUi.edit ? 'ps.sch.edit_done' : 'ps.sch.edit');
+  $('#sch-edit').setAttribute('aria-pressed', String(schUi.edit));
+  $('#sch-edit').onclick = () => { schUi.edit = !schUi.edit; renderSchedule(); };
+  $('#sch-reset').hidden = !changed;
+  $('#sch-reset').textContent = T('ps.sch.reset_all', { n: changed });
+  $('#sch-reset').onclick = async () => {
+    if (!confirm(T('ps.sch.reset_all_confirm'))) return;
+    await PSSchedule.resetAll();
+    renderSchedule();
+  };
+  $('#sch-print').onclick = () => schPrint(ctx, cls);
+
+  const teacherName = (l) => (cls ? taskTeacherName(cls, l, ctx.assignment) : '') || taskTeacherLabel(l);
+  $('#sch-grid').innerHTML = ctx.days.map((d) => `
+    <section class="ps-sch-day" aria-label="${esc(T('ps.task.day_n', { n: d.day }))}">
+      <header class="ps-sch-day__head"><b>${d.date ? esc(schDayName(d.date) + ', ' + psDate(d.date)) : esc(T('ps.task.day_n', { n: d.day }))}</b>
+        <span class="ps-sch-song">${esc(T('ps.sch.song', { n: d.open }))}</span></header>
+      ${d.slots.map((s) => {
+        if (s.kind !== 'lesson') return `<div class="ps-sch-break">${esc(T(s.kind === 'lunch' ? 'ps.sch.lunch' : 'ps.sch.break', { n: s.minutes }))}</div>`;
+        const time = schUi.edit
+          ? `<span class="ps-sch-time-edit"><input type="time" class="sch-t" data-id="${esc(s.id)}" data-f="start" value="${esc(s.start)}" aria-label="${esc(T('ps.sch.time_from', { n: s.label }))}">–<input type="time" class="sch-t" data-id="${esc(s.id)}" data-f="end" value="${esc(s.end)}" aria-label="${esc(T('ps.sch.time_to', { n: s.label }))}">${s.changed ? `<button type="button" class="md-btn md-btn-text sch-t-reset" data-id="${esc(s.id)}" title="${esc(T('ps.sch.reset_one', { v: s.baseStart + '–' + s.baseEnd }))}" aria-label="${esc(T('ps.sch.reset_one', { v: s.baseStart + '–' + s.baseEnd }))}">↺</button>` : ''}</span>`
+          : `<span class="ps-sch-time">${esc(s.start + '–' + s.end)}</span>`;
+        const tags = [
+          s.practical ? `<span class="ps-chip ps-chip--accent">${esc(T('ps.sch.practical_n', { n: s.practical }))}</span>` : '',
+          s.review ? `<span class="ps-chip">${esc(T('ps.sch.review_n', { n: s.review }))}</span>` : '',
+          s.label === '18' ? `<span class="ps-chip">${esc(teacherName(s.teacher))}</span>` : '',
+          s.changed ? `<span class="ps-chip ps-chip--warn">${esc(T('ps.sch.changed'))}</span>` : ''
+        ].join('');
+        const tasks = s.practical ? schTasksIn(ctx, cls, s.practical) : null;
+        const taskHtml = !tasks ? '' : tasks.length
+          ? `<ul class="ps-sch-tasks">${tasks.map((t) => `<li>${esc(T('ps.task.short', { n: t.no }))}${t.title ? ' · ' + esc(t.title) : ''}${cls ? ' — ' + esc(t.names.join(' + ') || '—') : ''}${t.teacher ? ' · ' + esc(teacherName(t.teacher)) : ''}</li>`).join('')}</ul>`
+          : `<p class="hint ps-sch-tasks">${esc(T('ps.sch.tasks_stub'))}</p>`;
+        return `<div class="ps-sch-slot${s.practical ? ' ps-sch-slot--practical' : ''}">
+          <span class="ps-sch-label">${esc(s.label)}</span>${time}
+          <span class="ps-sch-title">${esc(s.title)}${s.fallback ? ' <small>(ru)</small>' : ''}</span>${tags}${taskHtml}</div>`;
+      }).join('')}
+      <footer class="ps-sch-song">${esc(T('ps.sch.song', { n: d.close }))}</footer>
+    </section>`).join('');
+
+  $all('.sch-t').forEach((inp) => {
+    inp.onchange = async () => {
+      const id = inp.dataset.id;
+      const startEl = $(`.sch-t[data-id="${id}"][data-f="start"]`);
+      const endEl = $(`.sch-t[data-id="${id}"][data-f="end"]`);
+      if (!PSSchedule.validTime(startEl.value) || !PSSchedule.validTime(endEl.value) || startEl.value >= endEl.value) {
+        alert(T('ps.sch.time_invalid'));
+        return renderSchedule();
+      }
+      await PSSchedule.setTime(id, startEl.value, endEl.value);
+      renderSchedule();
+    };
+  });
+  $all('.sch-t-reset').forEach((b) => { b.onclick = async () => { await PSSchedule.resetTime(b.dataset.id); renderSchedule(); }; });
+  applyReadOnly('schedule');
+  await renderLessonCards();
+}
+
+function schPrint(ctx, cls) {
+  const docLang = PSDocLang.LANGS.includes(ctx.lang) ? ctx.lang : PSDocLang.get();
+  const L = (k, v) => (typeof CWI18n !== 'undefined' ? CWI18n.t(k, v, docLang) : k);
+  const locale = PSDocLang.LOCALES[docLang] || 'ru-RU';
+  const date = (iso) => { try { return new Date(iso + 'T00:00:00').toLocaleDateString(locale); } catch (e) { return iso; } };
+  const days = PSSchedule.build(ctx.assignment.startDate || '', ctx.times, docLang);
+  const teacherName = (l) => (cls ? taskTeacherName(cls, l, ctx.assignment) : '') || L(l === 'A' ? 'doc.ps.sch.teacher_a' : 'doc.ps.sch.teacher_b');
+  const head = days.map((d) => `<th>${d.date ? esc(schDayName(d.date, locale) + ', ' + date(d.date)) : esc(L('doc.ps.task.day', { n: d.day }))}</th>`).join('');
+  const cell = (d) => `<td><p class="song">${esc(L('doc.ps.sch.song', { n: d.open }))}</p>${d.slots.map((s) => {
+    if (s.kind !== 'lesson') return `<p class="brk">${esc(L(s.kind === 'lunch' ? 'doc.ps.sch.lunch' : 'doc.ps.sch.break', { n: s.minutes }))}</p>`;
+    const extra = [
+      s.practical ? L('doc.ps.sch.practical', { n: s.practical }) : '',
+      s.label === '18' ? teacherName(s.teacher) : ''
+    ].filter(Boolean).join(' · ');
+    const tasks = s.practical ? schTasksIn(ctx, cls, s.practical) : [];
+    return `<div class="sl${s.changed ? ' ch' : ''}"><b>${esc(L('doc.ps.sch.lesson', { n: s.label }))}</b> ${esc(s.start + '–' + s.end)}${s.changed ? ' *' : ''}<br>${esc(s.title)}${extra ? `<br><i>${esc(extra)}</i>` : ''}${
+      tasks.length ? `<ul>${tasks.map((t) => `<li>${esc(L('doc.ps.task.head', { n: t.no }))}: ${esc(t.names.join(', ') || '—')}</li>`).join('')}</ul>` : ''}</div>`;
+  }).join('')}<p class="song">${esc(L('doc.ps.sch.song', { n: d.close }))}</p></td>`;
+  const changed = days.some((d) => d.slots.some((s) => s.changed));
+  const teachers = cls ? [cls.name, L('doc.ps.sch.teacher_a') + ': ' + teacherName('A'), L('doc.ps.sch.teacher_b') + ': ' + teacherName('Б')].join(' · ') : '';
+  CWPrint.document({
+    title: L('doc.ps.sch.title') + (cls ? ' · ' + cls.name : ''),
+    lang: docLang,
+    css: '@page{size:A4 landscape;margin:10mm}body{font-size:8pt}table{width:100%;border-collapse:collapse;table-layout:fixed}'
+      + 'th,td{border:1px solid #999;padding:3pt;vertical-align:top}th{font-size:9pt}.sl{margin:0 0 4pt}.ch{background:#f3f3f3}'
+      + '.brk,.song{color:#555;margin:0 0 4pt}ul{margin:2pt 0 0 10pt;padding:0}h1{font-size:12pt;margin:0 0 2pt}.sub{margin:0 0 6pt}',
+    html: `<h1>${esc(L('doc.ps.sch.title'))}</h1>${teachers ? `<p class="sub">${esc(teachers)}</p>` : ''}<table><thead><tr>${head}</tr></thead><tbody><tr>${days.map(cell).join('')}</tr></tbody></table>${changed ? `<p>* ${esc(L('doc.ps.sch.changed'))}</p>` : ''}`,
+    onBlocked: () => alert(T('ps.docs.print_blocked')),
+  });
+}
+
+/** Карточки уроков S-255 (видео, чтения) — без изменений с 1.x. */
+async function renderLessonCards() {
   const seed = await loadLessonsSeed();
   const stored = await DB.list('lessons');
   const doneMap = Object.fromEntries(stored.map((l) => [l.key, l.done]));
 
-  await renderLessonTable();
   const el = $('#lessons-list');
   el.innerHTML = seed.lessons.map((lesson) => {
     const key = `${lesson.number}${lesson.letter || ''}`;
@@ -2195,63 +2310,6 @@ function mediaBlock(label, media) {
     ${media.cue ? `<div class="media-cue">${esc(media.cue)}</div>` : ''}
     ${media.note ? `<div class="media-cue">${esc(media.note)}</div>` : ''}
   </div>`;
-}
-
-// ---------- PRACTICAL ----------
-async function renderPractical() {
-  $('#practical-rules').innerHTML = Practical.RULES.map((r) => `<li>${r}</li>`).join('');
-  const sessions = await Practical.list();
-  const el = $('#practical-list');
-  el.innerHTML = sessions.map((s) => `
-    <div class="panel">
-      <h3>${T('ps.app.practical_n', { n: esc(s.sessionNumber) })}</h3>
-      <label class="checkbox-label"><input type="checkbox" class="pr-rehearsed" data-id="${esc(s.id)}" ${s.rehearsed ? 'checked' : ''}> ${T('ps.app.otrepetirovano_zaranee')}</label>
-      <label class="checkbox-label"><input type="checkbox" class="pr-general" data-id="${esc(s.id)}" ${s.generalRehearsalDone ? 'checked' : ''}> ${T('ps.app.generalnaya_repeticiya_v_den')}</label>
-      <label>${T('ps.app.chemu_nauchilis_itog_zanyatiya')}
-        <textarea class="pr-takeaway" data-id="${esc(s.id)}" rows="2">${esc(s.keyTakeaway || '')}</textarea>
-      </label>
-    </div>`).join('');
-
-  $all('.pr-rehearsed', el).forEach((cb) => cb.onchange = () => savePracticalField(cb.dataset.id, 'rehearsed', cb.checked));
-  $all('.pr-general', el).forEach((cb) => cb.onchange = () => savePracticalField(cb.dataset.id, 'generalRehearsalDone', cb.checked));
-  $all('.pr-takeaway', el).forEach((ta) => ta.onblur = () => savePracticalField(ta.dataset.id, 'keyTakeaway', ta.value));
-}
-
-async function savePracticalField(id, field, value) {
-  const session = await DB.get('practicalSessions', id);
-  if (!session) return;
-  session[field] = value;
-  await Practical.save(session);
-}
-
-// ---------- REVIEW ----------
-async function renderReview() {
-  const reviews = await Review.list();
-  const el = $('#review-list');
-  el.innerHTML = `<div class="panel"><p class="hint">${esc(Review.NOTE)}</p></div>` + reviews.map((r) => `
-    <div class="panel">
-      <h3>${T('ps.app.day_n', { n: esc(r.day) })}</h3>
-      <div class="form-grid">
-        <label>${T('ps.app.minut_u_prepodavatelya_a')} <input type="number" class="rv-a" data-id="${esc(r.id)}" value="${esc(r.teacherAMinutesUsed ?? '')}" max="15"></label>
-        <label>${T('ps.app.minut_u_prepodavatelya_b')} <input type="number" class="rv-b" data-id="${esc(r.id)}" value="${esc(r.teacherBMinutesUsed ?? '')}" max="15"></label>
-        <label class="checkbox-label"><input type="checkbox" class="rv-done" data-id="${esc(r.id)}" ${r.done ? 'checked' : ''}> ${T('ps.app.provedeno')}</label>
-      </div>
-      <label>${T('ps.app.dopolnitelnye_mestnye_voprosy')}
-        <textarea class="rv-notes" data-id="${esc(r.id)}" rows="2">${esc(r.additionalLocalQuestions || '')}</textarea>
-      </label>
-    </div>`).join('');
-
-  $all('.rv-a', el).forEach((i) => i.onblur = () => saveReviewField(i.dataset.id, 'teacherAMinutesUsed', Number(i.value) || null));
-  $all('.rv-b', el).forEach((i) => i.onblur = () => saveReviewField(i.dataset.id, 'teacherBMinutesUsed', Number(i.value) || null));
-  $all('.rv-done', el).forEach((cb) => cb.onchange = () => saveReviewField(cb.dataset.id, 'done', cb.checked));
-  $all('.rv-notes', el).forEach((ta) => ta.onblur = () => saveReviewField(ta.dataset.id, 'additionalLocalQuestions', ta.value));
-}
-
-async function saveReviewField(id, field, value) {
-  const r = await DB.get('dailyReviews', id);
-  if (!r) return;
-  r[field] = value;
-  await Review.save(r);
 }
 
 // ---------- AFTER SCHOOL ----------

@@ -7,15 +7,17 @@
 //    видна и при перепечатке бланков завершённой школы (снимков нет).
 //  - Правило участников — одно на задание (RULES), не на роль.
 //  - Каждое задание — ровно один раз в каждом классе.
-//  - День и преподаватель задания: ручная правка → план школы на 6 дней →
-//    таблица уроков. Таблица уроков общая (GLOBAL_META `lessonTable`),
-//    значения по умолчанию — из data/seed-lessons.json.
-//  - План школы — meta `schoolPlan` школы; новая школа начинает с копии
-//    шаблона (GLOBAL_META `schoolPlanTemplate`, без дат).
+//  - Ф6a (20.11.2026): день и время задания — из расписания
+//    (js/modules/schedule.js): поле `practical` (1–4) задания → слот
+//    практического занятия. Таблица уроков и план школы на 6 дней убраны
+//    (решение Алекса 18.11); их старые ключи `lessonTable`, `schoolPlan`,
+//    `schoolPlanTemplate` остаются в базе и копиях нетронутыми, не читаются.
+//    Какое задание в каком занятии — список Алекса (пока заглушки: пусто).
 //  - Распределение — meta `tasks` школы:
 //    { [classId]: { [no]: { people: [studentId…], teacher: null|'A'|'Б',
-//      day: null|1–6 } } }. people[0] — главный, остальные — помогающие.
-//    null у teacher/day — «как в плане/уроке».
+//      day } } }. people[0] — главный, остальные — помогающие.
+//    null у teacher — «как в расписании» (буква части урока). `day` —
+//    наследие до Ф6a: хранится как было, не читается.
 //  - «Распределить автоматически» заполняет только пустые места; ручные
 //    решения не трогает. Нарушение правила — предупреждение, не запрет.
 // Функции без DB — чистые (scripts/check-pioneer-tasks.mjs).
@@ -24,25 +26,28 @@ const PSTasks = {
   COUNT: 18,
   LESSONS: 18,
   DAYS: 6,
+  PRACTICALS: [1, 2, 3, 4],
   TEACHERS: ['A', 'Б'],
   RULES: ['sameOrRelated', 'brothers', 'sisters', 'any'],
   MIN_PEOPLE: 2,
   MAX_PEOPLE: 4,
   FALLBACK_LANG: 'ru',
-  KEYS: { library: 'taskLibrary', lessons: 'lessonTable', template: 'schoolPlanTemplate', plan: 'schoolPlan', tasks: 'tasks' },
+  KEYS: { library: 'taskLibrary', tasks: 'tasks' },
 
   // ---------- Библиотека ----------
 
-  blankTask(no) { return { no, lesson: null, participants: 2, rule: 'sameOrRelated', texts: {} }; },
+  blankTask(no) { return { no, lesson: null, practical: null, participants: 2, rule: 'sameOrRelated', texts: {} }; },
 
   normalizeTask(t, no) {
     const base = this.blankTask(no);
     const src = t && typeof t === 'object' ? t : {};
     const lesson = Number(src.lesson);
     const n = Number(src.participants);
+    const pr = Number(src.practical);
     return {
       no,
       lesson: lesson >= 1 && lesson <= this.LESSONS ? lesson : null,
+      practical: this.PRACTICALS.includes(pr) ? pr : null,
       participants: n >= this.MIN_PEOPLE && n <= this.MAX_PEOPLE ? n : base.participants,
       rule: this.RULES.includes(src.rule) ? src.rule : base.rule,
       texts: src.texts && typeof src.texts === 'object' ? src.texts : {}
@@ -81,98 +86,6 @@ const PSTasks = {
     };
   },
 
-  // ---------- Таблица уроков ----------
-
-  /** Из seed: день — если известен; преподаватель — только если у урока одна буква. */
-  lessonDefaults(seed) {
-    const out = {};
-    for (let n = 1; n <= this.LESSONS; n++) out[n] = { day: null, teacher: null };
-    ((seed && seed.lessons) || []).forEach((l) => {
-      const n = Number(l.number);
-      if (!out[n]) return;
-      const day = Number(l.day);
-      if (day >= 1 && day <= this.DAYS) out[n].day = day;
-      const t = this.TEACHERS.includes(l.teacher) ? l.teacher : 'mixed';
-      out[n].teacher = out[n].seen && out[n].teacher !== t ? 'mixed' : t;
-      out[n].seen = true;
-    });
-    Object.values(out).forEach((r) => { if (r.teacher === 'mixed') r.teacher = null; delete r.seen; });
-    return out;
-  },
-
-  /** overrides: { [n]: { day, teacher } } — сохранённые правки поверх seed. */
-  mergeLessons(defaults, overrides) {
-    const out = {};
-    Object.keys(defaults).forEach((n) => {
-      const o = (overrides || {})[n];
-      out[n] = o ? {
-        day: Number(o.day) >= 1 && Number(o.day) <= this.DAYS ? Number(o.day) : null,
-        teacher: this.TEACHERS.includes(o.teacher) ? o.teacher : null
-      } : { ...defaults[n] };
-    });
-    return out;
-  },
-
-  async lessonTable(seed) {
-    return this.mergeLessons(this.lessonDefaults(seed), await DB.getMeta(this.KEYS.lessons, {}));
-  },
-
-  async setLesson(n, row) {
-    const all = await DB.getMeta(this.KEYS.lessons, {});
-    await DB.setMeta(this.KEYS.lessons, { ...all, [n]: { day: row.day || null, teacher: row.teacher || null } });
-  },
-
-  // ---------- План школы ----------
-
-  blankPlan() {
-    return { days: Array.from({ length: this.DAYS }, () => ({ date: '', A: [], Б: [] })) };
-  },
-
-  normalizePlan(p) {
-    const days = (p && Array.isArray(p.days)) ? p.days : [];
-    const lessons = (v) => (Array.isArray(v) ? v : []).map(Number).filter((n) => n >= 1 && n <= this.LESSONS);
-    return {
-      days: Array.from({ length: this.DAYS }, (_, i) => {
-        const d = days[i] || {};
-        return { date: String(d.date || ''), A: lessons(d.A), Б: lessons(d['Б']) };
-      })
-    };
-  },
-
-  /** «3, 4 ; 5» → [3, 4, 5] */
-  parseLessons(text) {
-    const out = [];
-    String(text || '').split(/[^0-9]+/).forEach((p) => {
-      const n = Number(p);
-      if (p && n >= 1 && n <= this.LESSONS && !out.includes(n)) out.push(n);
-    });
-    return out;
-  },
-
-  async plan() {
-    const own = await DB.getMeta(this.KEYS.plan, null);
-    if (own) return this.normalizePlan(own);
-    const tpl = await DB.getMeta(this.KEYS.template, null);
-    return this.normalizePlan(tpl || this.blankPlan());
-  },
-
-  async savePlan(plan) { return DB.setMeta(this.KEYS.plan, this.normalizePlan(plan)); },
-
-  async saveTemplate(plan) {
-    const p = this.normalizePlan(plan);
-    p.days.forEach((d) => { d.date = ''; });
-    return DB.setMeta(this.KEYS.template, p);
-  },
-
-  /** { [урок]: { day, teacher, date } } — первое упоминание урока в плане. */
-  planIndex(plan) {
-    const out = {};
-    this.normalizePlan(plan).days.forEach((d, i) => {
-      this.TEACHERS.forEach((t) => d[t].forEach((n) => { if (!out[n]) out[n] = { day: i + 1, teacher: t, date: d.date }; }));
-    });
-    return out;
-  },
-
   // ---------- Распределение ----------
 
   async assignments() { return DB.getMeta(this.KEYS.tasks, {}) || {}; },
@@ -193,20 +106,22 @@ const PSTasks = {
     return next;
   },
 
-  /** День и преподаватель: ручная правка → план → урок. */
-  resolve(task, slot, planIdx, lessons) {
-    const fromPlan = task.lesson ? (planIdx || {})[task.lesson] : null;
-    const fromLesson = task.lesson ? (lessons || {})[task.lesson] : null;
-    const pick = (field) => {
-      if (slot && slot[field]) return { value: slot[field], src: 'manual' };
-      if (fromPlan && fromPlan[field]) return { value: fromPlan[field], src: 'plan' };
-      if (fromLesson && fromLesson[field]) return { value: fromLesson[field], src: 'lesson' };
-      return { value: null, src: null };
+  /**
+   * Когда и у кого задание. Чистая функция.
+   *  days — PSSchedule.build(...) школы.
+   * → { practical, day, date, start, end, changed, teacher, teacherSrc }
+   *   teacher: ручная правка → буква части урока практического занятия.
+   */
+  resolve(task, slot, days) {
+    const at = task && task.practical && typeof PSSchedule !== 'undefined' ? PSSchedule.practicalIn(days, task.practical) : null;
+    const manual = slot && this.TEACHERS.includes(slot.teacher) ? slot.teacher : null;
+    const auto = at && this.TEACHERS.includes(at.teacher) ? at.teacher : null;
+    return {
+      practical: at ? task.practical : null,
+      day: at ? at.day : null, date: at ? at.date : '', start: at ? at.start : '', end: at ? at.end : '',
+      changed: !!(at && at.changed),
+      teacher: manual || auto, teacherSrc: manual ? 'manual' : auto ? 'schedule' : null, autoTeacher: auto
     };
-    const day = pick('day');
-    const teacher = pick('teacher');
-    const date = day.value && fromPlan && fromPlan.day === day.value ? fromPlan.date : '';
-    return { day: day.value, daySrc: day.src, teacher: teacher.value, teacherSrc: teacher.src, date };
   },
 
   related(a, b) { return !!(a && b && (a.relations || []).some((r) => r.studentId === b.id)); },

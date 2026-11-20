@@ -5,12 +5,12 @@
  * ЗАЧЕМ. Отказы Ф6 тихие:
  *  1. Библиотека общая (GLOBAL_META): записанная в школе-префикс, она пропала
  *     бы у следующей школы, и Алекс вводил бы 18 текстов заново.
- *  2. День и преподаватель: ручная правка → план школы → таблица уроков.
- *     Перепутанный порядок молча печатает на бланке не тот день.
+ *  2. Ф6a (20.11.2026): день и время — из расписания по практическому
+ *     занятию задания; преподаватель — ручная правка → буква части урока.
+ *     Перепутанный слот молча печатает на бланке не тот день.
  *  3. «Распределить автоматически» трогает только пустые места; ручные
  *     решения остаются. Правило задания соблюдается, нагрузка ровная.
- *  4. План новой школы — копия шаблона без дат; правка плана одной школы не
- *     меняет другую.
+ *  4. Старые ключи плана и таблицы уроков в базе не стираются.
  *  5. Этап «Задания» в обзоре закрывается, когда все места во всех классах
  *     заполнены.
  */
@@ -37,13 +37,12 @@ const ok = (name, cond, extra) => { console.log((cond ? '  ✓ ' : '  ✗ ') + n
   ctx.window = ctx; ctx.self = ctx;
   vm.createContext(ctx);
   for (const f of ['js/db.js', 'js/modules/history.js', 'js/modules/students.js', 'js/modules/schools.js',
-    'js/modules/textbooks.js', 'js/modules/classes.js', 'js/modules/tasks.js', 'js/modules/overview.js']) {
+    'js/modules/textbooks.js', 'js/modules/classes.js', 'js/modules/tasks.js', 'js/modules/schedule.js', 'js/modules/overview.js']) {
     vm.runInContext(readFileSync(join(PS, f), 'utf8'), ctx, { filename: f });
   }
   await ctx.DB.ready();
-  const { Students, PSTasks, PSOverview, Schools, DB } = ctx;
+  const { Students, PSTasks, PSSchedule, PSOverview, Schools, DB } = ctx;
   await Students.getColumns();
-  const seed = JSON.parse(readFileSync(join(PS, 'data/seed-lessons.json'), 'utf8'));
 
   console.log('1. Библиотека');
   let lib = await PSTasks.library();
@@ -51,7 +50,9 @@ const ok = (name, cond, extra) => { console.log((cond ? '  ✓ ' : '  ✗ ') + n
   ok('лишнее и битое отбрасывается', PSTasks.normalizeLibrary([{ no: 3, participants: 9, rule: 'x', lesson: 40 }, { no: 25 }]).every((t) => t.no <= 18)
     && PSTasks.normalizeLibrary([{ no: 3, participants: 9, rule: 'x', lesson: 40 }])[2].participants === 2
     && PSTasks.normalizeLibrary([{ no: 3, rule: 'x', lesson: 40 }])[2].lesson === null);
-  await PSTasks.saveTask({ no: 1, lesson: 8, participants: 2, rule: 'sameOrRelated', texts: { ru: { title: 'Первое', situation: 'С', description: 'О' } } });
+  ok('практическое занятие 1–4, иначе null', PSTasks.normalizeLibrary([{ no: 1, practical: 3 }, { no: 2, practical: 7 }])[0].practical === 3
+    && PSTasks.normalizeLibrary([{ no: 2, practical: 7 }])[1].practical === null && lib[0].practical === null);
+  await PSTasks.saveTask({ no: 1, lesson: 8, practical: 1, participants: 2, rule: 'sameOrRelated', texts: { ru: { title: 'Первое', situation: 'С', description: 'О' } } });
   await PSTasks.saveTask({ no: 2, lesson: 3, participants: 3, rule: 'sisters', texts: { de: { title: 'Zwei' } } });
   lib = await PSTasks.library();
   const t1 = PSTasks.text(lib[0], 'cs');
@@ -60,31 +61,20 @@ const ok = (name, cond, extra) => { console.log((cond ? '  ✓ ' : '  ✗ ') + n
   ok('текст: нет ни школы, ни ru → первый заполненный', t2.title === 'Zwei' && t2.lang === 'de');
   ok('текст: пустой — пустые строки', PSTasks.text(lib[5], 'ru').title === '' && PSTasks.text(lib[5], 'ru').lang === null);
 
-  console.log('2. Таблица уроков и план');
-  const defs = PSTasks.lessonDefaults(seed);
-  ok('seed: урок 1 — день 1, А', defs[1].day === 1 && defs[1].teacher === 'A');
-  ok('seed: урок 2 (а/б) — день 1, без преподавателя', defs[2].day === 1 && defs[2].teacher === null);
-  ok('seed: урок 18 (А/Б) — день 6, без преподавателя', defs[18].day === 6 && defs[18].teacher === null);
-  ok('seed: урок 3 неизвестен', defs[3].day === null && defs[3].teacher === null);
-  await PSTasks.setLesson(3, { day: 2, teacher: 'Б' });
-  const lessons = await PSTasks.lessonTable(seed);
-  ok('правка таблицы поверх seed', lessons[3].day === 2 && lessons[3].teacher === 'Б' && lessons[1].teacher === 'A');
-  ok('parseLessons', JSON.stringify(PSTasks.parseLessons('3, 4;19 x 4 5')) === '[3,4,5]');
-  const plan = PSTasks.blankPlan();
-  plan.days[3].date = '2027-03-04'; plan.days[3]['Б'] = [8];
-  const idx = PSTasks.planIndex(plan);
-  ok('план: урок 8 — день 4, Б, дата', idx[8].day === 4 && idx[8].teacher === 'Б' && idx[8].date === '2027-03-04');
-
-  console.log('3. Откуда день и преподаватель');
+  console.log('2–3. Когда и у кого (Ф6a)');
+  const days = PSSchedule.build('2027-02-01', {}, 'ru');
   const empty = { people: [], teacher: null, day: null };
-  let r = PSTasks.resolve(lib[0], empty, {}, lessons);
-  ok('без плана — из урока (8: день 3, А)', r.day === 3 && r.teacher === 'A' && r.daySrc === 'lesson');
-  r = PSTasks.resolve(lib[0], empty, idx, lessons);
-  ok('план важнее урока', r.day === 4 && r.teacher === 'Б' && r.daySrc === 'plan' && r.date === '2027-03-04');
-  r = PSTasks.resolve(lib[0], { people: [], teacher: 'A', day: 5 }, idx, lessons);
-  ok('ручная правка важнее плана', r.day === 5 && r.teacher === 'A' && r.daySrc === 'manual' && r.date === '');
-  r = PSTasks.resolve(lib[3], empty, idx, lessons);
-  ok('задание без урока — пусто', r.day === null && r.teacher === null);
+  let r = PSTasks.resolve(lib[0], empty, days);
+  ok('практ. 1 → вт 02.02, 13:00–14:25, преп. Б (урок 5б)', r.practical === 1 && r.day === 2 && r.date === '2027-02-02'
+    && r.start === '13:00' && r.end === '14:25' && r.teacher === 'Б' && r.teacherSrc === 'schedule', JSON.stringify(r));
+  r = PSTasks.resolve({ ...lib[0], practical: 2 }, empty, days);
+  ok('практ. 2 → ср, 14:40, преп. А (урок 9а)', r.day === 3 && r.start === '14:40' && r.teacher === 'A');
+  r = PSTasks.resolve(lib[0], { people: [], teacher: 'A', day: 5 }, days);
+  ok('ручной преподаватель важнее; старый day не влияет', r.teacher === 'A' && r.teacherSrc === 'manual' && r.day === 2);
+  r = PSTasks.resolve(lib[0], empty, PSSchedule.build('2027-02-01', { '5b': { start: '13:30', end: '14:40' } }, 'ru'));
+  ok('своё время слота школы', r.start === '13:30' && r.end === '14:40' && r.changed);
+  r = PSTasks.resolve(lib[3], empty, days);
+  ok('задание без практ. занятия — пусто (заглушка)', r.practical === null && r.day === null && r.teacher === null);
 
   console.log('4. Правила');
   const P = (id, gender, rel = []) => ({ id, gender, relations: rel.map((x) => ({ type: 'spouse', studentId: x })), values: { lastName: id } });
@@ -121,25 +111,18 @@ const ok = (name, cond, extra) => { console.log((cond ? '  ✓ ' : '  ✗ ') + n
   const again = PSTasks.propose(library, slots, members);
   ok('повторный запуск ничего не меняет', again.filled === 0 && JSON.stringify(again.slots) === JSON.stringify(slots));
 
-  console.log('6. Хранение по школам, план и шаблон');
+  console.log('6. Хранение по школам');
   const s1 = DB.currentSchool().id;
   let all = PSTasks.setSlot({}, 'cls1', 1, { people: ['ann', 'petr'], teacher: null, day: null });
   await PSTasks.saveAssignments(all);
-  const p1 = await PSTasks.plan();
-  p1.days[0].date = '2027-03-01'; p1.days[0].A = [1, 2];
-  await PSTasks.savePlan(p1);
-  await PSTasks.saveTemplate(p1);
+  await DB.setMeta('schoolPlan', { days: [{ date: '2027-03-01', A: [1, 2], Б: [] }] });
+  await DB.setMeta('lessonTable', { 3: { day: 2, teacher: 'Б' } });
   await Schools.complete(s1);
   const sc2 = await Schools.create({ language: 'de' });
   ok('Школа 2 выбрана', DB.currentSchool().id === sc2.id);
-  ok('библиотека видна в Школе 2', (await PSTasks.library())[0].texts.ru.title === 'Первое');
-  ok('таблица уроков видна в Школе 2', (await PSTasks.lessonTable(seed))[3].teacher === 'Б');
+  ok('библиотека видна в Школе 2', (await PSTasks.library())[0].texts.ru.title === 'Первое' && (await PSTasks.library())[0].practical === 1);
   ok('распределение Школы 1 не видно', Object.keys(await PSTasks.assignments()).length === 0);
-  const p2 = await PSTasks.plan();
-  ok('план Школы 2 — из шаблона, без дат', JSON.stringify(p2.days[0].A) === '[1,2]' && p2.days[0].date === '');
-  p2.days[0].A = [5];
-  await PSTasks.savePlan(p2);
-  ok('план Школы 1 не задет', JSON.stringify((await DB.inSchool(s1).getMeta('schoolPlan')).days[0].A) === '[1,2]');
+  ok('старые plan/lessonTable не стёрты', (await DB.inSchool(s1).getMeta('schoolPlan')).days[0].A[1] === 2 && (await DB.getMeta('lessonTable'))[3].teacher === 'Б');
 
   console.log('7. Обзор');
   const classes = [{ id: 'c1' }, { id: 'c2' }];

@@ -60,8 +60,6 @@
       <div data-i18n="ps.ui.vo_vremya_shkoly" class="nav-group-label">Во время школы</div>
       <button data-i18n="ps.task.title" class="nav-item" data-route="tasks">Задания пионеров</button>
       <button data-i18n="ps.ui.uroki_i_raspisanie" class="nav-item" data-route="schedule">Уроки и расписание</button>
-      <button data-i18n="ps.ui.prakticheskie_zanyatiya" class="nav-item" data-route="practical">Практические занятия</button>
-      <button data-i18n="ps.ui.ezhednevnoe_povtorenie" class="nav-item" data-route="review">Ежедневное повторение</button>
 
       <div data-i18n="ps.ui.posle_shkoly" class="nav-group-label">После школы</div>
       <button class="nav-item" data-route="afterschool">S-253</button>
@@ -439,50 +437,24 @@
           <div id="task-dist"></div>
         </div>
       </div>
-      <div class="panel">
-        <h3 data-i18n="ps.task.plan">План школы по дням</h3>
-        <p class="hint" data-i18n="ps.task.plan_hint">Номера уроков через запятую. Урок из плана даёт заданию день и преподавателя; без плана они берутся из таблицы уроков.</p>
-        <div class="md-table-wrap"><table class="md-table ps-task-plan" id="task-plan"></table></div>
-        <div class="btn-row">
-          <button type="button" class="md-btn md-btn-text" id="task-plan-template" data-i18n="ps.task.plan_save_tpl">Сохранить как шаблон для новых школ</button>
-        </div>
-      </div>
     </section>
 
+    <!-- Ф6a «Расписание школы» (20.11.2026): шаблон только для чтения,
+         своё время слота — исключение одной школы. Логика — js/modules/schedule.js. -->
     <section id="route-schedule" class="route hidden">
       <header class="route-header">
         <h1 data-i18n="ps.ui.uroki_i_raspisanie">Уроки и расписание</h1>
-        <p data-i18n="ps.ui.18_urokov_6_dney" class="route-sub">18 уроков · 6 дней · буква «а» — Преподаватель А, «б» — Преподаватель Б</p>
+        <p data-i18n="ps.sch.sub" class="route-sub">6 дней по стандартному расписанию · задания — в практических занятиях</p>
       </header>
-      <div class="panel">
-        <p data-i18n="ps.ui.nazvaniya_i_soderzhanie_vseh" class="hint">Названия и содержание всех 18 уроков в S-255-U не приводятся — только привязка видео/чтений к конкретным урокам. Остальные уроки заполняются вручную по данным учебника.</p>
+      <div class="panel ps-task-tools">
+        <label><span data-i18n="ps.task.class">Класс</span><select id="sch-class" data-ro-allow></select></label>
+        <button type="button" class="md-btn md-btn-filled" id="sch-print" data-ro-allow data-i18n="ps.sch.print">Печать A4</button>
+        <button type="button" class="md-btn md-btn-outlined" id="sch-edit" aria-pressed="false" data-i18n="ps.sch.edit">Изменить время</button>
+        <button type="button" class="md-btn md-btn-text" id="sch-reset" hidden></button>
+        <p class="hint" id="sch-start" role="status"></p>
       </div>
-      <div class="panel">
-        <h3 data-i18n="ps.task.lessons">Таблица уроков: день и преподаватель</h3>
-        <p class="hint" data-i18n="ps.task.lessons_hint">Общая для всех школ. Задания берут отсюда день и преподавателя, если урока нет в плане школы.</p>
-        <div class="md-table-wrap"><table class="md-table" id="lesson-table"></table></div>
-      </div>
+      <div class="ps-sch-grid" id="sch-grid"></div>
       <div id="lessons-list"></div>
-    </section>
-
-    <section id="route-practical" class="route hidden">
-      <header class="route-header">
-        <h1 data-i18n="ps.ui.prakticheskie_zanyatiya">Практические занятия</h1>
-        <p data-i18n="ps.ui.4_zanyatiya_gl_3" class="route-sub">4 занятия (гл.3, п.11-12)</p>
-      </header>
-      <div class="panel">
-        <h3 data-i18n="ps.ui.pravila_provedeniya">Правила проведения</h3>
-        <ul class="fact-list" id="practical-rules"></ul>
-      </div>
-      <div id="practical-list"></div>
-    </section>
-
-    <section id="route-review" class="route hidden">
-      <header class="route-header">
-        <h1 data-i18n="ps.ui.ezhednevnoe_povtorenie">Ежедневное повторение</h1>
-        <p data-i18n="ps.ui.30_minut_po_15" class="route-sub">30 минут, по 15 на преподавателя, дни 1–5 (гл.3, п.13)</p>
-      </header>
-      <div id="review-list"></div>
     </section>
 
     <section id="route-afterschool" class="route hidden">
@@ -659,8 +631,7 @@
 <script src="js/modules/classes.js"></script>
 <script src="js/modules/overview.js"></script>
 <script src="js/modules/tasks.js"></script>
-<script src="js/modules/practical.js"></script>
-<script src="js/modules/review.js"></script>
+<script src="js/modules/schedule.js"></script>
 <script src="js/modules/afterSchool.js"></script>
 <script src="js/modules/signLanguage.js"></script>
 <script src="js/modules/letters.js"></script>

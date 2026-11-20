@@ -750,9 +750,28 @@ label.ps-inline { flex-direction: row; font-size: 14px; color: var(--md-on-surfa
 .ps-task-slot__meta { font-size: 12px; opacity: .8; }
 .ps-task-slot[open] { padding-bottom: 12px; }
 .ps-task-slot .hint { margin: 0 0 8px; font-style: normal; }
-.ps-task-plan input { width: 100%; min-width: 90px; box-sizing: border-box; }
 @media (max-width: 1000px) { .ps-task-lay { grid-template-columns: 1fr; } }
 @media print { .ps-task-tools, .ps-task-edit { display: none !important; } }
+
+/* ---------- Ф6a · Расписание школы ---------- */
+.ps-sch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.ps-sch-day { border: 1px solid var(--md-outline-variant); border-radius: 12px; background: var(--md-surface-container-low); padding: 10px 12px; min-width: 0; }
+.ps-sch-day__head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; margin-bottom: 6px; }
+.ps-sch-song, .ps-sch-break { font-size: 12px; color: var(--md-on-surface-variant); }
+.ps-sch-break { padding: 2px 0 2px 44px; }
+.ps-sch-slot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 0; border-top: 1px solid var(--md-outline-variant); }
+.ps-sch-slot--practical { background: var(--md-surface-container); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+.ps-sch-label { min-width: 36px; font-weight: 600; }
+.ps-sch-time { font-size: 12px; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.ps-sch-time-edit { display: inline-flex; align-items: center; gap: 4px; }
+.ps-sch-time-edit input { min-height: 36px; }
+.ps-sch-title { flex: 1 1 100%; padding-left: 44px; overflow-wrap: anywhere; }
+.ps-sch-slot .ps-chip { margin-left: 44px; }
+.ps-sch-slot .ps-chip + .ps-chip { margin-left: 0; }
+.ps-sch-tasks { flex: 1 1 100%; margin: 4px 0 0 44px; padding-left: 16px; font-size: 12px; }
+p.ps-sch-tasks { padding-left: 0; font-style: normal; }
+.ps-sch-warn { color: var(--status-important); }
+@media print { #route-schedule .ps-task-tools { display: none !important; } }
 
 /* ---------- Ф7 · После школы: присутствие и S-253 ---------- */
 .ps-after-lay { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; align-items: start; }
